@@ -5,13 +5,13 @@ edition = "2024"
 
 [dependencies]
 image = { version = "0.25.9", features = ["png"] }
-sha2 = "0.10.9"
 gui-launcher = {path = "gui_launcher" }
 custom_errors = {path = "custom_errors"}
 tracing = "0.1.44"
 dioxus = { version = "0.7.3", features = ["desktop"] }
 sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite", "macros"] }
 tokio = { version = "1.49.0", features = ["full"] }
+argon2 = { version = "0.5.3", features = ["std"] }
 
 #[lib]
 #name = "guilauncher"

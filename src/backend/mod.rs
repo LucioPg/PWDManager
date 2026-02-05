@@ -1,2 +1,2 @@
 pub mod db_backend;
-mod utils;
+pub mod utils;

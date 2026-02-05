@@ -35,3 +35,39 @@ impl DBError {
         DBError::DBDeleteError(msg.into())
     }
 }
+
+#[derive(Error, Debug)]
+pub enum EncryptionError {
+    #[error("Encryption error: {0}")]
+    EncryptionError(String)
+}
+
+impl EncryptionError {
+    pub fn new_encryption_error(msg: String) -> Self {
+        EncryptionError::EncryptionError(msg.into())
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum DecryptionError {
+    #[error("Decryption error: {0}")]
+    DecryptionError(String),
+    #[error("Password corrotta")]
+    RottenPassword(String),
+    #[error("Password errata")]
+    WrongPassword(String)
+}
+
+impl DecryptionError {
+    pub fn new_decryption_error(msg: String) -> Self {
+        DecryptionError::DecryptionError(msg.into())
+    }
+    
+    pub fn new_rotten_password(msg: String) -> Self {
+        DecryptionError::RottenPassword(msg.into())
+    }
+    
+    pub fn new_wrong_password(msg: String) -> Self {
+        DecryptionError::WrongPassword(msg.into())
+    }
+}
