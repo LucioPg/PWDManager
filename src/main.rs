@@ -1,3 +1,19 @@
+
+
+fn create_table() -> Result<(), Box<dyn std::error::Error>>{
+    let query  = "\
+    CREATE TABLE IF NOT EXISTS users (username Text, password Text);";
+    let conn = sqlite::open("database.db")?;
+    let _ = conn.execute(query)?;
+    Ok(())
+
+}
+
 fn main() {
-    println!("Hello, world!");
+    println!("Creating database and table...");
+    let db_creation: Result<(), Box<dyn std::error::Error>> = create_table();
+    match  db_creation {
+        Ok(()) => println!("Database created!"),
+        Err(e) => println!("An error occurred while creating the database: {e}")
+    };
 }
