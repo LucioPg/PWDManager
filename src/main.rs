@@ -1,8 +1,9 @@
 mod backend;
+
 use gui_launcher::launch_desktop;
 use dioxus::prelude::*;
 // use backend::{list_users, init_db};
-use backend::{init_db};
+use backend::db_backend::init_db;
 
 // fn create_table() -> Result<(), Box<dyn std::error::Error>>{
 //     let query  = "\
