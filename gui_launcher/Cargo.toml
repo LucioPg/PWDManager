@@ -1,0 +1,15 @@
+[package]
+name = "gui-launcher"
+version = "0.1.0"
+authors = ["Lucio <lucio.di.capua@gmail.com>"]
+edition = "2021"
+description = "Custom launcher for PWDManager desktop application with icon support"
+
+[dependencies]
+dioxus = { version = "0.7.2", features = ["desktop"] }
+image = { version = "0.25.9", features = ["png"] }
+tracing = "0.1.43"
+
+[features]
+default = ["desktop"]
+desktop = ["dioxus/desktop"]

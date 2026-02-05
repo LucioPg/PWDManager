@@ -1,4 +1,4 @@
-
+use gui_launcher::check_paths;
 
 fn create_table() -> Result<(), Box<dyn std::error::Error>>{
     let query  = "\
@@ -16,4 +16,7 @@ fn main() {
         Ok(()) => println!("Database created!"),
         Err(e) => println!("An error occurred while creating the database: {e}")
     };
+    println!("checking paths");
+    let existent_paths = check_paths();
+    println!("paths: {}", existent_paths);
 }
