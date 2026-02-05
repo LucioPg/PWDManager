@@ -1,0 +1,47 @@
+[application]
+name = "PWDManager"
+asset_dir = "assets"
+assets = ["assets/main.css", "assets/tailwind.css"]
+
+[bundle]
+name = "PWDManager"
+version = "0.1.0"
+description = "A Rust app for manage passwords"
+identifier = "com.app.pwdmanager"
+publisher = "Lucio Di Capua"
+icon = [
+    "icons/icon.ico",
+    "icons/icon.png"
+]
+
+[bundle.windows]
+# Windows-specific icon for system tray and application
+icon_path = "icons/icon.ico"
+# Digest algorithm for signing
+digest_algorithm = "sha256"
+# WebView2 installation mode
+[webview_install_mode.EmbedBootstrapper]
+silent = true
+
+[web.app]
+
+# HTML title tag content
+title = "PWDManager"
+
+# Favicon for web application
+# include `assets` in web platform
+[web.resource]
+# Additional CSS style files
+style = ["assets/main.css", "assets/tailwind.css"]
+
+# Include favicon in the bundle
+favicon = "assets/favicon.ico"
+
+# Additional JavaScript files
+script = []
+
+[web.resource.dev]
+
+# Javascript code file
+# serve: [dev-server] only
+script = []
