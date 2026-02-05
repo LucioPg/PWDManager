@@ -9,8 +9,9 @@ sha2 = "0.10.9"
 gui-launcher = {path = "gui_launcher" }
 custom_errors = {path = "custom_errors"}
 tracing = "0.1.44"
-rusqlite = { version = "0.38.0", features = ["bundled"] }
 dioxus = { version = "0.7.3", features = ["desktop"] }
+sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite", "macros"] }
+tokio = { version = "1.49.0", features = ["full"] }
 
 #[lib]
 #name = "guilauncher"

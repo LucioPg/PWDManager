@@ -1,45 +1,33 @@
-
+#![allow(dead_code)]
 use custom_errors::DBError;
+use sqlx::sqlite::{ SqliteConnectOptions, SqlitePool};
+use sqlx::{query, Row};
+use std::str::FromStr;
 use dioxus::prelude::*;
+#[cfg(feature = "desktop")]
+use tracing::{debug, instrument};
 
 #[cfg(feature = "desktop")]
-use tracing::{info, error, debug, instrument};
+pub async fn init_db() -> Result<SqlitePool, DBError> {
+    let options = SqliteConnectOptions::from_str("sqlite:database.db")
+        .map_err(|e| DBError::new_general_error(e.to_string()))?
+        .create_if_missing(true);
 
-#[cfg(feature = "desktop")]
-thread_local! {
-    pub static DB: rusqlite::Connection = {
-        info!("Initializing database connection");
-        // Open the database from the persisted "database.db" file
-        let conn = rusqlite::Connection::open("database.db").unwrap_or_else(|e| {
-            error!(
-                error = %e,
-                db_file = "database.db",
-                "Failed to open database connection"
-            );
-            panic!("Database connection failed: {}", e);
-        });
+    let pool = SqlitePool::connect_with(options).await.map_err(|e| DBError::new_general_error(e.to_string()))?;
 
-        // Create the "user_ids" table if it doesn't already exist
-        if let Err(e) = conn.execute_batch(
-            "CREATE TABLE IF NOT EXISTS users (
+    query(
+        "CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY,
                 username TEXT NOT NULL,
                 password TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                logged BOOLEAN NOT NULL DEFAULT FALSE
             );",
-        ) {
-            error!(
-                error = %e,
-                "Failed to create database table"
-            );
-            panic!("Database table creation failed: {}", e);
-        } else {
-            info!("Database table initialized successfully");
-        }
-
-        // Return the connection
-        conn
-    };
+    )
+    .execute(&pool)
+    .await
+    .map_err(|e| DBError::new_general_error(format!("Failed to create table: {}", e)))?;
+    Ok(pool)
 }
 
 // #[post("/api/save_user_id")]
@@ -60,141 +48,56 @@ thread_local! {
 // db approach
 
 
-pub async fn save_user(username: String, password: String) -> dioxus::Result<()> {
+pub async fn save_user(pool: &SqlitePool, username: String, password: String) -> dioxus::Result<()> {
     debug!("Attempting to save user credentials to database");
 
-    DB.with(|c| {
-        let result = c.execute("INSERT INTO users (username, password) VALUES (?1, ?2)", &[&username, &password]);
-        match result {
-            Ok(rows_affected) => {
-                debug!(
-                    rows_affected = rows_affected,
-                    username = %username,
-                    "Successfully saved user's credentials to database"
-                );
-                Ok(rows_affected)
-            }
-            Err(e) => {
-                error!(
-                    error = %e,
-                    username = %username,
-                    password = %password,
-                    "Failed to insert user's credentials into database"
-                );
-                Err(e)
-            }
-        }
-    })?;
+    let _ = query("INSERT INTO users (username, password) VALUES (?, ?)")
+        .bind(username)
+        .bind(password)
+        .execute(pool)
+        .await
+        .map_err(|e| DBError::new_save_error(format!("Failed to save user credentials: {}", e)))?;
 
     Ok(())
 }
 
 
 #[instrument(fields(user_id = id))]
-pub async fn delete_user(id: i32) -> Result<i32, DBError> {
+pub async fn delete_user(pool: &SqlitePool, id: i32) -> Result<(), DBError> {
     debug!(
         user_id = id,
         "Attempting to delete user from database"
     );
+    let _ = query("DELETE FROM users WHERE id = ?")
+        .bind(id)
+        .execute(pool)
+        .await
+        .map_err(|e| DBError::new_delete_error(format!("Failed to save user credentials: {}", e)))?;
 
-    let result = DB.with(|c| {
-        match c.prepare("DELETE FROM users WHERE id = ?1") {
-            Ok(mut stmt) => {
-                match stmt.execute(&[&id]) {
-                    Ok(rows_affected) => {
-                        if rows_affected == 0 {
-                            error!(
-                                user_id = id,
-                                "No user found with specified ID"
-                            );
-                        }
-                        Ok(rows_affected)
-                    }
-                    Err(e) => {
-                        error!(
-                            error = %e,
-                            user_id = id,
-                            "Failed to execute DELETE statement"
-                        );
-                        Err(e)
-                    }
-                }
-            }
-            Err(e) => {
-                error!(
-                    error = %e,
-                    user_id = id,
-                    "Failed to prepare DELETE statement"
-                );
-                Err(e)
-            }
-        }
-    });
+    Ok(())
 
-    match result {
-        Ok(rows_affected) => {
-            if rows_affected > 0 {
-                debug!(
-                    user_id = id,
-                    rows_affected = rows_affected,
-                    "Successfully deleted user from database"
-                );
-            }
-            Ok(id)
-        }
-        Err(e) => {
-            Err(DBError::new_general_error(e.to_string()))
-        }
-    }
 }
 
 #[instrument]
-pub async fn list_users() -> Result<Vec<(i32, String)>, DBError> {
+pub async fn list_users(pool: &SqlitePool) -> Result<Vec<(i32, String, bool, String)>, DBError> {
     debug!("Fetching list of users from database");
+    let rows = query("SELECT id, username, logged, created_at FROM users ORDER BY id DESC LIMIT 10")
+        .fetch_all(pool)
+        .await
+        .map_err(|e| DBError::new_list_error(format!("Failed to save user credentials: {}", e)))?;
 
-    let users = DB.with(|c| {
-        let mut stmt = match c.prepare("SELECT id, url FROM users ORDER BY id DESC LIMIT 10") {
-            Ok(stmt) => stmt,
-            Err(e) => {
-                error!(
-                    error = %e,
-                    "Failed to prepare SELECT statement"
-                );
-                return Err(DBError::new_select_error(e.to_string()));
-            }
-        };
-
-        let rows = match stmt.query_map([], |row| {
-            Ok((row.get::<_, i32>(0)?, row.get::<_, String>(1)?))
-        }) {
-            Ok(rows) => rows,
-            Err(e) => {
-                error!(
-                    error = %e,
-                    "Failed to query users from database"
-                );
-                return Err(DBError::new_list_error(e.to_string()));
-            }
-        };
-
-        match rows.collect::<Result<Vec<_>, _>>() {
-            Ok(users) => {
-                debug!(
-                    count = users.len(),
-                    "Successfully retrieved registered users from database"
-                );
-                Ok(users)
-            }
-            Err(e) => {
-                error!(
-                    error = %e,
-                    "Failed to collect users from query results"
-                );
-                Err(DBError::new_list_error(e.to_string()))
-            }
-        }
-    })?;
+    let users = rows
+        .into_iter()
+        .map(|row| (
+            row.get::<i32, _>("id"),
+            row.get::<String, _>("username"),
+            row.get::<bool, _>("logged"),
+            row.get::<String, _>("created_at")
+            ))
+        .collect();
 
     Ok(users)
+
+
 }
 
