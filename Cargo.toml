@@ -4,12 +4,20 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+image = { version = "0.25.9", features = ["png"] }
 sha2 = "0.10.9"
-sqlite = "0.37.0"
 gui-launcher = {path = "gui_launcher" }
+custom_errors = {path = "custom_errors"}
+tracing = "0.1.44"
+rusqlite = { version = "0.38.0", features = ["bundled"] }
+dioxus = { version = "0.7.3", features = ["desktop"] }
 
 #[lib]
 #name = "guilauncher"
 #path = "gui_launcher/src/lib.rs"
 [workspace]
-members = ["gui_launcher", "."]
+members = ["gui_launcher", ".", "custom_errors"]
+
+[features]
+default = ["desktop"]
+desktop = ["dioxus/desktop"]
