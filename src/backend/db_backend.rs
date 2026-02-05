@@ -1,11 +1,12 @@
 #![allow(dead_code)]
-use custom_errors::DBError;
+use custom_errors::{AuthError, DBError};
 use sqlx::sqlite::{ SqliteConnectOptions, SqlitePool};
 use sqlx::{query, Row};
 use std::str::FromStr;
 use dioxus::prelude::*;
 #[cfg(feature = "desktop")]
 use tracing::{debug, instrument};
+use crate::backend::utils::verify_password;
 
 #[cfg(feature = "desktop")]
 pub async fn init_db() -> Result<SqlitePool, DBError> {
@@ -18,7 +19,7 @@ pub async fn init_db() -> Result<SqlitePool, DBError> {
     query(
         "CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY,
-                username TEXT NOT NULL,
+                username TEXT NOT NULL UNIQUE,
                 password TEXT NOT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 logged BOOLEAN NOT NULL DEFAULT FALSE
@@ -29,24 +30,6 @@ pub async fn init_db() -> Result<SqlitePool, DBError> {
     .map_err(|e| DBError::new_general_error(format!("Failed to create table: {}", e)))?;
     Ok(pool)
 }
-
-// #[post("/api/save_user_id")]
-// #[server]
-// pub async fn save_user_id(image: String) -> dioxus::Result<()> {
-// use std::io::Write;
-//
-// Open the "user_ids.txt" file in append mode, creating it if it doesn't exist yet
-// let mut file = std::fs::OpenOptions::new()
-//     .write(true)
-//     .append(true)
-//     .create(true)
-//     .open("user_ids.txt")
-//     .unwrap();
-// file.write_fmt(format_args!("{}\n", image)).unwrap();
-// Ok(())
-
-// db approach
-
 
 pub async fn save_user(pool: &SqlitePool, username: String, password: String) -> dioxus::Result<()> {
     debug!("Attempting to save user credentials to database");
@@ -100,4 +83,25 @@ pub async fn list_users(pool: &SqlitePool) -> Result<Vec<(i32, String, bool, Str
 
 
 }
+#[instrument]
+async fn fetch_user(pool: &SqlitePool, username: &str) -> Result<String, DBError> {
+    debug!("Fetching user credentials in database");
+    let row = query("SELECT password FROM users WHERE username = ?")
+        .bind(username)
+        .fetch_optional(pool)
+        .await;
+    match row {
+        Ok(Some(row)) => Ok(row.get(0)),
+        Ok(None) => Err(DBError::new_select_error("User not found".into())),
+        Err(e) => Err(DBError::new_fetch_error(format!("Failed to fetch user credentials: {}", e)))
+    }
+}
 
+#[instrument]
+pub async fn check_user(pool: &SqlitePool, username: &str, password: &str) -> Result<bool, AuthError> {
+    debug!("Checking user credentials in database");
+    let hash = fetch_user(pool, username).await.map_err(|e| AuthError::DB(e))?;
+    verify_password(password, hash.as_str()).map_err(|e| AuthError::Decryption(e))?;
+
+    Ok(true)
+}

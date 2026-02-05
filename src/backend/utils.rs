@@ -28,7 +28,7 @@ pub fn verify_password(text: &str, hash: &str) -> Result<(), DecryptionError> {
     let argon2 = Argon2::default();
     let password = text.as_bytes();
     let hash = PasswordHash::new(hash).map_err(|e| DecryptionError::new_rotten_password(e.to_string()))?;
-    argon2.verify_password(password, &hash).map_err(|e| DecryptionError::new_wrong_password(e.to_string()))?;
+    argon2.verify_password(password, &hash).map_err(|_| DecryptionError::new_wrong_password())?;
     Ok(())
 }
 

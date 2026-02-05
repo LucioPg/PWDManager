@@ -11,8 +11,10 @@ pub enum DBError {
     #[error("Database delete error: {0}")]
     DBDeleteError(String),
     #[error("Database save error: {0}")]
-    DBSaveError(String)
-}
+    DBSaveError(String),
+    #[error("Database fetch error: {0}")]
+    DBFetchError(String),
+    }
 
 impl DBError {
     pub fn new_general_error(msg: String) -> Self {
@@ -33,6 +35,10 @@ impl DBError {
 
     pub fn new_delete_error(msg: String) -> Self {
         DBError::DBDeleteError(msg.into())
+    }
+    
+    pub fn new_fetch_error(msg: String) -> Self {
+        DBError::DBFetchError(msg.into())
     }
 }
 
@@ -55,7 +61,7 @@ pub enum DecryptionError {
     #[error("Password corrotta")]
     RottenPassword(String),
     #[error("Password errata")]
-    WrongPassword(String)
+    WrongPassword
 }
 
 impl DecryptionError {
@@ -67,7 +73,14 @@ impl DecryptionError {
         DecryptionError::RottenPassword(msg.into())
     }
     
-    pub fn new_wrong_password(msg: String) -> Self {
-        DecryptionError::WrongPassword(msg.into())
+    pub fn new_wrong_password() -> Self {
+        DecryptionError::WrongPassword
     }
+}
+
+#[derive(Debug)]
+pub enum AuthError {
+    DB(DBError),
+    Encryption(EncryptionError),
+    Decryption(DecryptionError)
 }
