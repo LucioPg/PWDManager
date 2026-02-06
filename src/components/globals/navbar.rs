@@ -9,6 +9,7 @@ pub fn NavBar() -> Element {
                 h1 {"Dashboard! 🌭" }
             }
             Link {to: Route::Settings, id: "heart", "♥️"}
+            Link {to: Route::RegisterUser, id: "register", "Register"}
         }
         Outlet::<Route> {}
     }
