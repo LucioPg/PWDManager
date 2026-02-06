@@ -21,8 +21,7 @@ pub async fn init_db() -> Result<SqlitePool, DBError> {
                 id INTEGER PRIMARY KEY,
                 username TEXT NOT NULL UNIQUE,
                 password TEXT NOT NULL,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                logged BOOLEAN NOT NULL DEFAULT FALSE
+                created_at TEXT DEFAULT (datetime('now'))
             );",
     )
     .execute(&pool)
@@ -61,10 +60,10 @@ pub async fn delete_user(pool: &SqlitePool, id: i32) -> Result<(), DBError> {
 
 }
 
-#[instrument]
-pub async fn list_users(pool: &SqlitePool) -> Result<Vec<(i32, String, bool, String)>, DBError> {
+#[instrument(skip(pool))]
+pub async fn list_users(pool: &SqlitePool) -> Result<Vec<(i32, String, String)>, DBError> {
     debug!("Fetching list of users from database");
-    let rows = query("SELECT id, username, logged, created_at FROM users ORDER BY id DESC LIMIT 10")
+    let rows = query("SELECT id, username, created_at FROM users ORDER BY id DESC LIMIT 10")
         .fetch_all(pool)
         .await
         .map_err(|e| DBError::new_list_error(format!("Failed to save user credentials: {}", e)))?;
@@ -74,7 +73,6 @@ pub async fn list_users(pool: &SqlitePool) -> Result<Vec<(i32, String, bool, Str
         .map(|row| (
             row.get::<i32, _>("id"),
             row.get::<String, _>("username"),
-            row.get::<bool, _>("logged"),
             row.get::<String, _>("created_at")
             ))
         .collect();
@@ -83,8 +81,8 @@ pub async fn list_users(pool: &SqlitePool) -> Result<Vec<(i32, String, bool, Str
 
 
 }
-#[instrument]
-async fn fetch_user(pool: &SqlitePool, username: &str) -> Result<String, DBError> {
+#[instrument(skip(pool))]
+async fn fetch_user_password(pool: &SqlitePool, username: &str) -> Result<String, DBError> {
     debug!("Fetching user credentials in database");
     let row = query("SELECT password FROM users WHERE username = ?")
         .bind(username)
@@ -97,11 +95,45 @@ async fn fetch_user(pool: &SqlitePool, username: &str) -> Result<String, DBError
     }
 }
 
-#[instrument]
+#[instrument(skip(pool))]
+pub async fn fetch_user_data(pool: &SqlitePool, username: &str) -> Result<(i32, String, String), DBError> {
+    debug!("Fetching user credentials in database");
+    let row = query("SELECT id, username, created_at FROM users WHERE username = ?")
+        .bind(username)
+        .fetch_optional(pool)
+        .await;
+    match row {
+        Ok(Some(row)) => Ok((
+            row.get::<i32, _>("id"),
+            row.get::<String, _>("username"),
+            row.get::<String, _>("created_at")
+            )),
+        Ok(None) => Err(DBError::new_select_error("User not found".into())),
+        Err(e) => Err(DBError::new_fetch_error(format!("Failed to fetch user data: {}", e)))
+    }
+}
+
+#[instrument(skip(pool))]
 pub async fn check_user(pool: &SqlitePool, username: &str, password: &str) -> Result<bool, AuthError> {
     debug!("Checking user credentials in database");
-    let hash = fetch_user(pool, username).await.map_err(|e| AuthError::DB(e))?;
+    let hash = fetch_user_password(pool, username).await.map_err(|e| AuthError::DB(e))?;
     verify_password(password, hash.as_str()).map_err(|e| AuthError::Decryption(e))?;
 
     Ok(true)
 }
+
+// #[instrument]
+// pub async fn login_user(pool: &SqlitePool, user_id: i32) -> Result<bool, AuthError> {
+//     let _ = query("UPDATE users SET logged = TRUE WHERE id = ?")
+//         .bind(user_id)
+//         .execute(pool).await.map_err(|_| AuthGeneralError::LoginError).map_err(|e| AuthError::AuthenticationError);
+//     Ok(true)
+// }
+//
+// #[instrument]
+// pub async fn logout_user(pool: &SqlitePool, user_id: i32) -> Result<bool, AuthError> {
+//     let _ = query("UPDATE users SET logged = FALSE WHERE id = ?")
+//         .bind(user_id)
+//         .execute(pool).await.map_err(|_| AuthGeneralError::LogoutError).map_err(|e| AuthError::AuthenticationError);
+//     Ok(true)
+// }
