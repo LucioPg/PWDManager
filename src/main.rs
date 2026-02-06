@@ -1,13 +1,15 @@
 mod backend;
 mod auth;
 mod components;
-use crate::components::{Dashboard, Login, NavBar, Settings, PageNotFound, Logout};
+use crate::components::{Dashboard, Login, NavBar, Settings, PageNotFound, Logout, RegisterUser, LandingPage};
 use gui_launcher::launch_desktop;
 use dioxus::prelude::*;
 // use backend::{list_users, init_db};
 use backend::db_backend::init_db;
 // use components::{login, navbar, settings, dashboard};
 
+// Asset CSS di Tailwind
+static TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
 
 #[component]
 fn App() -> Element {
@@ -21,12 +23,15 @@ fn App() -> Element {
             // Se il pool è pronto, lo forniamo al resto dell'app
             use_context_provider(|| pool.clone());
             rsx! {
-            Router::<Route> {}
+                // Carica il CSS di Tailwind globalmente
+                document::Stylesheet { href: TAILWIND_CSS }
+                Router::<Route> {}
             }
         }
         Some(Err(e)) => {
             // Mostriamo l'errore all'utente in modo elegante
             rsx! {
+                document::Stylesheet { href: TAILWIND_CSS }
                 div { class: "error-container",
                     h1 { "Errore critico del Database" }
                     p { "{e}" }
@@ -34,7 +39,10 @@ fn App() -> Element {
                 }
             }
         }
-        None => rsx! { "Inizializzazione database in corso..." }
+        None => rsx! {
+            document::Stylesheet { href: TAILWIND_CSS }
+            "Inizializzazione database in corso..."
+        }
     }
 }
 fn main() {
@@ -53,14 +61,17 @@ fn main() {
 enum Route {
     #[layout(NavBar)]
     #[route("/")]
-    Login,
+    LandingPage,
     #[route("/login")]
-    Dashboard,
+    Login,
     #[route("/logout")]
     Logout,
     #[route("/settings")]
     Settings,
-
+    #[route("/register")]
+    RegisterUser,
+    #[route("/dashboard")]
+    Dashboard,
     #[route("/:..segments")]
     PageNotFound { segments: Vec<String> },
 }
