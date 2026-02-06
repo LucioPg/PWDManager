@@ -21,7 +21,8 @@ pub async fn init_db() -> Result<SqlitePool, DBError> {
                 id INTEGER PRIMARY KEY,
                 username TEXT NOT NULL UNIQUE,
                 password TEXT NOT NULL,
-                created_at TEXT DEFAULT (datetime('now'))
+                created_at TEXT DEFAULT (datetime('now')),
+                avatar BLOB
             );",
     )
     .execute(&pool)
@@ -30,12 +31,12 @@ pub async fn init_db() -> Result<SqlitePool, DBError> {
     Ok(pool)
 }
 
-pub async fn save_user(pool: &SqlitePool, username: String, password: String) -> dioxus::Result<()> {
+pub async fn save_user(pool: &SqlitePool, username: String, password: String, avatar: Option<Vec<u8>>) -> dioxus::Result<()> {
     debug!("Attempting to save user credentials to database");
-
-    let _ = query("INSERT INTO users (username, password) VALUES (?, ?)")
+    let _ = query("INSERT INTO users (username, password, avatar) VALUES (?, ?, ?)")
         .bind(username)
         .bind(password)
+        .bind(avatar)
         .execute(pool)
         .await
         .map_err(|e| DBError::new_save_error(format!("Failed to save user credentials: {}", e)))?;
@@ -61,19 +62,20 @@ pub async fn delete_user(pool: &SqlitePool, id: i32) -> Result<(), DBError> {
 }
 
 #[instrument(skip(pool))]
-pub async fn list_users(pool: &SqlitePool) -> Result<Vec<(i32, String, String)>, DBError> {
+pub async fn list_users(pool: &SqlitePool) -> Result<Vec<(i32, String, String, Option<Vec<u8>>)>, DBError> {
     debug!("Fetching list of users from database");
     let rows = query("SELECT id, username, created_at FROM users ORDER BY id DESC LIMIT 10")
         .fetch_all(pool)
         .await
         .map_err(|e| DBError::new_list_error(format!("Failed to save user credentials: {}", e)))?;
-
+    // todo!("verificare che Option<Vec<u8>> sia corretto");
     let users = rows
         .into_iter()
         .map(|row| (
             row.get::<i32, _>("id"),
             row.get::<String, _>("username"),
-            row.get::<String, _>("created_at")
+            row.get::<String, _>("created_at"),
+            row.get::<Option<Vec<u8>>, _>("avatar")
             ))
         .collect();
 
@@ -96,17 +98,19 @@ async fn fetch_user_password(pool: &SqlitePool, username: &str) -> Result<String
 }
 
 #[instrument(skip(pool))]
-pub async fn fetch_user_data(pool: &SqlitePool, username: &str) -> Result<(i32, String, String), DBError> {
+pub async fn fetch_user_data(pool: &SqlitePool, username: &str) -> Result<(i32, String, String, Option<Vec<u8>>), DBError> {
     debug!("Fetching user credentials in database");
     let row = query("SELECT id, username, created_at FROM users WHERE username = ?")
         .bind(username)
         .fetch_optional(pool)
         .await;
+    // todo!("verificare che Option<Vec<u8>> sia corretto");
     match row {
         Ok(Some(row)) => Ok((
             row.get::<i32, _>("id"),
             row.get::<String, _>("username"),
-            row.get::<String, _>("created_at")
+            row.get::<String, _>("created_at"),
+            row.get::<Option<Vec<u8>>, _>("avatar")
             )),
         Ok(None) => Err(DBError::new_select_error("User not found".into())),
         Err(e) => Err(DBError::new_fetch_error(format!("Failed to fetch user data: {}", e)))

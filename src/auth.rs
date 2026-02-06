@@ -1,9 +1,11 @@
 use dioxus::prelude::*;
+use crate::backend::utils::set_user_avatar;
 
 struct User {
     id: i32,
     username: String,
-    created_at: String
+    created_at: String,
+    avatar: String
 }
 
 #[derive(Clone)]
@@ -16,8 +18,9 @@ impl AuthState {
         Self { user: Signal::new(None) }
     }
 
-    pub fn login(  &mut self, id: i32, username: String, created_at: String) {
-        self.user.set(Some(User { id, username, created_at }));
+    pub fn login(  &mut self, id: i32, username: String, created_at: String, avatar: Option<Vec<u8>>) {
+        let avatar: String = set_user_avatar(avatar);
+        self.user.set(Some(User { id, username, created_at, avatar }));
     }
     pub fn logout( &mut self) {
         self.user.set(None);

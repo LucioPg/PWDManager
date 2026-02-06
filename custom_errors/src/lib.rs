@@ -93,3 +93,20 @@ pub enum AuthError {
     Decryption(DecryptionError),
     AuthenticationError(AuthGeneralError)
 }
+
+#[derive(Error, Debug)]
+pub enum GeneralError {
+    #[error("Errore nell'encoding dell'avatar: {0:?}")]
+    EncodeError(String),
+    #[error("Errore nel ridimensionamento dell'avatar: {0}")]
+    ScalingError(String)
+}
+
+impl GeneralError {
+    pub fn new_encode_error(msg: String) -> Self {
+        GeneralError::EncodeError(msg.into())
+    }
+    pub fn new_scaling_error(msg: String) -> Self {
+        GeneralError::ScalingError(msg.into())
+    }
+}

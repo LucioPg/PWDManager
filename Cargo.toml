@@ -12,6 +12,8 @@ dioxus = { version = "0.7.3", features = ["desktop", "router"] }
 sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite", "macros"] }
 tokio = { version = "1.49.0", features = ["full"] }
 argon2 = { version = "0.5.3", features = ["std"] }
+base64 = "0.22.1"
+rfd = "0.17.2"
 
 #[lib]
 #name = "guilauncher"

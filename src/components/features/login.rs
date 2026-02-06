@@ -24,9 +24,9 @@ pub fn Login() -> Element {
                     println!("Successo!");
                     let result = fetch_user_data(&pool, &u).await;
                     match result {
-                        Ok((id, username, created_at)) => {
+                        Ok((id, username, created_at, avatar)) => {
                             debug!("Login {id} {username} {created_at}");
-                            auth_state.login(id, username, created_at);
+                            auth_state.login(id, username, created_at, avatar);
                         },
                         Err(e) => println!("Errore: {}", e)
                     }
