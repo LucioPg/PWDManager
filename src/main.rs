@@ -10,6 +10,7 @@ use backend::db_backend::init_db;
 
 // Asset CSS di Tailwind
 static TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
+static MAIN_CSS: Asset = asset!("/assets/main.css");
 
 #[component]
 fn App() -> Element {
@@ -25,6 +26,7 @@ fn App() -> Element {
             rsx! {
                 // Carica il CSS di Tailwind globalmente
                 document::Stylesheet { href: TAILWIND_CSS }
+                document::Stylesheet { href: MAIN_CSS }
                 Router::<Route> {}
             }
         }
