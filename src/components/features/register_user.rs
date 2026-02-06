@@ -74,7 +74,7 @@ pub fn RegisterUser() -> Element {
                 let result = save_user(&pool, u, p, a).await;
                 match result {
                     Ok(_) => { println!("Successo!");
-                        nav.push("/login").unwrap();
+                        nav.push("/login");
                     },
                     Err(e) => { println!("Errore: {}", e.clone());
                         _error.set(Some(e.to_string()));
