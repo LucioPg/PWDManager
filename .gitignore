@@ -5,3 +5,5 @@
 /.claude/
 /node_modules/*
 /node_modules/
+# Tailwind CSS generato automaticamente
+/assets/tailwind.css
