@@ -78,9 +78,18 @@ impl DecryptionError {
     }
 }
 
+#[derive(Error, Debug)]
+pub enum AuthGeneralError {
+    #[error("Errore nel login")]
+    LoginError(String),
+    #[error("Errore nel logout")]
+    LogoutError
+}
+
 #[derive(Debug)]
 pub enum AuthError {
     DB(DBError),
     Encryption(EncryptionError),
-    Decryption(DecryptionError)
+    Decryption(DecryptionError),
+    AuthenticationError(AuthGeneralError)
 }
