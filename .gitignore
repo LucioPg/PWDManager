@@ -3,3 +3,5 @@
 /database.db
 */target/*
 /.claude/
+/node_modules/*
+/node_modules/
