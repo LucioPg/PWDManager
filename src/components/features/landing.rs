@@ -1,13 +1,12 @@
 use dioxus::prelude::*;
-// use crate::backend::utils::CUSTOM_B64_ENGINE;
-use base64::prelude::BASE64_STANDARD;
-use base64::Engine;
+use crate::backend::utils::base64_encode;
+
 
 #[component]
 pub fn LandingPage() -> Element {
     let nav = use_navigator();
     const LOGO_BYTES: &[u8] = include_bytes!("../../../assets/logo.png");
-    let logo_data: String = format!("data:image/png;base64,{}", BASE64_STANDARD.encode(LOGO_BYTES));
+    let logo_data: String = format!("data:image/png;base64,{}", base64_encode(LOGO_BYTES));
 
     let nav_login = nav.clone();
     let nav_register = nav.clone();

@@ -6,8 +6,12 @@ use argon2::{
 use base64::{Engine as _, engine::{self, general_purpose}, alphabet};
 use image::{DynamicImage, ImageFormat};
 use custom_errors::{EncryptionError, DecryptionError, GeneralError};
+use base64::prelude::BASE64_STANDARD;
+use base64::Engine;
 
-const CUSTOM_B64_ENGINE: engine::GeneralPurpose = engine::GeneralPurpose::new(&alphabet::URL_SAFE, general_purpose::NO_PAD);
+pub fn base64_encode(bytes: &[u8]) -> String {
+    BASE64_STANDARD.encode(bytes)
+}
 
 fn generate_salt() -> SaltString {
     SaltString::generate(&mut OsRng)
@@ -45,7 +49,7 @@ pub fn set_user_avatar(avatar_from_db: Option<Vec<u8>>) -> String {
         _ => { include_bytes!("../../assets/default_avatar.png").to_vec() }
     };
 
-    let b64 = CUSTOM_B64_ENGINE.encode(&avatar);
+    let b64 = base64_encode(&avatar);
     format!("data:image/png;base64,{}", b64)
 
 }
@@ -72,7 +76,7 @@ mod tests {
     fn get_expected_default_avatar() -> String {
         let default_bytes = include_bytes!("../../assets/default_avatar.png");
 
-        format!("data:image/png;base64,{}", CUSTOM_B64_ENGINE.encode(default_bytes))
+        format!("data:image/png;base64,{}", base64_encode(default_bytes))
     }
     #[test]
     fn test_encrypt()
