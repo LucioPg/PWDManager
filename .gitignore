@@ -2,3 +2,4 @@
 /.idea
 /database.db
 */target/*
+/.claude/
