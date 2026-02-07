@@ -18,7 +18,7 @@ pub fn NavBar() -> Element {
             Link {to: Route::Settings, id: "settings",
                         img {id: "little-avatar",
                             class: "w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm",
-                            src: "https://api.dicebear.com", // O il tuo base64/URL
+                            src: "{avatar}",
                             alt: "User Avatar"
             }
                     }
