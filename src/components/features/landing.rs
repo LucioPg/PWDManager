@@ -19,7 +19,7 @@ pub fn LandingPage() -> Element {
                 class: "absolute inset-0 flex items-center justify-center -z-10 opacity-20",
                 img {
                     src: logo_data, // Assicurati che sia nella cartella assets
-                    class: "max-w-[10%] max-h-[10%] object-contain"
+                    class: "max-w-full max-h-full object-contain"
                 }
             }
 
