@@ -14,6 +14,7 @@ fn windows_executable_icon(){
 fn main() {
     // Compila Tailwind CSS solo se i file sorgente sono cambiati
     println!("cargo:rerun-if-changed=assets/input.css");
+    println!("cargo:rerun-if-changed=assets/input_main.css");
     println!("cargo:rerun-if-changed=tailwind.config.js");
     println!("cargo:rerun-if-changed=src/**/*.rs");
 
