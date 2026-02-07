@@ -9,6 +9,9 @@ description = "Custom launcher for PWDManager desktop application with icon supp
 dioxus = { version = "0.7.2", features = ["desktop"] }
 image = { version = "0.25.9", features = ["png"] }
 tracing = "0.1.43"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
+dirs = "5.0"
 
 [features]
 default = ["desktop"]
