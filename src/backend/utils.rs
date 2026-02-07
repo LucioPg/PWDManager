@@ -50,10 +50,14 @@ pub fn get_user_avatar_with_default(avatar_from_db: Option<Vec<u8>>) -> String {
     };
 
     let b64 = base64_encode(&avatar);
-    format!("data:image/png;base64,{}", b64)
+    format_avatar_url(b64)
 
 }
 
+
+pub fn format_avatar_url(avatar_b64: String) -> String {
+    format!("data:image/png;base64,{}", avatar_b64)
+}
 pub fn scale_avatar(bytes: &[u8]) -> Result<Vec<u8>, GeneralError>{
     let img = image::load_from_memory(bytes).map_err(|e| GeneralError::new_scaling_error(e.to_string()))?;
     image_to_vec(&img.resize(128, 128, image::imageops::FilterType::Triangle))
