@@ -7,4 +7,5 @@
 /node_modules/
 # Tailwind CSS generato automaticamente
 /assets/tailwind.css
+/assets/main.css
 CLAUDE.md
