@@ -109,7 +109,8 @@ pub fn RegisterUser() -> Element {
                     oninput: move |e| repassword.set(e.value()),
                     placeholder: "Re-type Password"
                 }
-                button { r#type: "submit", "Register" }
+                button {class: "btn-primary", r#type: "submit", "Register" }
+                button {class: "btn-secondary", r#type: "button", onclick: move |_| {nav.push("/login");} ,"Login"}
             }
         }
 
