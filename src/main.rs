@@ -1,3 +1,4 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "console")]
 mod backend;
 mod auth;
 mod components;
@@ -9,8 +10,9 @@ use backend::db_backend::init_db;
 // use components::{login, navbar, settings, dashboard};
 
 // Asset CSS di Tailwind
-static TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
-static MAIN_CSS: Asset = asset!("/assets/main.css");
+static TAILWIND_CSS: Asset = asset!("../assets/tailwind.css");
+static MAIN_CSS: Asset = asset!("../assets/main.css");
+const FAVICON: Asset = asset!("../assets/favicon.ico", AssetOptions::builder().with_hash_suffix(false));
 
 #[component]
 fn App() -> Element {
@@ -33,6 +35,11 @@ fn App() -> Element {
         Some(Err(e)) => {
             // Mostriamo l'errore all'utente in modo elegante
             rsx! {
+                    document::Link {
+                    rel: "icon",
+                    href: FAVICON
+                    // In Dioxus 0.7, il CLI gestisce il routing di /assets/ correttamente
+                    }
                 document::Stylesheet { href: TAILWIND_CSS }
                 div { class: "error-container",
                     h1 { "Errore critico del Database" }
@@ -42,20 +49,19 @@ fn App() -> Element {
             }
         }
         None => rsx! {
+                    document::Link {
+                    rel: "icon",
+                    href: FAVICON
+                    // In Dioxus 0.7, il CLI gestisce il routing di /assets/ correttamente
+                    }
             document::Stylesheet { href: TAILWIND_CSS }
             "Inizializzazione database in corso..."
         }
     }
 }
 fn main() {
-    // println!("Creating database and table...");
-    // let db_creation: Result<(), Box<dyn std::error::Error>> = create_table();
-    // match  db_creation {
-    //     Ok(()) => println!("Database created!"),
-    //     Err(e) => println!("An error occurred while creating the database: {e}")
-    // };
+    // Nota: il logging viene inizializzato automaticamente nel launcher
     launch_desktop!(App);
-
 }
 
 
