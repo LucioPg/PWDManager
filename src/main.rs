@@ -2,7 +2,7 @@
 mod backend;
 mod auth;
 mod components;
-use crate::components::{Dashboard, Login, NavBar, Settings, PageNotFound, Logout, RegisterUser, LandingPage, RouteWrapper};
+use crate::components::{Dashboard, Login, NavBar, Settings, PageNotFound, Logout, RegisterUser, LandingPage, RouteWrapper, AuthWrapper};
 use gui_launcher::launch_desktop;
 use dioxus::prelude::*;
 // use backend::{list_users, init_db};
@@ -73,20 +73,25 @@ fn main() {
 
 #[derive(Routable, PartialEq, Clone)]
 enum Route {
-    #[layout(NavBar)]
     #[layout(RouteWrapper)]
     #[route("/")]
     LandingPage,
-    #[route("/login")]
-    Login,
+    #[layout(AuthWrapper)]
+    #[layout(NavBar)]
+    #[route("/dashboard")]
+    Dashboard,
+
     #[route("/logout")]
     Logout,
     #[route("/settings")]
     Settings,
+    #[end_layout(NavBar)]
+    #[end_layout(AuthWrapper)]
+    #[route("/login")]
+    Login,
     #[route("/register")]
     RegisterUser,
-    #[route("/dashboard")]
-    Dashboard,
+
     #[route("/:..segments")]
     PageNotFound { segments: Vec<String> },
 }
