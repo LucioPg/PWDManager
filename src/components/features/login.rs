@@ -10,6 +10,7 @@ pub fn Login() -> Element {
     let mut username = use_signal(|| String::new());
     let mut password = use_signal(|| String::new());
     let mut _error = use_signal(|| Option::<String>::None);
+    let nav = use_navigator();
     let pool = use_context::<SqlitePool>();
     let auth_state = use_context::<AuthState>();
     let on_submit = move |_| {
@@ -20,20 +21,22 @@ pub fn Login() -> Element {
         spawn(async move {
             // La tua funzione check_user ora ha il pool!
             match check_user(&pool, &u, &p).await {
-                Ok(true) => {
+                Ok(()) => {
                     println!("Successo!");
                     let result = fetch_user_data(&pool, &u).await;
                     match result {
                         Ok((id, username, created_at, avatar)) => {
                             debug!("Login {id} {username} {created_at}");
                             auth_state.login(id, username, created_at, avatar);
+                            let nav_dashboard = nav.clone();
+                            nav_dashboard.push("/dashboard");
                         },
                         Err(e) => println!("Errore: {}", e)
                     }
 
 
                 },
-                _ => println!("Errore login"),
+                Err(e) => println!("Errore login: {e}"),
             }
         });
     };
@@ -46,7 +49,8 @@ pub fn Login() -> Element {
                 oninput: move |e| password.set(e.value()),
                 placeholder: "Password"
             }
-            button { r#type: "submit", "Login" }
+            button { class: "btn-primary", r#type: "submit", "Login" }
+            button { class: "btn-secondary", r#type: "button", onclick: move |_| {nav.push("/register");}, "Register"}
         }
     }
 }

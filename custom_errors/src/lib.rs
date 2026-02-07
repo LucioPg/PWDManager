@@ -86,11 +86,15 @@ pub enum AuthGeneralError {
     LogoutError
 }
 
-#[derive(Debug)]
+#[derive(Error, Debug)]
 pub enum AuthError {
+    #[error("Errore database: {0}")]
     DB(DBError),
+    #[error("Errore di crittografia: {0}")]
     Encryption(EncryptionError),
+    #[error("Errore di decrittografia: {0}")]
     Decryption(DecryptionError),
+    #[error("Errore di autenticazione: {0}")]
     AuthenticationError(AuthGeneralError)
 }
 

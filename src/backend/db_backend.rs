@@ -118,12 +118,12 @@ pub async fn fetch_user_data(pool: &SqlitePool, username: &str) -> Result<(i32, 
 }
 
 #[instrument(skip(pool))]
-pub async fn check_user(pool: &SqlitePool, username: &str, password: &str) -> Result<bool, AuthError> {
+pub async fn check_user(pool: &SqlitePool, username: &str, password: &str) -> Result<(), AuthError> {
     debug!("Checking user credentials in database");
     let hash = fetch_user_password(pool, username).await.map_err(|e| AuthError::DB(e))?;
     verify_password(password, hash.as_str()).map_err(|e| AuthError::Decryption(e))?;
 
-    Ok(true)
+    Ok(())
 }
 
 // #[instrument]
