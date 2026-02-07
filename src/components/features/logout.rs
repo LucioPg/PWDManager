@@ -16,6 +16,7 @@ pub fn Logout() -> Element {
     let nav = use_navigator();
     let on_submit = move |_| {
         auth_state_logout.logout();
+        nav.push(Route::LandingPage);
     };
     let cancel_logout = move |_| {
         nav.push(Route::Dashboard);
