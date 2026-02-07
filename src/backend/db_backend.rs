@@ -33,9 +33,11 @@ pub async fn init_db() -> Result<SqlitePool, DBError> {
 
 pub async fn save_user(pool: &SqlitePool, username: String, password: String, avatar: Option<Vec<u8>>) -> dioxus::Result<()> {
     debug!("Attempting to save user credentials to database");
+    let hash_password = crate::backend::utils::encrypt(&password)
+        .map_err(|e| DBError::new_save_error(format!("Failed to encrypt password: {}", e)))?;
     let _ = query("INSERT INTO users (username, password, avatar) VALUES (?, ?, ?)")
         .bind(username)
-        .bind(password)
+        .bind(hash_password)
         .bind(avatar)
         .execute(pool)
         .await
@@ -68,7 +70,6 @@ pub async fn list_users(pool: &SqlitePool) -> Result<Vec<(i32, String, String, O
         .fetch_all(pool)
         .await
         .map_err(|e| DBError::new_list_error(format!("Failed to save user credentials: {}", e)))?;
-    // todo!("verificare che Option<Vec<u8>> sia corretto");
     let users = rows
         .into_iter()
         .map(|row| (
@@ -100,11 +101,10 @@ async fn fetch_user_password(pool: &SqlitePool, username: &str) -> Result<String
 #[instrument(skip(pool))]
 pub async fn fetch_user_data(pool: &SqlitePool, username: &str) -> Result<(i32, String, String, Option<Vec<u8>>), DBError> {
     debug!("Fetching user credentials in database");
-    let row = query("SELECT id, username, created_at FROM users WHERE username = ?")
+    let row = query("SELECT id, username, created_at, avatar FROM users WHERE username = ?")
         .bind(username)
         .fetch_optional(pool)
         .await;
-    // todo!("verificare che Option<Vec<u8>> sia corretto");
     match row {
         Ok(Some(row)) => Ok((
             row.get::<i32, _>("id"),
