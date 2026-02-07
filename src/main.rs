@@ -2,7 +2,7 @@
 mod backend;
 mod auth;
 mod components;
-use crate::components::{Dashboard, Login, NavBar, Settings, PageNotFound, Logout, RegisterUser, LandingPage};
+use crate::components::{Dashboard, Login, NavBar, Settings, PageNotFound, Logout, RegisterUser, LandingPage, RouteWrapper};
 use gui_launcher::launch_desktop;
 use dioxus::prelude::*;
 // use backend::{list_users, init_db};
@@ -74,6 +74,7 @@ fn main() {
 #[derive(Routable, PartialEq, Clone)]
 enum Route {
     #[layout(NavBar)]
+    #[layout(RouteWrapper)]
     #[route("/")]
     LandingPage,
     #[route("/login")]
