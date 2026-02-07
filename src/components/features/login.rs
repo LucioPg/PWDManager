@@ -43,7 +43,7 @@ pub fn Login() -> Element {
 
     rsx! {
         div { class: "page-centered",
-            div { class: "card card-lg mx-auto w-full animate-scale-in",
+            div { class: "card card-lg form-container animate-scale-in",
                 h1 { class: "text-h2 text-center", "Welcome Back" }
                 p { class: "text-body mb-8 text-center", "Sign in to your account to continue" }
                 form { onsubmit: on_submit, class: "flex flex-col gap-4 w-full",
