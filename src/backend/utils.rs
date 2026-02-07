@@ -66,7 +66,7 @@ fn image_to_vec(img: &DynamicImage) -> Result<Vec<u8>, GeneralError> {
     // o se hai angoli trasparenti.
     img.write_to(&mut buffer, ImageFormat::Png).map_err(|e| GeneralError::new_encode_error(e.to_string()))?;
 
-    Ok((buffer.into_inner()))
+    Ok(buffer.into_inner())
 }
 
 #[cfg(test)]
