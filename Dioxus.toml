@@ -2,6 +2,8 @@
 name = "PWDManager"
 asset_dir = "assets"
 assets = ["assets/main.css", "assets/tailwind.css"]
+favicon = "assets/favicon.ico"
+
 
 [bundle]
 name = "PWDManager"
