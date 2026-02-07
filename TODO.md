@@ -1,7 +1,7 @@
 ## Registrazione
 - [ ] Verificare che il nome utente non sia già usato
 - [ ] Verificare i campi username e password siano pieni
-- [ ] Verificare che i campi password e re-type-password siano uguali
+- [x] Verificare che i campi password e re-type-password siano uguali
 
 ## Gestione utenti
 - [ ] Eliminare utente
@@ -20,6 +20,7 @@
 - [ ] aggiungere uno spinner per lo scaling dell'avatar quando selezionato
 - [ ] aggiungere uno spinner all'avvio dell'applicazione
 - [ ] aggiungere toggle per tema scuro in settings
+- [ ] aggiungere toast per errori e informazioni
 
 ## Gestione password registrate
 - [ ] creare tabella password
