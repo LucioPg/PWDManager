@@ -418,8 +418,8 @@
    ============================================================ */
 /* Navbar */
 .navbar {
-  @apply bg-white/90 backdrop-blur-sm border-b border-neutral-200;
-  @apply px-6 py-4 flex justify-between items-center sticky top-0 z-50 shadow-sm;
+  @apply bg-transparent backdrop-blur-sm border-b border-neutral-200 max-h-12;
+  @apply px-6 py-1 flex justify-between items-center sticky top-0 z-50 shadow-sm;
 }
 
 .navbar-brand {
@@ -428,6 +428,15 @@
 
 .navbar-brand-text {
   @apply text-xl font-bold text-neutral-800;
+}
+
+.navbar-brand-logo {
+  @apply w-full h-full object-cover;
+}
+
+/* Access button group for non-authenticated navbar */
+.access-btn-group {
+  @apply flex items-center gap-4;
 }
 
 .navbar-nav {

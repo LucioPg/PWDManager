@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use crate::Route;
+use crate::{Route, LOGO_BYTES};
 use crate::backend::utils::base64_encode;
 
 #[component]
@@ -10,7 +10,7 @@ pub fn RouteWrapper() -> Element {
     // (Assumendo che Route::Landing sia la tua home)
     let is_landing = matches!(route, Route::LandingPage {});
 
-    const LOGO_BYTES: &[u8] = include_bytes!("../../../assets/logo.png");
+    
     let logo_data: String = format!("data:image/png;base64,{}", base64_encode(LOGO_BYTES));
     // Se è landing, opacità 100%, altrimenti 30%
     let bg_opacity = if is_landing { "1.0" } else { "0.3" };

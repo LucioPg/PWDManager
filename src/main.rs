@@ -16,6 +16,8 @@ static TAILWIND_CSS: &str = include_str!("../assets/tailwind.css");
 static MAIN_CSS: &str = include_str!("../assets/main.css");
 // const FAVICON: Asset = asset!("../assets/favicon.ico", AssetOptions::builder().with_hash_suffix(false));
 
+const LOGO_BYTES: &[u8] = include_bytes!("../assets/logo.png");
+
 #[component]
 fn App() -> Element {
     let auth_state = auth::AuthState::new();
@@ -73,11 +75,12 @@ fn main() {
 
 #[derive(Routable, PartialEq, Clone)]
 enum Route {
+
     #[layout(RouteWrapper)]
+    #[layout(NavBar)]
     #[route("/")]
     LandingPage,
     #[layout(AuthWrapper)]
-    #[layout(NavBar)]
     #[route("/dashboard")]
     Dashboard,
 
@@ -85,7 +88,6 @@ enum Route {
     Logout,
     #[route("/settings")]
     Settings,
-    #[end_layout(NavBar)]
     #[end_layout(AuthWrapper)]
     #[route("/login")]
     Login,
