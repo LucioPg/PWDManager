@@ -11,40 +11,28 @@ pub fn LandingPage() -> Element {
     let nav_login = nav.clone();
     let nav_register = nav.clone();
     rsx! {
-        // Contenitore principale RELATIVE
-        div { class: "relative h-screen w-screen overflow-hidden flex items-center justify-center",
+        // Contenitore principale - contenuto in alto
+        div { class: "relative h-screen w-screen overflow-hidden flex items-start justify-center pt-20",
 
-            // 1. IL LOGO (Background)
-            // div {
-            //     class: "absolute inset-0 flex items-center justify-center -z-10 opacity-20",
-            //     img {
-            //         src: logo_data, // Assicurati che sia nella cartella assets
-            //         class: "max-w-full max-h-full object-contain"
-            //     }
-            // }
+            // IL CONTENUTO (Foreground) - senza card, solo testo stilizzato
+            div { class: "z-10 animate-fade-in text-center",
 
-            // 2. IL CONTENUTO (Foreground)
-            div { class: "z-10 flex flex-col items-center gap-8 animate-fade-in",
-
-                // Title
-                div { class: "text-center",
-                    h1 { class: "text-display mb-4", "PWDManager" }
-                    p { class: "text-body-lg", "Secure password management for everyone" }
-                }
+                // Subtitle - font più grande e contrastante
+                p { id:"slogan", class: "text-xl font-medium text-neutral-800 mb-8 drop-shadow-md", "One for rule them all!" }
 
                 // Buttons
-                div { class: "flex gap-4",
-                    button {
-                        class: "btn-primary",
-                        onclick: move |_| {nav_login.push("/login");},
-                        "Login"
-                    }
-                    button {
-                        class: "btn-secondary",
-                        onclick: move |_| {nav_register.push("/register");},
-                        "Register"
-                    }
-                }
+                // div { class: "flex gap-4",
+                //     button {
+                //         class: "btn-primary",
+                //         onclick: move |_| {nav_login.push("/login");},
+                //         "Login"
+                //     }
+                //     button {
+                //         class: "btn-secondary",
+                //         onclick: move |_| {nav_register.push("/register");},
+                //         "Register"
+                //     }
+                // }
             }
         }
     }
