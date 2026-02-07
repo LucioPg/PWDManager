@@ -10,9 +10,11 @@ use backend::db_backend::init_db;
 // use components::{login, navbar, settings, dashboard};
 
 // Asset CSS di Tailwind
-static TAILWIND_CSS: Asset = asset!("../assets/tailwind.css");
-static MAIN_CSS: Asset = asset!("../assets/main.css");
-const FAVICON: Asset = asset!("../assets/favicon.ico", AssetOptions::builder().with_hash_suffix(false));
+// static TAILWIND_CSS: Asset = asset!("../assets/tailwind.css");
+static TAILWIND_CSS: &str = include_str!("../assets/tailwind.css");
+// static MAIN_CSS: Asset = asset!("../assets/main.css");
+static MAIN_CSS: &str = include_str!("../assets/main.css");
+// const FAVICON: Asset = asset!("../assets/favicon.ico", AssetOptions::builder().with_hash_suffix(false));
 
 #[component]
 fn App() -> Element {
@@ -27,20 +29,24 @@ fn App() -> Element {
             use_context_provider(|| pool.clone());
             rsx! {
                 // Carica il CSS di Tailwind globalmente
-                document::Stylesheet { href: TAILWIND_CSS }
-                document::Stylesheet { href: MAIN_CSS }
+                // document::Stylesheet { href: TAILWIND_CSS }
+                // document::Stylesheet { href: MAIN_CSS }
+                document::Style {"{TAILWIND_CSS}"}
+                document::Style {"{MAIN_CSS}"}
                 Router::<Route> {}
             }
         }
         Some(Err(e)) => {
             // Mostriamo l'errore all'utente in modo elegante
             rsx! {
-                    document::Link {
-                    rel: "icon",
-                    href: FAVICON
-                    // In Dioxus 0.7, il CLI gestisce il routing di /assets/ correttamente
-                    }
-                document::Stylesheet { href: TAILWIND_CSS }
+                    // document::Link {
+                    // rel: "icon",
+                    // href: FAVICON
+                    // // In Dioxus 0.7, il CLI gestisce il routing di /assets/ correttamente
+                    // }
+                // document::Stylesheet { href: TAILWIND_CSS }
+                document::Style {"{TAILWIND_CSS}"}
+                document::Style {"{MAIN_CSS}"}
                 div { class: "error-container",
                     h1 { "Errore critico del Database" }
                     p { "{e}" }
@@ -49,11 +55,11 @@ fn App() -> Element {
             }
         }
         None => rsx! {
-                    document::Link {
-                    rel: "icon",
-                    href: FAVICON
-                    // In Dioxus 0.7, il CLI gestisce il routing di /assets/ correttamente
-                    }
+                    // document::Link {
+                    // rel: "icon",
+                    // href: FAVICON
+                    // // In Dioxus 0.7, il CLI gestisce il routing di /assets/ correttamente
+                    // }
             document::Stylesheet { href: TAILWIND_CSS }
             "Inizializzazione database in corso..."
         }
