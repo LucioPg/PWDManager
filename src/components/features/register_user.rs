@@ -91,7 +91,7 @@ pub fn RegisterUser() -> Element {
         div { class: "register-form flex flex-col gap-4",
             div { class: "avatar-container flex flex-row gap-1",
                 img {
-                    class: "avatar",
+                    class: "avatar-selection  rounded-full object-cover border-2 border-white shadow-sm",
                     style: "width: 128px; height: 128px;",
                     src: "{get_user_avatar_with_default(selected_image.read().clone())}"
                 }
