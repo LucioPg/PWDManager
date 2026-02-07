@@ -15,6 +15,10 @@ argon2 = { version = "0.5.3", features = ["std"] }
 base64 = "0.22.1"
 rfd = "0.17.2"
 
+[target.'cfg(windows)'.build-dependencies]
+winres = "0.1"
+
+
 #[lib]
 #name = "guilauncher"
 #path = "gui_launcher/src/lib.rs"

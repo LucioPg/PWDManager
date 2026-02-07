@@ -1,4 +1,15 @@
 use std::process::Command;
+#[cfg(windows)]
+fn windows_executable_icon(){
+    println!("executable icon for windows os");
+    #[cfg(windows)]
+    {
+        winres::WindowsResource::new()
+            .set_icon("icons/icon.ico")
+            .compile().unwrap()
+    }
+}
+
 
 fn main() {
     // Compila Tailwind CSS solo se i file sorgente sono cambiati
@@ -25,4 +36,8 @@ fn main() {
     }
 
     println!("Tailwind CSS compiled successfully!");
+
+    #[cfg(windows)]
+    windows_executable_icon();
+
 }
