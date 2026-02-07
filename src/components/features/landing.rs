@@ -28,19 +28,19 @@ pub fn LandingPage() -> Element {
 
                 // Title
                 div { class: "text-center",
-                    h1 { class: "text-5xl font-bold text-neutral-900 mb-4", "PWDManager" }
-                    p { class: "text-xl text-neutral-600", "Secure password management for everyone" }
+                    h1 { class: "text-display mb-4", "PWDManager" }
+                    p { class: "text-body-lg", "Secure password management for everyone" }
                 }
 
                 // Buttons
                 div { class: "flex gap-4",
                     button {
-                        class: "px-8 py-3 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 hover:shadow-md transition-all duration-200",
+                        class: "btn-primary",
                         onclick: move |_| {nav_login.push("/login");},
                         "Login"
                     }
                     button {
-                        class: "px-8 py-3 border-2 border-primary-600 text-primary-600 font-semibold rounded-lg hover:bg-primary-50 transition-all duration-200",
+                        class: "btn-secondary",
                         onclick: move |_| {nav_register.push("/register");},
                         "Register"
                     }

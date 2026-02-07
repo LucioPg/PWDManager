@@ -22,8 +22,8 @@ pub fn Logout() -> Element {
     };
 
     rsx! {
-        div { class: "flex flex-col items-center justify-center min-h-screen px-6 animate-scale-in",
-            div { class: "bg-white rounded-xl shadow-lg p-8 max-w-md w-full text-center",
+        div { class: "page-centered animate-scale-in",
+            div { class: "card card-lg mx-auto text-center",
                 svg {
                     class: "w-16 h-16 text-error-600 mx-auto mb-4",
                     fill: "none",
@@ -36,17 +36,17 @@ pub fn Logout() -> Element {
                         d: "M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
                     }
                 }
-                h2 { class: "text-2xl font-bold text-neutral-900 mb-2", "Confirm Logout" }
-                p { class: "text-neutral-600 mb-8", "Are you sure you want to logout from your account?" }
+                h2 { class: "text-h2", "Confirm Logout" }
+                p { class: "text-body mb-8", "Are you sure you want to logout from your account?" }
                 div { class: "flex gap-4",
                     button {
-                        class: "flex-1 px-6 py-3 bg-error-600 text-white font-semibold rounded-lg hover:bg-error-700 transition-all",
+                        class: "btn-danger btn-block",
                         r#type: "submit",
                         onclick: on_submit,
                         "Logout"
                     }
                     button {
-                        class: "flex-1 px-6 py-3 border-2 border-neutral-300 text-neutral-700 font-semibold rounded-lg hover:bg-neutral-50 transition-all",
+                        class: "btn-secondary btn-block",
                         r#type: "button",
                         onclick: cancel_logout,
                         "Cancel"
