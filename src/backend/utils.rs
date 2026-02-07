@@ -3,7 +3,7 @@ use argon2::{
     password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2
 };
-use base64::{Engine as _, engine::{self, general_purpose}, alphabet};
+
 use image::{DynamicImage, ImageFormat};
 use custom_errors::{EncryptionError, DecryptionError, GeneralError};
 use base64::prelude::BASE64_STANDARD;
@@ -40,7 +40,7 @@ pub fn verify_password(text: &str, hash: &str) -> Result<(), DecryptionError> {
 }
 
 
-pub fn set_user_avatar(avatar_from_db: Option<Vec<u8>>) -> String {
+pub fn get_user_avatar_with_default(avatar_from_db: Option<Vec<u8>>) -> String {
     let avatar: Vec<u8> = match avatar_from_db {
         Some(avatar_) => {
             if !avatar_.is_empty() { avatar_}
@@ -109,7 +109,7 @@ mod tests {
     fn test_avatar_presente() {
         // Test con dati validi
         let dati = Some(vec![1, 2, 3]);
-        let risultato = set_user_avatar(dati);
+        let risultato = get_user_avatar_with_default(dati);
         assert!(!risultato.is_empty());
         // L'encoding base64 di [1, 2, 3] URL_SAFE NO_PAD è "AQID"
         // println!("PRESENTE: {risultato}");
@@ -120,7 +120,7 @@ mod tests {
     fn test_avatar_vuoto() {
         // Test con Some ma vettore vuoto
         let dati = Some(vec![]);
-        let risultato = set_user_avatar(dati);
+        let risultato = get_user_avatar_with_default(dati);
         let expected = get_expected_default_avatar();
         // Verifichiamo che non sia vuoto (perché deve esserci il default)
         // println!("VUOTO: {risultato}");
@@ -131,7 +131,7 @@ mod tests {
     #[test]
     fn test_avatar_none() {
         // Test con None
-        let risultato = set_user_avatar(None);
+        let risultato = get_user_avatar_with_default(None);
         // println!("NULLO: {risultato}");
         // Dovrebbe restituire l'encoding del file di default
         let expected = get_expected_default_avatar();

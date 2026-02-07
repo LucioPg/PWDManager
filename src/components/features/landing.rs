@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use crate::backend::utils::base64_encode;
+
 
 
 #[component]
@@ -25,7 +25,6 @@ pub fn LandingPage() -> Element {
 
             // 2. IL CONTENUTO (Foreground)
             div { class: "z-10 flex flex-col items-center gap-6",
-                p { class: "text-4xl font-bold", "Welcome to PWD Manager" }
 
                 div { class: "flex gap-4",
                     button {

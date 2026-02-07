@@ -1,5 +1,5 @@
 use dioxus::prelude::*;
-use crate::{components, Route};
+use crate::Route;
 use crate::backend::utils::base64_encode;
 
 #[component]

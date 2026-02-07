@@ -1,14 +1,12 @@
 
 use dioxus::prelude::*;
-use crate::backend::db_backend::{check_user, fetch_user_data, save_user};
-use crate::auth::AuthState;
+use crate::backend::db_backend::{fetch_user_data, save_user};
 use sqlx::SqlitePool;
-use tracing::{debug, instrument};
+use tracing::instrument;
 use rfd::FileDialog;
 use std::fs;
 use std::path::Path;
-use image::EncodableLayout;
-use crate::backend::utils::{scale_avatar, set_user_avatar};
+use crate::backend::utils::{scale_avatar, get_user_avatar_with_default};
 
 #[component]
 #[instrument]
@@ -16,7 +14,7 @@ pub fn RegisterUser() -> Element {
     let mut username = use_signal(|| String::new());
     let mut password = use_signal(|| String::new());
     let mut repassword = use_signal(|| String::new());
-    let mut selected_image = use_signal(|| None::<Vec<u8>>);
+    let selected_image = use_signal(|| None::<Vec<u8>>);
     let mut _error = use_signal(|| Option::<String>::None);
     let pool = use_context::<SqlitePool>();
     let nav = use_navigator();
@@ -95,7 +93,7 @@ pub fn RegisterUser() -> Element {
                 img {
                     class: "avatar",
                     style: "width: 128px; height: 128px;",
-                    src: "{set_user_avatar(selected_image.read().clone())}"
+                    src: "{get_user_avatar_with_default(selected_image.read().clone())}"
                 }
                 button { r#type: "button", onclick: pick_image, "Select Avatar" }
             }

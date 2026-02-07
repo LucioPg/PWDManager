@@ -5,7 +5,7 @@
 //! the main application behavior.
 
 use dioxus::desktop::{Config, WindowBuilder, LogicalSize};
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 use std::sync::OnceLock;
 
 // Global guard to keep logging alive
