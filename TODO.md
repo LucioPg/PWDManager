@@ -27,3 +27,8 @@
 - [ ] creare form di inserimento password
 - [ ] creare form di modifica password e dati
 - [ ] creare dialog di eliminazione password
+
+## Generali
+- [ ] rimuovere possibilità di aprire in devtools in release
+- [ ] rimuovere menu contestuali in release
+- [ ] rimuovere menu finestra (windows, help etc...)
