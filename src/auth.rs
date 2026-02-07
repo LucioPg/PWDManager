@@ -1,6 +1,6 @@
 
 use dioxus::prelude::*;
-use crate::backend::utils::get_user_avatar_with_default;
+use crate::backend::utils::{format_avatar_url, get_user_avatar_with_default};
 
 struct User {
     id: i32,
