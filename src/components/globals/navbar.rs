@@ -1,6 +1,7 @@
-
-use crate::Route;
+use crate::backend::utils::base64_encode;
+use crate::{LOGO_BYTES, Route};
 use dioxus::prelude::*;
+
 #[component]
 pub fn NavBar() -> Element {
     let auth_state = use_context::<crate::auth::AuthState>();
@@ -30,8 +31,31 @@ pub fn NavBar() -> Element {
         }
     }
     else {
-        nav.push("/landing");
-        rsx! {}
-    }
+        let nav_login = nav.clone();
+        let nav_register = nav.clone();
+        rsx! {
+            nav { id: "nav",
+                class: "navbar",
+                div { class: "nav-logo-container w-full h-full",
+                    Link {to: Route::LandingPage,
+                    class: "navbar-brand",
+                }
+                }
 
+                div { class: "navbar-nav",
+                    button {
+                        class: "btn-primary-sm",
+                        onclick: move |_| {nav_login.push(Route::Login);},
+                        "Login"
+                    }
+                    button {
+                        class: "btn-secondary-sm",
+                        onclick: move |_| {nav_register.push(Route::RegisterUser);},
+                        "Register"
+                    }
+                }
+            }
+            Outlet::<Route> {}
+        }
+    }
 }
