@@ -1,0 +1,748 @@
+/* ============================================================
+   PWDManager - Design System
+   Componenti CSS riutilizzabili basati su Tailwind
+   ============================================================ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   ADDITIONAL KEYFRAMES (not in Tailwind config)
+   ============================================================ */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes dots-bounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
+@keyframes dots-wave {
+  0%, 40%, 100% { transform: translateY(0); }
+  20% { transform: translateY(-6px); }
+}
+
+@keyframes progress-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn {
+  @apply px-6 py-3 font-semibold rounded-lg transition-all duration-200;
+  @apply focus:outline-none focus:ring-4 focus:ring-offset-2;
+  @apply disabled:cursor-not-allowed disabled:shadow-none;
+}
+
+/* Primary Button */
+.btn-primary {
+  @apply btn;
+  @apply bg-primary-600 text-white shadow-sm;
+  @apply hover:bg-primary-700 hover:shadow-md;
+  @apply active:scale-[0.98];
+  @apply focus:ring-primary-50;
+  @apply disabled:bg-neutral-300;
+}
+
+.btn-primary-lg {
+  @apply btn-primary;
+  @apply px-8 py-4 text-lg;
+}
+
+.btn-primary-sm {
+  @apply btn-primary;
+  @apply px-4 py-2 text-sm;
+}
+
+/* Secondary Button */
+.btn-secondary {
+  @apply btn;
+  @apply bg-white text-primary-600 border-2 border-primary-600;
+  @apply hover:bg-primary-50 hover:border-primary-700;
+  @apply active:scale-[0.98];
+  @apply focus:ring-primary-50;
+  @apply disabled:border-neutral-300 disabled:text-neutral-400;
+}
+
+.btn-secondary-lg {
+  @apply btn-secondary;
+  @apply px-8 py-4 text-lg;
+}
+
+.btn-secondary-sm {
+  @apply btn-secondary;
+  @apply px-4 py-2 text-sm;
+}
+
+/* Ghost Button */
+.btn-ghost {
+  @apply btn;
+  @apply text-primary-600;
+  @apply hover:bg-primary-50;
+  @apply active:scale-[0.98];
+  @apply focus:ring-primary-50;
+  @apply disabled:text-neutral-400;
+}
+
+/* Danger Button */
+.btn-danger {
+  @apply btn;
+  @apply bg-error-600 text-white shadow-sm;
+  @apply hover:bg-error-700 hover:shadow-md;
+  @apply active:scale-[0.98];
+  @apply focus:ring-error-50 focus:ring-offset-2;
+  @apply disabled:bg-neutral-300;
+}
+
+.btn-danger-lg {
+  @apply btn-danger;
+  @apply px-8 py-4 text-lg;
+}
+
+.btn-danger-sm {
+  @apply btn-danger;
+  @apply px-4 py-2 text-sm;
+}
+
+/* Success Button */
+.btn-success {
+  @apply btn;
+  @apply bg-success-600 text-white shadow-sm;
+  @apply hover:bg-success-700 hover:shadow-md;
+  @apply active:scale-[0.98];
+  @apply focus:ring-success-50 focus:ring-offset-2;
+  @apply disabled:bg-neutral-300;
+}
+
+/* Icon Button */
+.btn-icon {
+  @apply p-3 text-neutral-600 bg-white rounded-lg;
+  @apply hover:bg-neutral-50 hover:text-neutral-800;
+  @apply active:scale-[0.95];
+  @apply focus:outline-none focus:ring-4 focus:ring-neutral-100;
+  @apply disabled:text-neutral-400 disabled:cursor-not-allowed;
+  @apply transition-all duration-200;
+}
+
+.btn-icon-sm {
+  @apply btn-icon;
+  @apply p-2;
+}
+
+.btn-icon-primary {
+  @apply btn-icon;
+  @apply text-primary-600 hover:bg-primary-50 hover:text-primary-700;
+  @apply focus:ring-primary-50;
+}
+
+.btn-icon-danger {
+  @apply btn-icon;
+  @apply text-error-600 hover:bg-error-50 hover:text-error-700;
+  @apply focus:ring-error-50;
+}
+
+/* Full width button */
+.btn-block {
+  @apply w-full;
+}
+
+/* ============================================================
+   INPUTS & FORM ELEMENTS
+   ============================================================ */
+.input-base {
+  @apply w-full px-4 py-3 bg-white border border-neutral-300 rounded-lg;
+  @apply text-base text-neutral-700 placeholder-neutral-400;
+  @apply transition-all duration-200;
+  @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+  @apply hover:border-neutral-400;
+  @apply disabled:bg-neutral-50 disabled:text-neutral-400 disabled:cursor-not-allowed;
+}
+
+.input-base-sm {
+  @apply input-base;
+  @apply px-3 py-2 text-sm;
+}
+
+.input-base-lg {
+  @apply input-base;
+  @apply px-5 py-4 text-lg;
+}
+
+/* Input with error */
+.input-error {
+  @apply input-base;
+  @apply border-error-500 focus:ring-error-500;
+}
+
+/* Input group wrapper */
+.input-group {
+  @apply mb-4;
+}
+
+.input-label {
+  @apply block text-sm font-medium text-neutral-700 mb-2;
+}
+
+.input-helper {
+  @apply mt-2 text-sm text-neutral-500;
+}
+
+.input-error-msg {
+  @apply mt-2 text-sm text-error-600 flex items-center gap-2;
+}
+
+/* Textarea */
+.textarea {
+  @apply w-full px-4 py-3 bg-white border border-neutral-300 rounded-lg;
+  @apply text-base text-neutral-700 placeholder-neutral-400;
+  @apply transition-all duration-200 resize-none;
+  @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+  @apply hover:border-neutral-400;
+}
+
+.textarea-sm {
+  @apply textarea;
+  @apply px-3 py-2 text-sm;
+}
+
+/* Select */
+.select {
+  @apply input-base;
+  @apply cursor-pointer;
+  @apply appearance-none;
+  @apply bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2364748b%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat;
+  @apply bg-[length:1rem] bg-[right_1rem_center];
+  @apply pr-10;
+}
+
+/* Checkbox */
+.checkbox {
+  @apply w-5 h-5 rounded border-2 border-neutral-300;
+  @apply text-primary-600 focus:ring-2 focus:ring-primary-500 focus:ring-offset-0;
+  @apply transition-all duration-200;
+  @apply cursor-pointer;
+  @apply checked:bg-primary-600 checked:border-primary-600;
+}
+
+.checkbox-error {
+  @apply checkbox;
+  @apply border-error-500 focus:ring-error-500;
+}
+
+/* Radio */
+.radio {
+  @apply w-5 h-5 border-2 border-neutral-300;
+  @apply text-primary-600 focus:ring-2 focus:ring-primary-500 focus:ring-offset-0;
+  @apply transition-all duration-200;
+  @apply cursor-pointer;
+}
+
+/* ============================================================
+   CARDS & CONTAINERS
+   ============================================================ */
+.card {
+  @apply bg-white rounded-xl border border-neutral-200 shadow-sm;
+}
+
+.card-sm { @apply p-4; }
+.card-md { @apply p-6; }
+.card-lg { @apply p-8; }
+.card-xl { @apply p-10; }
+
+/* Card with sections */
+.card-header {
+  @apply px-6 py-4 border-b border-neutral-200;
+}
+
+.card-header-title {
+  @apply text-lg font-semibold text-neutral-800;
+}
+
+.card-body {
+  @apply p-6;
+}
+
+.card-footer {
+  @apply px-6 py-4 border-t border-neutral-200 bg-neutral-50 rounded-b-xl;
+}
+
+/* Interactive card */
+.card-interactive {
+  @apply card;
+  @apply cursor-pointer;
+  @apply hover:border-primary-300 hover:shadow-md;
+  @apply active:scale-[0.99];
+  @apply transition-all duration-200;
+}
+
+/* Elevated card */
+.card-elevated {
+  @apply bg-white rounded-xl shadow-lg border-0;
+}
+
+/* Card variants */
+.card-success {
+  @apply bg-success-50 border-success-200;
+}
+
+.card-error {
+  @apply bg-error-50 border-error-200;
+}
+
+.card-warning {
+  @apply bg-warning-50 border-warning-200;
+}
+
+.card-info {
+  @apply bg-info-50 border-info-200;
+}
+
+/* ============================================================
+   ALERTS & MESSAGES
+   ============================================================ */
+.alert {
+  @apply p-4 rounded-lg flex items-start gap-3;
+}
+
+.alert-icon {
+  @apply flex-shrink-0 w-5 h-5 mt-0.5;
+}
+
+.alert-content {
+  @apply flex-1;
+}
+
+.alert-title {
+  @apply font-semibold mb-1;
+}
+
+.alert-message {
+  @apply text-sm;
+}
+
+.alert-close {
+  @apply flex-shrink-0 text-neutral-400 hover:text-neutral-600 transition-colors cursor-pointer;
+}
+
+/* Alert variants */
+.alert-success {
+  @apply alert bg-success-50 border border-success-200 text-success-800;
+}
+
+.alert-error {
+  @apply alert bg-error-50 border border-error-200 text-error-800;
+}
+
+.alert-warning {
+  @apply alert bg-warning-50 border border-warning-200 text-warning-800;
+}
+
+.alert-info {
+  @apply alert bg-info-50 border border-info-200 text-info-800;
+}
+
+/* Inline error message */
+.error-msg {
+  @apply mt-2 text-sm text-error-600 flex items-center gap-2;
+}
+
+/* Helper text */
+.helper-text {
+  @apply mt-2 text-sm text-neutral-500;
+}
+
+/* ============================================================
+   LOADING STATES
+   ============================================================ */
+/* Spinner */
+.spinner {
+  @apply w-5 h-5 border-2 border-neutral-300 border-t-primary-600 rounded-full;
+  animation: spin 1s linear infinite;
+}
+
+.spinner-sm { @apply w-4 h-4; }
+.spinner-md { @apply w-5 h-5; }
+.spinner-lg { @apply w-8 h-8 border-4; }
+.spinner-xl { @apply w-12 h-12 border-4; }
+
+/* Dots loading */
+.dots-loading {
+  @apply flex items-center gap-1;
+}
+
+.dots-loading span {
+  @apply w-2 h-2 bg-primary-600 rounded-full;
+  animation: dots-bounce 1.4s infinite ease-in-out both;
+}
+
+.dots-loading span:nth-child(1) { animation-delay: -0.32s; }
+.dots-loading span:nth-child(2) { animation-delay: -0.16s; }
+
+/* Skeleton loading */
+.skeleton {
+  @apply bg-neutral-200 rounded animate-pulse;
+}
+
+.skeleton-text-sm { @apply h-3 w-24; }
+.skeleton-text-md { @apply h-4 w-48; }
+.skeleton-text-lg { @apply h-5 w-64; }
+.skeleton-avatar { @apply w-10 h-10 rounded-full; }
+.skeleton-card { @apply h-32 bg-neutral-100 rounded-xl; }
+
+/* Progress bar */
+.progress-bar {
+  @apply w-full h-2 bg-neutral-200 rounded-full overflow-hidden;
+}
+
+.progress-bar-fill {
+  @apply h-full bg-primary-600 rounded-full transition-all duration-300;
+}
+
+/* Progress indeterminate */
+.progress-indeterminate {
+  @apply progress-bar;
+}
+
+.progress-indeterminate::after {
+  content: '';
+  @apply block h-full bg-primary-600 rounded-full;
+  animation: progress-indeterminate 1.5s infinite;
+}
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
+/* Navbar */
+.navbar {
+  @apply bg-white/90 backdrop-blur-sm border-b border-neutral-200;
+  @apply px-6 py-4 flex justify-between items-center sticky top-0 z-50 shadow-sm;
+}
+
+.navbar-brand {
+  @apply flex items-center gap-3;
+}
+
+.navbar-brand-text {
+  @apply text-xl font-bold text-neutral-800;
+}
+
+.navbar-nav {
+  @apply flex items-center gap-2;
+}
+
+.navbar-link {
+  @apply px-4 py-2 text-neutral-600 font-medium rounded-lg;
+  @apply hover:bg-neutral-100 hover:text-neutral-800;
+  @apply transition-colors duration-150;
+}
+
+.navbar-link-active {
+  @apply navbar-link;
+  @apply bg-primary-50 text-primary-700;
+}
+
+.navbar-user {
+  @apply flex items-center gap-4 pl-4 border-l border-neutral-200;
+}
+
+/* Avatar */
+.avatar {
+  @apply rounded-full object-cover;
+}
+
+.avatar-sm { @apply w-8 h-8; }
+.avatar-md { @apply w-10 h-10; }
+.avatar-lg { @apply w-12 h-12; }
+.avatar-xl { @apply w-16 h-16; }
+.avatar-2xl { @apply w-24 h-24; }
+
+.avatar-bordered {
+  @apply avatar;
+  @apply border-2 border-white shadow-sm;
+}
+
+.avatar-hover {
+  @apply avatar-bordered;
+  @apply border-neutral-200 hover:border-primary-500;
+  @apply transition-colors cursor-pointer;
+}
+
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+/* Headings */
+.text-display {
+  @apply text-5xl font-bold text-neutral-900;
+  letter-spacing: -0.02em;
+}
+
+.text-h1 {
+  @apply text-4xl font-bold text-neutral-900;
+  letter-spacing: -0.01em;
+}
+
+.text-h2 {
+  @apply text-3xl font-semibold text-neutral-800;
+  letter-spacing: -0.01em;
+}
+
+.text-h3 {
+  @apply text-2xl font-semibold text-neutral-800;
+}
+
+.text-h4 {
+  @apply text-xl font-medium text-neutral-700;
+}
+
+.text-h5 {
+  @apply text-lg font-medium text-neutral-700;
+}
+
+/* Body text */
+.text-body-lg {
+  @apply text-lg text-neutral-600;
+}
+
+.text-body {
+  @apply text-base text-neutral-600;
+}
+
+.text-body-sm {
+  @apply text-sm text-neutral-500;
+}
+
+/* Caption */
+.text-caption {
+  @apply text-xs text-neutral-400 font-medium uppercase tracking-wider;
+}
+
+/* Text semantic */
+.text-primary {
+  @apply text-primary-600;
+}
+
+.text-success {
+  @apply text-success-600;
+}
+
+.text-error {
+  @apply text-error-600;
+}
+
+.text-warning {
+  @apply text-warning-600;
+}
+
+.text-muted {
+  @apply text-neutral-500;
+}
+
+/* ============================================================
+   LAYOUT UTILITIES
+   ============================================================ */
+/* Page container */
+.page-container {
+  @apply min-h-screen;
+}
+
+.page-centered {
+  @apply page-container;
+  @apply flex items-center justify-center;
+}
+
+/* Content container */
+.content-container {
+  @apply max-w-7xl mx-auto px-6 py-8;
+}
+
+.content-container-md {
+  @apply max-w-2xl mx-auto px-6 py-8;
+}
+
+.content-container-sm {
+  @apply max-w-md mx-auto px-6 py-8;
+}
+
+/* Section spacing */
+.section { @apply py-8; }
+.section-md { @apply py-12; }
+.section-lg { @apply py-16; }
+.section-xl { @apply py-24; }
+
+/* Gap utilities */
+.gap-tight { @apply gap-2; }
+.gap-normal { @apply gap-4; }
+.gap-loose { @apply gap-6; }
+.gap-sparse { @apply gap-8; }
+
+/* ============================================================
+   FORM GROUPS
+   ============================================================ */
+.form-group {
+  @apply mb-6;
+}
+
+.form-group-sm {
+  @apply mb-4;
+}
+
+.form-label {
+  @apply block text-sm font-medium text-neutral-700 mb-2;
+}
+
+.form-label-required {
+  @apply form-label;
+}
+
+.form-label-required::after {
+  content: ' *';
+  @apply text-error-600;
+}
+
+.form-actions {
+  @apply flex items-center gap-4 mt-6;
+}
+
+.form-actions-vertical {
+  @apply flex flex-col gap-4 mt-6;
+}
+
+/* ============================================================
+   MODAL & DIALOG
+   ============================================================ */
+.modal-backdrop {
+  @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50;
+  @apply animate-fade-in;
+}
+
+.modal-content {
+  @apply bg-white rounded-xl shadow-lg max-w-md w-full mx-4;
+  @apply animate-scale-in;
+}
+
+.modal-header {
+  @apply px-6 py-4 border-b border-neutral-200;
+}
+
+.modal-title {
+  @apply text-xl font-semibold text-neutral-800;
+}
+
+.modal-body {
+  @apply p-6;
+}
+
+.modal-footer {
+  @apply px-6 py-4 border-t border-neutral-200 flex items-center justify-end gap-3;
+}
+
+/* ============================================================
+   TOAST NOTIFICATIONS
+   ============================================================ */
+.toast {
+  @apply px-6 py-4 rounded-xl shadow-lg border flex items-center gap-3;
+  @apply animate-notification-in;
+}
+
+.toast-success {
+  @apply toast bg-white border-success-200;
+}
+
+.toast-error {
+  @apply toast bg-white border-error-200;
+}
+
+.toast-warning {
+  @apply toast bg-white border-warning-200;
+}
+
+.toast-info {
+  @apply toast bg-white border-info-200;
+}
+
+/* ============================================================
+   UTILITIES & HELPERS
+   ============================================================ */
+/* Visually hidden (accessible) */
+.sr-only {
+  @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
+  clip: rect(0, 0, 0, 0);
+}
+
+/* Focus visible */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+}
+
+/* Hover lift effect */
+.hover-lift {
+  @apply transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md;
+}
+
+/* Hover glow */
+.hover-glow {
+  @apply transition-all duration-200 hover:shadow-lg hover:shadow-primary-500/10;
+}
+
+/* Truncate text - use Tailwind's built-in truncate utility */
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Divider */
+.divider {
+  @apply border-t border-neutral-200;
+}
+
+.divider-vertical {
+  @apply w-px bg-neutral-200;
+}
+
+/* Badge */
+.badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.badge-primary {
+  @apply badge bg-primary-100 text-primary-700;
+}
+
+.badge-success {
+  @apply badge bg-success-100 text-success-700;
+}
+
+.badge-error {
+  @apply badge bg-error-100 text-error-700;
+}
+
+.badge-warning {
+  @apply badge bg-warning-100 text-warning-700;
+}
+
+/* ============================================================
+   PRINT STYLES
+   ============================================================ */
+@media print {
+  .no-print {
+    @apply hidden;
+  }
+
+  .print-only {
+    @apply block;
+  }
+}
