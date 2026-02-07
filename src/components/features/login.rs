@@ -42,15 +42,41 @@ pub fn Login() -> Element {
     };
 
     rsx! {
-        form { onsubmit: on_submit,
-            input { oninput: move |e| username.set(e.value()), placeholder: "Username" }
-            input {
-                r#type: "password",
-                oninput: move |e| password.set(e.value()),
-                placeholder: "Password"
+        div { class: "flex flex-col items-center justify-center min-h-screen gap-6 p-6",
+            div { class: "bg-white rounded-xl shadow-lg p-8 max-w-md w-full animate-scale-in",
+                h1 { class: "text-3xl font-bold text-neutral-900 mb-2 text-center", "Welcome Back" }
+                p { class: "text-neutral-600 mb-8 text-center", "Sign in to your account to continue" }
+                form { onsubmit: on_submit, class: "flex flex-col gap-4 w-full",
+                    div { class: "input-group mb-4",
+                        label { class: "block text-sm font-medium text-neutral-700 mb-2", "Username" }
+                        input {
+                            class: "w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all",
+                            oninput: move |e| username.set(e.value()),
+                            placeholder: "Enter your username"
+                        }
+                    }
+                    div { class: "input-group mb-4",
+                        label { class: "block text-sm font-medium text-neutral-700 mb-2", "Password" }
+                        input {
+                            class: "w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all",
+                            r#type: "password",
+                            oninput: move |e| password.set(e.value()),
+                            placeholder: "Enter your password"
+                        }
+                    }
+                    button {
+                        class: "w-full px-6 py-3 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 hover:shadow-md transition-all duration-200",
+                        r#type: "submit",
+                        "Login"
+                    }
+                    button {
+                        class: "w-full px-6 py-3 border-2 border-primary-600 text-primary-600 font-semibold rounded-lg hover:bg-primary-50 transition-all duration-200",
+                        r#type: "button",
+                        onclick: move |_| {nav.push("/register");},
+                        "Register"
+                    }
+                }
             }
-            button { class: "btn-primary", r#type: "submit", "Login" }
-            button { class: "btn-secondary", r#type: "button", onclick: move |_| {nav.push("/register");}, "Register"}
         }
     }
 }

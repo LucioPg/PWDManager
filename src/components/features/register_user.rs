@@ -88,31 +88,62 @@ pub fn RegisterUser() -> Element {
     };
 
     rsx! {
-        div { class: "register-form flex flex-col gap-4",
-            div { class: "avatar-container flex flex-row gap-1",
-                img {
-                    class: "avatar-selection  rounded-full object-cover border-2 border-white shadow-sm",
-                    style: "width: 128px; height: 128px;",
-                    src: "{get_user_avatar_with_default(selected_image.read().clone())}"
+        div { class: "flex flex-col items-center justify-center min-h-screen gap-6 p-6",
+            div { class: "bg-white rounded-xl shadow-lg p-8 max-w-md w-full animate-scale-in",
+                h1 { class: "text-3xl font-bold text-neutral-900 mb-2 text-center", "Create Account" }
+                p { class: "text-neutral-600 mb-8 text-center", "Sign up to get started with your account" }
+                div { class: "flex flex-col items-center gap-4 mb-6",
+                    img {
+                        class: "w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg",
+                        src: "{get_user_avatar_with_default(selected_image.read().clone())}"
+                    }
+                    button {
+                        class: "px-4 py-2 text-sm text-primary-600 font-medium hover:bg-primary-50 rounded-lg transition-colors",
+                        r#type: "button",
+                        onclick: pick_image,
+                        "Select Avatar"
+                    }
                 }
-                button { r#type: "button", onclick: pick_image, "Select Avatar" }
-            }
-            form { onsubmit: on_submit,
-                input { oninput: move |e| username.set(e.value()), placeholder: "Username" }
-                input {
-                    r#type: "password",
-                    oninput: move |e| password.set(e.value()),
-                    placeholder: "Password"
+                form { onsubmit: on_submit, class: "flex flex-col gap-4 w-full",
+                    div { class: "input-group mb-4",
+                        label { class: "block text-sm font-medium text-neutral-700 mb-2", "Username" }
+                        input {
+                            class: "w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all",
+                            oninput: move |e| username.set(e.value()),
+                            placeholder: "Choose a username"
+                        }
+                    }
+                    div { class: "input-group mb-4",
+                        label { class: "block text-sm font-medium text-neutral-700 mb-2", "Password" }
+                        input {
+                            class: "w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all",
+                            r#type: "password",
+                            oninput: move |e| password.set(e.value()),
+                            placeholder: "Create a password"
+                        }
+                    }
+                    div { class: "input-group mb-4",
+                        label { class: "block text-sm font-medium text-neutral-700 mb-2", "Confirm Password" }
+                        input {
+                            class: "w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all",
+                            r#type: "password",
+                            oninput: move |e| repassword.set(e.value()),
+                            placeholder: "Confirm your password"
+                        }
+                    }
+                    button {
+                        class: "w-full px-6 py-3 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 hover:shadow-md transition-all duration-200",
+                        r#type: "submit",
+                        "Register"
+                    }
+                    button {
+                        class: "w-full px-6 py-3 border-2 border-primary-600 text-primary-600 font-semibold rounded-lg hover:bg-primary-50 transition-all duration-200",
+                        r#type: "button",
+                        onclick: move |_| {nav.push("/login");},
+                        "Login"
+                    }
                 }
-                input {
-                    r#type: "password",
-                    oninput: move |e| repassword.set(e.value()),
-                    placeholder: "Re-type Password"
-                }
-                button {class: "btn-primary", r#type: "submit", "Register" }
-                button {class: "btn-secondary", r#type: "button", onclick: move |_| {nav.push("/login");} ,"Login"}
             }
         }
-
     }
 }

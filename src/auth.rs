@@ -38,4 +38,10 @@ impl AuthState {
             }
         }
     }
+    pub fn get_username(&self) -> String {
+        match &*self.user.read() {
+            Some(user) => user.username.clone(),
+            None => "".to_string()
+        }
+    }
 }
