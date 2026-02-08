@@ -89,23 +89,23 @@ pub fn RegisterUser() -> Element {
 
     rsx! {
         div { class: "page-centered",
-            div { class: "card card-lg form-container-lg animate-scale-in",
+            div { class: "card card-md form-container-lg animate-scale-in max-h-[90vh] overflow-y-auto",
                 h1 { class: "text-h2 text-center", "Create Account" }
-                p { class: "text-body mb-8 text-center", "Sign up to get started with your account" }
-                div { class: "flex flex-col items-center gap-4 mb-6",
+                p { class: "text-body mb-4 text-center", "Sign up to get started with your account" }
+                div { class: "flex flex-col items-center gap-3 mb-4",
                     img {
-                        class: "avatar-xl avatar-bordered shadow-lg",
+                        class: "avatar-lg avatar-bordered shadow-lg",
                         src: "{get_user_avatar_with_default(selected_image.read().clone())}"
                     }
                     button {
-                        class: "btn-ghost",
+                        class: "btn-ghost btn-sm",
                         r#type: "button",
                         onclick: pick_image,
                         "Select Avatar"
                     }
                 }
-                form { onsubmit: on_submit, class: "flex flex-col gap-4 w-full",
-                    div { class: "input-group",
+                form { onsubmit: on_submit, class: "flex flex-col gap-3 w-full",
+                    div {
                         label { class: "input-label", "Username" }
                         input {
                             class: "input-base",
@@ -113,7 +113,7 @@ pub fn RegisterUser() -> Element {
                             placeholder: "Choose a username"
                         }
                     }
-                    div { class: "input-group",
+                    div {
                         label { class: "input-label", "Password" }
                         input {
                             class: "input-base",
@@ -122,7 +122,7 @@ pub fn RegisterUser() -> Element {
                             placeholder: "Create a password"
                         }
                     }
-                    div { class: "input-group",
+                    div {
                         label { class: "input-label", "Confirm Password" }
                         input {
                             class: "input-base",

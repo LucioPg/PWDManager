@@ -43,11 +43,11 @@ pub fn Login() -> Element {
 
     rsx! {
         div { class: "page-centered",
-            div { class: "card card-lg form-container animate-scale-in",
+            div { class: "card card-md form-container animate-scale-in max-h-[90vh] overflow-y-auto",
                 h1 { class: "text-h2 text-center", "Welcome Back" }
-                p { class: "text-body mb-8 text-center", "Sign in to your account to continue" }
-                form { onsubmit: on_submit, class: "flex flex-col gap-4 w-full",
-                    div { class: "input-group",
+                p { class: "text-body mb-4 text-center", "Sign in to your account to continue" }
+                form { onsubmit: on_submit, class: "flex flex-col gap-3 w-full",
+                    div {
                         label { class: "input-label", "Username" }
                         input {
                             class: "input-base",
@@ -55,7 +55,7 @@ pub fn Login() -> Element {
                             placeholder: "Enter your username"
                         }
                     }
-                    div { class: "input-group",
+                    div {
                         label { class: "input-label", "Password" }
                         input {
                             class: "input-base",

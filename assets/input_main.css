@@ -576,13 +576,15 @@
   @apply max-w-md mx-auto px-6 py-8;
 }
 
-/* Form container with limited width */
+/* Form container with limited width - responsive for maximized windows */
 .form-container {
   @apply w-full max-w-md mx-auto;
+  @apply lg:max-w-lg xl:max-w-xl;
 }
 
 .form-container-lg {
   @apply w-full max-w-lg mx-auto;
+  @apply lg:max-w-xl xl:max-w-2xl;
 }
 
 /* Section spacing */
