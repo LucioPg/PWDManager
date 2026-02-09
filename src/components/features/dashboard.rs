@@ -1,3 +1,4 @@
+use crate::components::globals::{StatCard, StatVariant};
 use dioxus::prelude::*;
 
 #[component]
@@ -11,17 +12,20 @@ pub fn Dashboard() -> Element {
                 p { class: "text-body mt-2", "Manage your passwords and secure your digital life" }
             }
             div { class: "stats-grid",
-                div { class: "stat-card",
-                    p { class: "stat-value stat-value-primary", "0" }
-                    p { class: "stat-label", "Total Passwords" }
+                StatCard {
+                    value: "0".to_string(),
+                    label: "Total Passwords".to_string(),
+                    variant: StatVariant::Primary,
                 }
-                div { class: "stat-card",
-                    p { class: "stat-value stat-value-success", "0" }
-                    p { class: "stat-label", "Strong Passwords" }
+                StatCard {
+                    value: "0".to_string(),
+                    label: "Strong Passwords".to_string(),
+                    variant: StatVariant::Success,
                 }
-                div { class: "stat-card",
-                    p { class: "stat-value stat-value-warning", "0" }
-                    p { class: "stat-label", "Weak Passwords" }
+                StatCard {
+                    value: "0".to_string(),
+                    label: "Weak Passwords".to_string(),
+                    variant: StatVariant::Warning,
                 }
             }
             div { class: "card card-lg",
