@@ -93,7 +93,7 @@ pub fn RegisterUser() -> Element {
                 p { class: "text-body mb-4 text-center", "Sign up to get started with your account" }
                 div { class: "flex flex-col items-center gap-3 mb-4",
                     img {
-                        class: "avatar-lg avatar-bordered shadow-lg",
+                        class: "avatar avatar-bordered shadow-lg",
                         src: "{get_user_avatar_with_default(selected_image.read().clone())}"
                     }
                     button {
