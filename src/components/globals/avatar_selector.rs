@@ -1,0 +1,114 @@
+use dioxus::prelude::*;
+
+/// Dimensioni predefinite per l'avatar
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub enum AvatarSize {
+    #[default]
+    Medium,    // avatar-md (48px)
+    Large,     // avatar-lg (96px)
+    XLarge,    // avatar-xl (128px)
+}
+
+impl AvatarSize {
+    pub fn as_class(&self) -> &'static str {
+        match self {
+            AvatarSize::Medium => "avatar-md",
+            AvatarSize::Large => "avatar-lg",
+            AvatarSize::XLarge => "avatar-xl",
+        }
+    }
+}
+
+/// Varianti di stile per il bordo dell'avatar
+#[derive(Clone, Copy, PartialEq, Debug, Default)]
+pub enum AvatarBorder {
+    #[default]
+    Bordered,     // Bordo visibile
+    None,         // Nessun bordo
+    Circle,       // Bordo circolare
+}
+
+impl AvatarBorder {
+    pub fn as_class(&self) -> &'static str {
+        match self {
+            AvatarBorder::Bordered => "avatar-bordered",
+            AvatarBorder::None => "",
+            AvatarBorder::Circle => "avatar-circle",
+        }
+    }
+}
+
+/// Componente AvatarSelector - Selettore di avatar con preview
+///
+/// Questo componente permette di selezionare un'immagine avatar con preview in tempo reale.
+/// Include un pulsante per aprire il file picker e mostra l'immagine selezionata o un default.
+///
+/// # Esempio
+/// ```rust
+/// AvatarSelector {
+///     avatar_src: get_user_avatar_with_default(selected_image.read().clone()),
+///     on_pick: pick_image,
+///     button_text: "Select Avatar".to_string(),
+///     size: AvatarSize::Large,
+///     ..Default::default()
+/// }
+/// ```
+#[component]
+pub fn AvatarSelector(
+    /// URL dell'immagine avatar corrente (Data URL o percorso)
+    avatar_src: String,
+    /// Callback quando si clicca sul pulsante di selezione
+    on_pick: EventHandler<MouseEvent>,
+    /// Testo del pulsante di selezione
+    #[props(default)]
+    button_text: String,
+    /// Dimensione dell'avatar
+    #[props(default)]
+    size: AvatarSize,
+    /// Stile del bordo
+    #[props(default)]
+    border: AvatarBorder,
+    /// Classe CSS aggiuntiva per il container
+    #[props(default)]
+    class: Option<String>,
+    /// Mostra o nasconde l'ombra
+    #[props(default)]
+    shadow: bool,
+    /// Mostra o nasconde il bordo
+    #[props(default)]
+    show_border: bool,
+) -> Element {
+    let size_class = size.as_class();
+    let border_class = if show_border { border.as_class() } else { "" };
+    let shadow_class = if shadow { "shadow-lg" } else { "" };
+
+    // Costruisci le classi CSS dinamicamente
+    let img_classes = format!(
+        "avatar {} {} {}",
+        size_class,
+        border_class,
+        shadow_class
+    ).trim().to_string();
+
+    let container_classes = if let Some(custom_class) = class {
+        format!("flex flex-col items-center gap-3 mb-4 {}", custom_class)
+    } else {
+        "flex flex-col items-center gap-3 mb-4".to_string()
+    };
+
+    rsx! {
+        div { class: "{container_classes}",
+            img {
+                class: "{img_classes}",
+                src: "{avatar_src}",
+                alt: "User Avatar"
+            }
+            button {
+                class: "btn-ghost btn-sm",
+                r#type: "button",
+                onclick: on_pick,
+                "{button_text}"
+            }
+        }
+    }
+}
