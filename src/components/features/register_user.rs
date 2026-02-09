@@ -1,5 +1,6 @@
 use crate::backend::db_backend::{fetch_user_data, save_user};
 use crate::backend::utils::{get_user_avatar_with_default, scale_avatar};
+use crate::components::{FormField, InputType};
 use dioxus::prelude::*;
 use rfd::FileDialog;
 use sqlx::SqlitePool;
@@ -103,31 +104,29 @@ pub fn RegisterUser() -> Element {
                     }
                 }
                 form { onsubmit: on_submit, class: "flex flex-col gap-3 w-full",
-                    div {
-                        label { class: "input-label", "Username" }
-                        input {
-                            class: "input-base",
-                            oninput: move |e| username.set(e.value()),
-                            placeholder: "Choose a username"
-                        }
+                    FormField {
+                        label: "Username".to_string(),
+                        input_type: InputType::Text,
+                        placeholder: "Choose a username".to_string(),
+                        value: username,
+                        name: Some("username".to_string()),
+                        required: true,
                     }
-                    div {
-                        label { class: "input-label", "Password" }
-                        input {
-                            class: "input-base",
-                            r#type: "password",
-                            oninput: move |e| password.set(e.value()),
-                            placeholder: "Create a password"
-                        }
+                    FormField {
+                        label: "Password".to_string(),
+                        input_type: InputType::Password,
+                        placeholder: "Create a password".to_string(),
+                        value: password,
+                        name: Some("password".to_string()),
+                        required: true,
                     }
-                    div {
-                        label { class: "input-label", "Confirm Password" }
-                        input {
-                            class: "input-base",
-                            r#type: "password",
-                            oninput: move |e| repassword.set(e.value()),
-                            placeholder: "Confirm your password"
-                        }
+                    FormField {
+                        label: "Confirm Password".to_string(),
+                        input_type: InputType::Password,
+                        placeholder: "Confirm your password".to_string(),
+                        value: repassword,
+                        name: Some("repassword".to_string()),
+                        required: true,
                     }
                     button {
                         class: "btn-primary btn-block",

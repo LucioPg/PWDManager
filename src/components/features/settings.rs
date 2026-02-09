@@ -1,9 +1,11 @@
+use crate::components::{FormField, InputType};
 use dioxus::prelude::*;
 
 #[component]
 pub fn Settings() -> Element {
     let auth_state = use_context::<crate::auth::AuthState>();
     let username = auth_state.get_username();
+    let email_value = use_signal(|| String::new());
     rsx! {
         div { class: "content-container-md animate-fade-in",
             h1 { class: "text-h2 mb-8", "Settings" }
@@ -13,22 +15,19 @@ pub fn Settings() -> Element {
                 }
                 div { class: "p-6",
                     form { class: "flex flex-col gap-6",
-                        div { class: "form-group",
-                            label { class: "form-label", "Username" }
-                            input {
-                                class: "input-base",
-                                r#type: "text",
-                                value: "{username}",
-                                disabled: true
-                            }
+                        FormField {
+                            label: "Username".to_string(),
+                            input_type: InputType::Text,
+                            placeholder: username.clone(),
+                            value: use_signal(|| username.clone()),
+                            disabled: true,
+                            readonly: true,
                         }
-                        div { class: "form-group",
-                            label { class: "form-label", "Email" }
-                            input {
-                                class: "input-base",
-                                r#type: "email",
-                                placeholder: "your.email@example.com"
-                            }
+                        FormField {
+                            label: "Email".to_string(),
+                            input_type: InputType::Email,
+                            placeholder: "your.email@example.com".to_string(),
+                            value: email_value,
                         }
                     }
                 }
