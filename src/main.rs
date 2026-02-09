@@ -2,7 +2,10 @@
 mod auth;
 mod backend;
 mod components;
-use crate::components::{AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, RegisterUser, RouteWrapper, Settings, ToastsState, ToastContainer, add_toast, ToastMessage, ToastType};
+use crate::components::{
+    AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, RegisterUser,
+    RouteWrapper, Settings, ToastContainer, ToastMessage, ToastType, ToastsState, add_toast,
+};
 use dioxus::prelude::*;
 use gui_launcher::launch_desktop;
 // use backend::{list_users, init_db};
@@ -26,12 +29,17 @@ fn App() -> Element {
     // Il resource ora conterrà un Result
     let mut db_resource = use_resource(move || async move { init_db().await });
     let resource_value = db_resource.read();
+    let mut toast_state = use_context::<Signal<ToastsState>>();
     match &*resource_value {
         Some(Ok(pool)) => {
             // Se il pool è pronto, lo forniamo al resto dell'app
             use_context_provider(|| pool.clone());
-            let mut toast_state = use_context::<Signal<ToastsState>>();
-            add_toast("Caricamento database riuscito!".into(), ToastMessage::default().duration, ToastType::Success, &mut toast_state);
+            add_toast(
+                "Caricamento database riuscito!".into(),
+                6,
+                ToastType::Success,
+                &mut toast_state,
+            );
             rsx! {
                 // Carica il CSS di Tailwind globalmente
                 document::Style {"{TAILWIND_CSS}"}
@@ -42,6 +50,12 @@ fn App() -> Element {
         }
         Some(Err(e)) => {
             // Mostriamo l'errore all'utente in modo elegante
+            add_toast(
+                "Caricamento database Fallito!".into(),
+                6,
+                ToastType::Error,
+                &mut toast_state,
+            );
             rsx! {
                 document::Style {"{TAILWIND_CSS}"}
                 document::Style {"{MAIN_CSS}"}
@@ -52,10 +66,14 @@ fn App() -> Element {
                 }
             }
         }
-        None => rsx! {
-            document::Stylesheet { href: TAILWIND_CSS }
-            "Inizializzazione database in corso..."
-        },
+        None => {
+            rsx! {
+                document::Style {"{TAILWIND_CSS}"}
+                    document::Style {"{MAIN_CSS}"}
+
+                "SPINNER"
+            }
+        }
     }
 }
 fn main() {
