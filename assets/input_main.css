@@ -750,7 +750,70 @@
   @apply auth-form;
   @apply text-center;
   @apply mt-12 mb-5;
+}
 
+/* ============================================================
+   DASHBOARD COMPONENTS
+   ============================================================ */
+.stats-grid {
+  @apply grid grid-cols-1 md:grid-cols-3 gap-6 mb-8;
+}
+
+.stat-card {
+  @apply card card-md card-interactive;
+}
+
+.stat-value {
+  @apply text-3xl font-bold text-neutral-600 mt-1;
+}
+
+.stat-label {
+  @apply text-neutral-600 mt-1;
+}
+
+.stat-value-primary {
+  @apply text-primary-600;
+}
+
+.stat-value-success {
+  @apply text-success-600;
+}
+
+.stat-value-warning {
+  @apply text-warning-600;
+}
+
+/* ============================================================
+   SETTINGS COMPONENTS
+   ============================================================ */
+.settings-card {
+  @apply card mb-6 overflow-hidden;
+}
+
+/* ============================================================
+   ERROR PAGES
+   ============================================================ */
+.error-page {
+  @apply page-centered text-center;
+}
+
+.error-code {
+  @apply text-9xl font-bold text-neutral-200 mb-4;
+}
+
+/* ============================================================
+   LANDING PAGE
+   ============================================================ */
+.hero-section {
+  @apply overflow-hidden flex items-center justify-center mt-64;
+}
+
+.hero-content {
+  @apply z-10 animate-fade-in text-center;
+}
+
+.slogan-text {
+  @apply text-xl font-medium text-neutral-800 mb-8 drop-shadow-md pt-10;
 }
 
 /* Divider */

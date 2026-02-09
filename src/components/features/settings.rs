@@ -7,7 +7,7 @@ pub fn Settings() -> Element {
     rsx! {
         div { class: "content-container-md animate-fade-in",
             h1 { class: "text-h2 mb-8", "Settings" }
-            div { class: "card mb-6 overflow-hidden",
+            div { class: "settings-card",
                 div { class: "card-header",
                     h2 { class: "card-header-title", "Profile Information" }
                 }
@@ -33,7 +33,7 @@ pub fn Settings() -> Element {
                     }
                 }
             }
-            div { class: "card mb-6 overflow-hidden",
+            div { class: "settings-card",
                 div { class: "card-header",
                     h2 { class: "card-header-title", "Security" }
                 }
