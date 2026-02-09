@@ -235,22 +235,14 @@
     @apply disabled:bg-neutral-300;
   }
 
-@utility btn-primary-lg {
-    @apply btn;
-    @apply px-8 py-4 text-lg bg-primary-600 text-white shadow-sm;
-    @apply hover:bg-primary-700 hover:shadow-md;
-    @apply active:scale-[0.98];
-    @apply focus:ring-primary-50;
-    @apply disabled:bg-neutral-300;
+.btn-primary-lg {
+    @apply btn-primary;
+    @apply px-8 py-4 text-lg;
   }
 
-@utility btn-primary-sm {
-    @apply btn;
-    @apply px-4 py-2 text-sm bg-primary-600 text-white shadow-sm;
-    @apply hover:bg-primary-700 hover:shadow-md;
-    @apply active:scale-[0.98];
-    @apply focus:ring-primary-50;
-    @apply disabled:bg-neutral-300;
+.btn-primary-sm {
+    @apply btn-primary;
+    @apply px-4 py-2 text-sm;
   }
 
   /* Secondary Button */
@@ -263,22 +255,14 @@
     @apply disabled:border-neutral-300 disabled:text-neutral-400;
   }
 
-@utility btn-secondary-lg {
-    @apply btn;
-    @apply px-8 py-4 text-lg bg-white text-primary-600 border-2 border-primary-600;
-    @apply hover:bg-primary-50 hover:border-primary-700;
-    @apply active:scale-[0.98];
-    @apply focus:ring-primary-50;
-    @apply disabled:border-neutral-300 disabled:text-neutral-400;
+.btn-secondary-lg {
+    @apply btn-secondary;
+    @apply px-8 py-4 text-lg;
   }
 
-@utility btn-secondary-sm {
-    @apply btn;
-    @apply px-4 py-2 text-sm bg-white text-primary-600 border-2 border-primary-600;
-    @apply hover:bg-primary-50 hover:border-primary-700;
-    @apply active:scale-[0.98];
-    @apply focus:ring-primary-50;
-    @apply disabled:border-neutral-300 disabled:text-neutral-400;
+.btn-secondary-sm {
+    @apply btn-secondary;
+    @apply px-4 py-2 text-sm;
   }
 
   /* Ghost Button */
@@ -301,22 +285,14 @@
   @apply disabled:bg-neutral-300;
 }
 
-@utility btn-danger-lg {
-    @apply btn;
-    @apply px-8 py-4 text-lg bg-error-600 text-white shadow-sm;
-    @apply hover:bg-error-700 hover:shadow-md;
-    @apply active:scale-[0.98];
-    @apply focus:ring-error-50 focus:ring-offset-2;
-    @apply disabled:bg-neutral-300;
+.btn-danger-lg {
+    @apply btn-danger;
+    @apply px-8 py-4 text-lg;
   }
 
-@utility btn-danger-sm {
-    @apply btn;
-    @apply px-4 py-2 text-sm bg-error-600 text-white shadow-sm;
-    @apply hover:bg-error-700 hover:shadow-md;
-    @apply active:scale-[0.98];
-    @apply focus:ring-error-50 focus:ring-offset-2;
-    @apply disabled:bg-neutral-300;
+.btn-danger-sm {
+    @apply btn-danger;
+    @apply px-4 py-2 text-sm;
   }
 
   /* Success Button */
@@ -381,15 +357,6 @@
 @utility input-base-lg {
     @apply input-base;
     @apply px-5 py-4 text-lg;
-  }
-
-.input-base-lg {
-  @apply w-full px-5 py-4 bg-white border border-neutral-300 rounded-lg;
-  @apply text-lg text-neutral-700 placeholder-neutral-400;
-  @apply transition-all duration-200;
-  @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
-  @apply hover:border-neutral-400;
-  @apply disabled:bg-neutral-50 disabled:text-neutral-400 disabled:cursor-not-allowed;
   }
 
   /* Input with error */
@@ -590,17 +557,13 @@
   /* Dots loading */
 @utility dots-loading {
     @apply flex items-center gap-1;
+    & span {
+      @apply w-2 h-2 bg-primary-600 rounded-full;
+      animation: dots-bounce 1.4s infinite ease-in-out both;
+    }
+    & span:nth-child(1) { animation-delay: -0.32s; }
+    & span:nth-child(2) { animation-delay: -0.16s; }
   }
-
-@utility dots-loading {
-  & span {
-    @apply w-2 h-2 bg-primary-600 rounded-full;
-    animation: dots-bounce 1.4s infinite ease-in-out both;
-  }
-}
-
-  .dots-loading span:nth-child(1) { animation-delay: -0.32s; }
-  .dots-loading span:nth-child(2) { animation-delay: -0.16s; }
 
   /* Skeleton loading */
 @utility skeleton {
@@ -822,16 +785,16 @@
 }
 
 /* Section spacing */
-  section { @apply py-8; }
-  section-md { @apply py-12; }
-  section-lg { @apply py-16; }
-  section-xl { @apply py-24; }
+  .section { @apply py-8; }
+  .section-md { @apply py-12; }
+  .section-lg { @apply py-16; }
+  .section-xl { @apply py-24; }
 
 /* Gap utilities */
-  gap-tight { @apply gap-2; }
-  gap-normal { @apply gap-4; }
-  gap-loose { @apply gap-6; }
-  gap-sparse { @apply gap-8; }
+  .gap-tight { @apply gap-2; }
+  .gap-normal { @apply gap-4; }
+  .gap-loose { @apply gap-6; }
+  .gap-sparse { @apply gap-8; }
 
 /* ============================================================
    FORM GROUPS
@@ -904,24 +867,20 @@
   animation: notification-in 0.3s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
-@utility toast-success {
-  @apply px-6 py-4 rounded-xl shadow-lg border flex items-center gap-3 bg-white border-success-200;
-  animation: notification-in 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+.toast-success {
+  @apply toast bg-white border-success-200;
 }
 
-@utility toast-error {
-  @apply px-6 py-4 rounded-xl shadow-lg border flex items-center gap-3 bg-white border-error-200;
-  animation: notification-in 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+.toast-error {
+  @apply toast bg-white border-error-200;
 }
 
-@utility toast-warning {
-  @apply px-6 py-4 rounded-xl shadow-lg border flex items-center gap-3 bg-white border-warning-200;
-  animation: notification-in 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+.toast-warning {
+  @apply toast bg-white border-warning-200;
 }
 
-@utility toast-info {
-  @apply px-6 py-4 rounded-xl shadow-lg border flex items-center gap-3 bg-white border-info-200;
-  animation: notification-in 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+.toast-info {
+  @apply toast bg-white border-info-200;
 }
 
 /* ============================================================
@@ -1064,20 +1023,20 @@
   @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
 }
 
-@utility badge-primary {
-  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-700;
+.badge-primary {
+  @apply badge bg-primary-100 text-primary-700;
 }
 
-@utility badge-success {
-  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-100 text-success-700;
+.badge-success {
+  @apply badge bg-success-100 text-success-700;
 }
 
-@utility badge-error {
-  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-error-100 text-error-700;
+.badge-error {
+  @apply badge bg-error-100 text-error-700;
 }
 
-@utility badge-warning {
-  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning-100 text-warning-700;
+.badge-warning {
+  @apply badge bg-warning-100 text-warning-700;
 }
 
   /* ============================================================
@@ -1086,11 +1045,11 @@
 
 
 @media print {
-  no-print {
+  .no-print {
     @apply hidden;
   }
 
-print-only {
+  .print-only {
     @apply block;
   }
 }
