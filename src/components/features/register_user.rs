@@ -1,6 +1,6 @@
 use crate::backend::db_backend::save_user;
 use crate::backend::utils::{get_user_avatar_with_default, scale_avatar};
-use crate::components::{ActionButtons, ActionButtonsVariant, FormField, InputType};
+use crate::components::{ActionButtons, ActionButtonsVariant, AvatarSelector, AvatarSize, FormField, InputType};
 use dioxus::prelude::*;
 use rfd::FileDialog;
 use sqlx::SqlitePool;
@@ -91,17 +91,13 @@ pub fn RegisterUser() -> Element {
             div { class: "auth-form-lg animate-scale-in",
                 h1 { class: "text-h2 text-center", "Create Account" }
                 p { class: "text-body mb-4 text-center", "Sign up to get started with your account" }
-                div { class: "flex flex-col items-center gap-3 mb-4",
-                    img {
-                        class: "avatar avatar-bordered shadow-lg",
-                        src: "{get_user_avatar_with_default(selected_image.read().clone())}"
-                    }
-                    button {
-                        class: "btn-ghost btn-sm",
-                        r#type: "button",
-                        onclick: pick_image,
-                        "Select Avatar"
-                    }
+                AvatarSelector {
+                    avatar_src: get_user_avatar_with_default(selected_image.read().clone()),
+                    on_pick: pick_image,
+                    button_text: "Select Avatar".to_string(),
+                    size: AvatarSize::Large,
+                    shadow: true,
+                    show_border: true,
                 }
                 form { onsubmit: on_submit, class: "flex flex-col gap-3 w-full",
                     FormField {
