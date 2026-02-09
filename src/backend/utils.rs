@@ -62,7 +62,7 @@ pub fn format_avatar_url(avatar_b64: String) -> String {
 pub fn scale_avatar(bytes: &[u8]) -> Result<Vec<u8>, GeneralError> {
     let img = image::load_from_memory(bytes)
         .map_err(|e| GeneralError::new_scaling_error(e.to_string()))?;
-    image_to_vec(&img.resize(128, 128, image::imageops::FilterType::Triangle))
+    image_to_vec(&img.thumbnail(128, 128))
 }
 
 fn image_to_vec(img: &DynamicImage) -> Result<Vec<u8>, GeneralError> {
