@@ -1,6 +1,6 @@
-use crate::backend::db_backend::{fetch_user_data, save_user};
+use crate::backend::db_backend::save_user;
 use crate::backend::utils::{get_user_avatar_with_default, scale_avatar};
-use crate::components::{FormField, InputType};
+use crate::components::{ActionButtons, ActionButtonsVariant, FormField, InputType};
 use dioxus::prelude::*;
 use rfd::FileDialog;
 use sqlx::SqlitePool;
@@ -128,16 +128,12 @@ pub fn RegisterUser() -> Element {
                         name: Some("repassword".to_string()),
                         required: true,
                     }
-                    button {
-                        class: "btn-primary btn-block",
-                        r#type: "submit",
-                        "Register"
-                    }
-                    button {
-                        class: "btn-secondary btn-block",
-                        r#type: "button",
-                        onclick: move |_| {nav.push("/login");},
-                        "Login"
+                    ActionButtons {
+                        primary_text: "Register".to_string(),
+                        secondary_text: "Login".to_string(),
+                        primary_on_click: move |_| {}, // Gestito dal form onsubmit
+                        secondary_on_click: move |_| { nav.push("/login"); },
+                        variant: ActionButtonsVariant::Auth,
                     }
                 }
             }

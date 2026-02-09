@@ -1,6 +1,6 @@
 use crate::auth::AuthState;
 use crate::backend::db_backend::{check_user, fetch_user_data};
-use crate::components::{FormField, InputType};
+use crate::components::{ActionButtons, ActionButtonsVariant, FormField, InputType};
 use dioxus::prelude::*;
 use sqlx::SqlitePool;
 use tracing::{debug, instrument};
@@ -61,16 +61,12 @@ pub fn Login() -> Element {
                         name: Some("password".to_string()),
                         required: true,
                     }
-                    button {
-                        class: "btn-primary btn-block",
-                        r#type: "submit",
-                        "Login"
-                    }
-                    button {
-                        class: "btn-secondary btn-block",
-                        r#type: "button",
-                        onclick: move |_| {nav.push("/register");},
-                        "Register"
+                    ActionButtons {
+                        primary_text: "Login".to_string(),
+                        secondary_text: "Register".to_string(),
+                        primary_on_click: move |_| {}, // Gestito dal form onsubmit
+                        secondary_on_click: move |_| { nav.push("/register"); },
+                        variant: ActionButtonsVariant::Auth,
                     }
                 }
             }

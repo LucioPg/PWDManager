@@ -1,5 +1,5 @@
-use crate::backend::utils::base64_encode;
-use crate::{LOGO_BYTES, Route};
+use crate::components::{ActionButtons, ActionButtonsVariant};
+use crate::Route;
 use dioxus::prelude::*;
 
 #[component]
@@ -42,15 +42,12 @@ pub fn NavBar() -> Element {
                 }
 
                 div { class: "navbar-nav",
-                    button {
-                        class: "btn-primary-sm",
-                        onclick: move |_| {nav_login.push(Route::Login);},
-                        "Login"
-                    }
-                    button {
-                        class: "btn-secondary-sm",
-                        onclick: move |_| {nav_register.push(Route::RegisterUser);},
-                        "Register"
+                    ActionButtons {
+                        primary_text: "Login".to_string(),
+                        secondary_text: "Register".to_string(),
+                        primary_on_click: move |_| { nav_login.push(Route::Login); },
+                        secondary_on_click: move |_| { nav_register.push(Route::RegisterUser); },
+                        variant: ActionButtonsVariant::Nav,
                     }
                 }
             }
