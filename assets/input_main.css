@@ -724,6 +724,10 @@
   overflow: hidden;
 }
 
+.auth-form {
+  @apply mt-12;
+}
+
 /* Divider */
 .divider {
   @apply border-t border-neutral-200;
