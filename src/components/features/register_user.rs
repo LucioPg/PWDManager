@@ -4,10 +4,12 @@ use crate::components::{
     ActionButtons, ActionButtonsVariant, AvatarSelector, AvatarSize, FormField, InputType,
 };
 use dioxus::prelude::*;
+
 use rfd::FileDialog;
 use sqlx::SqlitePool;
 use std::fs;
 use std::path::Path;
+use tokio::task::spawn_blocking;
 use tracing::instrument;
 
 #[component]
@@ -18,11 +20,13 @@ pub fn RegisterUser() -> Element {
     let mut repassword = use_signal(|| String::new());
     let selected_image = use_signal(|| None::<Vec<u8>>);
     let mut _error = use_signal(|| Option::<String>::None);
+    let mut is_loading = use_signal(|| false);
     let pool = use_context::<SqlitePool>();
     let nav = use_navigator();
     let pick_image = move |_evt: MouseEvent| {
         let mut err_signal = _error;
         let mut img_signal = selected_image;
+        let mut is_loading_signal = is_loading;
         spawn(async move {
             let file = FileDialog::new()
                 .add_filter("Image Files", &["png", "jpg", "jpeg"])
@@ -38,15 +42,25 @@ pub fn RegisterUser() -> Element {
                 if let Ok(bytes) = fs::read(path) {
                     match bytes {
                         bytes if !bytes.is_empty() => {
-                            let scaled = scale_avatar(bytes.as_slice());
+                            is_loading_signal.set(true);
+                            let bytes_cloned = bytes.to_vec();
+
+                            let scaled = spawn_blocking(move || scale_avatar(&bytes_cloned.as_slice())).await;
                             match scaled {
-                                Ok(scaled) => {
+                                Ok(Ok(scaled)) => {
                                     println!("Avatar scaled successfully");
-                                    img_signal.set(Some(scaled))
+                                    img_signal.set(Some(scaled));
+                                    is_loading_signal.set(false);
                                 }
-                                Err(e) => {
+                                Ok(Err(e)) => {
                                     println!("Errore scaling avatar: {}", e);
                                     err_signal.set(Some(format!("Errore scaling avatar: {}", e)));
+                                    is_loading_signal.set(false);
+                                    return;}
+                                Err(e) => {
+                                    println!("Errore Thread scale avatar: {}", e);
+                                    err_signal.set(Some(format!("Errore thread scaling avatar: {}", e)));
+                                    is_loading_signal.set(false);
                                     return;
                                 }
                             }
@@ -100,6 +114,7 @@ pub fn RegisterUser() -> Element {
                     size: AvatarSize::Large,
                     shadow: true,
                     show_border: true,
+                    loading: is_loading,
                 }
                 form { onsubmit: on_submit, class: "flex flex-col gap-3 w-full",
                     FormField {

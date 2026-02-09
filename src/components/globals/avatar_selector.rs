@@ -1,4 +1,5 @@
 use dioxus::prelude::*;
+use dioxus_components::{Spinner, SpinnerSize};
 
 /// Dimensioni predefinite per l'avatar
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
@@ -77,6 +78,8 @@ pub fn AvatarSelector(
     /// Mostra o nasconde il bordo
     #[props(default)]
     show_border: bool,
+    #[props(default)]
+    loading: Signal<bool>,
 ) -> Element {
     let size_class = size.as_class();
     let border_class = if show_border { border.as_class() } else { "" };
@@ -92,20 +95,26 @@ pub fn AvatarSelector(
     } else {
         "flex flex-col items-center gap-3 mb-4".to_string()
     };
-
     rsx! {
         div { class: "{container_classes}",
-            img {
-                class: "{img_classes}",
-                src: "{avatar_src}",
-                alt: "User Avatar"
-            }
-            button {
-                class: "btn-ghost btn-sm",
-                r#type: "button",
-                onclick: on_pick,
-                "{button_text}"
-            }
+            if loading() {
+                div {class: "{img_classes} flex items-center justify-center",
+                    Spinner {size: SpinnerSize::Small, color: "text-success"}
+                    }
+                }
+                else {
+                    img {
+                        class: "{img_classes}",
+                        src: "{avatar_src}",
+                        alt: "User Avatar"
+                    }
+                    }
+                    button {
+                    class: "btn-ghost btn-sm",
+                    r#type: "button",
+                    onclick: on_pick,
+                    "{button_text}"
+                    }
+                }
         }
-    }
 }
