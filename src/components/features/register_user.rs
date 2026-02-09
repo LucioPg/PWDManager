@@ -87,7 +87,7 @@ pub fn RegisterUser() -> Element {
 
     rsx! {
         div { class: "page-centered",
-            div { class: "auth-form card card-md form-container-lg animate-scale-in overflow-y-auto",
+            div { class: "auth-form-lg animate-scale-in",
                 h1 { class: "text-h2 text-center", "Create Account" }
                 p { class: "text-body mb-4 text-center", "Sign up to get started with your account" }
                 div { class: "flex flex-col items-center gap-3 mb-4",

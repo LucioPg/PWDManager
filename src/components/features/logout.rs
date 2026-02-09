@@ -23,7 +23,7 @@ pub fn Logout() -> Element {
 
     rsx! {
         div { class: "page-centered animate-scale-in",
-            div { class: "card card-md form-container text-center max-h-[90vh] overflow-y-auto",
+            div { class: "auth-form-centered",
                 svg {
                     class: "w-16 h-16 text-error-600 mx-auto mb-4",
                     fill: "none",
