@@ -69,7 +69,7 @@ fn App() -> Element {
         None => {
             rsx! {
                 document::Style {"{TAILWIND_CSS}"}
-                    document::Style {"{MAIN_CSS}"}
+                document::Style {"{MAIN_CSS}"}
 
                 "SPINNER"
             }
