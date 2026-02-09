@@ -8,6 +8,13 @@
 @tailwind utilities;
 
 /* ============================================================
+   CSS VARIABLES
+   ============================================================ */
+:root {
+  --navbar-height: 3rem; /* 48px - corrisponde a h-12/max-h-12 */
+}
+
+/* ============================================================
    ADDITIONAL KEYFRAMES (not in Tailwind config)
    ============================================================ */
 @keyframes spin {
@@ -418,7 +425,8 @@
    ============================================================ */
 /* Navbar */
 .navbar {
-  @apply bg-transparent backdrop-blur-sm border-b border-neutral-200 max-h-12;
+  @apply bg-transparent backdrop-blur-sm border-b border-neutral-200;
+  max-height: var(--navbar-height);
   @apply px-6 py-1 flex justify-between items-center sticky top-0 z-50 shadow-sm;
 }
 
@@ -726,6 +734,9 @@
 
 .auth-form {
   @apply mt-12;
+  @apply mb-5;
+  max-height: calc(100vh - var(--navbar-height) - 5rem);
+  @apply overflow-y-auto;
 }
 
 /* Divider */
