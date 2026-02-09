@@ -23,7 +23,7 @@ fn main() {
     let npm_cmd = if cfg!(windows) { "npm.cmd" } else { "npm" };
 
     let output = Command::new(npm_cmd)
-        .args(&["run", "build:css"])
+        .args(["run", "build:css"])
         .output()
         .expect("Failed to execute npm run build:css - assicurati di avere npm installato!");
 
