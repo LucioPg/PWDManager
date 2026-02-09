@@ -18,27 +18,27 @@ pub enum DBError {
 
 impl DBError {
     pub fn new_general_error(msg: String) -> Self {
-        DBError::DBGeneralError(msg.into())
+        DBError::DBGeneralError(msg)
     }
 
     pub fn new_list_error(msg: String) -> Self {
-        DBError::DBListError(msg.into())
+        DBError::DBListError(msg)
     }
 
     pub fn new_select_error(msg: String) -> Self {
-        DBError::DBSelectError(msg.into())
+        DBError::DBSelectError(msg)
     }
 
     pub fn new_save_error(msg: String) -> Self {
-        DBError::DBSaveError(msg.into())
+        DBError::DBSaveError(msg)
     }
 
     pub fn new_delete_error(msg: String) -> Self {
-        DBError::DBDeleteError(msg.into())
+        DBError::DBDeleteError(msg)
     }
 
     pub fn new_fetch_error(msg: String) -> Self {
-        DBError::DBFetchError(msg.into())
+        DBError::DBFetchError(msg)
     }
 }
 
@@ -50,7 +50,7 @@ pub enum EncryptionError {
 
 impl EncryptionError {
     pub fn new_encryption_error(msg: String) -> Self {
-        EncryptionError::EncryptionError(msg.into())
+        EncryptionError::EncryptionError(msg)
     }
 }
 
@@ -66,11 +66,11 @@ pub enum DecryptionError {
 
 impl DecryptionError {
     pub fn new_decryption_error(msg: String) -> Self {
-        DecryptionError::DecryptionError(msg.into())
+        DecryptionError::DecryptionError(msg)
     }
 
     pub fn new_rotten_password(msg: String) -> Self {
-        DecryptionError::RottenPassword(msg.into())
+        DecryptionError::RottenPassword(msg)
     }
 
     pub fn new_wrong_password() -> Self {
@@ -108,9 +108,9 @@ pub enum GeneralError {
 
 impl GeneralError {
     pub fn new_encode_error(msg: String) -> Self {
-        GeneralError::EncodeError(msg.into())
+        GeneralError::EncodeError(msg)
     }
     pub fn new_scaling_error(msg: String) -> Self {
-        GeneralError::ScalingError(msg.into())
+        GeneralError::ScalingError(msg)
     }
 }
