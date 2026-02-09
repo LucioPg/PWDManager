@@ -125,15 +125,21 @@ Questo è il **cambiamento più problematico** di Tailwind v4 per progetti con u
 }
 ```
 
-**In v4** questo NON funziona più:
+**In v4** con classi CSS standard questo NON funziona:
 ```css
+/* ❌ SBAGLIATO IN v4 */
+.btn-base {
+  @apply px-4 py-2 rounded-lg font-semibold;
+}
+
 .btn-primary {
   @apply btn-base;  /* ❌ ERRORE: Cannot apply unknown utility class */
   @apply bg-blue-600 text-white;
 }
 ```
 
-**Soluzione:** Devi espandere le utility:
+#### Soluzione 1: Espandere le utility (approccio manuale)
+
 ```css
 .btn-primary {
   @apply px-4 py-2 rounded-lg font-semibold;  /* Espanso manualmente */
@@ -141,7 +147,240 @@ Questo è il **cambiamento più problematico** di Tailwind v4 per progetti con u
 }
 ```
 
-Se hai centinaia di classi CSS che dipendono l'una dall'altra (come in `input_main.css` di PWDManager), dovrai riscrivere il file espandendo tutti i `@apply` con classi personalizzate. Questo può essere un lavoro significativo per progetti grandi.
+Questo approccio funziona ma porta a codice ridondante e difficile da mantenere.
+
+#### Soluzione 2: Usare `@utility` (approccio raccomandato) ⭐
+
+In Tailwind v4, se vuoi poter usare `@apply` con classi personalizzate, devi definirle come **utilities** usando la direttiva `@utility` invece di classi CSS standard.
+
+```css
+/* ✅ CORRETTO IN v4 */
+@utility btn-base {
+  @apply px-4 py-2 rounded-lg font-semibold;
+}
+
+.btn-primary {
+  @apply btn-base;  /* ✅ FUNZIONA! */
+  @apply bg-blue-600 text-white;
+}
+```
+
+**Differenze chiave:**
+| Aspetto | Classe CSS (`.name`) | Utility (`@utility name`) |
+|---------|---------------------|---------------------------|
+| Sintassi | `.btn-base { }` | `@utility btn-base { }` |
+| `@apply` funziona? | ❌ No | ✅ Sì |
+| Punto (`.`) | Richiesto | **Non usarlo!** |
+
+> **⚠️ IMPORTANTE:** Quando definisci una `@utility`, **non** includere il punto (`.`) nel nome. Scrivi `@utility btn-base`, non `@utility .btn-base`.
+
+#### Naming Convention per Utilities
+
+Le utilities devono seguire queste regole:
+- Devono essere **alfanumeriche**
+- Devono **iniziare con una lettera minuscola**
+- Non possono contenere caratteri speciali (tranne il trattino `-`)
+
+```css
+/* ✅ Corretti */
+@utility btn { }
+@utility btn-primary { }
+@utility btnPrimary { }
+@utility btn_2 { }
+
+/* ❌ Errati */
+@utility 2btn { }           /* Non inizia con lettera */
+@utility Button { }          /* Inizia con maiuscola */
+@utility btn@special { }     /* Carattere non valido */
+```
+
+#### Multi-classi e Pseudo-classi con `@utility`
+
+Quando devi usare multi-classi (nested selectors) o pseudo-classi all'interno di una `@utility`, usa la sintassi con `&`:
+
+```css
+/* Multi-classi (nested) */
+@utility demo-loading {
+  & span {
+    @apply animate-pulse;
+  }
+  @apply opacity-75;
+}
+
+/* Pseudo-classi */
+@utility demo-loading {
+  &::after {
+    content: "...";
+    @apply ml-1;
+  }
+  @apply text-sm;
+}
+
+/* Pseudo-classi con stato */
+@utility demo-link {
+  &:hover {
+    @apply text-primary-700 underline;
+  }
+  &:focus {
+    @apply outline-none focus-ring;
+  }
+  @apply text-primary-600 cursor-pointer;
+}
+```
+
+Questo approccio è utile quando hai componenti con stati complessi (hover, focus, active) o elementi figli che necessitano di styling specifico.
+
+#### Quando usare `@utility` vs classi CSS standard
+
+| Usa `@utility` quando... | Usa classi CSS standard (`.class`) quando... |
+|--------------------------|--------------------------------------------|
+| Vuoi usare `@apply` con quella classe | Non ti serve composizione via `@apply` |
+| È una parte riutilizzabile del design system | È uno stile specifico per un elemento |
+| Hai gerarchie di classi che dipendono l'una dall'altra | Lo stile è isolato e non riutilizzato |
+
+Se hai centinaia di classi CSS che dipendono l'una dall'altra (come in `input_main.css` di PWDManager), valuta se convertire le classi base in `@utility` per mantenere la composizione.
+
+#### Esempi Pratici: @utility nel Mondo Reale
+
+Ecco alcuni esempi pratici che mostrano come usare `@utility` in scenari comuni:
+
+##### Esempio 1: Sistema di pulsanti con gerarchia
+
+```css
+/* Utility base per tutti i pulsanti */
+@utility btn-base {
+  @apply px-4 py-2 rounded-lg font-semibold transition-colors;
+  @apply cursor-pointer border border-transparent;
+}
+
+/* Varianti che estendono la base */
+@utility btn-primary {
+  @apply btn-base;  /* ✅ Funziona perché btn-base è una @utility */
+  @apply bg-primary-600 text-white;
+
+  &:hover {
+    @apply bg-primary-700;
+  }
+
+  &:focus {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+  }
+}
+
+@utility btn-secondary {
+  @apply btn-base;  /* ✅ Funziona */
+  @apply bg-secondary-600 text-white;
+
+  &:hover {
+    @apply bg-secondary-700;
+  }
+}
+```
+
+##### Esempio 2: Componente loading con elementi figli
+
+```css
+@utility demo-loading {
+  @apply flex items-center gap-2;
+  @apply text-muted-foreground;
+
+  & span {
+    @apply animate-pulse;
+    @apply inline-block w-4 h-4 bg-current rounded-full;
+  }
+
+  &::before {
+    content: "⏳";
+    @apply mr-1;
+  }
+}
+```
+
+##### Esempio 3: Card interattiva con stati
+
+```css
+@utility card-interactive {
+  @apply p-4 rounded-lg bg-white shadow-sm;
+  @apply transition-all duration-200;
+
+  &:hover {
+    @apply shadow-md -translate-y-0.5;
+  }
+
+  &:active {
+    @apply shadow-sm translate-y-0;
+  }
+
+  & .card-header {
+    @apply font-semibold text-lg mb-2;
+  }
+
+  & .card-body {
+    @apply text-sm text-muted-foreground;
+  }
+}
+```
+
+##### Esempio 4: Input con stati di validazione
+
+```css
+@utility input-base {
+  @apply px-3 py-2 rounded-md border;
+  @apply transition-colors;
+  @apply focus:outline-none focus:ring-2 focus:ring-primary-500;
+
+  &::placeholder {
+    @apply text-muted-foreground;
+  }
+
+  &:disabled {
+    @apply opacity-50 cursor-not-allowed;
+  }
+}
+
+@utility input-error {
+  @apply input-base;  /* ✅ Estende l'utility base */
+  @apply border-error-500;
+
+  &:focus {
+    @apply ring-error-500;
+  }
+}
+
+@utility input-success {
+  @apply input-base;  /* ✅ Estende l'utility base */
+  @apply border-success-500;
+
+  &:focus {
+    @apply ring-success-500;
+  }
+}
+```
+
+##### Esempio 5: Avatar con fallback e dimensioni
+
+```css
+@utility avatar-base {
+  @apply rounded-full overflow-hidden flex items-center justify-center;
+  @apply bg-muted-foreground text-white font-semibold;
+
+  & img {
+    @apply w-full h-full object-cover;
+  }
+
+  &.avatar-sm {
+    @apply w-8 h-8 text-xs;
+  }
+
+  &.avatar-md {
+    @apply w-12 h-12 text-sm;
+  }
+
+  &.avatar-lg {
+    @apply w-16 h-16 text-base;
+  }
+}
+```
 
 ---
 
@@ -251,26 +490,30 @@ In `package.json`, aggiorna gli script per usare PostCSS:
 
 ### Passo 4: Gestione del problema @apply con classi personalizzate
 
-⚠️ **IMPORTANTE:** In Tailwind v4, `@apply` NON può più essere usato con classi CSS personalizzate definite nello stesso file.
+⚠️ **IMPORTANTE:** In Tailwind v4, `@apply` NON può più essere usato con classi CSS standard (`.class`) definite nello stesso file. Hai due opzioni:
 
-**Esempio del problema:**
+#### Opzione A: Convertire in `@utility` (raccomandato per mantenere composizione)
+
+Se vuoi mantenere la possibilità di comporre stili con `@apply`, converti le classi base in utilities:
 
 ```css
-/* ❌ NON FUNZIONA IN v4 */
-.btn {
+/* ✅ CORRETTO IN v4 - Con @utility */
+@utility btn {
   @apply px-6 py-3 font-semibold rounded-lg;
 }
 
 .btn-primary {
-  @apply btn; /* ERRORE: non può usare .btn */
+  @apply btn; /* ✅ FUNZIONA con @utility */
   @apply bg-primary-600 text-white;
 }
 ```
 
-**Soluzione:** Espandi le utility in ogni classe:
+> **Nota:** Con `@utility` non usare il punto (`.btn`) ma solo il nome (`btn`).
+
+#### Opzione B: Espandere le utility (approccio semplice ma ridondante)
 
 ```css
-/* ✅ CORRETTO IN v4 */
+/* ✅ CORRETTO IN v4 - Espansione manuale */
 .btn {
   @apply px-6 py-3 font-semibold rounded-lg;
 }
@@ -281,7 +524,30 @@ In `package.json`, aggiorna gli script per usare PostCSS:
 }
 ```
 
-Per progetti con molte classi CSS che dipendono l'una dall'altra (come nel file `input_main.css` di PWDManager), potrebbe essere necessario riscrivere completamente le classi espandendo tutti i `@apply` che fanno riferimento ad altre classi personalizzate.
+#### Conversione massiva delle classi esistenti
+
+Se hai molte classi da convertire in `@utility`, puoi automatizzare parte del lavoro:
+
+1. Trova le classi usate con `@apply`
+2. Convertile in `@utility`
+3. Rimuovi il punto (`.`) dal nome
+4. Verifica che non usino `@apply` verso altre classi CSS standard
+
+```css
+/* Prima - classi CSS */
+.btn-base { }
+.btn-primary {
+  @apply btn-base; /* ❌ Errore */
+}
+
+/* Dopo - utilities */
+@utility btn-base { }
+.btn-primary {
+  @apply btn-base; /* ✅ Funziona */
+}
+```
+
+Per progetti con molte classi CSS che dipendono l'una dall'altra (come nel file `input_main.css` di PWDManager), valuta se convertire le classi base in `@utility` per mantenere la composizione o espandere manualmente tutti i riferimenti.
 
 ### Passo 5: Converti tailwind.config.js in @theme
 
@@ -353,18 +619,32 @@ Se usi componenti esterni o hai bisogno di specificare i file da scansionare, ha
 @source "../src/**/*.rs";
 ```
 
-### ✓ 4. Nessun @apply con classi personalizzate
+### ✓ 4. Gestione corretta di @apply con classi personalizzate
 
-Verifica che nel tuo CSS non ci siano `@apply` che fanno riferimento a classi personalizzate definite nello stesso file:
+Verifica che `@apply` non faccia riferimento a classi CSS standard (`.class`) definite nello stesso file, a meno che non siano state convertite in `@utility`:
 
 ```css
 /* ❌ ERRATO IN v4 */
+.btn {
+  @apply px-6 py-3;
+}
+
 .btn-primary {
   @apply btn;  /* Non puoi usare .btn qui */
   @apply bg-primary-600;
 }
 
-/* ✅ CORRETTO IN v4 */
+/* ✅ CORRETTO IN v4 - Opzione A: @utility */
+@utility btn {
+  @apply px-6 py-3;
+}
+
+.btn-primary {
+  @apply btn;  /* ✅ Funziona con @utility */
+  @apply bg-primary-600;
+}
+
+/* ✅ CORRETTO IN v4 - Opzione B: Espansione diretta */
 .btn-primary {
   @apply px-6 py-3 font-semibold rounded-lg;  /* Espanso direttamente */
   @apply bg-primary-600;
