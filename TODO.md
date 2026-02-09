@@ -32,3 +32,7 @@
 - [ ] rimuovere possibilità di aprire in devtools in release
 - [ ] rimuovere menu contestuali in release
 - [ ] rimuovere menu finestra (windows, help etc...)
+
+## To be Threaeded
+- [ ] scaled_avatar
+- [ ] funzione di crypt e salvataggio password
