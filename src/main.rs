@@ -2,10 +2,7 @@
 mod auth;
 mod backend;
 mod components;
-use crate::components::{
-    AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, RegisterUser,
-    RouteWrapper, Settings,
-};
+use crate::components::{AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, RegisterUser, RouteWrapper, Settings, ToastsState, ToastContainer, add_toast, ToastMessage};
 use dioxus::prelude::*;
 use gui_launcher::launch_desktop;
 // use backend::{list_users, init_db};
@@ -25,6 +22,7 @@ const LOGO_BYTES: &[u8] = include_bytes!("../assets/logo.png");
 fn App() -> Element {
     let auth_state = auth::AuthState::new();
     use_context_provider(move || auth_state);
+    use_context_provider(|| Signal::new(ToastsState::default()));
     // Il resource ora conterrà un Result
     let mut db_resource = use_resource(move || async move { init_db().await });
     let resource_value = db_resource.read();
@@ -32,24 +30,19 @@ fn App() -> Element {
         Some(Ok(pool)) => {
             // Se il pool è pronto, lo forniamo al resto dell'app
             use_context_provider(|| pool.clone());
+            let mut toast_state = use_context::<Signal<ToastsState>>();
+            add_toast("Caricamento database riuscito!".into(), 20, &mut toast_state);
             rsx! {
                 // Carica il CSS di Tailwind globalmente
-                // document::Stylesheet { href: TAILWIND_CSS }
-                // document::Stylesheet { href: MAIN_CSS }
                 document::Style {"{TAILWIND_CSS}"}
                 document::Style {"{MAIN_CSS}"}
+                ToastContainer {}
                 Router::<Route> {}
             }
         }
         Some(Err(e)) => {
             // Mostriamo l'errore all'utente in modo elegante
             rsx! {
-                    // document::Link {
-                    // rel: "icon",
-                    // href: FAVICON
-                    // // In Dioxus 0.7, il CLI gestisce il routing di /assets/ correttamente
-                    // }
-                // document::Stylesheet { href: TAILWIND_CSS }
                 document::Style {"{TAILWIND_CSS}"}
                 document::Style {"{MAIN_CSS}"}
                 div { class: "error-container",
@@ -60,11 +53,6 @@ fn App() -> Element {
             }
         }
         None => rsx! {
-                    // document::Link {
-                    // rel: "icon",
-                    // href: FAVICON
-                    // // In Dioxus 0.7, il CLI gestisce il routing di /assets/ correttamente
-                    // }
             document::Stylesheet { href: TAILWIND_CSS }
             "Inizializzazione database in corso..."
         },
