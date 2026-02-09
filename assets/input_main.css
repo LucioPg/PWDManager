@@ -555,7 +555,7 @@
    ============================================================ */
 /* Page container */
 .page-container {
-  @apply min-h-screen;
+  @apply flex-1;
 }
 
 .page-centered {
