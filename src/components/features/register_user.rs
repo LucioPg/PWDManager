@@ -1,12 +1,11 @@
-
-use dioxus::prelude::*;
 use crate::backend::db_backend::{fetch_user_data, save_user};
-use sqlx::SqlitePool;
-use tracing::instrument;
+use crate::backend::utils::{get_user_avatar_with_default, scale_avatar};
+use dioxus::prelude::*;
 use rfd::FileDialog;
+use sqlx::SqlitePool;
 use std::fs;
 use std::path::Path;
-use crate::backend::utils::{scale_avatar, get_user_avatar_with_default};
+use tracing::instrument;
 
 #[component]
 #[instrument]
@@ -31,7 +30,7 @@ pub fn RegisterUser() -> Element {
                 if !Path::new(&path).exists() {
                     println!("File non trovato");
                     err_signal.set(Some("File non trovato".to_string()));
-                    return
+                    return;
                 }
                 if let Ok(bytes) = fs::read(path) {
                     match bytes {
@@ -41,20 +40,19 @@ pub fn RegisterUser() -> Element {
                                 Ok(scaled) => {
                                     println!("Avatar scaled successfully");
                                     img_signal.set(Some(scaled))
-                                },
+                                }
                                 Err(e) => {
                                     println!("Errore scaling avatar: {}", e);
                                     err_signal.set(Some(format!("Errore scaling avatar: {}", e)));
-                                    return
+                                    return;
                                 }
                             }
                         }
                         _ => {
                             err_signal.set(Some("File vuoto, fallback to default".to_string()));
-                            return
+                            return;
                         }
                     }
-
                 }
             }
         });
@@ -71,20 +69,20 @@ pub fn RegisterUser() -> Element {
                 // La tua funzione check_user ora ha il pool!
                 let result = save_user(&pool, u, p, a).await;
                 match result {
-                    Ok(_) => { println!("Successo!");
+                    Ok(_) => {
+                        println!("Successo!");
                         nav.push("/login");
-                    },
-                    Err(e) => { println!("Errore: {}", e.clone());
+                    }
+                    Err(e) => {
+                        println!("Errore: {}", e.clone());
                         _error.set(Some(e.to_string()));
                     }
                 }
             });
-        }
-        else {
+        } else {
             _error.set(Some("Le password non coincidono".to_string()));
             println!("Le password non coincidono")
         }
-
     };
 
     rsx! {

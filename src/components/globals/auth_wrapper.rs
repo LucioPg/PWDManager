@@ -1,6 +1,6 @@
-use dioxus::prelude::*;
-use crate::{components, Route};
 use crate::auth::AuthState;
+use crate::{Route, components};
+use dioxus::prelude::*;
 
 #[component]
 pub fn AuthWrapper() -> Element {
@@ -11,11 +11,9 @@ pub fn AuthWrapper() -> Element {
         rsx! {
             Outlet::<Route> {}
         }
-    }
-    else {
+    } else {
         rsx! {
             components::LandingPage {}
         }
     }
-
 }

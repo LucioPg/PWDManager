@@ -1,29 +1,41 @@
-
-use dioxus::prelude::*;
 use crate::backend::utils::{format_avatar_url, get_user_avatar_with_default};
+use dioxus::prelude::*;
 
 struct User {
     id: i32,
     username: String,
     created_at: String,
-    avatar: String
+    avatar: String,
 }
 
 #[derive(Clone)]
 pub struct AuthState {
-    user: Signal<Option<User>>
+    user: Signal<Option<User>>,
 }
 
 impl AuthState {
     pub fn new() -> Self {
-        Self { user: Signal::new(None) }
+        Self {
+            user: Signal::new(None),
+        }
     }
 
-    pub fn login(  &mut self, id: i32, username: String, created_at: String, avatar: Option<Vec<u8>>) {
+    pub fn login(
+        &mut self,
+        id: i32,
+        username: String,
+        created_at: String,
+        avatar: Option<Vec<u8>>,
+    ) {
         let avatar: String = get_user_avatar_with_default(avatar);
-        self.user.set(Some(User { id, username, created_at, avatar }));
+        self.user.set(Some(User {
+            id,
+            username,
+            created_at,
+            avatar,
+        }));
     }
-    pub fn logout( &mut self) {
+    pub fn logout(&mut self) {
         self.user.set(None);
     }
     pub fn is_logged_in(&self) -> bool {
@@ -41,7 +53,7 @@ impl AuthState {
     pub fn get_username(&self) -> String {
         match &*self.user.read() {
             Some(user) => user.username.clone(),
-            None => "".to_string()
+            None => "".to_string(),
         }
     }
 }

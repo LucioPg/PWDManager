@@ -14,7 +14,7 @@ pub enum DBError {
     DBSaveError(String),
     #[error("Database fetch error: {0}")]
     DBFetchError(String),
-    }
+}
 
 impl DBError {
     pub fn new_general_error(msg: String) -> Self {
@@ -36,7 +36,7 @@ impl DBError {
     pub fn new_delete_error(msg: String) -> Self {
         DBError::DBDeleteError(msg.into())
     }
-    
+
     pub fn new_fetch_error(msg: String) -> Self {
         DBError::DBFetchError(msg.into())
     }
@@ -45,7 +45,7 @@ impl DBError {
 #[derive(Error, Debug)]
 pub enum EncryptionError {
     #[error("Encryption error: {0}")]
-    EncryptionError(String)
+    EncryptionError(String),
 }
 
 impl EncryptionError {
@@ -61,18 +61,18 @@ pub enum DecryptionError {
     #[error("Password corrotta")]
     RottenPassword(String),
     #[error("Password errata")]
-    WrongPassword
+    WrongPassword,
 }
 
 impl DecryptionError {
     pub fn new_decryption_error(msg: String) -> Self {
         DecryptionError::DecryptionError(msg.into())
     }
-    
+
     pub fn new_rotten_password(msg: String) -> Self {
         DecryptionError::RottenPassword(msg.into())
     }
-    
+
     pub fn new_wrong_password() -> Self {
         DecryptionError::WrongPassword
     }
@@ -83,7 +83,7 @@ pub enum AuthGeneralError {
     #[error("Errore nel login")]
     LoginError(String),
     #[error("Errore nel logout")]
-    LogoutError
+    LogoutError,
 }
 
 #[derive(Error, Debug)]
@@ -95,7 +95,7 @@ pub enum AuthError {
     #[error("Errore di decrittografia: {0}")]
     Decryption(DecryptionError),
     #[error("Errore di autenticazione: {0}")]
-    AuthenticationError(AuthGeneralError)
+    AuthenticationError(AuthGeneralError),
 }
 
 #[derive(Error, Debug)]
@@ -103,7 +103,7 @@ pub enum GeneralError {
     #[error("Errore nell'encoding dell'avatar: {0:?}")]
     EncodeError(String),
     #[error("Errore nel ridimensionamento dell'avatar: {0}")]
-    ScalingError(String)
+    ScalingError(String),
 }
 
 impl GeneralError {

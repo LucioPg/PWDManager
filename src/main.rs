@@ -1,10 +1,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "console")]
-mod backend;
 mod auth;
+mod backend;
 mod components;
-use crate::components::{Dashboard, Login, NavBar, Settings, PageNotFound, Logout, RegisterUser, LandingPage, RouteWrapper, AuthWrapper};
-use gui_launcher::launch_desktop;
+use crate::components::{
+    AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, RegisterUser,
+    RouteWrapper, Settings,
+};
 use dioxus::prelude::*;
+use gui_launcher::launch_desktop;
 // use backend::{list_users, init_db};
 use backend::db_backend::init_db;
 // use components::{login, navbar, settings, dashboard};
@@ -64,7 +67,7 @@ fn App() -> Element {
                     // }
             document::Stylesheet { href: TAILWIND_CSS }
             "Inizializzazione database in corso..."
-        }
+        },
     }
 }
 fn main() {
@@ -72,10 +75,8 @@ fn main() {
     launch_desktop!(App);
 }
 
-
 #[derive(Routable, PartialEq, Clone)]
 enum Route {
-
     #[layout(RouteWrapper)]
     #[layout(NavBar)]
     #[route("/")]

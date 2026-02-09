@@ -1,10 +1,7 @@
 use dioxus::prelude::*;
 
-
-
 #[component]
 pub fn LandingPage() -> Element {
-
     rsx! {
         // Contenitore principale - contenuto centrato e spostato sotto il logo
         div { class: "overflow-hidden flex items-center justify-center mt-64",

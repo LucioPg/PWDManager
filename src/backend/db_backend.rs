@@ -1,12 +1,12 @@
 #![allow(dead_code)]
+use crate::backend::utils::verify_password;
 use custom_errors::{AuthError, DBError};
-use sqlx::sqlite::{ SqliteConnectOptions, SqlitePool};
-use sqlx::{query, Row};
-use std::str::FromStr;
 use dioxus::prelude::*;
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
+use sqlx::{Row, query};
+use std::str::FromStr;
 #[cfg(feature = "desktop")]
 use tracing::{debug, instrument};
-use crate::backend::utils::verify_password;
 
 #[cfg(feature = "desktop")]
 pub async fn init_db() -> Result<SqlitePool, DBError> {
@@ -14,7 +14,9 @@ pub async fn init_db() -> Result<SqlitePool, DBError> {
         .map_err(|e| DBError::new_general_error(e.to_string()))?
         .create_if_missing(true);
 
-    let pool = SqlitePool::connect_with(options).await.map_err(|e| DBError::new_general_error(e.to_string()))?;
+    let pool = SqlitePool::connect_with(options)
+        .await
+        .map_err(|e| DBError::new_general_error(e.to_string()))?;
 
     query(
         "CREATE TABLE IF NOT EXISTS users (
@@ -31,7 +33,12 @@ pub async fn init_db() -> Result<SqlitePool, DBError> {
     Ok(pool)
 }
 
-pub async fn save_user(pool: &SqlitePool, username: String, password: String, avatar: Option<Vec<u8>>) -> dioxus::Result<()> {
+pub async fn save_user(
+    pool: &SqlitePool,
+    username: String,
+    password: String,
+    avatar: Option<Vec<u8>>,
+) -> dioxus::Result<()> {
     debug!("Attempting to save user credentials to database");
     let hash_password = crate::backend::utils::encrypt(&password)
         .map_err(|e| DBError::new_save_error(format!("Failed to encrypt password: {}", e)))?;
@@ -46,25 +53,24 @@ pub async fn save_user(pool: &SqlitePool, username: String, password: String, av
     Ok(())
 }
 
-
 #[instrument(fields(user_id = id))]
 pub async fn delete_user(pool: &SqlitePool, id: i32) -> Result<(), DBError> {
-    debug!(
-        user_id = id,
-        "Attempting to delete user from database"
-    );
+    debug!(user_id = id, "Attempting to delete user from database");
     let _ = query("DELETE FROM users WHERE id = ?")
         .bind(id)
         .execute(pool)
         .await
-        .map_err(|e| DBError::new_delete_error(format!("Failed to save user credentials: {}", e)))?;
+        .map_err(|e| {
+            DBError::new_delete_error(format!("Failed to save user credentials: {}", e))
+        })?;
 
     Ok(())
-
 }
 
 #[instrument(skip(pool))]
-pub async fn list_users(pool: &SqlitePool) -> Result<Vec<(i32, String, String, Option<Vec<u8>>)>, DBError> {
+pub async fn list_users(
+    pool: &SqlitePool,
+) -> Result<Vec<(i32, String, String, Option<Vec<u8>>)>, DBError> {
     debug!("Fetching list of users from database");
     let rows = query("SELECT id, username, created_at FROM users ORDER BY id DESC LIMIT 10")
         .fetch_all(pool)
@@ -72,17 +78,17 @@ pub async fn list_users(pool: &SqlitePool) -> Result<Vec<(i32, String, String, O
         .map_err(|e| DBError::new_list_error(format!("Failed to save user credentials: {}", e)))?;
     let users = rows
         .into_iter()
-        .map(|row| (
-            row.get::<i32, _>("id"),
-            row.get::<String, _>("username"),
-            row.get::<String, _>("created_at"),
-            row.get::<Option<Vec<u8>>, _>("avatar")
-            ))
+        .map(|row| {
+            (
+                row.get::<i32, _>("id"),
+                row.get::<String, _>("username"),
+                row.get::<String, _>("created_at"),
+                row.get::<Option<Vec<u8>>, _>("avatar"),
+            )
+        })
         .collect();
 
     Ok(users)
-
-
 }
 #[instrument(skip(pool))]
 async fn fetch_user_password(pool: &SqlitePool, username: &str) -> Result<String, DBError> {
@@ -94,12 +100,18 @@ async fn fetch_user_password(pool: &SqlitePool, username: &str) -> Result<String
     match row {
         Ok(Some(row)) => Ok(row.get(0)),
         Ok(None) => Err(DBError::new_select_error("User not found".into())),
-        Err(e) => Err(DBError::new_fetch_error(format!("Failed to fetch user credentials: {}", e)))
+        Err(e) => Err(DBError::new_fetch_error(format!(
+            "Failed to fetch user credentials: {}",
+            e
+        ))),
     }
 }
 
 #[instrument(skip(pool))]
-pub async fn fetch_user_data(pool: &SqlitePool, username: &str) -> Result<(i32, String, String, Option<Vec<u8>>), DBError> {
+pub async fn fetch_user_data(
+    pool: &SqlitePool,
+    username: &str,
+) -> Result<(i32, String, String, Option<Vec<u8>>), DBError> {
     debug!("Fetching user credentials in database");
     let row = query("SELECT id, username, created_at, avatar FROM users WHERE username = ?")
         .bind(username)
@@ -110,17 +122,26 @@ pub async fn fetch_user_data(pool: &SqlitePool, username: &str) -> Result<(i32, 
             row.get::<i32, _>("id"),
             row.get::<String, _>("username"),
             row.get::<String, _>("created_at"),
-            row.get::<Option<Vec<u8>>, _>("avatar")
-            )),
+            row.get::<Option<Vec<u8>>, _>("avatar"),
+        )),
         Ok(None) => Err(DBError::new_select_error("User not found".into())),
-        Err(e) => Err(DBError::new_fetch_error(format!("Failed to fetch user data: {}", e)))
+        Err(e) => Err(DBError::new_fetch_error(format!(
+            "Failed to fetch user data: {}",
+            e
+        ))),
     }
 }
 
 #[instrument(skip(pool))]
-pub async fn check_user(pool: &SqlitePool, username: &str, password: &str) -> Result<(), AuthError> {
+pub async fn check_user(
+    pool: &SqlitePool,
+    username: &str,
+    password: &str,
+) -> Result<(), AuthError> {
     debug!("Checking user credentials in database");
-    let hash = fetch_user_password(pool, username).await.map_err(|e| AuthError::DB(e))?;
+    let hash = fetch_user_password(pool, username)
+        .await
+        .map_err(|e| AuthError::DB(e))?;
     verify_password(password, hash.as_str()).map_err(|e| AuthError::Decryption(e))?;
 
     Ok(())

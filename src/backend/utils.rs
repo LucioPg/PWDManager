@@ -1,13 +1,13 @@
-use std::io::Cursor;
 use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
-    Argon2
+    Argon2,
+    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
 };
+use std::io::Cursor;
 
-use image::{DynamicImage, ImageFormat};
-use custom_errors::{EncryptionError, DecryptionError, GeneralError};
-use base64::prelude::BASE64_STANDARD;
 use base64::Engine;
+use base64::prelude::BASE64_STANDARD;
+use custom_errors::{DecryptionError, EncryptionError, GeneralError};
+use image::{DynamicImage, ImageFormat};
 
 pub fn base64_encode(bytes: &[u8]) -> String {
     BASE64_STANDARD.encode(bytes)
@@ -21,45 +21,47 @@ pub fn encrypt(text: &str) -> Result<String, EncryptionError> {
     let salt = generate_salt();
     let password = text.as_bytes();
     let argon2 = Argon2::default();
-    let hash = argon2.hash_password(
-        password,
-        &salt
-    ).map_err(|e| EncryptionError::new_encryption_error(e.to_string()))?;
+    let hash = argon2
+        .hash_password(password, &salt)
+        .map_err(|e| EncryptionError::new_encryption_error(e.to_string()))?;
     let hash_string = hash.to_string();
     print!("password: {text}\nsalt: {salt}\nhash: {hash_string}\n");
     Ok(hash_string)
-
 }
 
 pub fn verify_password(text: &str, hash: &str) -> Result<(), DecryptionError> {
     let argon2 = Argon2::default();
     let password = text.as_bytes();
-    let hash = PasswordHash::new(hash).map_err(|e| DecryptionError::new_rotten_password(e.to_string()))?;
-    argon2.verify_password(password, &hash).map_err(|_| DecryptionError::new_wrong_password())?;
+    let hash =
+        PasswordHash::new(hash).map_err(|e| DecryptionError::new_rotten_password(e.to_string()))?;
+    argon2
+        .verify_password(password, &hash)
+        .map_err(|_| DecryptionError::new_wrong_password())?;
     Ok(())
 }
-
 
 pub fn get_user_avatar_with_default(avatar_from_db: Option<Vec<u8>>) -> String {
     let avatar: Vec<u8> = match avatar_from_db {
         Some(avatar_) => {
-            if !avatar_.is_empty() { avatar_}
-            else { include_bytes!("../../assets/default_avatar.png").to_vec()}
+            if !avatar_.is_empty() {
+                avatar_
+            } else {
+                include_bytes!("../../assets/default_avatar.png").to_vec()
+            }
         }
-        _ => { include_bytes!("../../assets/default_avatar.png").to_vec() }
+        _ => include_bytes!("../../assets/default_avatar.png").to_vec(),
     };
 
     let b64 = base64_encode(&avatar);
     format_avatar_url(b64)
-
 }
-
 
 pub fn format_avatar_url(avatar_b64: String) -> String {
     format!("data:image/png;base64,{}", avatar_b64)
 }
-pub fn scale_avatar(bytes: &[u8]) -> Result<Vec<u8>, GeneralError>{
-    let img = image::load_from_memory(bytes).map_err(|e| GeneralError::new_scaling_error(e.to_string()))?;
+pub fn scale_avatar(bytes: &[u8]) -> Result<Vec<u8>, GeneralError> {
+    let img = image::load_from_memory(bytes)
+        .map_err(|e| GeneralError::new_scaling_error(e.to_string()))?;
     image_to_vec(&img.resize(128, 128, image::imageops::FilterType::Triangle))
 }
 
@@ -68,7 +70,8 @@ fn image_to_vec(img: &DynamicImage) -> Result<Vec<u8>, GeneralError> {
 
     // Specifica il formato. PNG è ideale per mantenere la qualità
     // o se hai angoli trasparenti.
-    img.write_to(&mut buffer, ImageFormat::Png).map_err(|e| GeneralError::new_encode_error(e.to_string()))?;
+    img.write_to(&mut buffer, ImageFormat::Png)
+        .map_err(|e| GeneralError::new_encode_error(e.to_string()))?;
 
     Ok(buffer.into_inner())
 }
@@ -83,8 +86,7 @@ mod tests {
         format!("data:image/png;base64,{}", base64_encode(default_bytes))
     }
     #[test]
-    fn test_encrypt()
-    {
+    fn test_encrypt() {
         let text = "password123";
 
         let result = encrypt(text);
@@ -102,7 +104,7 @@ mod tests {
         );
     }
     #[test]
-    fn test_decrypt(){
+    fn test_decrypt() {
         let text = "password123";
         let hash = encrypt(text).unwrap();
         let result = verify_password(text, &hash);

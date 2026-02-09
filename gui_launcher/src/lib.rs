@@ -4,8 +4,8 @@
 //! that handles window configuration and icon loading without affecting
 //! the main application behavior.
 
-use dioxus::desktop::{Config, WindowBuilder, LogicalSize};
-use std::path::{PathBuf};
+use dioxus::desktop::{Config, LogicalSize, WindowBuilder};
+use std::path::PathBuf;
 use std::sync::OnceLock;
 
 // Global guard to keep logging alive
@@ -32,10 +32,7 @@ pub fn init_logging() {
 
         let log_path = dir.join("pwdmanager.log");
 
-        let file_appender = tracing_appender::rolling::never(
-            &dir,
-            "pwdmanager.log",
-        );
+        let file_appender = tracing_appender::rolling::never(&dir, "pwdmanager.log");
 
         let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
@@ -71,7 +68,10 @@ pub fn load_window_icon() -> Option<dioxus::desktop::tao::window::Icon> {
     // No need to search for external files!
     const ICON_BYTES: &[u8] = include_bytes!("../../icons/icon.png");
 
-    tracing::info!("Loading embedded window icon from executable ({} bytes)", ICON_BYTES.len());
+    tracing::info!(
+        "Loading embedded window icon from executable ({} bytes)",
+        ICON_BYTES.len()
+    );
 
     match image::load_from_memory(ICON_BYTES) {
         Ok(img) => {
@@ -81,7 +81,11 @@ pub fn load_window_icon() -> Option<dioxus::desktop::tao::window::Icon> {
 
             match dioxus::desktop::tao::window::Icon::from_rgba(rgba_data, width, height) {
                 Ok(icon) => {
-                    tracing::info!("Window icon loaded successfully: {}x{} (embedded)", width, height);
+                    tracing::info!(
+                        "Window icon loaded successfully: {}x{} (embedded)",
+                        width,
+                        height
+                    );
                     Some(icon)
                 }
                 Err(e) => {
@@ -118,7 +122,7 @@ pub fn create_desktop_config() -> Config {
             .with_title("PWDManager")
             .with_inner_size(LogicalSize::new(800.0, 600.0))
             .with_resizable(true)
-            .with_window_icon(window_icon)
+            .with_window_icon(window_icon),
     );
 
     // Set data directory to avoid creating .exe.WebView2 folder next to exe
@@ -133,18 +137,14 @@ pub fn create_desktop_config() -> Config {
 /// Macro to launch the application with custom desktop configuration
 #[macro_export]
 macro_rules! launch_desktop {
-    ($app:expr) => {
-        {
-            // Initialize logging first (idempotent, safe to call multiple times)
-            $crate::init_logging();
+    ($app:expr) => {{
+        // Initialize logging first (idempotent, safe to call multiple times)
+        $crate::init_logging();
 
-            tracing::info!("Using custom desktop launcher configuration");
+        tracing::info!("Using custom desktop launcher configuration");
 
-            let config = $crate::create_desktop_config();
+        let config = $crate::create_desktop_config();
 
-            dioxus::LaunchBuilder::new()
-                .with_cfg(config)
-                .launch($app);
-        }
-    };
+        dioxus::LaunchBuilder::new().with_cfg(config).launch($app);
+    }};
 }

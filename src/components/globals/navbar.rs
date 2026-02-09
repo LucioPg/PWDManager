@@ -29,8 +29,7 @@ pub fn NavBar() -> Element {
         }
         Outlet::<Route> {}
         }
-    }
-    else {
+    } else {
         let nav_login = nav.clone();
         let nav_register = nav.clone();
         rsx! {

@@ -1,7 +1,6 @@
-
-use dioxus::prelude::*;
-use crate::backend::db_backend::{check_user, fetch_user_data};
 use crate::auth::AuthState;
+use crate::backend::db_backend::{check_user, fetch_user_data};
+use dioxus::prelude::*;
 use sqlx::SqlitePool;
 use tracing::{debug, instrument};
 #[component]
@@ -30,12 +29,10 @@ pub fn Login() -> Element {
                             auth_state.login(id, username, created_at, avatar);
                             let nav_dashboard = nav.clone();
                             nav_dashboard.push("/dashboard");
-                        },
-                        Err(e) => println!("Errore: {}", e)
+                        }
+                        Err(e) => println!("Errore: {}", e),
                     }
-
-
-                },
+                }
                 Err(e) => println!("Errore login: {e}"),
             }
         });
