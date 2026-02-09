@@ -688,11 +688,22 @@
   @apply rounded-full object-cover;
 }
 
-  avatar-sm { @apply w-8 h-8; }
-  avatar-md { @apply w-10 h-10; }
-  avatar-lg { @apply w-12 h-12; }
-  avatar-xl { @apply w-16 h-16; }
-  avatar-2xl { @apply w-24 h-24; }
+.avatar-sm {
+  @apply avatar;
+  @apply w-8 h-8;
+}
+.avatar-md {
+  @apply avatar;
+  @apply w-10 h-10; }
+.avatar-lg {
+  @apply avatar;
+  @apply w-12 h-12; }
+.avatar-xl {
+  @apply avatar;
+  @apply w-16 h-16; }
+.avatar-2xl {
+  @apply avatar;
+  @apply w-24 h-24; }
 
 @utility avatar-bordered {
   @apply rounded-full object-cover;
