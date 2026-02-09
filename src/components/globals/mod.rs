@@ -1,6 +1,6 @@
 mod action_buttons;
-mod avatar_selector;
 mod auth_wrapper;
+mod avatar_selector;
 mod form_field;
 pub mod navbar;
 pub mod pagenotfound;
@@ -9,8 +9,8 @@ pub mod stat_card;
 mod toasts;
 
 pub use action_buttons::*;
-pub use avatar_selector::*;
 pub use auth_wrapper::*;
+pub use avatar_selector::*;
 pub use form_field::*;
 pub use navbar::*;
 pub use pagenotfound::*;

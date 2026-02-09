@@ -1,6 +1,8 @@
 use crate::backend::db_backend::save_user;
 use crate::backend::utils::{get_user_avatar_with_default, scale_avatar};
-use crate::components::{ActionButtons, ActionButtonsVariant, AvatarSelector, AvatarSize, FormField, InputType};
+use crate::components::{
+    ActionButtons, ActionButtonsVariant, AvatarSelector, AvatarSize, FormField, InputType,
+};
 use dioxus::prelude::*;
 use rfd::FileDialog;
 use sqlx::SqlitePool;

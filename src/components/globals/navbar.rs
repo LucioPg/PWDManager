@@ -1,5 +1,5 @@
-use crate::components::{ActionButtons, ActionButtonsVariant};
 use crate::Route;
+use crate::components::{ActionButtons, ActionButtonsVariant};
 use dioxus::prelude::*;
 
 #[component]

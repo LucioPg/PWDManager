@@ -99,9 +99,24 @@ pub fn ActionButtons(
     #[props(default)] variant: ActionButtonsVariant,
 ) -> Element {
     let (primary_variant, secondary_variant, size, block) = match variant {
-        ActionButtonsVariant::Auth => (ButtonVariant::Primary, ButtonVariant::Secondary, ButtonSize::Normal, true),
-        ActionButtonsVariant::Nav => (ButtonVariant::Primary, ButtonVariant::Secondary, ButtonSize::Small, false),
-        ActionButtonsVariant::Ghost => (ButtonVariant::Ghost, ButtonVariant::Ghost, ButtonSize::Normal, false),
+        ActionButtonsVariant::Auth => (
+            ButtonVariant::Primary,
+            ButtonVariant::Secondary,
+            ButtonSize::Normal,
+            true,
+        ),
+        ActionButtonsVariant::Nav => (
+            ButtonVariant::Primary,
+            ButtonVariant::Secondary,
+            ButtonSize::Small,
+            false,
+        ),
+        ActionButtonsVariant::Ghost => (
+            ButtonVariant::Ghost,
+            ButtonVariant::Ghost,
+            ButtonSize::Normal,
+            false,
+        ),
     };
 
     rsx! {
@@ -128,7 +143,7 @@ pub fn ActionButtons(
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub enum ActionButtonsVariant {
     #[default]
-    Auth,   // Pulsanti di autenticazione (login/register)
-    Nav,    // Pulsanti di navigazione (navbar)
-    Ghost,  // Pulsanti ghost
+    Auth, // Pulsanti di autenticazione (login/register)
+    Nav,   // Pulsanti di navigazione (navbar)
+    Ghost, // Pulsanti ghost
 }

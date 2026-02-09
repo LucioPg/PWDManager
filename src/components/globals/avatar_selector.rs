@@ -4,9 +4,9 @@ use dioxus::prelude::*;
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub enum AvatarSize {
     #[default]
-    Medium,    // avatar-md (48px)
-    Large,     // avatar-lg (96px)
-    XLarge,    // avatar-xl (128px)
+    Medium, // avatar-md (48px)
+    Large,  // avatar-lg (96px)
+    XLarge, // avatar-xl (128px)
 }
 
 impl AvatarSize {
@@ -23,9 +23,9 @@ impl AvatarSize {
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub enum AvatarBorder {
     #[default]
-    Bordered,     // Bordo visibile
-    None,         // Nessun bordo
-    Circle,       // Bordo circolare
+    Bordered, // Bordo visibile
+    None,   // Nessun bordo
+    Circle, // Bordo circolare
 }
 
 impl AvatarBorder {
@@ -83,12 +83,9 @@ pub fn AvatarSelector(
     let shadow_class = if shadow { "shadow-lg" } else { "" };
 
     // Costruisci le classi CSS dinamicamente
-    let img_classes = format!(
-        "avatar {} {} {}",
-        size_class,
-        border_class,
-        shadow_class
-    ).trim().to_string();
+    let img_classes = format!("avatar {} {} {}", size_class, border_class, shadow_class)
+        .trim()
+        .to_string();
 
     let container_classes = if let Some(custom_class) = class {
         format!("flex flex-col items-center gap-3 mb-4 {}", custom_class)

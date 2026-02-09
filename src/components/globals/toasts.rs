@@ -96,7 +96,8 @@ pub fn add_toast(
     let mut state = state.clone();
     spawn(async move {
         tokio::time::sleep(std::time::Duration::from_secs(duration as u64)).await;
-        if let Some(toast) = state_transition.write()
+        if let Some(toast) = state_transition
+            .write()
             .messages
             .iter_mut()
             .find(|m| m.id == id)
