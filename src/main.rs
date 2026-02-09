@@ -2,7 +2,7 @@
 mod auth;
 mod backend;
 mod components;
-use crate::components::{AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, RegisterUser, RouteWrapper, Settings, ToastsState, ToastContainer, add_toast, ToastMessage};
+use crate::components::{AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, RegisterUser, RouteWrapper, Settings, ToastsState, ToastContainer, add_toast, ToastMessage, ToastType};
 use dioxus::prelude::*;
 use gui_launcher::launch_desktop;
 // use backend::{list_users, init_db};
@@ -31,7 +31,7 @@ fn App() -> Element {
             // Se il pool è pronto, lo forniamo al resto dell'app
             use_context_provider(|| pool.clone());
             let mut toast_state = use_context::<Signal<ToastsState>>();
-            add_toast("Caricamento database riuscito!".into(), 20, &mut toast_state);
+            add_toast("Caricamento database riuscito!".into(), ToastMessage::default().duration, ToastType::Success, &mut toast_state);
             rsx! {
                 // Carica il CSS di Tailwind globalmente
                 document::Style {"{TAILWIND_CSS}"}

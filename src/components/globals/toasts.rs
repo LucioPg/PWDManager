@@ -2,10 +2,19 @@ use std::default::Default;
 use dioxus::prelude::*;
 
 #[derive(Clone, PartialEq, Debug)]
+pub enum ToastType {
+    Success,
+    Error,
+    Warning,
+    Info,
+}
+
+#[derive(Clone, PartialEq, Debug)]
 pub struct ToastMessage {
     pub id: usize,
     pub message: String,
     pub duration: usize,
+    pub toast_type: ToastType
 }
 
 impl Default for ToastMessage {
@@ -14,6 +23,7 @@ impl Default for ToastMessage {
             id: Default::default(),
             message: Default::default(),
             duration: 3,
+            toast_type: ToastType::Info
         }
     }
 }
@@ -26,9 +36,9 @@ pub struct ToastsState {
 }
 
 impl ToastsState {
-    pub fn push(&mut self, message: String, duration: usize) -> usize{
+    pub fn push(&mut self, message: String, duration: usize, toast_type: ToastType) -> usize{
         let id = self.counter;
-        let toast = ToastMessage { id, message, duration };
+        let toast = ToastMessage { id, message, duration, toast_type };
         self.messages.push(toast);
         id
     }
@@ -41,12 +51,20 @@ impl ToastsState {
 #[component]
 pub fn ToastContainer() -> Element {
     let state = use_context::<Signal<ToastsState>>();
+    let toast_type = |ts: &ToastType| {
+        match ts {
+            ToastType::Success => "toast-success",
+            ToastType::Error => "toast-error",
+            ToastType::Warning => "toast-warning",
+            ToastType::Info => "toast-info",
+        }
+    };
     rsx! {
         div { class: "fixed bottom-4 right-4 z-9999 flex flex-col gap-2",
             for toast in state.read().messages.iter() {
                 div {
                     id: "{toast.id}",
-                    class: "bg-slate-800 text-white px-4 py-2 rounded shadow-lg animate-in fade-in slide-in-from-right-5",
+                    class: "{toast_type(&toast.toast_type)}",
                     "{toast.message}"
                 }
             }
@@ -54,8 +72,8 @@ pub fn ToastContainer() -> Element {
     }
 }
 
-pub fn add_toast(message: String, duration: usize, state: &mut Signal<ToastsState>) {
-    let id =state.write().push(message, duration);
+pub fn add_toast(message: String, duration: usize, toast_type: ToastType, state: &mut Signal<ToastsState>) {
+    let id =state.write().push(message, duration, toast_type);
     state.write().counter += 1;
     let mut state = state.clone();
     spawn(async move {
