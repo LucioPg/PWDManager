@@ -4,9 +4,10 @@ mod backend;
 mod components;
 use crate::components::{
     AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, RegisterUser,
-    RouteWrapper, Settings, ToastContainer, ToastMessage, ToastType, ToastsState, add_toast,
+    RouteWrapper, Settings, ToastContainer, ToastType, ToastsState, add_toast,
 };
 use dioxus::prelude::*;
+use dioxus_components::{Spinner, SpinnerSize};
 use gui_launcher::launch_desktop;
 // use backend::{list_users, init_db};
 use backend::db_backend::init_db;
@@ -70,8 +71,14 @@ fn App() -> Element {
             rsx! {
                 document::Style {"{TAILWIND_CSS}"}
                 document::Style {"{MAIN_CSS}"}
+                div {
+                    class: "flex gap-4 justify-center items-center h-screen",
+                    Spinner {
+                    size: SpinnerSize::Small,
+                    color: "text-success"
+                }
+                }
 
-                "SPINNER"
             }
         }
     }
