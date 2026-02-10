@@ -17,7 +17,7 @@ use tracing::instrument;
 
 #[component]
 #[instrument]
-pub fn RegisterUser(user_to_edit: Option<User>) -> Element {
+pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     let is_updating = user_to_edit.is_some();
     let user_id = user_to_edit
         .as_ref()

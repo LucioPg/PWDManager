@@ -3,7 +3,7 @@ mod auth;
 mod backend;
 mod components;
 use crate::components::{
-    AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, RegisterUser,
+    AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, UpsertUser,
     RouteWrapper, Settings, ToastContainer, ToastType, ToastsState, add_toast,
 };
 use dioxus::prelude::*;
@@ -121,7 +121,7 @@ enum Route {
     #[route("/login?:new_user")]
     Login { new_user: Option<bool> },
     #[route("/register")]
-    RegisterUser { user_to_edit: Option<User> },
+    UpsertUser { user_to_edit: Option<User> },
 
     #[route("/:..segments")]
     PageNotFound { segments: Vec<String> },
