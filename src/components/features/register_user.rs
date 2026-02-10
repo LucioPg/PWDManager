@@ -8,7 +8,19 @@ use tracing::instrument;
 
 #[component]
 #[instrument]
-pub fn RegisterUser() -> Element {
+pub fn RegisterUser(is_updating: Option<bool>) -> Element {
+    let header = if  Some(true) == is_updating {
+        "Settings"
+    }
+    else {
+        "Create Account"
+    };
+    let paragraph = if  Some(true) == is_updating {
+        "Update Your Profile"
+    }
+    else {
+        "Sign up to get started with your account"
+    };
     let mut username = use_signal(|| String::new());
     let mut password = use_signal(|| String::new());
     let mut repassword = use_signal(|| String::new());
@@ -72,8 +84,8 @@ pub fn RegisterUser() -> Element {
     rsx! {
         div { class: "page-centered",
             div { class: "auth-form-lg animate-scale-in",
-                h1 { class: "text-h2 text-center", "Create Account" }
-                p { class: "text-body mb-4 text-center", "Sign up to get started with your account" }
+                h1 { class: "text-h2 text-center", "{header}" }
+                p { class: "text-body mb-4 text-center", "{paragraph}" }
                 AvatarSelector {
                     avatar_src: get_user_avatar_with_default(selected_image.read().clone()),
                     on_pick: pick_image,

@@ -119,8 +119,8 @@ enum Route {
     #[end_layout(AuthWrapper)]
     #[route("/login?:new_user")]
     Login { new_user: Option<bool> },
-    #[route("/register")]
-    RegisterUser,
+    #[route("/register?:is_updating")]
+    RegisterUser { is_updating: Option<bool> },
 
     #[route("/:..segments")]
     PageNotFound { segments: Vec<String> },
