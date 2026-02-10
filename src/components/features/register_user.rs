@@ -1,15 +1,9 @@
 use crate::backend::db_backend::save_user;
-use crate::backend::utils::{get_user_avatar_with_default, scale_avatar};
-use crate::components::{
-    ActionButtons, ActionButtonsVariant, AvatarSelector, AvatarSize, FormField, InputType,
-};
+use crate::backend::utils::{get_user_avatar_with_default};
+use crate::backend::ui_utils::pick_and_process_avatar;
+use crate::components::{add_toast, ActionButtons, ActionButtonsVariant, AvatarSelector, AvatarSize, FormField, InputType, ToastType, ToastsState};
 use dioxus::prelude::*;
-
-use rfd::FileDialog;
 use sqlx::SqlitePool;
-use std::fs;
-use std::path::Path;
-use tokio::task::spawn_blocking;
 use tracing::instrument;
 
 #[component]
@@ -19,60 +13,16 @@ pub fn RegisterUser() -> Element {
     let mut password = use_signal(|| String::new());
     let mut repassword = use_signal(|| String::new());
     let selected_image = use_signal(|| None::<Vec<u8>>);
-    let mut _error = use_signal(|| Option::<String>::None);
+    let mut toast_state = use_context::<Signal<ToastsState>>();
+    let mut error = use_signal(|| Option::<String>::None);
     let mut is_loading = use_signal(|| false);
     let pool = use_context::<SqlitePool>();
     let nav = use_navigator();
     let pick_image = move |_evt: MouseEvent| {
-        let mut err_signal = _error;
+        let mut err_signal = error;
         let mut img_signal = selected_image;
         let mut is_loading_signal = is_loading;
-        spawn(async move {
-            let file = FileDialog::new()
-                .add_filter("Image Files", &["png", "jpg", "jpeg"])
-                .set_directory("/")
-                .pick_file();
-
-            if let Some(path) = file {
-                if !Path::new(&path).exists() {
-                    println!("File non trovato");
-                    err_signal.set(Some("File non trovato".to_string()));
-                    return;
-                }
-                if let Ok(bytes) = fs::read(path) {
-                    match bytes {
-                        bytes if !bytes.is_empty() => {
-                            is_loading_signal.set(true);
-                            let bytes_cloned = bytes.to_vec();
-
-                            let scaled = spawn_blocking(move || scale_avatar(&bytes_cloned.as_slice())).await;
-                            match scaled {
-                                Ok(Ok(scaled)) => {
-                                    println!("Avatar scaled successfully");
-                                    img_signal.set(Some(scaled));
-                                    is_loading_signal.set(false);
-                                }
-                                Ok(Err(e)) => {
-                                    println!("Errore scaling avatar: {}", e);
-                                    err_signal.set(Some(format!("Errore scaling avatar: {}", e)));
-                                    is_loading_signal.set(false);
-                                    return;}
-                                Err(e) => {
-                                    println!("Errore Thread scale avatar: {}", e);
-                                    err_signal.set(Some(format!("Errore thread scaling avatar: {}", e)));
-                                    is_loading_signal.set(false);
-                                    return;
-                                }
-                            }
-                        }
-                        _ => {
-                            err_signal.set(Some("File vuoto, fallback to default".to_string()));
-                            return;
-                        }
-                    }
-                }
-            }
-        });
+        spawn(pick_and_process_avatar(img_signal, is_loading_signal, err_signal));
     };
 
     let on_submit = move |_| {
@@ -92,15 +42,34 @@ pub fn RegisterUser() -> Element {
                     }
                     Err(e) => {
                         println!("Errore: {}", e.clone());
-                        _error.set(Some(e.to_string()));
+                        error.set(Some(format!("Error saving user: {}", e.to_string())));
                     }
                 }
             });
         } else {
-            _error.set(Some("Le password non coincidono".to_string()));
-            println!("Le password non coincidono")
+            error.set(Some("Passwords do not match!".to_string()));
+            println!("Le password non coincidono");
         }
     };
+
+    use_effect(move || {
+        // 1. Leggiamo il valore attuale del segnale (crea la sottoscrizione)
+        let mut this_error = error.clone();
+        if let Some(msg) = this_error() {
+            // 2. Lanciamo il toast usando la tua funzione specifica
+            println!("TOAST Errore: {}", msg);
+            add_toast(
+                format!("Error saving user: {}", msg),
+                4,
+                ToastType::Error,
+                &mut toast_state,
+            );
+
+            // 3. OPZIONALE: Resettiamo l'errore subito dopo averlo mostrato
+            // per evitare che il toast riappaia se il componente si ri-renderizza
+            this_error.set(None);
+        }
+    });
 
     rsx! {
         div { class: "page-centered",
