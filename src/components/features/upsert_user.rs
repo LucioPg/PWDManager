@@ -26,7 +26,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     let mut header: &str;
     let mut paragraph: &str;
     if is_updating {
-        header = "Settings";
+        header = "Account Settings";
         paragraph = "Update Your Profile";
     } else {
         header = "Create Account";

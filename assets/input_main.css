@@ -984,7 +984,10 @@
 /* ============================================================
    SETTINGS COMPONENTS
    ============================================================ */
-@utility settings-card {
+.settings-page-body {
+    @apply flex items-center justify-center;
+}
+.settings-card {
   @apply bg-white rounded-xl border border-neutral-200 shadow-sm mb-6 overflow-hidden;
 }
 
