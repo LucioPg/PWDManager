@@ -1,8 +1,10 @@
-
-use crate::components::{ActionButton, AvatarSize, AvatarSelector, ButtonSize, ButtonType, ButtonVariant, FormField, InputType, ToastsState};
-use dioxus::prelude::*;
 use crate::backend::ui_utils::pick_and_process_avatar;
-use crate::backend::utils::{get_user_avatar_with_default};
+use crate::backend::utils::get_user_avatar_with_default;
+use crate::components::{
+    ActionButton, AvatarSelector, AvatarSize, ButtonSize, ButtonType, ButtonVariant, FormField,
+    InputType, ToastsState,
+};
+use dioxus::prelude::*;
 #[component]
 pub fn Settings() -> Element {
     let mut auth_state = use_context::<crate::auth::AuthState>();
@@ -19,22 +21,25 @@ pub fn Settings() -> Element {
     };
     let mut new_username_clone = new_username.clone();
     let original_username_clone = original_username.clone();
-    let mut on_abort =move || {
+    let mut on_abort = move || {
         new_username_clone.set(original_username.clone());
         println!("Abort ");
     };
 
-    let is_save_disabled_signal = use_signal(move || {
-       false
-    });
+    let is_save_disabled_signal = use_signal(move || false);
     let pick_image = move |_evt: MouseEvent| {
         let mut err_signal = error;
         let mut img_signal = selected_image;
         let mut is_loading_signal = is_loading;
-        spawn(pick_and_process_avatar(img_signal, is_loading_signal, err_signal));
+        spawn(pick_and_process_avatar(
+            img_signal,
+            is_loading_signal,
+            err_signal,
+        ));
     };
 
     use_memo(move || {
+        // forse va rimosso altrimenti impedisce di salvare se non si cambia anche l'username
         let mut is_save_disabled_signal_clone = is_save_disabled_signal.clone();
         let dis = new_username.clone().to_string() == original_username_clone.clone();
         println!("is_save_disabled_signal: {dis}");

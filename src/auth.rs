@@ -1,11 +1,12 @@
 use crate::backend::utils::{format_avatar_url, get_user_avatar_with_default};
 use dioxus::prelude::*;
 
-struct User {
-    id: i32,
-    username: String,
+#[derive(Clone, PartialEq, Debug)]
+pub struct User {
+    pub id: i32,
+    pub username: String,
     created_at: String,
-    avatar: String,
+    pub avatar: String,
 }
 
 #[derive(Clone)]
@@ -62,5 +63,10 @@ impl AuthState {
             Some(user) => user.username = username,
             None => {}
         }
+    }
+
+    pub fn get_user(&self) -> Option<User> {
+        let user = self.user.read().clone();
+        user
     }
 }

@@ -10,6 +10,7 @@ use dioxus::prelude::*;
 use dioxus_components::{Spinner, SpinnerSize};
 use gui_launcher::launch_desktop;
 // use backend::{list_users, init_db};
+use crate::auth::User;
 use backend::db_backend::init_db;
 // use components::{login, navbar, settings, dashboard};
 
@@ -54,7 +55,8 @@ fn App() -> Element {
                 );
             }
             None => {}
-        }});
+        }
+    });
 
     match &*resource_value {
         Some(Ok(pool)) => {
@@ -95,7 +97,6 @@ fn App() -> Element {
             }
         }
     }
-
 }
 fn main() {
     // Nota: il logging viene inizializzato automaticamente nel launcher
@@ -119,8 +120,8 @@ enum Route {
     #[end_layout(AuthWrapper)]
     #[route("/login?:new_user")]
     Login { new_user: Option<bool> },
-    #[route("/register?:is_updating")]
-    RegisterUser { is_updating: Option<bool> },
+    #[route("/register")]
+    RegisterUser { user_to_edit: Option<User> },
 
     #[route("/:..segments")]
     PageNotFound { segments: Vec<String> },

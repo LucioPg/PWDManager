@@ -1,30 +1,52 @@
-use crate::backend::db_backend::save_user;
-use crate::backend::utils::{get_user_avatar_with_default};
+use crate::auth::User;
+use crate::backend::db_backend::save_or_update_user;
 use crate::backend::ui_utils::pick_and_process_avatar;
-use crate::components::{add_toast, ActionButtons, ActionButtonsVariant, AvatarSelector, AvatarSize, FormField, InputType, ToastType, ToastsState};
+use crate::backend::utils::get_user_avatar_with_default;
+use crate::components::{
+    ActionButtons, ActionButtonsVariant, AvatarSelector, AvatarSize, FormField, InputType,
+    ToastType, ToastsState, add_toast,
+};
 use dioxus::prelude::*;
 use sqlx::SqlitePool;
 use tracing::instrument;
 
+// #[derive(Props, Clone, PartialEq, Debug, Default)]
+// pub struct UserFormProps {
+//     pub user_to_edit: Option<User>,
+// }
+
 #[component]
 #[instrument]
-pub fn RegisterUser(is_updating: Option<bool>) -> Element {
-    let header = if  Some(true) == is_updating {
-        "Settings"
-    }
-    else {
-        "Create Account"
+pub fn RegisterUser(user_to_edit: Option<User>) -> Element {
+    let is_updating = user_to_edit.is_some();
+    let user_id = user_to_edit
+        .as_ref()
+        .map(|u| Some(u.id.clone()))
+        .unwrap_or_else(|| None);
+    let mut header: &str;
+    let mut paragraph: &str;
+    if is_updating {
+        header = "Settings";
+        paragraph = "Update Your Profile";
+    } else {
+        header = "Create Account";
+        paragraph = "Sign up to get started with your account";
     };
-    let paragraph = if  Some(true) == is_updating {
-        "Update Your Profile"
-    }
-    else {
-        "Sign up to get started with your account"
-    };
-    let mut username = use_signal(|| String::new());
+    let mut username = use_signal(|| {
+        user_to_edit
+            .as_ref()
+            .map(|u| u.username.clone())
+            .unwrap_or_else(|| String::new())
+    });
     let mut password = use_signal(|| String::new());
     let mut repassword = use_signal(|| String::new());
-    let selected_image = use_signal(|| None::<Vec<u8>>);
+    let avatar = use_signal(|| {
+        user_to_edit
+            .as_ref()
+            .map(|u| u.avatar.clone())
+            .unwrap_or_else(|| "".to_string())
+    });
+    let new_avatar = use_signal(|| None::<Vec<u8>>);
     let mut toast_state = use_context::<Signal<ToastsState>>();
     let mut error = use_signal(|| Option::<String>::None);
     let mut is_loading = use_signal(|| false);
@@ -32,26 +54,34 @@ pub fn RegisterUser(is_updating: Option<bool>) -> Element {
     let nav = use_navigator();
     let pick_image = move |_evt: MouseEvent| {
         let mut err_signal = error;
-        let mut img_signal = selected_image;
+        let mut img_signal = new_avatar;
         let mut is_loading_signal = is_loading;
-        spawn(pick_and_process_avatar(img_signal, is_loading_signal, err_signal));
+        spawn(pick_and_process_avatar(
+            img_signal,
+            is_loading_signal,
+            err_signal,
+        ));
     };
-
+    let mut avatar_writer = avatar.clone();
+    use_memo(move || {
+        if let Some(img) = new_avatar.read().clone() {
+            avatar_writer.set(get_user_avatar_with_default(Some(img)))
+        }
+    });
     let on_submit = move |_| {
         let pool = pool.clone();
         let u = username.read().clone();
         let p = password.read().clone();
         let rp = repassword.read().clone();
-        let a = selected_image.read().clone();
+        let a = new_avatar.read().clone();
         if p == rp {
             spawn(async move {
                 // La tua funzione check_user ora ha il pool!
-                let result = save_user(&pool, u, p, a).await;
+                let result = save_or_update_user(&pool, user_id, u, p, a).await;
                 match result {
-                    Ok(_) => {
+                    Ok(()) => {
                         println!("Successo!");
                         nav.push("/login?new_user=true");
-
                     }
                     Err(e) => {
                         error.set(Some(format!("Error saving user: {}", e.to_string())));
@@ -84,10 +114,10 @@ pub fn RegisterUser(is_updating: Option<bool>) -> Element {
     rsx! {
         div { class: "page-centered",
             div { class: "auth-form-lg animate-scale-in",
-                h1 { class: "text-h2 text-center", "{header}" }
-                p { class: "text-body mb-4 text-center", "{paragraph}" }
+                h1 { class: "text-h2 text-center", "{&header}" }
+                p { class: "text-body mb-4 text-center", "{&paragraph}" }
                 AvatarSelector {
-                    avatar_src: get_user_avatar_with_default(selected_image.read().clone()),
+                    avatar_src: avatar.read().clone(),
                     on_pick: pick_image,
                     button_text: "Select Avatar".to_string(),
                     size: AvatarSize::XXLarge,
