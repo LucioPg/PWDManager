@@ -23,8 +23,10 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         .as_ref()
         .map(|u| Some(u.id.clone()))
         .unwrap_or_else(|| None);
-    let mut header: &str;
-    let mut paragraph: &str;
+    let header: &str;
+    let paragraph: &str;
+    let class_container = if is_updating { "auth-form-tabbed" } else { "auth-form-lg" };
+    let submit_btn_text = if is_updating { "Update" } else { "Register" };
     if is_updating {
         header = "Account Settings";
         paragraph = "Update Your Profile";
@@ -113,8 +115,8 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
 
     rsx! {
         div { class: "page-centered",
-            div { class: "auth-form-lg animate-scale-in",
-                h1 { class: "text-h2 text-center", "{&header}" }
+            div { class: "{class_container} animate-scale-in",
+                h1 { class: "text-h3 text-center", "{&header}" }
                 p { class: "text-body mb-4 text-center", "{&paragraph}" }
                 AvatarSelector {
                     avatar_src: avatar.read().clone(),
@@ -151,7 +153,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                         required: true,
                     }
                     ActionButtons {
-                        primary_text: "Register".to_string(),
+                        primary_text: "{submit_btn_text}",
                         secondary_text: "Login".to_string(),
                         primary_on_click: move |_| {}, // Gestito dal form onsubmit
                         secondary_on_click: move |_| { nav.push("/login"); },
