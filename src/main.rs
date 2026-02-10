@@ -29,18 +29,37 @@ fn App() -> Element {
     use_context_provider(|| Signal::new(ToastsState::default()));
     // Il resource ora conterrà un Result
     let mut db_resource = use_resource(move || async move { init_db().await });
+
     let resource_value = db_resource.read();
     let mut toast_state = use_context::<Signal<ToastsState>>();
+    use_effect(move || {
+        let db_resource_clone = db_resource.clone();
+
+        match &*db_resource_clone.read() {
+            Some(Ok(pool)) => {
+                add_toast(
+                    "Caricamento database riuscito!".into(),
+                    6,
+                    ToastType::Success,
+                    &mut toast_state,
+                );
+            }
+            Some(Err(e)) => {
+                // Mostriamo l'errore all'utente in modo elegante
+                add_toast(
+                    "Caricamento database Fallito!".into(),
+                    6,
+                    ToastType::Error,
+                    &mut toast_state,
+                );
+            }
+            None => {}
+        }});
+
     match &*resource_value {
         Some(Ok(pool)) => {
             // Se il pool è pronto, lo forniamo al resto dell'app
             use_context_provider(|| pool.clone());
-            add_toast(
-                "Caricamento database riuscito!".into(),
-                6,
-                ToastType::Success,
-                &mut toast_state,
-            );
             rsx! {
                 // Carica il CSS di Tailwind globalmente
                 document::Style {"{TAILWIND_CSS}"}
@@ -51,12 +70,6 @@ fn App() -> Element {
         }
         Some(Err(e)) => {
             // Mostriamo l'errore all'utente in modo elegante
-            add_toast(
-                "Caricamento database Fallito!".into(),
-                6,
-                ToastType::Error,
-                &mut toast_state,
-            );
             rsx! {
                 document::Style {"{TAILWIND_CSS}"}
                 document::Style {"{MAIN_CSS}"}
@@ -82,6 +95,7 @@ fn App() -> Element {
             }
         }
     }
+
 }
 fn main() {
     // Nota: il logging viene inizializzato automaticamente nel launcher
