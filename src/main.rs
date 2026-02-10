@@ -41,7 +41,7 @@ fn App() -> Element {
                     "Caricamento database riuscito!".into(),
                     6,
                     ToastType::Success,
-                    &mut toast_state,
+                    toast_state,
                 );
             }
             Some(Err(e)) => {
@@ -50,7 +50,7 @@ fn App() -> Element {
                     "Caricamento database Fallito!".into(),
                     6,
                     ToastType::Error,
-                    &mut toast_state,
+                    toast_state,
                 );
             }
             None => {}

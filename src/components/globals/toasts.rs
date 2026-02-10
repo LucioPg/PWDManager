@@ -87,23 +87,26 @@ pub fn add_toast(
     message: String,
     duration: usize,
     toast_type: ToastType,
-    state: &mut Signal<ToastsState>,
+    mut state: Signal<ToastsState>,
 ) {
-    let mut state_transition = state.clone();
-    let id = state.write().push(message, duration, toast_type);
-    state.write().counter += 1;
+    let id = {
+        let mut s = state.write();
+        let new_id = s.push(message, duration, toast_type);
+        s.counter += 1;
+        new_id
+    };
 
     let mut state = state.clone();
     spawn(async move {
         tokio::time::sleep(std::time::Duration::from_secs(duration as u64)).await;
-        if let Some(toast) = state_transition
-            .write()
-            .messages
-            .iter_mut()
-            .find(|m| m.id == id)
+
         {
-            toast.is_leaving = true;
+            let mut s = state.write();
+            if let Some(toast) = s.messages.iter_mut().find(|m| m.id == id) {
+                toast.is_leaving = true;
+            }
         }
+
         tokio::time::sleep(std::time::Duration::from_secs(duration as u64)).await;
         state.write().remove(id);
     });
