@@ -51,6 +51,7 @@ pub fn Login(new_user: Option<bool>) -> Element {
                 ToastType::Success,
                 toast_state,
             );
+            nav.replace(Route::Login { new_user: None });
         }
         if let Some(msg) = error.read().clone() {
             add_toast(msg.to_string(), 4, ToastType::Error, toast_state);
