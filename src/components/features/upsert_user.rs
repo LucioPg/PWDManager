@@ -23,16 +23,9 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         .as_ref()
         .map(|u| Some(u.id.clone()))
         .unwrap_or_else(|| None);
-    let header: &str;
-    let paragraph: &str;
-    let class_container = if is_updating { "auth-form-tabbed" } else { "auth-form-lg" };
-    let submit_btn_text = if is_updating { "Update" } else { "Register" };
-    if is_updating {
-        header = "Account Settings";
-        paragraph = "Update Your Profile";
-    } else {
-        header = "Create Account";
-        paragraph = "Sign up to get started with your account";
+    let (header, paragraph, class_container, submit_btn_text, password_required) = match is_updating {
+        true => ("Account Settings", "Update Your Profile", "auth-form-tabbed", "Update", false),
+        false => ("Create Account", "Sign up to get started", "auth-form-lg", "Register", true),
     };
     let mut username = use_signal(|| {
         user_to_edit
@@ -79,7 +72,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         if p == rp {
             spawn(async move {
                 // La tua funzione check_user ora ha il pool!
-                let result = save_or_update_user(&pool, user_id, u, p, a).await;
+                let result = save_or_update_user(&pool, user_id, u, Some(p), a).await;
                 match result {
                     Ok(()) => {
                         println!("Successo!");
@@ -142,7 +135,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                         placeholder: "Create a password".to_string(),
                         value: password,
                         name: Some("password".to_string()),
-                        required: true,
+                        required: password_required,
                     }
                     FormField {
                         label: "Confirm Password".to_string(),
@@ -150,7 +143,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                         placeholder: "Confirm your password".to_string(),
                         value: repassword,
                         name: Some("repassword".to_string()),
-                        required: true,
+                        required: password_required,
                     }
                     ActionButtons {
                         primary_text: "{submit_btn_text}",

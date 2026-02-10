@@ -18,6 +18,9 @@ fn generate_salt() -> SaltString {
 }
 
 pub fn encrypt(text: &str) -> Result<String, EncryptionError> {
+    if text.trim().is_empty() {
+        return Err(EncryptionError::new_encryption_error("The password cannot be empty".to_string()));
+    }
     let salt = generate_salt();
     let password = text.as_bytes();
     let argon2 = Argon2::default();
