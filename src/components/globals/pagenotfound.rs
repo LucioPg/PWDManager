@@ -11,7 +11,7 @@ pub fn PageNotFound(segments: Vec<String>) -> Element {
             p { class: "text-body mb-8", "The page you're looking for doesn't exist or has been moved." }
             button {
                 class: "btn-primary",
-                onclick: move |_| {nav.push(Route::Login);},
+                onclick: move |_| {nav.push(Route::Login {new_user: None});},
                 "Go Home"
             }
         }

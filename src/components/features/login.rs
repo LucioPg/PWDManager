@@ -1,15 +1,18 @@
 use crate::auth::AuthState;
 use crate::backend::db_backend::{check_user, fetch_user_data};
-use crate::components::{ActionButtons, ActionButtonsVariant, FormField, InputType};
+use crate::components::{add_toast, ActionButtons, ActionButtonsVariant, FormField, InputType, ToastType, ToastsState};
 use dioxus::prelude::*;
 use sqlx::SqlitePool;
 use tracing::{debug, instrument};
+use crate::Route;
+
 #[component]
 #[instrument]
-pub fn Login() -> Element {
+pub fn Login(new_user: Option<bool>) -> Element {
     let mut username = use_signal(|| String::new());
     let mut password = use_signal(|| String::new());
-    let mut _error = use_signal(|| Option::<String>::None);
+    let mut error= use_signal(|| Option::<String>::None);
+    let mut toast_state = use_context::<Signal<ToastsState>>();
     let nav = use_navigator();
     let pool = use_context::<SqlitePool>();
     let auth_state = use_context::<AuthState>();
@@ -31,14 +34,32 @@ pub fn Login() -> Element {
                             let nav_dashboard = nav.clone();
                             nav_dashboard.push("/dashboard");
                         }
-                        Err(e) => println!("Errore: {}", e),
+                        Err(e) => error.set(Some(format!("Errore: {}", e))),
                     }
                 }
-                Err(e) => println!("Errore login: {e}"),
+                Err(e) => error.set(Some(format!("Errore login: {}", e)))
             }
         });
     };
-
+    use_effect(move || {
+        if Some(true) == new_user {
+            add_toast(
+                "User Registerd successfully!".to_string(),
+                3,
+                ToastType::Success,
+                toast_state,
+            );
+        }
+        if let Some(msg) = error.read().clone() {
+            add_toast(
+                msg.to_string(),
+                4,
+                ToastType::Error,
+                toast_state,
+            );
+            nav.replace(Route::Login { new_user: None });
+        }
+    });
     rsx! {
         div { class: "page-centered",
             div { class: "auth-form animate-scale-in",

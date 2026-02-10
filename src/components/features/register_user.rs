@@ -38,17 +38,16 @@ pub fn RegisterUser() -> Element {
                 match result {
                     Ok(_) => {
                         println!("Successo!");
-                        nav.push("/login");
+                        nav.push("/login?new_user=true");
+
                     }
                     Err(e) => {
-                        println!("Errore: {}", e.clone());
                         error.set(Some(format!("Error saving user: {}", e.to_string())));
                     }
                 }
             });
         } else {
             error.set(Some("Passwords do not match!".to_string()));
-            println!("Le password non coincidono");
         }
     };
 
@@ -57,12 +56,11 @@ pub fn RegisterUser() -> Element {
         let mut this_error = error.clone();
         if let Some(msg) = this_error() {
             // 2. Lanciamo il toast usando la tua funzione specifica
-            println!("TOAST Errore: {}", msg);
             add_toast(
                 format!("Error saving user: {}", msg),
                 4,
                 ToastType::Error,
-                &mut toast_state,
+                toast_state,
             );
 
             // 3. OPZIONALE: Resettiamo l'errore subito dopo averlo mostrato

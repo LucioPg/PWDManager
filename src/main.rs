@@ -117,8 +117,8 @@ enum Route {
     #[route("/settings")]
     Settings,
     #[end_layout(AuthWrapper)]
-    #[route("/login")]
-    Login,
+    #[route("/login?:new_user")]
+    Login { new_user: Option<bool> },
     #[route("/register")]
     RegisterUser,
 
