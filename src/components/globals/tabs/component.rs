@@ -66,7 +66,6 @@ impl TabsVariant {
 #[component]
 pub fn Tabs(props: TabsProps) -> Element {
     rsx! {
-        document::Link { rel: "stylesheet", href: asset!("./style.css") }
         tabs::Tabs {
             class: props.class + " tabs",
             "data-variant": props.variant.to_class(),
@@ -108,7 +107,7 @@ pub fn TabTrigger(props: TabTriggerProps) -> Element {
 pub fn TabContent(props: TabContentProps) -> Element {
     rsx! {
         tabs::TabContent {
-            class: props.class.unwrap_or_default() + " tabs-content tabs-content-themed",
+            class: props.class.unwrap_or_default() + " tabs-content",
             value: props.value,
             id: props.id,
             index: props.index,
