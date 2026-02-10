@@ -56,4 +56,11 @@ impl AuthState {
             None => "".to_string(),
         }
     }
+
+    pub fn set_username(&mut self, username: String) {
+        match &mut *self.user.write() {
+            Some(user) => user.username = username,
+            None => {}
+        }
+    }
 }

@@ -62,6 +62,7 @@ pub fn ActionButton(
     #[props(default)] size: ButtonSize,
     #[props(default)] block: bool,
     #[props(default)] button_type: ButtonType,
+    #[props(default)] disabled: Signal<bool>,
     on_click: EventHandler<MouseEvent>,
 ) -> Element {
     let size_suffix = size.as_suffix();
@@ -78,12 +79,14 @@ pub fn ActionButton(
     } else {
         base_classes
     };
-
+    // let is_disabled: bool = (*disabled.read()).into();
     rsx! {
+
         button {
             class: "{classes}",
             r#type: "{button_type.as_str()}",
             onclick: on_click,
+            disabled: if *disabled.read() { true } else { false },
             "{text}"
         }
     }
@@ -96,7 +99,8 @@ pub fn ActionButtons(
     secondary_text: String,
     primary_on_click: EventHandler<MouseEvent>,
     secondary_on_click: EventHandler<MouseEvent>,
-    #[props(default)] variant: ActionButtonsVariant,
+    #[props(default)]
+    variant: ActionButtonsVariant,
 ) -> Element {
     let (primary_variant, secondary_variant, size, block) = match variant {
         ActionButtonsVariant::Auth => (
