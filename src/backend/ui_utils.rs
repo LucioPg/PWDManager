@@ -1,9 +1,9 @@
+use crate::backend::utils::{get_user_avatar_with_default, scale_avatar};
 use dioxus::prelude::*; // o i tuoi import specifici
 use rfd::FileDialog;
-use std::path::Path;
 use std::fs;
+use std::path::Path;
 use tokio::task::spawn_blocking;
-use crate::backend::utils::scale_avatar;
 
 pub async fn pick_and_process_avatar(
     mut img_signal: Signal<Option<Vec<u8>>>,
@@ -36,7 +36,7 @@ pub async fn pick_and_process_avatar(
 
         match scaled_result {
             Ok(Ok(scaled)) => {
-                img_signal.set(Some(scaled));
+                img_signal.set((Some(scaled)));
             }
             Ok(Err(e)) => {
                 err_signal.set(Some(format!("Errore scaling: {}", e)));

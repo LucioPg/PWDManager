@@ -33,22 +33,42 @@ pub async fn init_db() -> Result<SqlitePool, DBError> {
     Ok(pool)
 }
 
-pub async fn save_user(
+pub async fn save_or_update_user(
     pool: &SqlitePool,
+    id: Option<i32>, // Se Some, fa l'UPDATE. Se None, fa l'INSERT.
     username: String,
     password: String,
     avatar: Option<Vec<u8>>,
-) -> dioxus::Result<()> {
-    debug!("Attempting to save user credentials to database");
+) -> Result<(), DBError> {
+    debug!("Attempting to save/update user credentials");
+
+    // 1. Criptazione comune a entrambi i casi
     let hash_password = crate::backend::utils::encrypt(&password)
-        .map_err(|e| DBError::new_save_error(format!("Failed to encrypt password: {}", e)))?;
-    let _ = query("INSERT INTO users (username, password, avatar) VALUES (?, ?, ?)")
-        .bind(username)
-        .bind(hash_password)
-        .bind(avatar)
-        .execute(pool)
-        .await
-        .map_err(|e| DBError::new_save_error(format!("Failed to save user credentials: {}", e)))?;
+        .map_err(|e| DBError::new_save_error(format!("Failed to encrypt: {}", e)))?;
+
+    match id {
+        // --- CASO UPDATE ---
+        Some(user_id) => {
+            sqlx::query("UPDATE users SET username = ?, password = ?, avatar = ? WHERE id = ?")
+                .bind(username)
+                .bind(hash_password)
+                .bind(avatar)
+                .bind(user_id)
+                .execute(pool)
+                .await
+                .map_err(|e| DBError::new_save_error(format!("Update failed: {}", e)))?;
+        }
+        // --- CASO INSERT ---
+        None => {
+            sqlx::query("INSERT INTO users (username, password, avatar) VALUES (?, ?, ?)")
+                .bind(username)
+                .bind(hash_password)
+                .bind(avatar)
+                .execute(pool)
+                .await
+                .map_err(|e| DBError::new_save_error(format!("Insert failed: {}", e)))?;
+        }
+    }
 
     Ok(())
 }

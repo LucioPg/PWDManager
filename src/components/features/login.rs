@@ -1,17 +1,19 @@
+use crate::Route;
 use crate::auth::AuthState;
 use crate::backend::db_backend::{check_user, fetch_user_data};
-use crate::components::{add_toast, ActionButtons, ActionButtonsVariant, FormField, InputType, ToastType, ToastsState};
+use crate::components::{
+    ActionButtons, ActionButtonsVariant, FormField, InputType, ToastType, ToastsState, add_toast,
+};
 use dioxus::prelude::*;
 use sqlx::SqlitePool;
 use tracing::{debug, instrument};
-use crate::Route;
 
 #[component]
 #[instrument]
 pub fn Login(new_user: Option<bool>) -> Element {
     let mut username = use_signal(|| String::new());
     let mut password = use_signal(|| String::new());
-    let mut error= use_signal(|| Option::<String>::None);
+    let mut error = use_signal(|| Option::<String>::None);
     let mut toast_state = use_context::<Signal<ToastsState>>();
     let nav = use_navigator();
     let pool = use_context::<SqlitePool>();
@@ -37,7 +39,7 @@ pub fn Login(new_user: Option<bool>) -> Element {
                         Err(e) => error.set(Some(format!("Errore: {}", e))),
                     }
                 }
-                Err(e) => error.set(Some(format!("Errore login: {}", e)))
+                Err(e) => error.set(Some(format!("Errore login: {}", e))),
             }
         });
     };
@@ -51,12 +53,7 @@ pub fn Login(new_user: Option<bool>) -> Element {
             );
         }
         if let Some(msg) = error.read().clone() {
-            add_toast(
-                msg.to_string(),
-                4,
-                ToastType::Error,
-                toast_state,
-            );
+            add_toast(msg.to_string(), 4, ToastType::Error, toast_state);
             nav.replace(Route::Login { new_user: None });
         }
     });

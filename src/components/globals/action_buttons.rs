@@ -99,8 +99,7 @@ pub fn ActionButtons(
     secondary_text: String,
     primary_on_click: EventHandler<MouseEvent>,
     secondary_on_click: EventHandler<MouseEvent>,
-    #[props(default)]
-    variant: ActionButtonsVariant,
+    #[props(default)] variant: ActionButtonsVariant,
 ) -> Element {
     let (primary_variant, secondary_variant, size, block) = match variant {
         ActionButtonsVariant::Auth => (
