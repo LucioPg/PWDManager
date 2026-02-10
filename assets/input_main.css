@@ -666,13 +666,13 @@
   @apply w-10 h-10; }
 .avatar-lg {
   @apply avatar;
-  @apply w-12 h-12; }
+  @apply w-16 h-16; }
 .avatar-xl {
   @apply avatar;
-  @apply w-16 h-16; }
+  @apply w-24 h-24; }
 .avatar-2xl {
   @apply avatar;
-  @apply w-24 h-24; }
+  @apply w-32 h-32; }
 
 @utility avatar-bordered {
   @apply rounded-full object-cover;

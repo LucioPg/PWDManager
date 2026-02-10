@@ -8,6 +8,7 @@ pub enum AvatarSize {
     Medium, // avatar-md (48px)
     Large,  // avatar-lg (96px)
     XLarge, // avatar-xl (128px)
+    XXLarge // avatar-xl (256px)
 }
 
 impl AvatarSize {
@@ -16,6 +17,7 @@ impl AvatarSize {
             AvatarSize::Medium => "avatar-md",
             AvatarSize::Large => "avatar-lg",
             AvatarSize::XLarge => "avatar-xl",
+            AvatarSize::XXLarge => "avatar-2xl",
         }
     }
 }

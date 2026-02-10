@@ -1,13 +1,18 @@
-use dioxus::html::textarea::disabled;
-use crate::components::{ActionButton, ActionButtonsVariant, ButtonSize, ButtonType, ButtonVariant, FormField, InputType};
-use dioxus::prelude::*;
 
+use crate::components::{ActionButton, AvatarSize, AvatarSelector, ButtonSize, ButtonType, ButtonVariant, FormField, InputType, ToastsState};
+use dioxus::prelude::*;
+use crate::backend::ui_utils::pick_and_process_avatar;
+use crate::backend::utils::{get_user_avatar_with_default};
 #[component]
 pub fn Settings() -> Element {
     let mut auth_state = use_context::<crate::auth::AuthState>();
     let original_username = auth_state.get_username();
     let new_username = use_signal(|| original_username.clone());
     let new_username_string = new_username.read().clone();
+    let selected_image = use_signal(|| None::<Vec<u8>>);
+    let mut toast_state = use_context::<Signal<ToastsState>>();
+    let mut error = use_signal(|| Option::<String>::None);
+    let mut is_loading = use_signal(|| false);
     let on_submit = move || {
         let new_username_string_clone = new_username_string.clone();
         println!("Submit {new_username_string_clone}");
@@ -22,6 +27,12 @@ pub fn Settings() -> Element {
     let is_save_disabled_signal = use_signal(move || {
        false
     });
+    let pick_image = move |_evt: MouseEvent| {
+        let mut err_signal = error;
+        let mut img_signal = selected_image;
+        let mut is_loading_signal = is_loading;
+        spawn(pick_and_process_avatar(img_signal, is_loading_signal, err_signal));
+    };
 
     use_memo(move || {
         let mut is_save_disabled_signal_clone = is_save_disabled_signal.clone();
@@ -41,6 +52,15 @@ pub fn Settings() -> Element {
                     }
                     div { class: "p-6",
                         form { class: "flex flex-col gap-6",
+                            AvatarSelector {
+                                avatar_src: get_user_avatar_with_default(selected_image.read().clone()),
+                                on_pick: pick_image,
+                                button_text: "Select Avatar".to_string(),
+                                size: AvatarSize::XXLarge,
+                                shadow: true,
+                                show_border: true,
+                                loading: is_loading,
+                            }
                             FormField {
                                 label: "Username".to_string(),
                                 input_type: InputType::Text,

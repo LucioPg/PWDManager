@@ -78,7 +78,7 @@ pub fn RegisterUser() -> Element {
                     avatar_src: get_user_avatar_with_default(selected_image.read().clone()),
                     on_pick: pick_image,
                     button_text: "Select Avatar".to_string(),
-                    size: AvatarSize::Large,
+                    size: AvatarSize::XXLarge,
                     shadow: true,
                     show_border: true,
                     loading: is_loading,
