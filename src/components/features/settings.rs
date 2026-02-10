@@ -11,13 +11,12 @@ pub fn SettingsTabContent() -> Element {
         Tabs{
             default_value: "Account".to_string(),
             horizontal: true,
-            max_width: "16rem",
             TabList {
                 TabTrigger { value: "Account".to_string(), index: 0usize, "Account" }
                 TabTrigger { value: "Security".to_string(), index: 1usize, "Security" }
                 TabTrigger { value: "Notifications".to_string(), index: 2usize, "Notifications" }
             }
-            TabContent { index: 0usize, class: "tabs-content", value: "Account".to_string(), UpsertUser {user_to_edit: user.clone()} }
+            TabContent { index: 0usize, class: "tabs-content border-none shadow-none", value: "Account".to_string(), UpsertUser {user_to_edit: user.clone()} }
             TabContent { index: 1usize, class: "tabs-content", value: "Security".to_string(),
                 div {
                     width: "100%",
@@ -48,7 +47,7 @@ pub fn Settings() -> Element {
         div { class: "settings-page-body",
             div { class: "settings-page-header",
                 div { class: "settings-page-header-content",
-                    h1 { class: "text-h2 mb-8", "Settings" }
+                    h1 { class: "text-h2 mt-4 mb-3 text-center", "Settings" }
                     p { class: "text-body", "Manage your account settings and preferences." }
                 }
             }
