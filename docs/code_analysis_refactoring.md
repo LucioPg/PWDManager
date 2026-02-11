@@ -1,0 +1,196 @@
+# Code Analysis - Refactoring Opportunities
+
+> Analisi del codebase per identificare aree di miglioramento e debito tecnico.
+
+**Data**: 2025-02-11
+**Scopo**: Documentare problemi individuati durante il debugging e lo sviluppo
+
+---
+
+## main.rs
+
+### [x] Riga 48-64: `use_effect` con troppe responsabilità
+
+**Problema**: L'effect gestisce sia i toast che il fetching della lista utenti.
+
+**Rischi**:
+- Ogni volta che `db_resource` cambia, viene rieseguito
+- Se l'utente fa logout/login, la lista utenti viene rifetchata inutilmente
+- Difficile testare le due funzionalità separatamente
+
+**Soluzione suggerita**: Separare in due `use_effect` distinti o spostare la logica di fetching in `use_resource`
+
+---
+
+### [ ] Riga 50-64: `spawn` dentro `use_effect` senza cleanup
+
+**Problema**: Non c'è controllo per evitare spawn multipli.
+
+**Rischi**:
+- Se `db_resource` cambia rapidamente, potresti avere più task concorrenti
+- Possibile race condition
+
+**Soluzione suggerita**: Usare `use_resource` invece di `spawn` dentro `use_effect`, o implementare un meccanismo di cancellazione
+
+---
+
+### [ ] Manca gestione della chiusura del pool
+
+**Problema**: Il `SqlitePool` viene clonato ma mai chiuso.
+
+**Rischi**:
+- Possibile resource leak
+- Connessioni non rilasciate correttamente
+
+**Soluzione suggerita**: Implementare cleanup on app exit
+
+---
+
+## ui_utils.rs
+
+### [ ] Riga 22-24: Pattern `let-else` con return silenzioso
+
+**Problema**: Non distingue tra: nessun file selezionato, JoinError, o altro errore.
+
+```rust
+let Ok(Some(path)) = file_result else {
+    return;  // Perché siamo qui? Cancellazione? Errore?
+};
+```
+
+**Rischi**:
+- L'utente non sa se ha cancellato o c'è stato un errore
+- Difficile debuggare
+
+**Soluzione suggerita**: Gestire esplicitamente i casi:
+```rust
+match file_result {
+    Ok(Some(path)) => { /* continua */ }
+    Ok(None) => { // utente ha cancellato }
+    Err(e) => { // JoinError - gestisci l'errore }
+}
+```
+
+---
+
+### [ ] Righe 36-48: Duplice `spawn_blocking` per operazioni diverse
+
+**Problema**: Prima per il FileDialog, poi per `scale_avatar`.
+
+**Rischi**:
+- Due thread separati quando potrebbe essere fatto in uno solo
+- Overhead di creazione thread
+
+**Soluzione suggerita**: Valutare se un singolo `spawn_blocking` può gestire entrambe le operazioni
+
+---
+
+### [ ] Manca documentazione della funzione
+
+**Problema**: Nessuna doc che spiega cosa fa, cosa restituisce, quando fallisce.
+
+**Soluzione suggerita**: Aggiungere documentazione rustdoc con `///` ed esempi
+
+---
+
+## upsert_user.rs
+
+### [ ] Riga 93: `use_context` dentro handler (anti-pattern)
+
+**Problema**: `use_context` viene chiamato dentro `on_delete_user` invece che al top del componente.
+
+```rust
+let on_delete_user = move || {
+    let pool = use_context::<SqlitePool>();  // ❌ Dovrebbe essere al top
+    // ...
+};
+```
+
+**Rischi**:
+- Viene rieseguito ogni volta che l'handler viene chiamato
+- `use_context` è un hook, dovrebbe essere chiamato solo al top level
+
+**Soluzione suggerita**: Spostare `use_context` al top del componente e clonare il pool
+
+---
+
+### [ ] Righe 51-56: `use_memo` con side effect (`set`)
+
+**Problema**: `use_memo` dovrebbe calcolare valori, non fare side effects.
+
+```rust
+use_memo(move || {
+    if let Some(img) = new_avatar.read().clone() {
+        avatar.set(...);  // ❌ Side effect in memo!
+    }
+});
+```
+
+**Rischi**:
+- Comportamento non deterministico
+- Difficile prevedere quando viene eseguito
+- Possibile ciclo di aggiornamenti
+
+**Soluzione suggerita**: Usare `use_effect` con dipendenze su `new_avatar`:
+```rust
+use_effect(move || {
+    if let Some(img) = new_avatar.read().clone() {
+        avatar.set(...);
+    }
+});
+```
+
+---
+
+### [ ] Righe 85-90: Handler `pick_image` clona 3 signal senza debouncing
+
+**Problema**: Ogni click crea un nuovo task senza controllare se uno è già in corso.
+
+**Rischi**:
+- Overhead se cliccato rapidamente più volte
+- Possibile race condition
+
+**Soluzione suggerita**: Implementare debouncing o disabilitare il bottone durante `is_loading`
+
+---
+
+### [ ] Righe 58-82: `use_effect` con due responsabilità distinte
+
+**Problema**: Gestisce errori E user deletion nello stesso effect.
+
+**Rischi**:
+- Violazione Single Responsibility Principle
+- Difficile testare separatamente
+- Codice meno leggibile
+
+**Soluzione suggerita**: Separare in due `use_effect` distinti
+
+---
+
+## Riassunto Priorità
+
+| Priorità | File | Riga | Problema | Stato |
+|----------|------|------|----------|-------|
+| 🔴 Alta | `upsert_user.rs` | 93 | `use_context` dentro handler | [ ] |
+| 🔴 Alta | `upsert_user.rs` | 51-56 | `use_memo` con side effect | [ ] |
+| 🟡 Media | `main.rs` | 48-64 | `use_effect` con troppe responsabilità | [ ] |
+| 🟡 Media | `upsert_user.rs` | 85-90 | Nessun debouncing su pick_image | [ ] |
+| 🟢 Bassa | `ui_utils.rs` | 22-24 | Gestione errore silenziosa | [ ] |
+| 🟢 Bassa | `ui_utils.rs` | - | Manca documentazione | [ ] |
+| 🟢 Bassa | `main.rs` | - | Manca cleanup pool | [ ] |
+
+---
+
+## Note Generali
+
+- Le segnalazioni con checkbox `[ ]` sono ancora da affrontare
+- Le segnalazioni con checkbox `[x]` sono state risolte
+- Aggiornare questo file quando si affrontano i problemi
+
+---
+
+## Cronologia Modifiche
+
+| Data | Modifica |
+|------|---------|
+| 2025-02-11 | Creazione iniziale del documento |
