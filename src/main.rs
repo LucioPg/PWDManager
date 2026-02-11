@@ -35,19 +35,29 @@ fn App() -> Element {
 
     let resource_value = db_resource.read();
     let mut toast_state = use_context::<Signal<ToastsState>>();
+
+    // Flag per ricordare se abbiamo già notificato l'inizializzazione del DB
+    let mut db_init_notified = use_signal(|| false);
+    let mut users_list_printed = use_signal(|| false);
+
     use_effect(move || {
         let db_resource_clone = db_resource.clone();
 
         match &*db_resource_clone.read() {
             Some(Ok(pool)) => {
-                add_toast(
-                    "Caricamento database riuscito!".into(),
-                    6,
-                    ToastType::Success,
-                    toast_state,
-                );
-                // Stampa la lista utenti a terminale
-                if SHOW_USERS_LIST {
+                // Toast: solo la prima volta che il DB è caricato con successo
+                if !db_init_notified() {
+                    add_toast(
+                        "Caricamento database riuscito!".into(),
+                        6,
+                        ToastType::Success,
+                        toast_state,
+                    );
+                    db_init_notified.set(true);
+                }
+
+                // Lista utenti: solo la prima volta (se abilitato)
+                if SHOW_USERS_LIST && !users_list_printed() {
                     let pool_clone = pool.clone();
                     spawn(async move {
                         match list_users_no_avatar(&pool_clone).await {
@@ -64,10 +74,11 @@ fn App() -> Element {
                             }
                         }
                     });
+                    users_list_printed.set(true);
                 }
             }
             Some(Err(e)) => {
-                // Mostriamo l'errore all'utente in modo elegante
+                // L'errore può essere temporaneo, non usiamo flag
                 add_toast(
                     "Caricamento database Fallito!".into(),
                     6,
