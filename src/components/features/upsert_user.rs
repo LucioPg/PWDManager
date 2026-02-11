@@ -1,4 +1,4 @@
-use crate::auth::User;
+use crate::auth::{AuthState, User};
 use crate::backend::db_backend::save_or_update_user;
 use crate::backend::ui_utils::pick_and_process_avatar;
 use crate::backend::utils::get_user_avatar_with_default;
@@ -21,7 +21,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     let nav = use_navigator();
     let pool = use_context::<SqlitePool>();
     let mut toast_state = use_context::<Signal<ToastsState>>();
-
+    let auth_state = use_context::<AuthState>();
     // --- Stato ---
     let mut is_loading = use_signal(|| false);
     let mut error = use_signal(|| Option::<String>::None);
@@ -83,6 +83,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         let u = username.read().clone();
         let a = new_avatar.read().clone();
         let pool = pool.clone();
+        let mut auth_state = auth_state.clone();
         // Validazione Client-Side
         if p != rp {
             error.set(Some("Passwords do not match!".to_string()));
@@ -98,7 +99,10 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
 
 
             match save_or_update_user(&pool, user_id, u, Some(p), a).await {
-                Ok(_) => { nav.push("/login?new_user=true"); },
+
+                Ok(_) => {
+                    auth_state.logout();
+                    nav.push("/login?new_user=true"); },
                 Err(e) => error.set(Some(e.to_string())),
             }
         });
