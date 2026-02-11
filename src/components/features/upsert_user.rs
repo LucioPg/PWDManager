@@ -21,6 +21,7 @@ use tracing::instrument;
 pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     let nav = use_navigator();
     let pool = use_context::<SqlitePool>();
+    let pool_clone_on_submit = pool.clone();
     let mut toast_state = use_context::<Signal<ToastsState>>();
     let auth_state = use_context::<AuthState>();
     let mut auth_state_delete_clone = auth_state.clone();
@@ -117,13 +118,13 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     };
     let on_delete_user = move || {
         let mut is_user_deleted = is_user_deleted.clone();
-        let pool = use_context::<SqlitePool>();
+        let pool_for_delete = pool.clone();
         let user = auth_state.get_user();
         let mut error = error.clone();
         match user {
             Some(user) => {
                 spawn(async move {
-                    match delete_user(&pool, user.id).await {
+                    match delete_user(&pool_for_delete, user.id).await {
                         Ok(()) => {
                             is_user_deleted.set(true);
                         }
@@ -141,7 +142,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         let rp = repassword.read().clone();
         let u = username.read().clone();
         let a = new_avatar.read().clone();
-        let pool = pool.clone();
+        let pool = pool_clone_on_submit.clone();
         let mut auth_state = auth_state_submit_clone.clone();
         // Validazione Client-Side
         if p != rp {

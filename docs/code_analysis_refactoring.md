@@ -171,7 +171,7 @@ use_effect(move || {
 
 | Priorità | File | Riga | Problema | Stato |
 |----------|------|------|----------|-------|
-| 🔴 Alta | `upsert_user.rs` | 93 | `use_context` dentro handler | [ ] |
+| 🔴 Alta | `upsert_user.rs` | 93 | `use_context` dentro handler | [x] |
 | 🔴 Alta | `upsert_user.rs` | 51-56 | `use_memo` con side effect | [x] |
 | 🟡 Media | `main.rs` | 48-64 | `use_effect` con troppe responsabilità | [ ] |
 | 🟡 Media | `upsert_user.rs` | 85-90 | Nessun debouncing su pick_image | [ ] |
