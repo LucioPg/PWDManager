@@ -10,7 +10,7 @@ use tracing::{debug, instrument};
 
 #[component]
 #[instrument]
-pub fn Login(new_user: Option<bool>) -> Element {
+pub fn Login(new_user: Option<bool>, user_updated: Option<bool>) -> Element {
     let mut username = use_signal(|| String::new());
     let mut password = use_signal(|| String::new());
     let mut error = use_signal(|| Option::<String>::None);
@@ -44,18 +44,32 @@ pub fn Login(new_user: Option<bool>) -> Element {
         });
     };
     use_effect(move || {
+        let proceed: bool;
+        let message: String;
         if Some(true) == new_user {
+            message = "User Registered successfully!".to_string();
+            proceed = true;
+        }
+        else if Some(true) == user_updated {
+            message = "User Updated successfully!".to_string();
+            proceed = true;
+        }
+        else {
+            proceed = false;
+            message = "".to_string();
+        }
+        if proceed {
             add_toast(
-                "User Registerd successfully!".to_string(),
+                message,
                 3,
                 ToastType::Success,
                 toast_state,
             );
-            nav.replace(Route::Login { new_user: None });
+            nav.replace(Route::Login { new_user: None, user_updated: Some(false) });
         }
         if let Some(msg) = error.read().clone() {
             add_toast(msg.to_string(), 4, ToastType::Error, toast_state);
-            nav.replace(Route::Login { new_user: None });
+            nav.replace(Route::Login { new_user: None, user_updated: Some(false) });
         }
     });
     rsx! {

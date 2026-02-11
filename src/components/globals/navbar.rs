@@ -45,7 +45,7 @@ pub fn NavBar() -> Element {
                     ActionButtons {
                         primary_text: "Login".to_string(),
                         secondary_text: "Register".to_string(),
-                        primary_on_click: move |_| { nav_login.push(Route::Login {new_user: None}); },
+                        primary_on_click: move |_| { nav_login.push(Route::Login {new_user: None, user_updated: Some(false)}); },
                         secondary_on_click: move |_| { nav_register.push(Route::UpsertUser {user_to_edit: auth_state.get_user()}); },
                         variant: ActionButtonsVariant::Nav,
                     }
