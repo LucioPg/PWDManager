@@ -7,9 +7,9 @@ pub enum AvatarSize {
     #[default]
     Medium, // avatar-md (48px)
     #[allow(dead_code)]
-    Large,   // avatar-lg (96px)
+    Large, // avatar-lg (96px)
     #[allow(dead_code)]
-    XLarge,  // avatar-xl (128px)
+    XLarge, // avatar-xl (128px)
     XXLarge, // avatar-xl (256px)
 }
 
@@ -30,7 +30,7 @@ pub enum AvatarBorder {
     #[default]
     Bordered, // Bordo visibile
     #[allow(dead_code)]
-    None,   // Nessun bordo
+    None, // Nessun bordo
     #[allow(dead_code)]
     Circle, // Bordo circolare
 }
@@ -86,7 +86,8 @@ pub fn AvatarSelector(
     show_border: bool,
     #[props(default)] loading: Signal<bool>,
     /// Signal che indica se il dialog di selezione è aperto
-    #[props(default)] is_picking: Signal<bool>,
+    #[props(default)]
+    is_picking: Signal<bool>,
 ) -> Element {
     let size_class = size.as_class();
     let border_class = if show_border { border.as_class() } else { "" };

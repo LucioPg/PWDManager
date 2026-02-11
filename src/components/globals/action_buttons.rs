@@ -149,7 +149,7 @@ pub fn ActionButtons(
 pub enum ActionButtonsVariant {
     #[default]
     Auth, // Pulsanti di autenticazione (login/register)
-    Nav,   // Pulsanti di navigazione (navbar)
+    Nav, // Pulsanti di navigazione (navbar)
     #[allow(dead_code)]
     Ghost, // Pulsanti ghost
 }

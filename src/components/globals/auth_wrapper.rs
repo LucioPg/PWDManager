@@ -1,5 +1,5 @@
-use crate::auth::AuthState;
 use crate::Route;
+use crate::auth::AuthState;
 use dioxus::prelude::*;
 
 #[component]

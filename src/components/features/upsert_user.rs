@@ -3,8 +3,8 @@ use crate::backend::db_backend::{delete_user, save_or_update_user};
 use crate::backend::ui_utils::pick_and_process_avatar;
 use crate::backend::utils::get_user_avatar_with_default;
 use crate::components::{
-    ActionButton, AvatarSelector, AvatarSize, ButtonSize,
-    ButtonType, ButtonVariant, FormField, InputType, ToastType, ToastsState, add_toast,
+    ActionButton, AvatarSelector, AvatarSize, ButtonSize, ButtonType, ButtonVariant, FormField,
+    InputType, ToastType, ToastsState, add_toast,
 };
 use dioxus::prelude::*;
 use sqlx::SqlitePool;
@@ -39,7 +39,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     let mut new_avatar = use_signal(|| None::<Vec<u8>>);
     let is_user_deleted = use_signal::<bool>(|| false);
     #[allow(unused_mut)]
-    let mut is_picking = use_signal(|| false);  // Traccia se il dialog è aperto
+    let mut is_picking = use_signal(|| false); // Traccia se il dialog è aperto
 
     // Inizializzazione dati utente (Semplificata con unwrap_or_default)
     #[allow(unused_mut)]
@@ -103,7 +103,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         }
     });
 
-               // Gestione errori centralizzata
+    // Gestione errori centralizzata
     use_effect(move || {
         let user = auth_state_delete_clone.get_user();
         let mut user_deleted = is_user_deleted.clone();
@@ -130,13 +130,13 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         #[allow(unused_mut)]
         let mut is_loading_clone = is_loading.clone();
         #[allow(unused_mut)]
-        let mut is_picking_clone = is_picking.clone();  // Clona anche is_picking
+        let mut is_picking_clone = is_picking.clone(); // Clona anche is_picking
         #[allow(unused_mut)]
         let mut error_clone = error.clone();
         spawn(pick_and_process_avatar(
             new_avatar_clone,
             is_loading_clone,
-            is_picking_clone,  // ← Passa il nuovo signal
+            is_picking_clone, // ← Passa il nuovo signal
             error_clone,
         ));
     };

@@ -3,17 +3,17 @@ mod auth;
 mod backend;
 mod components;
 
-use dioxus::core::Task;
+use crate::auth::User;
+use crate::backend::db_backend::list_users_no_avatar;
 use crate::components::{
     AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, RouteWrapper,
     Settings, ToastContainer, ToastType, ToastsState, UpsertUser, add_toast,
 };
+use backend::db_backend::init_db;
+use dioxus::core::Task;
 use dioxus::prelude::*;
 use dioxus_components::{Spinner, SpinnerSize};
 use gui_launcher::launch_desktop;
-use crate::auth::User;
-use crate::backend::db_backend::list_users_no_avatar;
-use backend::db_backend::init_db;
 
 // Asset CSS di Tailwind
 static TAILWIND_CSS: &str = include_str!("../assets/tailwind.css");
@@ -48,11 +48,8 @@ fn App() -> Element {
                 spawn(async move {
                     let _ = pool_clone.close().await;
                 });
-            },
-            _ => println!("Cleanup: pool non presente")
-
-            // Chiude tutte le connessioni al database
-
+            }
+            _ => println!("Cleanup: pool non presente"), // Chiude tutte le connessioni al database
         }
     });
 
@@ -88,7 +85,6 @@ fn App() -> Element {
                                 }
                                 println!("===================");
                                 users_list_printed.set(true);
-
                             }
                             Err(e) => {
                                 println!("Errore nel recupero utenti: {:?}", e);

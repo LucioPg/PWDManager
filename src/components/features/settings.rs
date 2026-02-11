@@ -1,6 +1,4 @@
-use crate::components::{
-    TabContent, TabList, TabTrigger, Tabs, UpsertUser,
-};
+use crate::components::{TabContent, TabList, TabTrigger, Tabs, UpsertUser};
 use dioxus::prelude::*;
 
 #[component]

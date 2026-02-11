@@ -51,7 +51,7 @@ use tokio::task::spawn_blocking;
 pub async fn pick_and_process_avatar(
     mut img_signal: Signal<Option<Vec<u8>>>,
     mut is_loading_signal: Signal<bool>,
-    mut is_picking_signal: Signal<bool>,  // ← Nuovo parametro per tracciare il dialog
+    mut is_picking_signal: Signal<bool>, // ← Nuovo parametro per tracciare il dialog
     mut err_signal: Signal<Option<String>>,
 ) {
     // Imposta "picking" immediatamente per prevenire click multipli
@@ -73,13 +73,13 @@ pub async fn pick_and_process_avatar(
         }
         Ok(None) => {
             // Utente ha annullato il dialog
-            is_picking_signal.set(false);  // Resetta per permettere nuovi tentativi
+            is_picking_signal.set(false); // Resetta per permettere nuovi tentativi
             return;
         }
         Err(e) => {
             // Errore nel task (es. panic, cancellation)
             err_signal.set(Some(format!("Errore apertura dialog: {}", e)));
-            is_picking_signal.set(false);  // Resetta anche in caso di errore
+            is_picking_signal.set(false); // Resetta anche in caso di errore
             return;
         }
     };
