@@ -18,81 +18,46 @@ use tracing::instrument;
 #[component]
 #[instrument]
 pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
-    let is_updating = user_to_edit.is_some();
-    let user_id = user_to_edit
-        .as_ref()
-        .map(|u| Some(u.id.clone()))
-        .unwrap_or_else(|| None);
-    let (header, paragraph, class_container, submit_btn_text, password_required) = match is_updating {
-        true => ("Account Settings", "Update Your Profile", "auth-form-tabbed", "Update", false),
-        false => ("Create Account", "Sign up to get started", "auth-form-lg", "Register", true),
-    };
+    let nav = use_navigator();
+    let pool = use_context::<SqlitePool>();
+    let mut toast_state = use_context::<Signal<ToastsState>>();
+
+    // --- Stato ---
+    let mut is_loading = use_signal(|| false);
+    let mut error = use_signal(|| Option::<String>::None);
+    let mut new_avatar = use_signal(|| None::<Vec<u8>>);
+
+    // Inizializzazione dati utente (Semplificata con unwrap_or_default)
     let mut username = use_signal(|| {
-        user_to_edit
-            .as_ref()
-            .map(|u| u.username.clone())
-            .unwrap_or_else(|| String::new())
+        user_to_edit.as_ref().map(|u| u.username.clone()).unwrap_or_default()
     });
     let mut password = use_signal(|| String::new());
     let mut repassword = use_signal(|| String::new());
-    let avatar = use_signal(|| {
-        user_to_edit
-            .as_ref()
-            .map(|u| u.avatar.clone())
-            .unwrap_or_else(|| "".to_string())
+    let mut avatar = use_signal(|| {
+        user_to_edit.as_ref().map(|u| u.avatar.clone()).unwrap_or_else(|| get_user_avatar_with_default(None))
     });
-    let new_avatar = use_signal(|| None::<Vec<u8>>);
-    let mut toast_state = use_context::<Signal<ToastsState>>();
-    let mut error = use_signal(|| Option::<String>::None);
-    let mut is_loading = use_signal(|| false);
-    let pool = use_context::<SqlitePool>();
-    let nav = use_navigator();
-    let pick_image = move |_evt: MouseEvent| {
-        let mut err_signal = error;
-        let mut img_signal = new_avatar;
-        let mut is_loading_signal = is_loading;
-        spawn(pick_and_process_avatar(
-            img_signal,
-            is_loading_signal,
-            err_signal,
-        ));
+
+    // --- Derivazione Proprietà (Configurazione UI) ---
+    let is_updating = user_to_edit.is_some();
+    let user_id = user_to_edit.as_ref().map(|u| u.id.clone());
+
+    let (header, paragraph, class_container, submit_btn_text, password_required) = if is_updating {
+        ("Account Settings", "Update Your Profile", "auth-form-tabbed", "Update", false)
+    } else {
+        ("Create Account", "Sign up to get started", "auth-form-lg", "Register", true)
     };
-    let mut avatar_writer = avatar.clone();
+    // --- Effetti ---
+    // Aggiorna l'anteprima avatar quando ne viene scelto uno nuovo
     use_memo(move || {
         if let Some(img) = new_avatar.read().clone() {
-            avatar_writer.set(get_user_avatar_with_default(Some(img)))
+            avatar.set(get_user_avatar_with_default(Some(img)));
         }
     });
-    let on_submit = move |_| {
-        let pool = pool.clone();
-        let u = username.read().clone();
-        let p = password.read().clone();
-        let rp = repassword.read().clone();
-        let a = new_avatar.read().clone();
-        if p == rp {
-            spawn(async move {
-                // La tua funzione check_user ora ha il pool!
-                let result = save_or_update_user(&pool, user_id, u, Some(p), a).await;
-                match result {
-                    Ok(()) => {
-                        println!("Successo!");
-                        nav.push("/login?new_user=true");
-                    }
-                    Err(e) => {
-                        error.set(Some(format!("Error saving user: {}", e.to_string())));
-                    }
-                }
-            });
-        } else {
-            error.set(Some("Passwords do not match!".to_string()));
-        }
-    };
 
+    // Gestione errori centralizzata
     use_effect(move || {
-        // 1. Leggiamo il valore attuale del segnale (crea la sottoscrizione)
         let mut this_error = error.clone();
         if let Some(msg) = this_error() {
-            // 2. Lanciamo il toast usando la tua funzione specifica
             add_toast(
                 format!("Error saving user: {}", msg),
                 4,
@@ -100,55 +65,87 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                 toast_state,
             );
 
-            // 3. OPZIONALE: Resettiamo l'errore subito dopo averlo mostrato
-            // per evitare che il toast riappaia se il componente si ri-renderizza
             this_error.set(None);
         }
     });
 
+    // --- Handlers ---
+    let pick_image = move |_| {
+        let mut new_avatar_clone = new_avatar.clone();
+        let mut is_loading_clone = is_loading.clone();
+        let mut error_clone = error.clone();
+        spawn(pick_and_process_avatar(new_avatar_clone, is_loading_clone, error_clone));
+    };
+
+    let on_submit = move |_| {
+        let p = password.read().clone();
+        let rp = repassword.read().clone();
+        let u = username.read().clone();
+        let a = new_avatar.read().clone();
+        let pool = pool.clone();
+        // Validazione Client-Side
+        if p != rp {
+            error.set(Some("Passwords do not match!".to_string()));
+            return;
+        }
+
+        if !is_updating && p.is_empty() {
+            error.set(Some("Password is required for registration".to_string()));
+            return;
+        }
+
+        spawn(async move {
+
+
+            match save_or_update_user(&pool, user_id, u, Some(p), a).await {
+                Ok(_) => { nav.push("/login?new_user=true"); },
+                Err(e) => error.set(Some(e.to_string())),
+            }
+        });
+    };
+
     rsx! {
         div { class: "page-centered",
             div { class: "{class_container} animate-scale-in",
-                h1 { class: "text-h3 text-center", "{&header}" }
-                p { class: "text-body mb-4 text-center", "{&paragraph}" }
+                h1 { class: "text-h3 text-center", "{header}" }
+                p { class: "text-body mb-4 text-center", "{paragraph}" }
+
                 AvatarSelector {
                     avatar_src: avatar.read().clone(),
                     on_pick: pick_image,
-                    button_text: "Select Avatar".to_string(),
+                    button_text: "Select Avatar",
                     size: AvatarSize::XXLarge,
                     shadow: true,
                     show_border: true,
                     loading: is_loading,
                 }
+
                 form { onsubmit: on_submit, class: "flex flex-col gap-3 w-full",
                     FormField {
-                        label: "Username".to_string(),
+                        label: "Username",
                         input_type: InputType::Text,
-                        placeholder: "Choose a username".to_string(),
+                        placeholder: "Choose a username",
                         value: username,
-                        name: Some("username".to_string()),
                         required: true,
                     }
                     FormField {
-                        label: "Password".to_string(),
+                        label: "Password",
                         input_type: InputType::Password,
-                        placeholder: "Create a password".to_string(),
+                        placeholder: "Create a password",
                         value: password,
-                        name: Some("password".to_string()),
                         required: password_required,
                     }
                     FormField {
-                        label: "Confirm Password".to_string(),
+                        label: "Confirm Password",
                         input_type: InputType::Password,
-                        placeholder: "Confirm your password".to_string(),
+                        placeholder: "Confirm your password",
                         value: repassword,
-                        name: Some("repassword".to_string()),
                         required: password_required,
                     }
                     ActionButtons {
                         primary_text: "{submit_btn_text}",
-                        secondary_text: "Login".to_string(),
-                        primary_on_click: move |_| {}, // Gestito dal form onsubmit
+                        secondary_text: "Login",
+                        primary_on_click: move |_| {},
                         secondary_on_click: move |_| { nav.push("/login"); },
                         variant: ActionButtonsVariant::Auth,
                     }

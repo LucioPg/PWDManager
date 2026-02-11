@@ -10,12 +10,17 @@ pub async fn pick_and_process_avatar(
     mut is_loading_signal: Signal<bool>,
     mut err_signal: Signal<Option<String>>,
 ) {
-    let file = FileDialog::new()
-        .add_filter("Image Files", &["png", "jpg", "jpeg"])
-        .set_directory("/")
-        .pick_file();
+    // Esegui FileDialog in spawn_blocking per non bloccare il thread UI
+    let file_result = spawn_blocking(|| {
+        FileDialog::new()
+            .add_filter("Image Files", &["png", "jpg", "jpeg"])
+            .set_directory("/")
+            .pick_file()
+    }).await;
 
-    let Some(path) = file else { return };
+    let Ok(Some(path)) = file_result else {
+        return;
+    };
 
     if !Path::new(&path).exists() {
         err_signal.set(Some("File non trovato".to_string()));
