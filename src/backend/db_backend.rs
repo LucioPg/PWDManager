@@ -108,7 +108,7 @@ pub async fn list_users(
     pool: &SqlitePool,
 ) -> Result<Vec<(i32, String, String, Option<Vec<u8>>)>, DBError> {
     debug!("Fetching list of users from database");
-    let rows = query("SELECT id, username, created_at FROM users ORDER BY id DESC LIMIT 10")
+    let rows = query("SELECT id, username, created_at, avatar FROM users ORDER BY id DESC LIMIT 10")
         .fetch_all(pool)
         .await
         .map_err(|e| DBError::new_list_error(format!("Failed to save user credentials: {}", e)))?;
@@ -120,6 +120,29 @@ pub async fn list_users(
                 row.get::<String, _>("username"),
                 row.get::<String, _>("created_at"),
                 row.get::<Option<Vec<u8>>, _>("avatar"),
+            )
+        })
+        .collect();
+
+    Ok(users)
+}
+
+#[instrument(skip(pool))]
+pub async fn list_users_no_avatar(
+    pool: &SqlitePool,
+) -> Result<Vec<(i32, String, String)>, DBError> {
+    debug!("Fetching list of users from database");
+    let rows = query("SELECT id, username, created_at FROM users ORDER BY id DESC LIMIT 10")
+        .fetch_all(pool)
+        .await
+        .map_err(|e| DBError::new_list_error(format!("Failed to save user credentials: {}", e)))?;
+    let users = rows
+        .into_iter()
+        .map(|row| {
+            (
+                row.get::<i32, _>("id"),
+                row.get::<String, _>("username"),
+                row.get::<String, _>("created_at"),
             )
         })
         .collect();

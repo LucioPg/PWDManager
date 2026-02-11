@@ -12,6 +12,7 @@ use gui_launcher::launch_desktop;
 // use backend::{list_users, init_db};
 use crate::auth::User;
 use backend::db_backend::init_db;
+use crate::backend::db_backend::{list_users_no_avatar};
 // use components::{login, navbar, settings, dashboard};
 
 // Asset CSS di Tailwind
@@ -23,6 +24,7 @@ static MAIN_CSS: &str = include_str!("../assets/main.css");
 
 const LOGO_BYTES: &[u8] = include_bytes!("../assets/logo.png");
 
+const SHOW_USERS_LIST: bool = false;
 #[component]
 fn App() -> Element {
     let auth_state = auth::AuthState::new();
@@ -44,6 +46,26 @@ fn App() -> Element {
                     ToastType::Success,
                     toast_state,
                 );
+                // Stampa la lista utenti a terminale
+                if SHOW_USERS_LIST {
+                    let pool_clone = pool.clone();
+                    spawn(async move {
+                        match list_users_no_avatar(&pool_clone).await {
+                            Ok(users) => {
+                                println!("=== LISTA UTENTI ===");
+                                println!("ID  --  Username  --  Creation Date");
+                                for (id, username, password) in users {
+                                    println!("{}\t{}\t{}", id, username, password);
+                                }
+                                println!("===================");
+                            }
+                            Err(e) => {
+                                println!("Errore nel recupero utenti: {:?}", e);
+                            }
+                        }
+                    });
+                }
+
             }
             Some(Err(e)) => {
                 // Mostriamo l'errore all'utente in modo elegante
@@ -119,7 +141,7 @@ enum Route {
     Settings,
     #[end_layout(AuthWrapper)]
     #[route("/login?:new_user")]
-    Login { new_user: Option<bool> },
+    Login { new_user: Option<bool>, user_updated: Option<bool> },
     #[route("/register")]
     UpsertUser { user_to_edit: Option<User> },
 
