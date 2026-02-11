@@ -25,6 +25,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     let mut toast_state = use_context::<Signal<ToastsState>>();
     let auth_state = use_context::<AuthState>();
     let mut auth_state_delete_clone = auth_state.clone();
+    let mut auth_state_logout_clone = auth_state.clone();
     let mut auth_state_submit_clone = auth_state.clone();
 
     // --- Stato ---
@@ -79,7 +80,6 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         }
     });
 
-    // Gestione errori centralizzata
     use_effect(move || {
         let mut this_error = error.clone();
         if let Some(msg) = this_error() {
@@ -92,6 +92,10 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
 
             this_error.set(None);
         }
+    });
+
+               // Gestione errori centralizzata
+    use_effect(move || {
         let user = auth_state_delete_clone.get_user();
         let mut user_deleted = is_user_deleted.clone();
         if user_deleted() {
@@ -129,12 +133,14 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         let pool_for_delete = pool.clone();
         let user = auth_state.get_user();
         let mut error = error.clone();
+        let mut auth_state_logout_clone = auth_state_logout_clone.clone();
         match user {
             Some(user) => {
                 spawn(async move {
                     match delete_user(&pool_for_delete, user.id).await {
                         Ok(()) => {
                             is_user_deleted.set(true);
+                            auth_state_logout_clone.logout();
                         }
                         Err(e) => {
                             error.set(Some(e.to_string()));

@@ -157,16 +157,17 @@ use_effect(move || {
 
 ---
 
-### [ ] Righe 58-82: `use_effect` con due responsabilità distinte
+### [x] Righe 58-82: `use_effect` con due responsabilità distinte
 
-**Problema**: Gestisce errori E user deletion nello stesso effect.
+**Problema**: Gestiva errori E user deletion nello stesso effect.
 
 **Rischi**:
 - Violazione Single Responsibility Principle
 - Difficile testare separatamente
 - Codice meno leggibile
+- L'effect veniva rieseguito inutilmente quando una sola delle due dipendenze cambiava
 
-**Soluzione suggerita**: Separare in due `use_effect` distinti
+**Soluzione applicata**: Separato in due `use_effect` distinti, uno per la gestione errori e uno per la user deletion.
 
 ---
 
@@ -182,6 +183,7 @@ use_effect(move || {
 | 🟢 Bassa | `ui_utils.rs` | - | Manca documentazione | [x]   |
 | 🟢 Bassa | `main.rs` | - | Manca cleanup pool | [x]   |
 | 🟢 Bassa | `ui_utils.rs` | 36-48 | Duplice `spawn_blocking` (feature, non bug) | [x]   |
+| 🟢 Bassa | `upsert_user.rs` | 83-107 | `use_effect` con due responsabilità | [x]   |
 
 ---
 
