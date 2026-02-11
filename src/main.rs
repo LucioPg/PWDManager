@@ -32,13 +32,31 @@ fn App() -> Element {
     use_context_provider(|| Signal::new(ToastsState::default()));
     // Il resource ora conterrà un Result
     let mut db_resource = use_resource(move || async move { init_db().await });
-
+    let db_resource_clone_drop = db_resource.clone();
     let resource_value = db_resource.read();
     let mut toast_state = use_context::<Signal<ToastsState>>();
 
     // Flag per ricordare se abbiamo già notificato l'inizializzazione del DB
     let mut db_init_notified = use_signal(|| false);
     let mut users_list_printed = use_signal(|| false);
+
+    // Cleanup del pool quando il componente viene smontato o l'app si chiude
+    use_drop(move || {
+        let db_resource_clone = db_resource_clone_drop.clone();
+        match &*db_resource_clone.read() {
+            Some(Ok(pool)) => {
+                println!("Cleanup: chiudo connessioni DB prima dell'uscita");
+                let pool_clone = pool.clone();
+                spawn(async move {
+                    let _ = pool_clone.close().await;
+                });
+            },
+            _ => println!("Cleanup: pool non presente")
+
+            // Chiude tutte le connessioni al database
+
+        }
+    });
 
     use_effect(move || {
         let db_resource_clone = db_resource.clone();
