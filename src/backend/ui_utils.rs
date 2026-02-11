@@ -23,8 +23,22 @@ pub async fn pick_and_process_avatar(
     })
     .await;
 
-    let Ok(Some(path)) = file_result else {
-        return;
+    let path;
+    match file_result {
+        Ok(Some(p)) => {
+            path = p;
+        }
+        Ok(None) => {
+            // Utente ha annullato il dialog
+            is_picking_signal.set(false);  // Resetta per permettere nuovi tentativi
+            return;
+        }
+        Err(e) => {
+            // Errore nel task (es. panic, cancellation)
+            err_signal.set(Some(format!("Errore apertura dialog: {}", e)));
+            is_picking_signal.set(false);  // Resetta anche in caso di errore
+            return;
+        }
     };
 
     if !Path::new(&path).exists() {
