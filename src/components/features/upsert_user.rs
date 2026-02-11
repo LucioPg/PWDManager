@@ -71,7 +71,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     };
     // --- Effetti ---
     // Aggiorna l'anteprima avatar quando ne viene scelto uno nuovo
-    use_memo(move || {
+    use_effect(move || {
         if let Some(img) = new_avatar.read().clone() {
             avatar.set(get_user_avatar_with_default(Some(img)));
         }
