@@ -2,12 +2,15 @@
 mod auth;
 mod backend;
 mod components;
+
+use dioxus::core::Task;
 use crate::components::{
     AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, RouteWrapper,
     Settings, ToastContainer, ToastType, ToastsState, UpsertUser, add_toast,
 };
 use dioxus::prelude::*;
 use dioxus_components::{Spinner, SpinnerSize};
+use tokio::task::JoinHandle;
 use gui_launcher::launch_desktop;
 // use backend::{list_users, init_db};
 use crate::auth::User;
@@ -34,6 +37,7 @@ fn App() -> Element {
     let mut db_resource = use_resource(move || async move { init_db().await });
     let db_resource_clone_drop = db_resource.clone();
     let resource_value = db_resource.read();
+    let mut spawn_handle = use_signal(|| Option::<Task>::None);
     let mut toast_state = use_context::<Signal<ToastsState>>();
 
     // Flag per ricordare se abbiamo già notificato l'inizializzazione del DB
@@ -73,11 +77,14 @@ fn App() -> Element {
                     );
                     db_init_notified.set(true);
                 }
-
+                let mut spawn_handle = spawn_handle.clone();
+                if let Some(new_handle) = spawn_handle.take() {
+                    new_handle.cancel();
+                }
                 // Lista utenti: solo la prima volta (se abilitato)
                 if SHOW_USERS_LIST && !users_list_printed() {
                     let pool_clone = pool.clone();
-                    spawn(async move {
+                    let handle = spawn(async move {
                         match list_users_no_avatar(&pool_clone).await {
                             Ok(users) => {
                                 println!("=== LISTA UTENTI ===");
@@ -92,6 +99,7 @@ fn App() -> Element {
                             }
                         }
                     });
+                    spawn_handle.set(Some(handle));
                     users_list_printed.set(true);
                 }
             }

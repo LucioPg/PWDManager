@@ -22,7 +22,7 @@
 
 ---
 
-### [ ] Riga 50-64: `spawn` dentro `use_effect` senza cleanup
+### [x] Riga 50-64: `spawn` dentro `use_effect` senza cleanup
 
 **Problema**: Non c'è controllo per evitare spawn multipli.
 
@@ -30,7 +30,7 @@
 - Se `db_resource` cambia rapidamente, potresti avere più task concorrenti
 - Possibile race condition
 
-**Soluzione suggerita**: Usare `use_resource` invece di `spawn` dentro `use_effect`, o implementare un meccanismo di cancellazione
+**Soluzione applicata**: Usare un `use_signal` per memorizzare il `Task` di Dioxus e chiamare `cancel()` nel cleanup dell'effect. Nota: `spawn` di Dioxus restituisce un `Task` (non `JoinHandle` di Tokio), che ha il metodo `cancel()`.
 
 ---
 
@@ -173,7 +173,7 @@ use_effect(move || {
 |----------|------|------|----------|-------|
 | 🔴 Alta | `upsert_user.rs` | 93 | `use_context` dentro handler | [x]   |
 | 🔴 Alta | `upsert_user.rs` | 51-56 | `use_memo` con side effect | [x]   |
-| 🟡 Media | `main.rs` | 48-64 | `use_effect` con troppe responsabilità | [ ]   |
+| 🟡 Media | `main.rs` | 50-64 | `spawn` dentro `use_effect` senza cleanup | [x]   |
 | 🟡 Media | `upsert_user.rs` | 85-90 | Nessun debouncing su pick_image | [x]   |
 | 🟢 Bassa | `ui_utils.rs` | 22-24 | Gestione errore silenziosa | [x]   |
 | 🟢 Bassa | `ui_utils.rs` | - | Manca documentazione | [x]   |
