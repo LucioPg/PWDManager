@@ -103,7 +103,7 @@ pub async fn pick_and_process_avatar(
 
         match scaled_result {
             Ok(Ok(scaled)) => {
-                img_signal.set((Some(scaled)));
+                img_signal.set(Some(scaled));
             }
             Ok(Err(e)) => {
                 err_signal.set(Some(format!("Errore scaling: {}", e)));
