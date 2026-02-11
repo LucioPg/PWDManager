@@ -73,15 +73,18 @@ match file_result {
 
 ---
 
-### [ ] Righe 36-48: Duplice `spawn_blocking` per operazioni diverse
+### [x] Righe 36-48: Duplice `spawn_blocking` per operazioni diverse
 
-**Problema**: Prima per il FileDialog, poi per `scale_avatar`.
+**Nota**: Questa non è una issue ma una **feature intenzionale**.
 
-**Rischi**:
-- Due thread separati quando potrebbe essere fatto in uno solo
-- Overhead di creazione thread
+**Spiegazione**: I due `spawn_blocking` sono separati per un motivo preciso:
 
-**Soluzione suggerita**: Valutare se un singolo `spawn_blocking` può gestire entrambe le operazioni
+1. **Primo spawn_blocking** (FileDialog): Viene eseguito sempre quando l'utente clicca
+2. **Secondo spawn_blocking** (scale_avatar): Viene eseguito **solo se** l'utente seleziona un file
+
+Se l'utente annulla il dialog, il secondo spawn_blocking non viene mai creato, risparmiando risorse. Unire tutto in un unico spawn_blocking sarebbe meno efficiente perché il thread verrebbe creato anche quando l'utente annulla.
+
+**Conclusione**: La separazione è corretta e ottimale per questo caso d'uso.
 
 ---
 
@@ -178,6 +181,7 @@ use_effect(move || {
 | 🟢 Bassa | `ui_utils.rs` | 22-24 | Gestione errore silenziosa | [x]   |
 | 🟢 Bassa | `ui_utils.rs` | - | Manca documentazione | [x]   |
 | 🟢 Bassa | `main.rs` | - | Manca cleanup pool | [x]   |
+| 🟢 Bassa | `ui_utils.rs` | 36-48 | Duplice `spawn_blocking` (feature, non bug) | [x]   |
 
 ---
 
