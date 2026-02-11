@@ -1,12 +1,72 @@
 use crate::backend::ui_utils::pick_and_process_avatar;
 use crate::backend::utils::get_user_avatar_with_default;
-use crate::components::{ActionButton, AvatarSelector, AvatarSize, ButtonSize, ButtonType, ButtonVariant, FormField, InputType, TabContent, Tabs, TabList, TabTrigger, ToastsState, UpsertUser};
+use custom_errors::DBError;
+use crate::components::{ActionButton, AvatarSelector, AvatarSize, ButtonSize, ButtonType, ButtonVariant, FormField, InputType, TabContent, Tabs, TabList, TabTrigger, ToastsState, UpsertUser, add_toast, ToastType};
 use dioxus::prelude::*;
+use sqlx::SqlitePool;
+use tokio::task::spawn_blocking;
+use crate::backend::db_backend::delete_user;
+
+// async fn delete_user_(pool: &SqlitePool, id: i32) -> Result<(), DBError> {
+//     let _ = spawn_blocking(move || delete_user(&pool, id)).await.map_err(|e| DBError::new_delete_error(e.to_string()))?;
+//     Ok(())
+//
+// }
 
 #[component]
 pub fn SettingsTabContent() -> Element {
     let auth_state = use_context::<crate::auth::AuthState>();
     let user = auth_state.get_user();
+    let error = use_signal(|| Option::<String>::None);
+    let mut toast_state = use_context::<Signal<ToastsState>>();
+    let is_user_deleted = use_signal::<bool>(|| false);
+    let mut auth_state_clone = auth_state.clone();
+    let on_delete_user = move || {
+        let mut is_user_deleted = is_user_deleted.clone();
+        let pool = use_context::<SqlitePool>();
+        let user = auth_state_clone.get_user();
+        let mut error = error.clone();
+        match user {
+            Some(user) => {
+                spawn(async move {
+                    match delete_user(&pool, user.id).await {
+                        Ok(()) => {
+
+                            is_user_deleted.set(true);
+                        },
+                        Err(e) => { error.set(Some(e.to_string()));}
+                    }
+                });
+            },
+            None => println!("No user to delete"),
+        }
+    };
+
+    use_effect(move || {
+
+        let mut is_user_deleted = is_user_deleted.clone();
+        let error = error.clone();
+        let mut auth_state = auth_state.clone();
+        let user = auth_state.get_user();
+        if is_user_deleted(){
+            add_toast(
+                format!("User {} deleted successfully!", user.unwrap().username),
+               3,
+                ToastType::Success,
+                toast_state
+
+            );
+            auth_state.logout();
+            is_user_deleted.set(false);
+        }
+        if let Some(msg) = error.read().clone() {
+            add_toast(msg.to_string(), 4, ToastType::Error, toast_state);
+            let mut error_clone = error.clone();
+            error_clone.set(None);
+        }
+        // error.set(None);
+    });
+
     rsx! {
         Tabs{
             default_value: "Account".to_string(),
@@ -16,7 +76,12 @@ pub fn SettingsTabContent() -> Element {
                 TabTrigger { value: "Security".to_string(), index: 1usize, "Security" }
                 TabTrigger { value: "Notifications".to_string(), index: 2usize, "Notifications" }
             }
-            TabContent { index: 0usize, class: "tabs-content border-none shadow-none", value: "Account".to_string(), UpsertUser {user_to_edit: user.clone()} }
+            TabContent { index: 0usize, class: "tabs-content border-none shadow-none", value: "Account".to_string(),
+                UpsertUser {user_to_edit: user.clone()}
+                div {class:"flex justify-end",
+                    button {class: "btn-danger-lg" ,r#type: "button", onclick: move |_| {on_delete_user();}, "Delete Account"}
+                }
+            }
             TabContent { index: 1usize, class: "tabs-content", value: "Security".to_string(),
                 div {
                     width: "100%",
