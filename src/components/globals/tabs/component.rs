@@ -49,6 +49,7 @@ pub enum TabsVariant {
     /// The default variant.
     #[default]
     Default,
+    #[allow(dead_code)]
     /// The ghost variant.
     Ghost,
 }

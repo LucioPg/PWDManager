@@ -11,9 +11,12 @@ use tracing::{debug, instrument};
 #[component]
 #[instrument]
 pub fn Login(new_user: Option<bool>, user_updated: Option<bool>) -> Element {
+    #[allow(unused_mut)]
     let mut username = use_signal(|| String::new());
+    #[allow(unused_mut)]
     let mut password = use_signal(|| String::new());
     let mut error = use_signal(|| Option::<String>::None);
+    #[allow(unused_mut)]
     let mut toast_state = use_context::<Signal<ToastsState>>();
     let nav = use_navigator();
     let pool = use_context::<SqlitePool>();

@@ -7,7 +7,9 @@ pub enum StatVariant {
     Primary,
     Success,
     Warning,
+    #[allow(dead_code)]
     Info,
+    #[allow(dead_code)]
     Error,
 }
 

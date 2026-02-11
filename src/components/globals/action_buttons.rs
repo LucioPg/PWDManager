@@ -15,6 +15,7 @@ pub enum ButtonSize {
     #[default]
     Normal,
     Small,
+    #[allow(dead_code)]
     Large,
 }
 
@@ -149,5 +150,6 @@ pub enum ActionButtonsVariant {
     #[default]
     Auth, // Pulsanti di autenticazione (login/register)
     Nav,   // Pulsanti di navigazione (navbar)
+    #[allow(dead_code)]
     Ghost, // Pulsanti ghost
 }

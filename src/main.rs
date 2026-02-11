@@ -10,23 +10,15 @@ use crate::components::{
 };
 use dioxus::prelude::*;
 use dioxus_components::{Spinner, SpinnerSize};
-use tokio::task::JoinHandle;
 use gui_launcher::launch_desktop;
-// use backend::{list_users, init_db};
 use crate::auth::User;
 use crate::backend::db_backend::list_users_no_avatar;
 use backend::db_backend::init_db;
-// use components::{login, navbar, settings, dashboard};
 
 // Asset CSS di Tailwind
-// static TAILWIND_CSS: Asset = asset!("../assets/tailwind.css");
 static TAILWIND_CSS: &str = include_str!("../assets/tailwind.css");
-// static MAIN_CSS: Asset = asset!("../assets/main.css");
 static MAIN_CSS: &str = include_str!("../assets/main.css");
-// const FAVICON: Asset = asset!("../assets/favicon.ico", AssetOptions::builder().with_hash_suffix(false));
-
 const LOGO_BYTES: &[u8] = include_bytes!("../assets/logo.png");
-
 const SHOW_USERS_LIST: bool = true;
 #[component]
 fn App() -> Element {
@@ -37,7 +29,9 @@ fn App() -> Element {
     let mut db_resource = use_resource(move || async move { init_db().await });
     let db_resource_clone_drop = db_resource.clone();
     let resource_value = db_resource.read();
+    #[allow(unused_mut)]
     let mut spawn_handle = use_signal(|| Option::<Task>::None);
+    #[allow(unused_mut)]
     let mut toast_state = use_context::<Signal<ToastsState>>();
 
     // Flag per ricordare se abbiamo già notificato l'inizializzazione del DB
@@ -104,7 +98,7 @@ fn App() -> Element {
                     spawn_handle.set(Some(handle));
                 }
             }
-            Some(Err(e)) => {
+            Some(Err(_)) => {
                 // L'errore può essere temporaneo, non usiamo flag
                 add_toast(
                     "Caricamento database Fallito!".into(),
@@ -188,12 +182,3 @@ enum Route {
     #[route("/:..segments")]
     PageNotFound { segments: Vec<String> },
 }
-
-// #[derive(Routable, Clone, PartialEq, Debug)]
-// #[rustfmt::skip]
-// enum Route {
-//     #[route("/")]
-//     Login {},
-//     #[route("/dashboard")]
-//     Dashboard {},
-// }

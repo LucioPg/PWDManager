@@ -5,9 +5,13 @@ use dioxus::prelude::*;
 pub enum InputType {
     Text,
     Password,
+    #[allow(dead_code)]
     Email,
+    #[allow(dead_code)]
     Number,
+    #[allow(dead_code)]
     Tel,
+    #[allow(dead_code)]
     Url,
 }
 

@@ -1,4 +1,4 @@
-use crate::backend::utils::{format_avatar_url, get_user_avatar_with_default};
+use crate::backend::utils::get_user_avatar_with_default;
 use dioxus::prelude::*;
 
 #[derive(Clone, PartialEq, Debug)]
@@ -57,7 +57,7 @@ impl AuthState {
             None => "".to_string(),
         }
     }
-
+    #[allow(dead_code)]
     pub fn set_username(&mut self, username: String) {
         match &mut *self.user.write() {
             Some(user) => user.username = username,

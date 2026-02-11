@@ -3,10 +3,9 @@ use crate::backend::db_backend::{delete_user, save_or_update_user};
 use crate::backend::ui_utils::pick_and_process_avatar;
 use crate::backend::utils::get_user_avatar_with_default;
 use crate::components::{
-    ActionButton, ActionButtons, ActionButtonsVariant, AvatarSelector, AvatarSize, ButtonSize,
+    ActionButton, AvatarSelector, AvatarSize, ButtonSize,
     ButtonType, ButtonVariant, FormField, InputType, ToastType, ToastsState, add_toast,
 };
-use dioxus::html::link::disabled;
 use dioxus::prelude::*;
 use sqlx::SqlitePool;
 use tracing::instrument;
@@ -22,27 +21,37 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     let nav = use_navigator();
     let pool = use_context::<SqlitePool>();
     let pool_clone_on_submit = pool.clone();
+    #[allow(unused_mut)]
     let mut toast_state = use_context::<Signal<ToastsState>>();
     let auth_state = use_context::<AuthState>();
+    #[allow(unused_mut)]
     let mut auth_state_delete_clone = auth_state.clone();
+    #[allow(unused_mut)]
     let mut auth_state_logout_clone = auth_state.clone();
+    #[allow(unused_mut)]
     let mut auth_state_submit_clone = auth_state.clone();
 
     // --- Stato ---
+    #[allow(unused_mut)]
     let mut is_loading = use_signal(|| false);
     let mut error = use_signal(|| Option::<String>::None);
+    #[allow(unused_mut)]
     let mut new_avatar = use_signal(|| None::<Vec<u8>>);
     let is_user_deleted = use_signal::<bool>(|| false);
+    #[allow(unused_mut)]
     let mut is_picking = use_signal(|| false);  // Traccia se il dialog è aperto
 
     // Inizializzazione dati utente (Semplificata con unwrap_or_default)
+    #[allow(unused_mut)]
     let mut username = use_signal(|| {
         user_to_edit
             .as_ref()
             .map(|u| u.username.clone())
             .unwrap_or_default()
     });
+    #[allow(unused_mut)]
     let mut password = use_signal(|| String::new());
+    #[allow(unused_mut)]
     let mut repassword = use_signal(|| String::new());
     let mut avatar = use_signal(|| {
         user_to_edit
@@ -116,10 +125,13 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         if is_loading() || is_picking() {
             return;
         }
-
+        #[allow(unused_mut)]
         let mut new_avatar_clone = new_avatar.clone();
+        #[allow(unused_mut)]
         let mut is_loading_clone = is_loading.clone();
+        #[allow(unused_mut)]
         let mut is_picking_clone = is_picking.clone();  // Clona anche is_picking
+        #[allow(unused_mut)]
         let mut error_clone = error.clone();
         spawn(pick_and_process_avatar(
             new_avatar_clone,

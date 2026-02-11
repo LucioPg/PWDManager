@@ -5,6 +5,7 @@ use std::default::Default;
 pub enum ToastType {
     Success,
     Error,
+    #[allow(dead_code)]
     Warning,
     Info,
 }

@@ -6,7 +6,9 @@ use dioxus_components::{Spinner, SpinnerSize};
 pub enum AvatarSize {
     #[default]
     Medium, // avatar-md (48px)
+    #[allow(dead_code)]
     Large,   // avatar-lg (96px)
+    #[allow(dead_code)]
     XLarge,  // avatar-xl (128px)
     XXLarge, // avatar-xl (256px)
 }
@@ -27,7 +29,9 @@ impl AvatarSize {
 pub enum AvatarBorder {
     #[default]
     Bordered, // Bordo visibile
+    #[allow(dead_code)]
     None,   // Nessun bordo
+    #[allow(dead_code)]
     Circle, // Bordo circolare
 }
 

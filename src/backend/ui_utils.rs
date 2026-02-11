@@ -1,4 +1,4 @@
-use crate::backend::utils::{get_user_avatar_with_default, scale_avatar};
+use crate::backend::utils::scale_avatar;
 use dioxus::prelude::*; // o i tuoi import specifici
 use rfd::FileDialog;
 use std::fs;
