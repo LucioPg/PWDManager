@@ -2,10 +2,7 @@ use crate::auth::{AuthState, User};
 use crate::backend::db_backend::save_or_update_user;
 use crate::backend::ui_utils::pick_and_process_avatar;
 use crate::backend::utils::get_user_avatar_with_default;
-use crate::components::{
-    ActionButtons, ActionButtonsVariant, AvatarSelector, AvatarSize, FormField, InputType,
-    ToastType, ToastsState, add_toast,
-};
+use crate::components::{ActionButtons, ActionButtonsVariant, AvatarSelector, AvatarSize, FormField, InputType, ToastType, ToastsState, add_toast, ActionButton, ButtonType, ButtonVariant, ButtonSize};
 use dioxus::prelude::*;
 use sqlx::SqlitePool;
 use tracing::instrument;
@@ -146,12 +143,38 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                         value: repassword,
                         required: password_required,
                     }
-                    ActionButtons {
-                        primary_text: "{submit_btn_text}",
-                        secondary_text: "Login",
-                        primary_on_click: move |_| {},
-                        secondary_on_click: move |_| { nav.push("/login"); },
-                        variant: ActionButtonsVariant::Auth,
+                    // ActionButtons {
+                    //     primary_text: "{submit_btn_text}",
+                    //     secondary_text: "Login",
+                    //     primary_on_click: move |_| {},
+                    //     secondary_on_click: move |_| { nav.push("/login"); },
+                    //     variant: ActionButtonsVariant::Auth,
+                    // }
+                    ActionButton {
+                        text: "{submit_btn_text}",
+                        variant: ButtonVariant::Primary,
+                        button_type: ButtonType::Submit,
+                        size: ButtonSize::Normal,
+                        on_click: move |_| {},
+                    }
+                    if is_updating {
+                        ActionButton {
+                            text: "Delete Account",
+                            variant: ButtonVariant::Ghost,
+                            button_type: ButtonType::Button,
+                            size: ButtonSize::Normal,
+                            on_click: move |_| {println!("Delete Account")},
+                            additional_class: "text-error-600 hover:bg-error-50 hover:text-error-700"
+                        }
+                    }
+                    else {
+                        ActionButton {
+                            text: "Login",
+                            variant: ButtonVariant::Secondary,
+                            button_type: ButtonType::Button,
+                            size: ButtonSize::Normal,
+                            on_click: move |_| { nav.push("/login"); },
+                        }
                     }
                 }
             }

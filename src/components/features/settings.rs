@@ -1,17 +1,10 @@
-use crate::backend::ui_utils::pick_and_process_avatar;
-use crate::backend::utils::get_user_avatar_with_default;
-use custom_errors::DBError;
-use crate::components::{ActionButton, AvatarSelector, AvatarSize, ButtonSize, ButtonType, ButtonVariant, FormField, InputType, TabContent, Tabs, TabList, TabTrigger, ToastsState, UpsertUser, add_toast, ToastType};
+
+use crate::components::{ TabContent, Tabs, TabList, TabTrigger, ToastsState, UpsertUser, add_toast, ToastType};
 use dioxus::prelude::*;
 use sqlx::SqlitePool;
-use tokio::task::spawn_blocking;
 use crate::backend::db_backend::delete_user;
 
-// async fn delete_user_(pool: &SqlitePool, id: i32) -> Result<(), DBError> {
-//     let _ = spawn_blocking(move || delete_user(&pool, id)).await.map_err(|e| DBError::new_delete_error(e.to_string()))?;
-//     Ok(())
-//
-// }
+
 
 #[component]
 pub fn SettingsTabContent() -> Element {
@@ -78,9 +71,9 @@ pub fn SettingsTabContent() -> Element {
             }
             TabContent { index: 0usize, class: "tabs-content border-none shadow-none", value: "Account".to_string(),
                 UpsertUser {user_to_edit: user.clone()}
-                div {class:"flex justify-end",
-                    button {class: "btn-danger-lg" ,r#type: "button", onclick: move |_| {on_delete_user();}, "Delete Account"}
-                }
+                // div {class:"flex justify-end",
+                //     button {class: "btn-danger-lg" ,r#type: "button", onclick: move |_| {on_delete_user();}, "Delete Account"}
+                // }
             }
             TabContent { index: 1usize, class: "tabs-content", value: "Security".to_string(),
                 div {
