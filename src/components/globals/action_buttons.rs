@@ -64,6 +64,7 @@ pub fn ActionButton(
     #[props(default)] button_type: ButtonType,
     #[props(default)] disabled: Signal<bool>,
     on_click: EventHandler<MouseEvent>,
+    #[props(default)] additional_class: String,
 ) -> Element {
     let size_suffix = size.as_suffix();
     let variant_class = variant.as_class();
@@ -75,9 +76,9 @@ pub fn ActionButton(
     };
 
     let classes = if block {
-        format!("{} {}", base_classes, "btn-block")
+        format!("{} {} {}", base_classes, "btn-block", additional_class)
     } else {
-        base_classes
+        format!("{} {}", base_classes, additional_class)
     };
     // let is_disabled: bool = (*disabled.read()).into();
     rsx! {
