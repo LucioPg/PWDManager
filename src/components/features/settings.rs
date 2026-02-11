@@ -14,51 +14,7 @@ pub fn SettingsTabContent() -> Element {
     let mut toast_state = use_context::<Signal<ToastsState>>();
     let is_user_deleted = use_signal::<bool>(|| false);
     let mut auth_state_clone = auth_state.clone();
-    let on_delete_user = move || {
-        let mut is_user_deleted = is_user_deleted.clone();
-        let pool = use_context::<SqlitePool>();
-        let user = auth_state_clone.get_user();
-        let mut error = error.clone();
-        match user {
-            Some(user) => {
-                spawn(async move {
-                    match delete_user(&pool, user.id).await {
-                        Ok(()) => {
 
-                            is_user_deleted.set(true);
-                        },
-                        Err(e) => { error.set(Some(e.to_string()));}
-                    }
-                });
-            },
-            None => println!("No user to delete"),
-        }
-    };
-
-    use_effect(move || {
-
-        let mut is_user_deleted = is_user_deleted.clone();
-        let error = error.clone();
-        let mut auth_state = auth_state.clone();
-        let user = auth_state.get_user();
-        if is_user_deleted(){
-            add_toast(
-                format!("User {} deleted successfully!", user.unwrap().username),
-               3,
-                ToastType::Success,
-                toast_state
-
-            );
-            auth_state.logout();
-            is_user_deleted.set(false);
-        }
-        if let Some(msg) = error.read().clone() {
-            add_toast(msg.to_string(), 4, ToastType::Error, toast_state);
-            let mut error_clone = error.clone();
-            error_clone.set(None);
-        }
-        // error.set(None);
-    });
 
     rsx! {
         Tabs{
