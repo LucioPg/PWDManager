@@ -32,6 +32,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     let mut error = use_signal(|| Option::<String>::None);
     let mut new_avatar = use_signal(|| None::<Vec<u8>>);
     let is_user_deleted = use_signal::<bool>(|| false);
+    let mut is_picking = use_signal(|| false);  // Traccia se il dialog è aperto
 
     // Inizializzazione dati utente (Semplificata con unwrap_or_default)
     let mut username = use_signal(|| {
@@ -107,12 +108,19 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
 
     // --- Handlers ---
     let pick_image = move |_| {
+        // Controllo doppio: previene click se già caricando o picking
+        if is_loading() || is_picking() {
+            return;
+        }
+
         let mut new_avatar_clone = new_avatar.clone();
         let mut is_loading_clone = is_loading.clone();
+        let mut is_picking_clone = is_picking.clone();  // Clona anche is_picking
         let mut error_clone = error.clone();
         spawn(pick_and_process_avatar(
             new_avatar_clone,
             is_loading_clone,
+            is_picking_clone,  // ← Passa il nuovo signal
             error_clone,
         ));
     };
@@ -185,6 +193,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                     shadow: true,
                     show_border: true,
                     loading: is_loading,
+                    is_picking: is_picking,  // ← Passa il signal per disabilitare il bottone
                 }
 
                 form { onsubmit: on_submit, class: "flex flex-col gap-3 w-full",

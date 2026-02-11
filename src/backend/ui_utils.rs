@@ -8,8 +8,12 @@ use tokio::task::spawn_blocking;
 pub async fn pick_and_process_avatar(
     mut img_signal: Signal<Option<Vec<u8>>>,
     mut is_loading_signal: Signal<bool>,
+    mut is_picking_signal: Signal<bool>,  // ← Nuovo parametro per tracciare il dialog
     mut err_signal: Signal<Option<String>>,
 ) {
+    // Imposta "picking" immediatamente per prevenire click multipli
+    is_picking_signal.set(true);
+
     // Esegui FileDialog in spawn_blocking per non bloccare il thread UI
     let file_result = spawn_blocking(|| {
         FileDialog::new()
@@ -53,4 +57,7 @@ pub async fn pick_and_process_avatar(
         }
         is_loading_signal.set(false);
     }
+
+    // Resetta is_picking anche se l'operazione è stata annullata
+    is_picking_signal.set(false);
 }

@@ -174,7 +174,7 @@ use_effect(move || {
 | 🔴 Alta | `upsert_user.rs` | 93 | `use_context` dentro handler | [x] |
 | 🔴 Alta | `upsert_user.rs` | 51-56 | `use_memo` con side effect | [x] |
 | 🟡 Media | `main.rs` | 48-64 | `use_effect` con troppe responsabilità | [ ] |
-| 🟡 Media | `upsert_user.rs` | 85-90 | Nessun debouncing su pick_image | [ ] |
+| 🟡 Media | `upsert_user.rs` | 85-90 | Nessun debouncing su pick_image | [x] |
 | 🟢 Bassa | `ui_utils.rs` | 22-24 | Gestione errore silenziosa | [ ] |
 | 🟢 Bassa | `ui_utils.rs` | - | Manca documentazione | [ ] |
 | 🟢 Bassa | `main.rs` | - | Manca cleanup pool | [ ] |

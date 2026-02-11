@@ -81,6 +81,8 @@ pub fn AvatarSelector(
     #[props(default)]
     show_border: bool,
     #[props(default)] loading: Signal<bool>,
+    /// Signal che indica se il dialog di selezione è aperto
+    #[props(default)] is_picking: Signal<bool>,
 ) -> Element {
     let size_class = size.as_class();
     let border_class = if show_border { border.as_class() } else { "" };
@@ -114,6 +116,8 @@ pub fn AvatarSelector(
                 class: "btn-ghost btn-sm",
                 r#type: "button",
                 onclick: on_pick,
+                // Disabilita il bottone se sta caricando O se il dialog è aperto
+                disabled: loading() || is_picking(),
                 "{button_text}"
                 }
             }
