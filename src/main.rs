@@ -3,16 +3,16 @@ mod auth;
 mod backend;
 mod components;
 use crate::components::{
-    AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, UpsertUser,
-    RouteWrapper, Settings, ToastContainer, ToastType, ToastsState, add_toast,
+    AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, RouteWrapper,
+    Settings, ToastContainer, ToastType, ToastsState, UpsertUser, add_toast,
 };
 use dioxus::prelude::*;
 use dioxus_components::{Spinner, SpinnerSize};
 use gui_launcher::launch_desktop;
 // use backend::{list_users, init_db};
 use crate::auth::User;
+use crate::backend::db_backend::list_users_no_avatar;
 use backend::db_backend::init_db;
-use crate::backend::db_backend::{list_users_no_avatar};
 // use components::{login, navbar, settings, dashboard};
 
 // Asset CSS di Tailwind
@@ -65,7 +65,6 @@ fn App() -> Element {
                         }
                     });
                 }
-
             }
             Some(Err(e)) => {
                 // Mostriamo l'errore all'utente in modo elegante
@@ -141,7 +140,10 @@ enum Route {
     Settings,
     #[end_layout(AuthWrapper)]
     #[route("/login?:new_user")]
-    Login { new_user: Option<bool>, user_updated: Option<bool> },
+    Login {
+        new_user: Option<bool>,
+        user_updated: Option<bool>,
+    },
     #[route("/register")]
     UpsertUser { user_to_edit: Option<User> },
 

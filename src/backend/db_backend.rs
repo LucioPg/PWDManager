@@ -46,31 +46,29 @@ pub async fn save_or_update_user(
 
     match id {
         // --- CASO UPDATE ---
-        Some(user_id) => {
-            match password {
-                Some(psw) if !psw.is_empty() => {
-                    let hash_password = crate::backend::utils::encrypt(&psw)
-                        .map_err(|e| DBError::new_save_error(format!("Failed to encrypt: {}", e)))?;
-                    sqlx::query("UPDATE users SET username = ?, password = ?, avatar = ? WHERE id = ?")
-                        .bind(username)
-                        .bind(hash_password)
-                        .bind(avatar)
-                        .bind(user_id)
-                        .execute(pool)
-                        .await
-                        .map_err(|e| DBError::new_save_error(format!("Update failed: {}", e)))?;
-                }
-                _ => {
-                    sqlx::query("UPDATE users SET username = ?, avatar = ? WHERE id = ?")
-                        .bind(username)
-                        .bind(avatar)
-                        .bind(user_id)
-                        .execute(pool)
-                        .await
-                        .map_err(|e| DBError::new_save_error(format!("Update failed: {}", e)))?;
-                }
+        Some(user_id) => match password {
+            Some(psw) if !psw.is_empty() => {
+                let hash_password = crate::backend::utils::encrypt(&psw)
+                    .map_err(|e| DBError::new_save_error(format!("Failed to encrypt: {}", e)))?;
+                sqlx::query("UPDATE users SET username = ?, password = ?, avatar = ? WHERE id = ?")
+                    .bind(username)
+                    .bind(hash_password)
+                    .bind(avatar)
+                    .bind(user_id)
+                    .execute(pool)
+                    .await
+                    .map_err(|e| DBError::new_save_error(format!("Update failed: {}", e)))?;
             }
-        }
+            _ => {
+                sqlx::query("UPDATE users SET username = ?, avatar = ? WHERE id = ?")
+                    .bind(username)
+                    .bind(avatar)
+                    .bind(user_id)
+                    .execute(pool)
+                    .await
+                    .map_err(|e| DBError::new_save_error(format!("Update failed: {}", e)))?;
+            }
+        },
         // --- CASO INSERT ---
         None => {
             let psw = password.unwrap_or_default();
@@ -108,10 +106,13 @@ pub async fn list_users(
     pool: &SqlitePool,
 ) -> Result<Vec<(i32, String, String, Option<Vec<u8>>)>, DBError> {
     debug!("Fetching list of users from database");
-    let rows = query("SELECT id, username, created_at, avatar FROM users ORDER BY id DESC LIMIT 10")
-        .fetch_all(pool)
-        .await
-        .map_err(|e| DBError::new_list_error(format!("Failed to save user credentials: {}", e)))?;
+    let rows =
+        query("SELECT id, username, created_at, avatar FROM users ORDER BY id DESC LIMIT 10")
+            .fetch_all(pool)
+            .await
+            .map_err(|e| {
+                DBError::new_list_error(format!("Failed to save user credentials: {}", e))
+            })?;
     let users = rows
         .into_iter()
         .map(|row| {

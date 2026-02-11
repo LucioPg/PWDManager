@@ -49,27 +49,26 @@ pub fn Login(new_user: Option<bool>, user_updated: Option<bool>) -> Element {
         if Some(true) == new_user {
             message = "User Registered successfully!".to_string();
             proceed = true;
-        }
-        else if Some(true) == user_updated {
+        } else if Some(true) == user_updated {
             message = "User Updated successfully!".to_string();
             proceed = true;
-        }
-        else {
+        } else {
             proceed = false;
             message = "".to_string();
         }
         if proceed {
-            add_toast(
-                message,
-                3,
-                ToastType::Success,
-                toast_state,
-            );
-            nav.replace(Route::Login { new_user: None, user_updated: Some(false) });
+            add_toast(message, 3, ToastType::Success, toast_state);
+            nav.replace(Route::Login {
+                new_user: None,
+                user_updated: Some(false),
+            });
         }
         if let Some(msg) = error.read().clone() {
             add_toast(msg.to_string(), 4, ToastType::Error, toast_state);
-            nav.replace(Route::Login { new_user: None, user_updated: Some(false) });
+            nav.replace(Route::Login {
+                new_user: None,
+                user_updated: Some(false),
+            });
         }
     });
     rsx! {

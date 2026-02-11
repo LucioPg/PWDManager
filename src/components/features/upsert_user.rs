@@ -1,9 +1,12 @@
-use dioxus::html::link::disabled;
 use crate::auth::{AuthState, User};
 use crate::backend::db_backend::{delete_user, save_or_update_user};
 use crate::backend::ui_utils::pick_and_process_avatar;
 use crate::backend::utils::get_user_avatar_with_default;
-use crate::components::{ActionButtons, ActionButtonsVariant, AvatarSelector, AvatarSize, FormField, InputType, ToastType, ToastsState, add_toast, ActionButton, ButtonType, ButtonVariant, ButtonSize};
+use crate::components::{
+    ActionButton, ActionButtons, ActionButtonsVariant, AvatarSelector, AvatarSize, ButtonSize,
+    ButtonType, ButtonVariant, FormField, InputType, ToastType, ToastsState, add_toast,
+};
+use dioxus::html::link::disabled;
 use dioxus::prelude::*;
 use sqlx::SqlitePool;
 use tracing::instrument;
@@ -31,12 +34,18 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
 
     // Inizializzazione dati utente (Semplificata con unwrap_or_default)
     let mut username = use_signal(|| {
-        user_to_edit.as_ref().map(|u| u.username.clone()).unwrap_or_default()
+        user_to_edit
+            .as_ref()
+            .map(|u| u.username.clone())
+            .unwrap_or_default()
     });
     let mut password = use_signal(|| String::new());
     let mut repassword = use_signal(|| String::new());
     let mut avatar = use_signal(|| {
-        user_to_edit.as_ref().map(|u| u.avatar.clone()).unwrap_or_else(|| get_user_avatar_with_default(None))
+        user_to_edit
+            .as_ref()
+            .map(|u| u.avatar.clone())
+            .unwrap_or_else(|| get_user_avatar_with_default(None))
     });
 
     // --- Derivazione Proprietà (Configurazione UI) ---
@@ -44,9 +53,21 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     let user_id = user_to_edit.as_ref().map(|u| u.id.clone());
 
     let (header, paragraph, class_container, submit_btn_text, password_required) = if is_updating {
-        ("Account Settings", "Update Your Profile", "auth-form-tabbed", "Update", false)
+        (
+            "Account Settings",
+            "Update Your Profile",
+            "auth-form-tabbed",
+            "Update",
+            false,
+        )
     } else {
-        ("Create Account", "Sign up to get started", "auth-form-lg", "Register", true)
+        (
+            "Create Account",
+            "Sign up to get started",
+            "auth-form-lg",
+            "Register",
+            true,
+        )
     };
     // --- Effetti ---
     // Aggiorna l'anteprima avatar quando ne viene scelto uno nuovo
@@ -88,7 +109,11 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         let mut new_avatar_clone = new_avatar.clone();
         let mut is_loading_clone = is_loading.clone();
         let mut error_clone = error.clone();
-        spawn(pick_and_process_avatar(new_avatar_clone, is_loading_clone, error_clone));
+        spawn(pick_and_process_avatar(
+            new_avatar_clone,
+            is_loading_clone,
+            error_clone,
+        ));
     };
     let on_delete_user = move || {
         let mut is_user_deleted = is_user_deleted.clone();
@@ -100,13 +125,14 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                 spawn(async move {
                     match delete_user(&pool, user.id).await {
                         Ok(()) => {
-
                             is_user_deleted.set(true);
-                        },
-                        Err(e) => { error.set(Some(e.to_string()));}
+                        }
+                        Err(e) => {
+                            error.set(Some(e.to_string()));
+                        }
                     }
                 });
-            },
+            }
             None => println!("No user to delete"),
         }
     };
@@ -129,14 +155,16 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         }
 
         spawn(async move {
-
-
             match save_or_update_user(&pool, user_id, u, Some(p), a).await {
-
                 Ok(_) => {
                     auth_state.logout();
-                    let url = if is_updating { "/login?new_user=true" } else { "/login?user_updated=true" };
-                    nav.push(url); },
+                    let url = if is_updating {
+                        "/login?new_user=true"
+                    } else {
+                        "/login?user_updated=true"
+                    };
+                    nav.push(url);
+                }
                 Err(e) => error.set(Some(e.to_string())),
             }
         });

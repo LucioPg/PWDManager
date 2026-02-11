@@ -6,8 +6,8 @@ pub mod navbar;
 pub mod pagenotfound;
 mod route_wrapper;
 pub mod stat_card;
-mod toasts;
 pub mod tabs;
+mod toasts;
 
 pub use action_buttons::*;
 pub use auth_wrapper::*;
@@ -17,5 +17,5 @@ pub use navbar::*;
 pub use pagenotfound::*;
 pub use route_wrapper::*;
 pub use stat_card::*;
-pub use toasts::*;
 pub use tabs::*;
+pub use toasts::*;

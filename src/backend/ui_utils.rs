@@ -16,7 +16,8 @@ pub async fn pick_and_process_avatar(
             .add_filter("Image Files", &["png", "jpg", "jpeg"])
             .set_directory("/")
             .pick_file()
-    }).await;
+    })
+    .await;
 
     let Ok(Some(path)) = file_result else {
         return;

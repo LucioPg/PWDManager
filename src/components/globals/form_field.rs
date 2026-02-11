@@ -63,8 +63,7 @@ pub fn FormField(
     /// Readonly attribute
     #[props(default)]
     readonly: bool,
-    #[props(default)]
-    autocomplete: bool
+    #[props(default)] autocomplete: bool,
 ) -> Element {
     let input_class = if readonly {
         "input-base input-readonly"
