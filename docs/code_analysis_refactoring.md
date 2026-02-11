@@ -176,7 +176,7 @@ use_effect(move || {
 | 🟡 Media | `main.rs` | 48-64 | `use_effect` con troppe responsabilità | [ ] |
 | 🟡 Media | `upsert_user.rs` | 85-90 | Nessun debouncing su pick_image | [x] |
 | 🟢 Bassa | `ui_utils.rs` | 22-24 | Gestione errore silenziosa | [x] |
-| 🟢 Bassa | `ui_utils.rs` | - | Manca documentazione | [ ] |
+| 🟢 Bassa | `ui_utils.rs` | - | Manca documentazione | [x] |
 | 🟢 Bassa | `main.rs` | - | Manca cleanup pool | [ ] |
 
 ---

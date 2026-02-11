@@ -5,6 +5,49 @@ use std::fs;
 use std::path::Path;
 use tokio::task::spawn_blocking;
 
+/// Apre un dialog di selezione file, processa l'immagine selezionata e aggiorna i signal forniti.
+///
+/// Questa funzione gestisce l'intero flusso di selezione e processamento avatar:
+/// 1. Apre il dialog nativo per la selezione del file
+/// 2. Verifica che il file esista
+/// 3. Legge i bytes del file
+/// 4. Esegue lo scaling dell'immagine
+/// 5. Aggiorna i signal per l'UI (loading, errore, immagine processata)
+///
+/// # Signal
+///
+/// - `img_signal`: Aggiornato con l'immagine processata (Vec<u8>) o None
+/// - `is_loading_signal`: Impostato a true durante il processamento, false al termine
+/// - `is_picking_signal`: Impostato a true mentre il dialog è aperto, false quando chiuso
+/// - `err_signal`: Contiene messaggi di errore se qualcosa va storto
+///
+/// # Esempi
+///
+/// ```rust,no_run
+/// use dioxus::prelude::*;
+/// #
+/// // Nel componente:
+/// let mut is_loading = use_signal(|| false);
+/// let mut is_picking = use_signal(|| false);
+/// let mut error = use_signal(|| None::<String>);
+/// let mut new_avatar = use_signal(|| None::<Vec<u8>>);
+/// #
+/// let pick_image = move |_| {
+///     if is_loading() || is_picking() {
+///         return;
+///     }
+///     spawn(pick_and_process_avatar(
+///         new_avatar,
+///         is_loading,
+///         is_picking,
+///         error,
+///     ));
+/// };
+/// ```
+///
+/// # Ritorna
+///
+/// Non restituisce nulla (i signal vengono aggiornati internamente)
 pub async fn pick_and_process_avatar(
     mut img_signal: Signal<Option<Vec<u8>>>,
     mut is_loading_signal: Signal<bool>,
