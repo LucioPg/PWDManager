@@ -27,7 +27,7 @@ static MAIN_CSS: &str = include_str!("../assets/main.css");
 
 const LOGO_BYTES: &[u8] = include_bytes!("../assets/logo.png");
 
-const SHOW_USERS_LIST: bool = false;
+const SHOW_USERS_LIST: bool = true;
 #[component]
 fn App() -> Element {
     let auth_state = auth::AuthState::new();
@@ -93,6 +93,8 @@ fn App() -> Element {
                                     println!("{}\t{}\t{}", id, username, password);
                                 }
                                 println!("===================");
+                                users_list_printed.set(true);
+
                             }
                             Err(e) => {
                                 println!("Errore nel recupero utenti: {:?}", e);
@@ -100,7 +102,6 @@ fn App() -> Element {
                         }
                     });
                     spawn_handle.set(Some(handle));
-                    users_list_printed.set(true);
                 }
             }
             Some(Err(e)) => {
