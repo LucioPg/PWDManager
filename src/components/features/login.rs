@@ -1,8 +1,7 @@
-use crate::Route;
 use crate::auth::AuthState;
 use crate::backend::db_backend::{check_user, fetch_user_data};
 use crate::components::{
-    ActionButtons, ActionButtonsVariant, FormField, InputType, ToastType, ToastsState, add_toast,
+    ActionButtons, ActionButtonsVariant, FormField, InputType, show_toast_error, use_toast,
 };
 use dioxus::prelude::*;
 use sqlx::SqlitePool;
@@ -10,14 +9,12 @@ use tracing::{debug, instrument};
 
 #[component]
 #[instrument]
-pub fn Login(new_user: Option<bool>, user_updated: Option<bool>) -> Element {
+pub fn Login() -> Element {
     #[allow(unused_mut)]
     let mut username = use_signal(|| String::new());
     #[allow(unused_mut)]
     let mut password = use_signal(|| String::new());
-    let mut error = use_signal(|| Option::<String>::None);
-    #[allow(unused_mut)]
-    let mut toast_state = use_context::<Signal<ToastsState>>();
+    let toast = use_toast();
     let nav = use_navigator();
     let pool = use_context::<SqlitePool>();
     let auth_state = use_context::<AuthState>();
@@ -26,6 +23,7 @@ pub fn Login(new_user: Option<bool>, user_updated: Option<bool>) -> Element {
         let u = username.read().clone();
         let p = password.read().clone();
         let mut auth_state = auth_state.clone();
+        let toast = toast.clone();
         spawn(async move {
             // La tua funzione check_user ora ha il pool!
             match check_user(&pool, &u, &p).await {
@@ -39,41 +37,13 @@ pub fn Login(new_user: Option<bool>, user_updated: Option<bool>) -> Element {
                             let nav_dashboard = nav.clone();
                             nav_dashboard.push("/dashboard");
                         }
-                        Err(e) => error.set(Some(format!("Errore: {}", e))),
+                        Err(e) => show_toast_error(format!("Errore: {}", e), toast),
                     }
                 }
-                Err(e) => error.set(Some(format!("Errore login: {}", e))),
+                Err(e) => show_toast_error(format!("Errore login: {}", e), toast),
             }
         });
     };
-    use_effect(move || {
-        let proceed: bool;
-        let message: String;
-        if Some(true) == new_user {
-            message = "User Registered successfully!".to_string();
-            proceed = true;
-        } else if Some(true) == user_updated {
-            message = "User Updated successfully!".to_string();
-            proceed = true;
-        } else {
-            proceed = false;
-            message = "".to_string();
-        }
-        if proceed {
-            add_toast(message, 3, ToastType::Success, toast_state);
-            nav.replace(Route::Login {
-                new_user: None,
-                user_updated: Some(false),
-            });
-        }
-        if let Some(msg) = error.read().clone() {
-            add_toast(msg.to_string(), 4, ToastType::Error, toast_state);
-            nav.replace(Route::Login {
-                new_user: None,
-                user_updated: Some(false),
-            });
-        }
-    });
     rsx! {
         div { class: "page-centered",
             div { class: "auth-form animate-scale-in",

@@ -4,7 +4,7 @@ use crate::backend::ui_utils::pick_and_process_avatar;
 use crate::backend::utils::get_user_avatar_with_default;
 use crate::components::{
     ActionButton, AvatarSelector, AvatarSize, ButtonSize, ButtonType, ButtonVariant, FormField,
-    InputType, ToastType, ToastsState, UserDeletionDialog, add_toast,
+    InputType, UserDeletionDialog, schedule_toast_success, show_toast_error, show_toast_success, use_toast,
 };
 
 use dioxus::prelude::*;
@@ -22,8 +22,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     let nav = use_navigator();
     let pool = use_context::<SqlitePool>();
     let pool_clone_on_submit = pool.clone();
-    #[allow(unused_mut)]
-    let mut toast_state = use_context::<Signal<ToastsState>>();
+    let toast = use_toast();
     let auth_state = use_context::<AuthState>();
     #[allow(unused_mut)]
     let mut auth_state_delete_clone = auth_state.clone();
@@ -93,14 +92,9 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
 
     use_effect(move || {
         let mut this_error = error.clone();
+        let toast = toast.clone();
         if let Some(msg) = this_error() {
-            add_toast(
-                format!("Error saving user: {}", msg),
-                3,
-                ToastType::Error,
-                toast_state,
-            );
-
+            show_toast_error(format!("Error saving user: {}", msg), toast);
             this_error.set(None);
         }
     });
@@ -109,14 +103,11 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     use_effect(move || {
         let user = auth_state_delete_clone.get_user();
         let mut user_deleted = is_user_deleted.clone();
+        let toast = toast.clone();
         if user_deleted() {
-            add_toast(
-                format!("User {} deleted successfully!", user.unwrap().username),
-                2,
-                ToastType::Success,
-                toast_state,
-            );
-
+            if let Some(u) = user {
+                show_toast_success(format!("User {} deleted successfully!", u.username), toast);
+            }
             user_deleted.set(false);
         }
     });
@@ -202,12 +193,13 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
             match save_or_update_user(&pool, user_id, u, Some(p), a).await {
                 Ok(_) => {
                     auth_state.logout();
-                    let url = if is_updating {
-                        "/login?new_user=true"
+                    let message = if is_updating {
+                        "User Updated successfully!"
                     } else {
-                        "/login?user_updated=true"
+                        "User Registered successfully!"
                     };
-                    nav.push(url);
+                    schedule_toast_success(message.to_string(), toast);
+                    nav.push("/login");
                 }
                 Err(e) => error.set(Some(e.to_string())),
             }

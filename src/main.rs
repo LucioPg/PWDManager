@@ -7,7 +7,8 @@ use crate::auth::User;
 use crate::backend::db_backend::list_users_no_avatar;
 use crate::components::{
     AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, RouteWrapper,
-    Settings, Spinner, SpinnerSize, ToastContainer, ToastType, ToastsState, UpsertUser, add_toast,
+    Settings, Spinner, SpinnerSize, ToastContainer, ToastHubState, UpsertUser,
+    show_toast_error, show_toast_success,
 };
 use backend::db_backend::init_db;
 use dioxus::core::Task;
@@ -23,7 +24,7 @@ const SHOW_USERS_LIST: bool = true;
 fn App() -> Element {
     let auth_state = auth::AuthState::new();
     use_context_provider(move || auth_state);
-    use_context_provider(|| Signal::new(ToastsState::default()));
+    use_context_provider(|| Signal::new(ToastHubState::default()));
     // Il resource ora conterrà un Result
     let mut db_resource = use_resource(move || async move { init_db().await });
     let db_resource_clone_drop = db_resource.clone();
@@ -31,7 +32,7 @@ fn App() -> Element {
     #[allow(unused_mut)]
     let mut spawn_handle = use_signal(|| Option::<Task>::None);
     #[allow(unused_mut)]
-    let mut toast_state = use_context::<Signal<ToastsState>>();
+    let mut toast_state = use_context::<Signal<ToastHubState>>();
 
     // Flag per ricordare se abbiamo già notificato l'inizializzazione del DB
     let mut db_init_notified = use_signal(|| false);
@@ -59,12 +60,7 @@ fn App() -> Element {
             Some(Ok(pool)) => {
                 // Toast: solo la prima volta che il DB è caricato con successo
                 if !db_init_notified() {
-                    add_toast(
-                        "Caricamento database riuscito!".into(),
-                        6,
-                        ToastType::Success,
-                        toast_state,
-                    );
+                    show_toast_success("Caricamento database riuscito!".into(), toast_state);
                     db_init_notified.set(true);
                 }
                 let mut spawn_handle = spawn_handle.clone();
@@ -95,12 +91,7 @@ fn App() -> Element {
             }
             Some(Err(_)) => {
                 // L'errore può essere temporaneo, non usiamo flag
-                add_toast(
-                    "Caricamento database Fallito!".into(),
-                    6,
-                    ToastType::Error,
-                    toast_state,
-                );
+                show_toast_error("Caricamento database Fallito!".into(), toast_state);
             }
             None => {}
         }
@@ -166,11 +157,8 @@ enum Route {
     #[route("/settings")]
     Settings,
     #[end_layout(AuthWrapper)]
-    #[route("/login?:new_user")]
-    Login {
-        new_user: Option<bool>,
-        user_updated: Option<bool>,
-    },
+    #[route("/login")]
+    Login,
     #[route("/register")]
     UpsertUser { user_to_edit: Option<User> },
 

@@ -9,7 +9,7 @@ mod route_wrapper;
 pub mod spinner;
 pub mod stat_card;
 pub mod tabs;
-mod toasts;
+mod toast_hub;
 
 pub use action_buttons::*;
 pub use auth_wrapper::*;
@@ -22,4 +22,4 @@ pub use route_wrapper::*;
 pub use spinner::*;
 pub use stat_card::*;
 pub use tabs::*;
-pub use toasts::*;
+pub use toast_hub::*;
