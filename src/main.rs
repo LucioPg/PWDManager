@@ -137,9 +137,9 @@ fn App() -> Element {
                 div {
                     class: "flex gap-4 justify-center items-center h-screen",
                     Spinner {
-                    size: SpinnerSize::Small,
-                    color: "text-success"
-                }
+                        size: SpinnerSize::XLarge,
+                        color_class: "spinner-success".to_string(),
+                    }
                 }
 
             }

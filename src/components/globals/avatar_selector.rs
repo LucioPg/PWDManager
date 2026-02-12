@@ -107,7 +107,7 @@ pub fn AvatarSelector(
     div { class: "{container_classes}",
         if loading() {
             div {class: "{img_classes} flex items-center justify-center",
-                Spinner {size: SpinnerSize::Small, color: "text-success"}
+                Spinner {size: SpinnerSize::Medium, color_class: "spinner-success", with_background: true}
                 }
             }
             else {

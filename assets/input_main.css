@@ -707,8 +707,36 @@
    ============================================================ */
 /* Spinner */
 @utility spinner {
-    @apply w-5 h-5 border-2 border-neutral-300 border-t-primary-600 rounded-full;
+    @apply w-5 h-5 border-2 rounded-full;
+    border-color: rgb(var(--color-neutral-300, 209 213 219));
+    border-top-color: rgb(var(--color-primary-600, 37 130 246));
     animation: spin 1s linear infinite;
+}
+
+/* Spinner color variants */
+.spinner-success {
+    @apply spinner;
+    border-color: rgb(var(--color-success-600, 22 163 74));
+}
+
+.spinner-error {
+    @apply spinner;
+    border-color: rgb(var(--color-error-600, 220 38 38));
+}
+
+.spinner-warning {
+    @apply spinner;
+    border-color: rgb(var(--color-warning-600, 217 119 6));
+}
+
+.spinner-info {
+    @apply spinner;
+    border-color: rgb(var(--color-info-600, 2 132 199));
+}
+
+.spinner-secondary {
+    @apply spinner;
+    border-color: rgb(var(--color-secondary-600, 13 148 136));
 }
 
 .spinner-sm {
@@ -1359,6 +1387,7 @@
     box-shadow: var(--tab-shadow-light-active);
     transition: box-shadow 0.3s ease-in-out, background-color 0.3s ease-in-out;
 }
+
 [data-theme="dark"] [data-variant="default"] .tabs-trigger[data-state="active"] {
     background-color: var(--light, var(--primary-color)), var(--dark, var(--primary-color-6));
     box-shadow: var(--tab-shadow-dark-active);

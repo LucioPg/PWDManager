@@ -4,30 +4,20 @@ use dioxus::prelude::*;
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub enum SpinnerSize {
     #[default]
-    Small,   // 16px
-    Medium,  // 24px
-    Large,   // 32px
-    XLarge,  // 48px
+    Small, // spinner-sm
+    Medium, // spinner-md
+    Large,  // spinner-lg
+    XLarge, // spinner-xl
 }
 
 impl SpinnerSize {
-    /// Restituisce le classi Tailwind per la dimensione
-    pub fn as_classes(&self) -> &'static str {
+    /// Restituisce la classe CSS per la dimensione
+    pub fn as_class(&self) -> &'static str {
         match self {
-            SpinnerSize::Small => "w-4 h-4 border-2",        // 16px
-            SpinnerSize::Medium => "w-6 h-6 border-2",       // 24px
-            SpinnerSize::Large => "w-8 h-8 border-3",        // 32px
-            SpinnerSize::XLarge => "w-12 h-12 border-4",     // 48px
-        }
-    }
-
-    /// Restituisce la dimensione in pixel (per fallback CSS inline se necessario)
-    pub fn as_pixels(&self) -> u32 {
-        match self {
-            SpinnerSize::Small => 16,
-            SpinnerSize::Medium => 24,
-            SpinnerSize::Large => 32,
-            SpinnerSize::XLarge => 48,
+            SpinnerSize::Small => "spinner-sm",
+            SpinnerSize::Medium => "spinner-md",
+            SpinnerSize::Large => "spinner-lg",
+            SpinnerSize::XLarge => "spinner-xl",
         }
     }
 }
@@ -60,10 +50,11 @@ pub fn Spinner(
     /// Dimensione dello spinner
     #[props(default)]
     size: SpinnerSize,
-    /// Classe colore Tailwind (es. "text-success", "text-primary-600")
-    /// Il colore viene applicato al bordo visibile dello spinner
+    /// Classe CSS per il colore (es. "spinner-success", "spinner-error", "")
+    /// Se vuoto, usa lo spinner base (blu)
     #[props(default)]
-    color: String,
+    color_class: String,
+    #[props(default = 0.8)] duration: f32,
     /// Classe CSS aggiuntiva per il container
     #[props(default)]
     class: Option<String>,
@@ -71,30 +62,41 @@ pub fn Spinner(
     #[props(default)]
     with_background: bool,
 ) -> Element {
-    let size_classes = size.as_classes();
-    let border_color = if color.is_empty() {
-        "border-current".to_string()
+    let size_class = size.as_class();
+    let color_variant = if color_class.is_empty() {
+        "".to_string()
     } else {
-        format!("border-t-[{color}] border-r-transparent border-b-transparent border-l-transparent")
+        format!(" {}", color_class)
     };
 
     let background = if with_background {
-        "bg-primary-color/5 backdrop-blur-sm"
+        " bg-primary-color/5 backdrop-blur-sm"
     } else {
         ""
     };
 
     let container_classes = if let Some(custom_class) = class {
-        format!("inline-flex items-center justify-center {} {}", background, custom_class)
+        format!(
+            "inline-flex items-center justify-center{}{}{background}",
+            color_variant,
+            if custom_class.is_empty() {
+                "".to_string()
+            } else {
+                format!(" {custom_class}")
+            }
+        )
     } else {
-        format!("inline-flex items-center justify-center {}", background)
+        format!(
+            "inline-flex items-center justify-center{}{}",
+            color_variant, background
+        )
     };
 
     rsx! {
         div { class: "{container_classes}",
             div {
-                class: "animate-spin rounded-full {size_classes} {border_color}",
-                style: "animation-duration: 0.8s;",
+                class: "{size_class}",
+                style: format!("animation-duration: {duration}s;"),
             }
         }
     }
