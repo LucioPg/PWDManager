@@ -105,6 +105,9 @@ pub fn AvatarSelector(
     };
     rsx! {
     div { class: "{container_classes}",
+                        div {class: "{img_classes} flex items-center justify-center",
+                Spinner {size: SpinnerSize::Medium, color_class: "spinner-success", with_background: true}
+                }
         if loading() {
             div {class: "{img_classes} flex items-center justify-center",
                 Spinner {size: SpinnerSize::Medium, color_class: "spinner-success", with_background: true}

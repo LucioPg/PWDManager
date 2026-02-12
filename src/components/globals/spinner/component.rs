@@ -76,26 +76,15 @@ pub fn Spinner(
     };
 
     let container_classes = if let Some(custom_class) = class {
-        format!(
-            "inline-flex items-center justify-center{}{}{background}",
-            color_variant,
-            if custom_class.is_empty() {
-                "".to_string()
-            } else {
-                format!(" {custom_class}")
-            }
-        )
+        format!(" flex items-center justify-center {background} {custom_class}")
     } else {
-        format!(
-            "inline-flex items-center justify-center{}{}",
-            color_variant, background
-        )
+        format!(" flex items-center justify-center {background}")
     };
-
+    let spinner_classes = format!("spinner {} {color_class}", size_class);
     rsx! {
         div { class: "{container_classes}",
             div {
-                class: "{size_class}",
+                class: "{spinner_classes}",
                 style: format!("animation-duration: {duration}s;"),
             }
         }

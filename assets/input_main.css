@@ -363,6 +363,15 @@
     }
 }
 
+@keyframes rotate {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
 /* ============================================================
    COMPONENTS LAYER - All reusable CSS classes
    ============================================================ */
@@ -706,54 +715,89 @@
    LOADING STATES
    ============================================================ */
 /* Spinner */
-@utility spinner {
-    @apply w-5 h-5 border-2 rounded-full;
-    border-color: rgb(var(--color-neutral-300, 209 213 219));
-    border-top-color: rgb(var(--color-primary-600, 37 130 246));
-    animation: spin 1s linear infinite;
+.spinner {
+    transform: translate(-50%, -50%);
+    height: 56px;
+    width: 56px;
+    box-sizing: border-box;
+    background: conic-gradient(
+            from 90deg at 50% 50%,
+            rgba(39, 174, 96, 0) 0deg,
+            rgba(31, 144, 255, 0) 0.04deg,
+            #1f90ff 360deg
+    );
+    border-radius: 56px;
+    /* previous code */
+    animation: 1s rotate infinite linear;
+}
+
+.spinner::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    height: 40px;
+    width: 40px;
+    background: #fff;
+    border-radius: 48px;
+}
+
+.spinner::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 8px;
+    width: 8px;
+    background: #1f90ff;
+    border-radius: 8px;
 }
 
 /* Spinner color variants */
-.spinner-success {
-    @apply spinner;
-    border-color: rgb(var(--color-success-600, 22 163 74));
+.spinner-success.spinner {
+    @apply text-success-500;
+    /*@apply spinner;*/
+    /*border-color: rgb(var(--color-success-600, 22 163 74));*/
+    /*border-top-color: rgb(var(--color-success-600, 22 163 74));*/
 }
 
-.spinner-error {
-    @apply spinner;
-    border-color: rgb(var(--color-error-600, 220 38 38));
-}
+/*.spinner-error {*/
+/*    @apply spinner;*/
+/*    border-color: rgb(var(--color-error-600, 220 38 38));*/
+/*}*/
 
-.spinner-warning {
-    @apply spinner;
-    border-color: rgb(var(--color-warning-600, 217 119 6));
-}
+/*.spinner-warning {*/
+/*    @apply spinner;*/
+/*    border-color: rgb(var(--color-warning-600, 217 119 6));*/
+/*}*/
 
-.spinner-info {
-    @apply spinner;
-    border-color: rgb(var(--color-info-600, 2 132 199));
-}
+/*.spinner-info {*/
+/*    @apply spinner;*/
+/*    border-color: rgb(var(--color-info-600, 2 132 199));*/
+/*}*/
 
-.spinner-secondary {
-    @apply spinner;
-    border-color: rgb(var(--color-secondary-600, 13 148 136));
-}
+/*.spinner-secondary {*/
+/*    @apply spinner;*/
+/*    border-color: rgb(var(--color-secondary-600, 13 148 136));*/
+/*}*/
 
-.spinner-sm {
-    @apply w-4 h-4 border-2;
-}
+/*.spinner-sm {*/
+/*    @apply w-4 h-4 border-2;*/
+/*}*/
 
-.spinner-md {
-    @apply w-5 h-5 border-2;
-}
+/*.spinner-md {*/
+/*    @apply w-5 h-5 border-2;*/
+/*}*/
 
-.spinner-lg {
-    @apply w-8 h-8 border-4;
-}
+/*.spinner-lg {*/
+/*    @apply w-8 h-8 border-4;*/
+/*}*/
 
-.spinner-xl {
-    @apply w-12 h-12 border-4;
-}
+/*.spinner-xl {*/
+/*    @apply w-12 h-12 border-4;*/
+/*}*/
 
 /* Dots loading */
 @utility dots-loading {
