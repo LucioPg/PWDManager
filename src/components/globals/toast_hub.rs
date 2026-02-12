@@ -129,11 +129,6 @@ impl ToastHubState {
 
         changed
     }
-
-    pub fn clear_all(&mut self) {
-        self.messages.clear();
-        self.pending.clear();
-    }
 }
 
 // ============================================================================
@@ -142,8 +137,7 @@ impl ToastHubState {
 
 /// Hook per usare il ToastHub in un componente.
 ///
-/// Restituisce un `Signal<ToastHubState>` che può essere usato con le funzioni helper
-/// come `show_toast()`, `schedule_toast()`, ecc.
+/// Restituisce un `Signal<ToastHubState>` che può essere usato con le funzioni helper.
 ///
 /// # Esempio
 ///
@@ -165,66 +159,23 @@ pub fn use_toast() -> Signal<ToastHubState> {
 }
 
 // ============================================================================
-// HELPER FUNCTIONS - Funzioni standalone per mostrare toast
+// HELPER FUNCTIONS - Funzioni per mostrare toast
 // ============================================================================
 
 // Funzioni per mostrare toast immediatamente
 
-pub fn show_toast_success(message: String, state: Signal<ToastHubState>) {
-    show_toast(message, 3, ToastType::Success, state);
+pub fn show_toast_success(message: String, mut state: Signal<ToastHubState>) {
+    state.write().push(message, 3, ToastType::Success);
 }
 
-pub fn show_toast_error(message: String, state: Signal<ToastHubState>) {
-    show_toast(message, 4, ToastType::Error, state);
-}
-
-pub fn show_toast_warning(message: String, state: Signal<ToastHubState>) {
-    show_toast(message, 3, ToastType::Warning, state);
-}
-
-pub fn show_toast_info(message: String, state: Signal<ToastHubState>) {
-    show_toast(message, 3, ToastType::Info, state);
-}
-
-pub fn show_toast(
-    message: String,
-    duration: usize,
-    toast_type: ToastType,
-    mut state: Signal<ToastHubState>,
-) {
-    state.write().push(message, duration, toast_type);
+pub fn show_toast_error(message: String, mut state: Signal<ToastHubState>) {
+    state.write().push(message, 4, ToastType::Error);
 }
 
 // Funzioni per schedulare toast (per navigazione)
 
-pub fn schedule_toast_success(message: String, state: Signal<ToastHubState>) {
-    schedule_toast(message, 3, ToastType::Success, state);
-}
-
-pub fn schedule_toast_error(message: String, state: Signal<ToastHubState>) {
-    schedule_toast(message, 4, ToastType::Error, state);
-}
-
-pub fn schedule_toast_warning(message: String, state: Signal<ToastHubState>) {
-    schedule_toast(message, 3, ToastType::Warning, state);
-}
-
-pub fn schedule_toast_info(message: String, state: Signal<ToastHubState>) {
-    schedule_toast(message, 3, ToastType::Info, state);
-}
-
-pub fn schedule_toast(
-    message: String,
-    duration: usize,
-    toast_type: ToastType,
-    mut state: Signal<ToastHubState>,
-) {
-    state.write().schedule(message, duration, toast_type);
-}
-
-// Metodo per pulire tutti i toast
-pub fn clear_all_toasts(mut state: Signal<ToastHubState>) {
-    state.write().clear_all();
+pub fn schedule_toast_success(message: String, mut state: Signal<ToastHubState>) {
+    state.write().schedule(message, 3, ToastType::Success);
 }
 
 // ============================================================================
@@ -274,20 +225,4 @@ pub fn ToastContainer() -> Element {
             }
         }
     }
-}
-
-// ============================================================================
-// LEGACY API - Compatibilità con il vecchio sistema
-// ============================================================================
-
-/// Funzione legacy per compatibilità.
-/// Preferisci usare `show_toast_success()`, `show_toast_error()`, ecc. nel nuovo codice.
-#[deprecated(note = "Use show_toast_success() or show_toast_error() instead")]
-pub fn add_toast(
-    message: String,
-    duration: usize,
-    toast_type: ToastType,
-    mut state: Signal<ToastHubState>,
-) {
-    state.write().push(message, duration, toast_type);
 }
