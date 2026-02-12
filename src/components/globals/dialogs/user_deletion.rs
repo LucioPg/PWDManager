@@ -1,6 +1,6 @@
-use dioxus::prelude::*;
-use crate::components::{ActionButton, ButtonSize, ButtonType, ButtonVariant};
 use super::base_modal::ModalVariant;
+use crate::components::{ActionButton, ButtonSize, ButtonType, ButtonVariant};
+use dioxus::prelude::*;
 
 #[component]
 pub fn UserDeletionDialog(
@@ -41,7 +41,7 @@ pub fn UserDeletionDialog(
 
             // Icona di warning
             div {
-                class: "alert alert-error mb-4",
+                class: "alert alert-error mb-4 flex items-center justify-center mx-10",
                 svg {
                     class: "w-6 h-6",
                     fill: "none",
@@ -54,7 +54,6 @@ pub fn UserDeletionDialog(
                         "stroke-width": "2"
                     }
                 }
-                span { class: "ml-2", "Zona Pericolosa" }
             }
 
             // Titolo
