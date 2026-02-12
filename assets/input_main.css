@@ -992,6 +992,17 @@
 
 /* ============================================================
    DAISYUI OVERRIDES - Remove ALL shadows and outlines from buttons
+
+   ATTENZIONE: Questi override con !important rimuovono COMPLETAMENTE
+   box-shadow, outline e filter da tutti i pulsanti DaisyUI.
+
+   Trade-off:
+   - PRO: Elimina il glow rosa/rosso indesiderato di DaisyUI
+   - CONTRO: Non è possibile aggiungere shadow custom ai pulsanti DaisyUI
+
+   Se serve una shadow personalizzata su un pulsante:
+   1. Usa una classe custom (es. "custom-btn") invece delle classi DaisyUI
+   2. Oppure wrappa il pulsante in un div con la shadow
    ============================================================ */
 
 /* Force remove ALL shadows, outlines, and glow effects from ALL buttons */
