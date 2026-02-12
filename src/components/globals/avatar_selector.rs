@@ -1,5 +1,5 @@
+use crate::components::{Spinner, SpinnerSize};
 use dioxus::prelude::*;
-use dioxus_components::{Spinner, SpinnerSize};
 
 /// Dimensioni predefinite per l'avatar
 #[derive(Clone, Copy, PartialEq, Debug, Default)]

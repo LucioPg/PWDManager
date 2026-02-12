@@ -4,7 +4,7 @@ use crate::backend::ui_utils::pick_and_process_avatar;
 use crate::backend::utils::get_user_avatar_with_default;
 use crate::components::{
     ActionButton, AvatarSelector, AvatarSize, ButtonSize, ButtonType, ButtonVariant, FormField,
-    InputType, ToastType, ToastsState, add_toast,
+    InputType, ToastType, ToastsState, UserDeletionDialog, add_toast,
 };
 use dioxus::prelude::*;
 use sqlx::SqlitePool;

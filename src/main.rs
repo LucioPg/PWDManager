@@ -7,12 +7,11 @@ use crate::auth::User;
 use crate::backend::db_backend::list_users_no_avatar;
 use crate::components::{
     AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, RouteWrapper,
-    Settings, ToastContainer, ToastType, ToastsState, UpsertUser, add_toast,
+    Settings, Spinner, SpinnerSize, ToastContainer, ToastType, ToastsState, UpsertUser, add_toast,
 };
 use backend::db_backend::init_db;
 use dioxus::core::Task;
 use dioxus::prelude::*;
-use dioxus_components::{Spinner, SpinnerSize};
 use gui_launcher::launch_desktop;
 
 // Asset CSS di Tailwind
