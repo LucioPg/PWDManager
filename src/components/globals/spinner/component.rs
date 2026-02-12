@@ -5,9 +5,10 @@ use dioxus::prelude::*;
 pub enum SpinnerSize {
     #[default]
     Small, // spinner-sm
-    Medium, // spinner-md
-    Large,  // spinner-lg
-    XLarge, // spinner-xl
+    Medium,    // spinner-md
+    Large,     // spinner-lg
+    XLarge,    // spinner-xl
+    XXXXLarge, // spinner-4xl
 }
 
 impl SpinnerSize {
@@ -18,6 +19,7 @@ impl SpinnerSize {
             SpinnerSize::Medium => "spinner-md",
             SpinnerSize::Large => "spinner-lg",
             SpinnerSize::XLarge => "spinner-xl",
+            SpinnerSize::XXXXLarge => "spinner-4xl",
         }
     }
 }
@@ -52,7 +54,7 @@ pub fn Spinner(
     size: SpinnerSize,
     /// Classe CSS per il colore (es. "spinner-success", "spinner-error", "")
     /// Se vuoto, usa lo spinner base (blu)
-    #[props(default)]
+    #[props(default = "text-info-500".to_string())]
     color_class: String,
     #[props(default = 0.8)] duration: f32,
     /// Classe CSS aggiuntiva per il container
