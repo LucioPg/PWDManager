@@ -1,5 +1,6 @@
 use dioxus::prelude::*;
 use secrecy::{ExposeSecret, SecretString};
+use std::ops::Deref;
 
 /// Tipo di value per il FormField
 #[derive(Clone)]
@@ -10,6 +11,13 @@ impl PartialEq for FormSecret {
     fn eq(&self, other: &Self) -> bool {
         // Confronto sicuro tra i contenuti esposti
         self.0.expose_secret() == other.0.expose_secret()
+    }
+}
+
+impl Deref for FormSecret {
+    type Target = SecretString;
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 

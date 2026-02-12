@@ -28,8 +28,7 @@ pub fn Login() -> Element {
         let toast = toast.clone();
         spawn(async move {
             // La tua funzione check_user ora ha il pool!
-            // uso p.0 perché FormSecret è una Tuple Struct definita come pub struct FormSecret(pub SecretString), posso accedere al contenuto con l'indice
-            match check_user(&pool, &u, &p.0).await {
+            match check_user(&pool, &u, &p).await {
                 Ok(()) => {
                     println!("Successo!");
                     let result = fetch_user_data(&pool, &u).await;

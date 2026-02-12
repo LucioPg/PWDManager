@@ -185,7 +185,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
             return;
         }
 
-        if !is_updating && p.0.expose_secret().trim().is_empty() {
+        if !is_updating && p.expose_secret().trim().is_empty() {
             error.set(Some("Password is required for registration".to_string()));
             return;
         }
