@@ -16,6 +16,7 @@ base64 = "0.22.1"
 rfd = "0.17.2"
 dioxus-primitives = { git = "https://github.com/DioxusLabs/components", version = "0.0.1", default-features = false }
 secrecy = "0.10.3"
+aes-gcm = { version = "0.10.3", features = ["zeroize"] }
 
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"
