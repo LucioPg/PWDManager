@@ -4,6 +4,7 @@
    ============================================================ */
 
 @import "tailwindcss";
+
 @plugin "daisyui";
 
 @source "../src/**/*.rs";
@@ -166,6 +167,13 @@
     --tab-shadow-light-active: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
     --tab-shadow-dark: 0 5px 13px -5px rgba(255, 255, 255, 0.05), 0 8px 10px -6px rgba(255, 255, 255, 0.05);
     --tab-shadow-dark-active: 0 10px 25px -5px rgba(255, 255, 255, 0.05), 0 8px 10px -6px rgba(255, 255, 255, 0.05);
+
+    /* ============================================================
+       DAISYUI CONFIGURATION - Disable focus ring on buttons
+       ============================================================ */
+    /* Disable button focus ring/shadow */
+    --btn-focus-ring-opacity: 0;
+    --btn-focus-ring: 0 0 0 0 transparent;
 }
 
 
@@ -980,4 +988,44 @@
 
 .tabs-content[data-state="inactive"] {
     display: none;
+}
+
+/* ============================================================
+   DAISYUI OVERRIDES - Remove ALL shadows and outlines from buttons
+   ============================================================ */
+
+/* Force remove ALL shadows, outlines, and glow effects from ALL buttons */
+.btn,
+.btn-secondary,
+.btn-primary,
+.btn-ghost,
+.btn-secondary-sm,
+button[class*="btn-"] {
+    box-shadow: none !important;
+    outline: none !important;
+    outline-offset: 0 !important;
+    filter: none !important;
+}
+
+/* Remove effects on ALL states (hover, active, focus, etc.) */
+.btn:hover,
+.btn:focus,
+.btn:focus-visible,
+.btn:active,
+.btn-secondary:hover,
+.btn-secondary:focus,
+.btn-secondary:focus-visible,
+.btn-secondary:active,
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:focus-visible,
+.btn-primary:active,
+.btn-ghost:hover,
+.btn-ghost:focus,
+.btn-ghost:focus-visible,
+.btn-ghost:active {
+    box-shadow: none !important;
+    outline: none !important;
+    outline-offset: 0 !important;
+    filter: none !important;
 }
