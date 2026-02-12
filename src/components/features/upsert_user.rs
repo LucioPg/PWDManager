@@ -6,6 +6,7 @@ use crate::components::{
     ActionButton, AvatarSelector, AvatarSize, ButtonSize, ButtonType, ButtonVariant, FormField,
     InputType, ToastType, ToastsState, UserDeletionDialog, add_toast,
 };
+
 use dioxus::prelude::*;
 use sqlx::SqlitePool;
 use tracing::instrument;
@@ -40,6 +41,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     let is_user_deleted = use_signal::<bool>(|| false);
     #[allow(unused_mut)]
     let mut is_picking = use_signal(|| false); // Traccia se il dialog è aperto
+    let mut show_delete_modal = use_signal(|| false);
 
     // Inizializzazione dati utente (Semplificata con unwrap_or_default)
     #[allow(unused_mut)]
@@ -140,12 +142,20 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
             error_clone,
         ));
     };
-    let on_delete_user = move || {
+    // Apre il modal di conferma
+    let on_delete_click = move |_| {
+        show_delete_modal.set(true);
+    };
+
+    // Esegue la cancellazione vera e propria (chiamata dal modal)
+    let confirm_delete_user = move || {
         let mut is_user_deleted = is_user_deleted.clone();
         let pool_for_delete = pool.clone();
         let user = auth_state.get_user();
         let mut error = error.clone();
         let mut auth_state_logout_clone = auth_state_logout_clone.clone();
+        let mut show_modal = show_delete_modal.clone();
+
         match user {
             Some(user) => {
                 spawn(async move {
@@ -153,15 +163,22 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                         Ok(()) => {
                             is_user_deleted.set(true);
                             auth_state_logout_clone.logout();
+                            show_modal.set(false);
                         }
                         Err(e) => {
                             error.set(Some(e.to_string()));
+                            show_modal.set(false);
                         }
                     }
                 });
             }
             None => println!("No user to delete"),
         }
+    };
+
+    // Chiude il modal senza cancellare
+    let cancel_delete = move |_| {
+        show_delete_modal.set(false);
     };
     let on_submit = move |_| {
         let p = password.read().clone();
@@ -257,7 +274,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                             variant: ButtonVariant::Ghost,
                             button_type: ButtonType::Button,
                             size: ButtonSize::Normal,
-                            on_click: move |_| {on_delete_user()},
+                            on_click: on_delete_click,
                             additional_class: "text-error-600 hover:bg-error-50 hover:text-error-700"
                         }
                     }
@@ -272,6 +289,14 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                     }
                 }
             }
+        }
+
+        // UserDeletionDialog
+        UserDeletionDialog {
+            open: show_delete_modal,
+            on_confirm: move |_| confirm_delete_user(),
+            on_cancel: cancel_delete,
+            username: username.read().clone(),
         }
     }
 }
