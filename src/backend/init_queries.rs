@@ -1,0 +1,18 @@
+pub static QUERIES: &[&str] = &[
+    "CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY,
+                username TEXT NOT NULL UNIQUE,
+                password TEXT NOT NULL,
+                created_at TEXT DEFAULT (datetime('now')),
+                avatar BLOB
+            );",
+    "CREATE TABLE IF NOT EXISTS passwords (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                location TEXT NOT NULL,
+                password TEXT NOT NULL,
+                notes TEXT,
+                strength TEXT NOT NULL CHECK (strength IN ('weak', 'medium', 'strong')),
+                FOREIGN KEY(user_id) REFERENCES users(id)
+    )",
+];

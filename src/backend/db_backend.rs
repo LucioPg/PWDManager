@@ -1,6 +1,8 @@
 #![allow(dead_code)]
+use crate::backend::init_queries::QUERIES;
 use crate::backend::utils::verify_password;
 use custom_errors::{AuthError, DBError};
+use dioxus::logger::init;
 use dioxus::prelude::*;
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
 use sqlx::{Row, query};
@@ -17,19 +19,13 @@ pub async fn init_db() -> Result<SqlitePool, DBError> {
     let pool = SqlitePool::connect_with(options)
         .await
         .map_err(|e| DBError::new_general_error(e.to_string()))?;
+    for init_query in QUERIES {
+        query(init_query)
+            .execute(&pool)
+            .await
+            .map_err(|e| DBError::new_general_error(format!("Failed to create table: {}", e)))?;
+    }
 
-    query(
-        "CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY,
-                username TEXT NOT NULL UNIQUE,
-                password TEXT NOT NULL,
-                created_at TEXT DEFAULT (datetime('now')),
-                avatar BLOB
-            );",
-    )
-    .execute(&pool)
-    .await
-    .map_err(|e| DBError::new_general_error(format!("Failed to create table: {}", e)))?;
     Ok(pool)
 }
 
