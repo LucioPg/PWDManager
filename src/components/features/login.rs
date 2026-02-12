@@ -1,9 +1,11 @@
 use crate::auth::AuthState;
 use crate::backend::db_backend::{check_user, fetch_user_data};
 use crate::components::{
-    ActionButtons, ActionButtonsVariant, FormField, InputType, show_toast_error, use_toast,
+    ActionButtons, ActionButtonsVariant, FormField, FormSecret, InputType, show_toast_error,
+    use_toast,
 };
 use dioxus::prelude::*;
+use secrecy::{ExposeSecret, SecretString};
 use sqlx::SqlitePool;
 use tracing::{debug, instrument};
 
@@ -13,7 +15,7 @@ pub fn Login() -> Element {
     #[allow(unused_mut)]
     let mut username = use_signal(|| String::new());
     #[allow(unused_mut)]
-    let mut password = use_signal(|| String::new());
+    let mut password = use_signal(|| FormSecret(SecretString::new("".into())));
     let toast = use_toast();
     let nav = use_navigator();
     let pool = use_context::<SqlitePool>();
@@ -26,7 +28,8 @@ pub fn Login() -> Element {
         let toast = toast.clone();
         spawn(async move {
             // La tua funzione check_user ora ha il pool!
-            match check_user(&pool, &u, &p).await {
+            // uso p.0 perché FormSecret è una Tuple Struct definita come pub struct FormSecret(pub SecretString), posso accedere al contenuto con l'indice
+            match check_user(&pool, &u, &p.0).await {
                 Ok(()) => {
                     println!("Successo!");
                     let result = fetch_user_data(&pool, &u).await;

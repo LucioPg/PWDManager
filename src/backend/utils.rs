@@ -2,6 +2,7 @@ use argon2::{
     Argon2,
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
 };
+use secrecy::{ExposeSecret, SecretString};
 use std::io::Cursor;
 
 use base64::Engine;
@@ -17,26 +18,25 @@ fn generate_salt() -> SaltString {
     SaltString::generate(&mut OsRng)
 }
 
-pub fn encrypt(text: &str) -> Result<String, EncryptionError> {
-    if text.trim().is_empty() {
+pub fn encrypt(raw_password: SecretString) -> Result<String, EncryptionError> {
+    if raw_password.expose_secret().trim().is_empty() {
         return Err(EncryptionError::new_encryption_error(
             "The password cannot be empty".to_string(),
         ));
     }
     let salt = generate_salt();
-    let password = text.as_bytes();
+    let password = raw_password.expose_secret().as_bytes();
     let argon2 = Argon2::default();
     let hash = argon2
         .hash_password(password, &salt)
         .map_err(|e| EncryptionError::new_encryption_error(e.to_string()))?;
     let hash_string = hash.to_string();
-    print!("password: {text}\nsalt: {salt}\nhash: {hash_string}\n");
     Ok(hash_string)
 }
 
-pub fn verify_password(text: &str, hash: &str) -> Result<(), DecryptionError> {
+pub fn verify_password(raw_password: SecretString, hash: &str) -> Result<(), DecryptionError> {
     let argon2 = Argon2::default();
-    let password = text.as_bytes();
+    let password = raw_password.expose_secret().as_bytes();
     let hash =
         PasswordHash::new(hash).map_err(|e| DecryptionError::new_rotten_password(e.to_string()))?;
     argon2
@@ -92,7 +92,7 @@ mod tests {
     }
     #[test]
     fn test_encrypt() {
-        let text = "password123";
+        let text = SecretString::new("password123".into());
 
         let result = encrypt(text);
 
@@ -110,9 +110,10 @@ mod tests {
     }
     #[test]
     fn test_decrypt() {
-        let text = "password123";
+        let text = SecretString::new("password123".into());
+        let text_clone = text.clone();
         let hash = encrypt(text).unwrap();
-        let result = verify_password(text, &hash);
+        let result = verify_password(text_clone, &hash);
         assert!(result.is_ok(), "decrypt should return Ok(...)");
     }
 

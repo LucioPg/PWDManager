@@ -14,6 +14,14 @@ pub enum DBError {
     DBSaveError(String),
     #[error("Database fetch error: {0}")]
     DBFetchError(String),
+    #[error("Database password save error: {0}")]
+    DBPasswordSaveError(String),
+    #[error("Database password update error: {0}")]
+    DBPasswordUpdateError(String),
+    #[error("Database password delete error: {0}")]
+    DBPasswordDeleteError(String),
+    #[error("Database password fetch error: {0}")]
+    DBPasswordFetchError(String),
 }
 
 impl DBError {
@@ -39,6 +47,19 @@ impl DBError {
 
     pub fn new_fetch_error(msg: String) -> Self {
         DBError::DBFetchError(msg)
+    }
+
+    pub fn new_password_save_error(msg: String) -> Self {
+        DBError::DBPasswordSaveError(msg)
+    }
+    pub fn new_password_update_error(msg: String) -> Self {
+        DBError::DBPasswordUpdateError(msg)
+    }
+    pub fn new_password_delete_error(msg: String) -> Self {
+        DBError::DBPasswordDeleteError(msg)
+    }
+    pub fn new_password_fetch_error(msg: String) -> Self {
+        DBError::DBPasswordFetchError(msg)
     }
 }
 

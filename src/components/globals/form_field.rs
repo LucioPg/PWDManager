@@ -1,4 +1,54 @@
 use dioxus::prelude::*;
+use secrecy::{ExposeSecret, SecretString};
+
+/// Tipo di value per il FormField
+#[derive(Clone)]
+pub struct FormSecret(pub SecretString);
+
+// Implementiamo PartialEq manualmente per il wrapper
+impl PartialEq for FormSecret {
+    fn eq(&self, other: &Self) -> bool {
+        // Confronto sicuro tra i contenuti esposti
+        self.0.expose_secret() == other.0.expose_secret()
+    }
+}
+
+impl FormValue for FormSecret {
+    fn to_form_string(&self) -> String {
+        self.0.expose_secret().to_string()
+    }
+    fn from_form_string(s: String) -> Option<Self> {
+        // Passiamo direttamente la String 's' a SecretString::new
+        // .into() non serve se s è già String, ma assicurati che
+        // SecretString::new riceva ownership della stringa.
+        Some(FormSecret(SecretString::new(s.into())))
+    }
+}
+
+pub trait FormValue: Clone + PartialEq + 'static {
+    fn to_form_string(&self) -> String;
+    fn from_form_string(s: String) -> Option<Self>;
+}
+
+// Implementazione per String standard
+impl FormValue for String {
+    fn to_form_string(&self) -> String {
+        self.clone()
+    }
+    fn from_form_string(s: String) -> Option<Self> {
+        Some(s)
+    }
+}
+
+// Implementazione per i32 (numeri)
+impl FormValue for i32 {
+    fn to_form_string(&self) -> String {
+        self.to_string()
+    }
+    fn from_form_string(s: String) -> Option<Self> {
+        s.parse().ok()
+    }
+}
 
 /// Tipo di input per il FormField
 #[derive(Clone, PartialEq, Debug)]
@@ -43,7 +93,7 @@ impl InputType {
 /// }
 /// ```
 #[component]
-pub fn FormField(
+pub fn FormField<T: FormValue>(
     /// Etichetta del campo
     label: String,
     /// Tipo di input
@@ -51,7 +101,7 @@ pub fn FormField(
     /// Testo placeholder
     placeholder: String,
     /// Signal per il valore del campo
-    value: Signal<String>,
+    value: Signal<T>,
     /// Nome del campo (utile per form submission)
     #[props(default)]
     name: Option<String>,
@@ -93,8 +143,12 @@ pub fn FormField(
                 class: "{input_class}",
                 r#type: "{input_type.as_str()}",
                 placeholder: "{placeholder}",
-                value: "{value.read()}",
-                oninput: move |e| value.set(e.value()),
+                value: "{value.read().to_form_string()}",
+                oninput: move |e| {
+                    if let Some(new_value) = T::from_form_string(e.value()) {
+                        value.set(new_value);
+                    }
+                },
                 disabled: disabled,
                 readonly: readonly,
                 name: name,

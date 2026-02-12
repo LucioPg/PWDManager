@@ -4,6 +4,7 @@ use crate::backend::utils::verify_password;
 use custom_errors::{AuthError, DBError};
 use dioxus::logger::init;
 use dioxus::prelude::*;
+use secrecy::{ExposeSecret, SecretString};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
 use sqlx::{Row, query};
 use std::str::FromStr;
@@ -33,7 +34,7 @@ pub async fn save_or_update_user(
     pool: &SqlitePool,
     id: Option<i32>, // Se Some, fa l'UPDATE. Se None, fa l'INSERT.
     username: String,
-    password: Option<String>,
+    password: Option<SecretString>,
     avatar: Option<Vec<u8>>,
 ) -> Result<(), DBError> {
     debug!("Attempting to save/update user credentials");
@@ -43,8 +44,8 @@ pub async fn save_or_update_user(
     match id {
         // --- CASO UPDATE ---
         Some(user_id) => match password {
-            Some(psw) if !psw.is_empty() => {
-                let hash_password = crate::backend::utils::encrypt(&psw)
+            Some(psw) if !psw.expose_secret().trim().is_empty() => {
+                let hash_password = crate::backend::utils::encrypt(psw)
                     .map_err(|e| DBError::new_save_error(format!("Failed to encrypt: {}", e)))?;
                 sqlx::query("UPDATE users SET username = ?, password = ?, avatar = ? WHERE id = ?")
                     .bind(username)
@@ -68,15 +69,19 @@ pub async fn save_or_update_user(
         // --- CASO INSERT ---
         None => {
             let psw = password.unwrap_or_default();
-            let hash_password = crate::backend::utils::encrypt(&psw)
-                .map_err(|e| DBError::new_save_error(format!("Failed to encrypt: {}", e)))?;
-            sqlx::query("INSERT INTO users (username, password, avatar) VALUES (?, ?, ?)")
-                .bind(username)
-                .bind(hash_password)
-                .bind(avatar)
-                .execute(pool)
-                .await
-                .map_err(|e| DBError::new_save_error(format!("Insert failed: {}", e)))?;
+            if !psw.expose_secret().trim().is_empty() {
+                let hash_password = crate::backend::utils::encrypt(psw)
+                    .map_err(|e| DBError::new_save_error(format!("Failed to encrypt: {}", e)))?;
+                sqlx::query("INSERT INTO users (username, password, avatar) VALUES (?, ?, ?)")
+                    .bind(username)
+                    .bind(hash_password)
+                    .bind(avatar)
+                    .execute(pool)
+                    .await
+                    .map_err(|e| DBError::new_save_error(format!("Insert failed: {}", e)))?;
+            } else {
+                return Err(DBError::new_save_error("Password cannot be empty".into()));
+            }
         }
     }
 
@@ -192,9 +197,10 @@ pub async fn fetch_user_data(
 pub async fn check_user(
     pool: &SqlitePool,
     username: &str,
-    password: &str,
+    password: &SecretString,
 ) -> Result<(), AuthError> {
     debug!("Checking user credentials in database");
+    let password = SecretString::new(password.expose_secret().into());
     let hash = fetch_user_password(pool, username)
         .await
         .map_err(|e| AuthError::DB(e))?;

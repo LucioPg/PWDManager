@@ -4,10 +4,11 @@ use crate::backend::ui_utils::pick_and_process_avatar;
 use crate::backend::utils::get_user_avatar_with_default;
 use crate::components::{
     ActionButton, AvatarSelector, AvatarSize, ButtonSize, ButtonType, ButtonVariant, FormField,
-    InputType, UserDeletionDialog, schedule_toast_success, show_toast_error, show_toast_success, use_toast,
+    FormSecret, InputType, UserDeletionDialog, schedule_toast_success, show_toast_error,
+    show_toast_success, use_toast,
 };
-
 use dioxus::prelude::*;
+use secrecy::{ExposeSecret, SecretString};
 use sqlx::SqlitePool;
 use tracing::instrument;
 
@@ -51,9 +52,9 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
             .unwrap_or_default()
     });
     #[allow(unused_mut)]
-    let mut password = use_signal(|| String::new());
+    let mut password = use_signal(|| FormSecret(SecretString::new("".into())));
     #[allow(unused_mut)]
-    let mut repassword = use_signal(|| String::new());
+    let mut repassword = use_signal(|| FormSecret(SecretString::new("".into())));
     let mut avatar = use_signal(|| {
         user_to_edit
             .as_ref()
@@ -184,13 +185,13 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
             return;
         }
 
-        if !is_updating && p.is_empty() {
+        if !is_updating && p.0.expose_secret().trim().is_empty() {
             error.set(Some("Password is required for registration".to_string()));
             return;
         }
 
         spawn(async move {
-            match save_or_update_user(&pool, user_id, u, Some(p), a).await {
+            match save_or_update_user(&pool, user_id, u, Some(p.0), a).await {
                 Ok(_) => {
                     auth_state.logout();
                     let message = if is_updating {
