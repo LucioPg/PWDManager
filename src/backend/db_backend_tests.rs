@@ -117,6 +117,32 @@ mod tests {
         assert!(users[0].3.is_none(), "Avatar should be None");
     }
 
+    #[tokio::test]
+    async fn test_insert_new_user_empty_password() {
+        let (pool, _temp_dir) = setup_test_db().await;
+
+        let username = "test_user_empty_pass".to_string();
+        let empty_password = SecretString::new("".into());  // Password vuota
+
+        let result = save_or_update_user(
+            &pool,
+            None,
+            username,
+            Some(empty_password),
+            None,
+        )
+        .await;
+
+        assert!(result.is_err(), "Empty password should return error");
+        if let Err(e) = result {
+            let error_msg = e.to_string();
+            assert!(
+                error_msg.contains("Password") || error_msg.contains("password"),
+                "Error should mention password"
+            );
+        }
+    }
+
     // ============ Categoria 2: Test UPDATE ============
     // I test verranno aggiunti nei prossimi task
 
