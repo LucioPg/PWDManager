@@ -32,7 +32,7 @@
 - [ ] creare form di modifica password e dati
 - [ ] creare dialog di eliminazione password
 - [ ] creare trigger async di ri-cryptaggio password nel caso un utente cambi la password.
-- [ ] aggiungere un "diversificatore" per chiave AES prelevato dalla stringa di creazione dell'utente per evitare il
+- [x] aggiungere un "diversificatore" per chiave AES prelevato dalla stringa di creazione dell'utente per evitare il
   KEY-REUSE.
 
 ## Generali
