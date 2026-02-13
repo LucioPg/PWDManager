@@ -30,6 +30,8 @@ pub enum DBError {
     DBPasswordConversionError(String),
     #[error("Nonce corruption error")]
     DBNonceCorruptionError(String),
+    #[error("Database save temp password error")]
+    DBSaveTempPasswordError(String),
 }
 
 impl DBError {
@@ -83,6 +85,9 @@ impl DBError {
 
     pub fn new_nonce_corruption_error() -> Self {
         DBError::DBNonceCorruptionError("Nonce corrotto".into())
+    }
+    pub fn new_save_temp_password_error(msg: String) -> Self {
+        DBError::DBSaveTempPasswordError(msg.into())
     }
 }
 

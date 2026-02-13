@@ -5,11 +5,28 @@ use crate::backend::utils::verify_password;
 use custom_errors::{AuthError, DBError};
 use dioxus::prelude::*;
 use secrecy::{ExposeSecret, SecretString};
-use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqliteRow};
-use sqlx::{Row, query};
+use sqlx::query::Query;
+use sqlx::sqlite::{
+    SqliteArguments, SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqliteRow,
+};
+use sqlx::{Row, Sqlite, query};
+use std::borrow::Cow;
 use std::str::FromStr;
 #[cfg(feature = "desktop")]
 use tracing::{debug, instrument};
+
+enum UpdateFieldName {
+    Username = 1,
+    Password = 2,
+    Avatar = 3,
+}
+
+#[derive(Debug, Clone)]
+enum UpdateFieldType {
+    Text(String),
+    Secret(SecretString),
+    Binary(Vec<u8>),
+}
 
 #[cfg(feature = "desktop")]
 pub async fn init_db() -> Result<SqlitePool, DBError> {
@@ -31,6 +48,86 @@ pub async fn init_db() -> Result<SqlitePool, DBError> {
     Ok(pool)
 }
 
+async fn set_temp_password(
+    pool: &SqlitePool,
+    user_id: i64,
+    password: &SecretString,
+) -> Result<(), DBError> {
+    query("UPDATE users SET temp_old_password = ? WHERE id = ?")
+        .bind(user_id)
+        .bind(password.expose_secret())
+        .execute(pool)
+        .await
+        .map_err(|e| {
+            DBError::new_save_temp_password_error(format!("Failed to save temp password: {}", e))
+        })?;
+    Ok(())
+}
+
+async fn builder_update_fields(
+    pool: &SqlitePool,
+    user_id: i64,
+    username: String,
+    password: Option<SecretString>,
+    avatar: Option<Vec<u8>>,
+) -> Result<Vec<(UpdateFieldName, UpdateFieldType)>, DBError> {
+    let mut parts: Vec<(UpdateFieldName, UpdateFieldType)> = vec![];
+    parts.push((UpdateFieldName::Username, UpdateFieldType::Text(username)));
+    if let Some(psw) = password {
+        if !psw.expose_secret().trim().is_empty() {
+            let hash_password = crate::backend::utils::encrypt(psw.clone())
+                .map_err(|e| DBError::new_save_error(format!("Failed to encrypt: {}", e)))?;
+            set_temp_password(pool, user_id, &psw).await?; // SET TEMPORARY PASSWORD FOR NOT LOSE OLD ENCRYPTED PASSWORDS
+            parts.push((
+                UpdateFieldName::Password,
+                UpdateFieldType::Secret(SecretString::new(hash_password.into())),
+            ));
+        }
+    }
+    if let Some(avatar_bytes) = avatar {
+        parts.push((
+            UpdateFieldName::Avatar,
+            UpdateFieldType::Binary(avatar_bytes),
+        ));
+    }
+    Ok(parts)
+}
+
+fn builder_update_user_query(fields: &Vec<(UpdateFieldName, UpdateFieldType)>) -> String {
+    let sql = fields
+        .iter()
+        .map(|(field, _)| match field {
+            UpdateFieldName::Username => "username = ?",
+            UpdateFieldName::Password => "password = ?",
+            UpdateFieldName::Avatar => "avatar = ?",
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    format!("UPDATE users SET {} where id = ?", sql)
+}
+
+fn generate_sql_update_query_and_binding<'q>(
+    sql: &'q str,
+    fields: &'q Vec<(UpdateFieldName, UpdateFieldType)>,
+) -> Query<'q, Sqlite, SqliteArguments<'q>> {
+    let mut query = sqlx::query(sql);
+    for (_, value) in fields {
+        match value {
+            UpdateFieldType::Text(value) => {
+                query = query.bind(value);
+            }
+            UpdateFieldType::Secret(value) => {
+                query = query.bind(value.expose_secret());
+            }
+            UpdateFieldType::Binary(value) => {
+                query = query.bind(value);
+            }
+        }
+        // query = query.bind(value);
+    }
+    query
+}
+
 pub async fn save_or_update_user(
     pool: &SqlitePool,
     id: Option<i64>, // Se Some, fa l'UPDATE. Se None, fa l'INSERT.
@@ -44,29 +141,39 @@ pub async fn save_or_update_user(
 
     match id {
         // --- CASO UPDATE ---
-        Some(user_id) => match password {
-            Some(psw) if !psw.expose_secret().trim().is_empty() => {
-                let hash_password = crate::backend::utils::encrypt(psw)
-                    .map_err(|e| DBError::new_save_error(format!("Failed to encrypt: {}", e)))?;
-                sqlx::query("UPDATE users SET username = ?, password = ?, avatar = ? WHERE id = ?")
-                    .bind(username)
-                    .bind(hash_password)
-                    .bind(avatar)
-                    .bind(user_id)
-                    .execute(pool)
-                    .await
-                    .map_err(|e| DBError::new_save_error(format!("Update failed: {}", e)))?;
-            }
-            _ => {
-                sqlx::query("UPDATE users SET username = ?, avatar = ? WHERE id = ?")
-                    .bind(username)
-                    .bind(avatar)
-                    .bind(user_id)
-                    .execute(pool)
-                    .await
-                    .map_err(|e| DBError::new_save_error(format!("Update failed: {}", e)))?;
-            }
-        },
+        Some(user_id) => {
+            let fields = builder_update_fields(pool, user_id, username, password, avatar).await?;
+            let sql = builder_update_user_query(&fields);
+            let query = generate_sql_update_query_and_binding(sql.as_str(), &fields);
+            query
+                .bind(user_id)
+                .execute(pool)
+                .await
+                .map_err(|e| DBError::new_save_error(format!("Update failed: {}", e)))?;
+
+            // match password {
+            // Some(psw) if !psw.expose_secret().trim().is_empty() => {
+            //     let hash_password = crate::backend::utils::encrypt(psw)
+            //         .map_err(|e| DBError::new_save_error(format!("Failed to encrypt: {}", e)))?;
+            //     sqlx::query("UPDATE users SET username = ?, password = ?, avatar = ? WHERE id = ?")
+            //         .bind(username)
+            //         .bind(hash_password)
+            //         .bind(avatar)
+            //         .bind(user_id)
+            //         .execute(pool)
+            //         .await
+            //         .map_err(|e| DBError::new_save_error(format!("Update failed: {}", e)))?;
+            // }
+            // _ => {
+            //     sqlx::query("UPDATE users SET username = ?, avatar = ? WHERE id = ?")
+            //         .bind(username)
+            //         .bind(avatar)
+            //         .bind(user_id)
+            //         .execute(pool)
+            //         .await
+            //         .map_err(|e| DBError::new_save_error(format!("Update failed: {}", e)))?;
+            // }
+        }
         // --- CASO INSERT ---
         None => {
             let psw = password.unwrap_or_default();
