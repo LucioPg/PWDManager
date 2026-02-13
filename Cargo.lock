@@ -20,6 +20,7 @@ dependencies = [
  "secrecy",
  "sqlx",
  "sqlx-template",
+ "tempfile",
  "tokio",
  "tracing",
  "winres",
