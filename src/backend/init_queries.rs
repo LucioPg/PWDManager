@@ -10,7 +10,7 @@ pub static QUERIES: &[&str] = &[
                 id INTEGER PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 location TEXT NOT NULL,
-                password TEXT NOT NULL,
+                password BLOB NOT NULL,
                 notes TEXT,
                 strength TEXT NOT NULL CHECK (strength IN ('weak', 'medium', 'strong')),
                 created_at TEXT DEFAULT (datetime('now')),
