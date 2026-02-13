@@ -5,7 +5,7 @@ use crate::backend::utils::verify_password;
 use custom_errors::{AuthError, DBError};
 use dioxus::prelude::*;
 use secrecy::{ExposeSecret, SecretString};
-use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqliteRow};
+use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqliteRow};
 use sqlx::{Row, query};
 use std::str::FromStr;
 #[cfg(feature = "desktop")]
@@ -15,6 +15,7 @@ use tracing::{debug, instrument};
 pub async fn init_db() -> Result<SqlitePool, DBError> {
     let options = SqliteConnectOptions::from_str("sqlite:database.db")
         .map_err(|e| DBError::new_general_error(e.to_string()))?
+        .journal_mode(SqliteJournalMode::Wal) //fondamentale per la concorrenza
         .create_if_missing(true);
 
     let pool = SqlitePool::connect_with(options)
