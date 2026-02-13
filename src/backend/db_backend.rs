@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use crate::backend::init_queries::QUERIES;
-use crate::backend::user_auth_helper::UserAuth;
+use crate::backend::user_auth_helper::{DbSecretVec, PasswordStrength, StoredPassword, UserAuth};
 use crate::backend::utils::verify_password;
 use custom_errors::{AuthError, DBError};
 use dioxus::prelude::*;
@@ -228,18 +228,47 @@ pub async fn check_user(
     Ok(())
 }
 
-// #[instrument]
-// pub async fn login_user(pool: &SqlitePool, user_id: i64) -> Result<bool, AuthError> {
-//     let _ = query("UPDATE users SET logged = TRUE WHERE id = ?")
-//         .bind(user_id)
-//         .execute(pool).await.map_err(|_| AuthGeneralError::LoginError).map_err(|e| AuthError::AuthenticationError);
-//     Ok(true)
-// }
-//
-// #[instrument]
-// pub async fn logout_user(pool: &SqlitePool, user_id: i64) -> Result<bool, AuthError> {
-//     let _ = query("UPDATE users SET logged = FALSE WHERE id = ?")
-//         .bind(user_id)
-//         .execute(pool).await.map_err(|_| AuthGeneralError::LogoutError).map_err(|e| AuthError::AuthenticationError);
-//     Ok(true)
-// }
+pub async fn save_or_update_stored_password(
+    pool: &SqlitePool,
+    stored_password: StoredPassword,
+) -> dioxus::Result<(), DBError> {
+    debug!("Attempting to save/update user password");
+
+    // Validazione comune
+    if stored_password.password.expose_secret().is_empty()
+        || stored_password.location.trim().is_empty()
+    {
+        return Err(DBError::new_password_save_error(
+            "Password and location cannot be empty".into(),
+        ));
+    }
+
+    // sqlx-template genera upsert_by_id() che gestisce entrambi i casi:
+    // - Se id è None → INSERT
+    // - Se id è Some(id) → INSERT OR REPLACE (aggiorna)
+    StoredPassword::upsert_by_id(&stored_password, pool)
+        .await
+        .map_err(|e| DBError::new_password_save_error(format!("Upsert failed: {}", e)))?;
+
+    Ok(())
+}
+
+#[instrument(skip(pool))]
+pub async fn get_all_passwords_for_user(
+    pool: &SqlitePool,
+    user_id: i64,
+) -> Result<Vec<StoredPassword>, DBError> {
+    debug!("Fetching all passwords for user_id: {}", user_id);
+
+    // Builder pattern: filtra per user_id, ordina per created_at desc
+    let builder = StoredPassword::builder_select()
+        .user_id(&user_id)
+        .map_err(|e| DBError::new_list_error(format!("Builder error: {}", e)))?
+        .order_by_created_at_desc()
+        .map_err(|e| DBError::new_list_error(format!("Builder error: {}", e)))?;
+
+    builder
+        .find_all(pool)
+        .await
+        .map_err(|e| DBError::new_list_error(format!("Failed to fetch passwords: {}", e)))
+}

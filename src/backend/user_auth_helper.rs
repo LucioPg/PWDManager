@@ -5,6 +5,8 @@ use sqlx::{
     sqlite::{Sqlite, SqliteArgumentValue, SqliteTypeInfo, SqliteValueRef},
 };
 
+use sqlx_template::SqlxTemplate;
+
 #[derive(Debug, Clone)]
 pub struct DbSecretString(pub SecretString);
 
@@ -121,16 +123,20 @@ pub enum PasswordStrength {
     STRONG,
 }
 
-#[derive(sqlx::FromRow, Debug)]
+#[derive(sqlx::FromRow, Debug, SqlxTemplate)]
+#[table("passwords")]
+#[db("sqlite")]
+#[tp_upsert(by = "id")]
+#[tp_select_builder]
 pub struct StoredPassword {
-    id: Option<i64>,            // INTEGER PRIMARY KEY,
-    user_id: i64,               // INTEGER NOT NULL,
-    location: String,           // TEXT NOT NULL,
-    password: DbSecretVec,      // TEXT NOT NULL,
-    notes: Option<String>,      //,
-    strength: PasswordStrength, // TEXT NOT NULL CHECK (strength IN ('weak', 'medium', 'strong')),
-    created_at: Option<String>, // TEXT DEFAULT (datetime('now')),
-    nonce: Vec<u8>,             // BLOB NOT NULL UNIQUE,
+    pub id: Option<i64>,            // INTEGER PRIMARY KEY,
+    pub user_id: i64,               // INTEGER NOT NULL,
+    pub location: String,           // TEXT NOT NULL,
+    pub password: DbSecretVec,      // TEXT NOT NULL,
+    pub notes: Option<String>,      //,
+    pub strength: PasswordStrength, // TEXT NOT NULL CHECK (strength IN ('weak', 'medium', 'strong')),
+    pub created_at: Option<String>, // TEXT DEFAULT (datetime('now')),
+    pub nonce: Vec<u8>,             // BLOB NOT NULL UNIQUE,
 }
 
 impl StoredPassword {
