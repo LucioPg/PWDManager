@@ -15,6 +15,7 @@ dependencies = [
  "futures",
  "gui-launcher",
  "image",
+ "rayon",
  "rfd",
  "secrecy",
  "sqlx",
