@@ -8,10 +8,9 @@ use aes_gcm::aead::{Aead, AeadCore, Nonce, OsRng};
 use aes_gcm::{Aes256Gcm, Key, KeyInit};
 use argon2::password_hash::Salt;
 use argon2::{Argon2, PasswordHash};
-use custom_errors::{DBError, EncryptionError};
+use custom_errors::DBError;
 use secrecy::{ExposeSecret, SecretString};
 use sqlx::SqlitePool;
-use tracing::debug;
 
 async fn calc_strength(password: &str) -> PasswordStrength {
     if password.len() < 8 {
