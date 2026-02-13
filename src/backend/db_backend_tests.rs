@@ -92,6 +92,31 @@ mod tests {
         assert_eq!(users[0].1, username, "Username should match");
     }
 
+    #[tokio::test]
+    async fn test_insert_new_user_without_avatar() {
+        let (pool, _temp_dir) = setup_test_db().await;
+
+        let username = "test_user_no_avatar".to_string();
+        let password = SecretString::new("password456".into());
+
+        let result = save_or_update_user(
+            &pool,
+            None,  // id = None → INSERT
+            username.clone(),
+            Some(password),
+            None,  // avatar = None
+        )
+        .await;
+
+        assert!(result.is_ok(), "INSERT without avatar should succeed");
+
+        // Verifica che l'utente sia stato creato senza avatar
+        let users = list_users(&pool).await.expect("Failed to list users");
+        assert_eq!(users.len(), 1, "Should have exactly one user");
+        assert_eq!(users[0].1, username, "Username should match");
+        assert!(users[0].3.is_none(), "Avatar should be None");
+    }
+
     // ============ Categoria 2: Test UPDATE ============
     // I test verranno aggiunti nei prossimi task
 
