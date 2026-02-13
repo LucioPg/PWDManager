@@ -221,6 +221,32 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn test_update_avatar_only() {
+        let (pool, _temp_dir) = setup_test_db().await;
+
+        let user_id = create_test_user(&pool).await;
+        let new_avatar = vec![9u8, 8u8, 7u8, 6u8];
+
+        // Aggiorna solo avatar
+        let result = save_or_update_user(
+            &pool,
+            Some(user_id),
+            "test_user".to_string(),  // username invariato
+            None,  // password = None
+            Some(new_avatar.clone()),  // avatar nuovo
+        )
+        .await;
+
+        assert!(result.is_ok(), "UPDATE avatar should succeed");
+
+        // Verifica aggiornamento
+        let users = list_users(&pool).await.expect("Failed to list users");
+        assert_eq!(users.len(), 1, "Should still have one user");
+        assert_eq!(users[0].0, user_id, "User ID should not change");
+        assert_eq!(users[0].3, Some(new_avatar), "Avatar should be updated");
+    }
+
     // ============ Categoria 3: Test temp_old_password ============
     // I test verranno aggiunti nei prossimi task
 
