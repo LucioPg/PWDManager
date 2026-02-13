@@ -102,12 +102,13 @@ pub async fn delete_user(pool: &SqlitePool, id: i64) -> Result<(), DBError> {
     Ok(())
 }
 
-fn get_user_row(row:SqliteRow) -> (i64, String, String, Option<Vec<u8>>) {
+fn get_user_row(row: SqliteRow) -> (i64, String, String, Option<Vec<u8>>) {
     (
-    row.get::<i64, _>("id"),
-    row.get::<String, _>("username"),
-    row.get::<String, _>("created_at"),
-    row.get::<Option<Vec<u8>>, _>("avatar"),)
+        row.get::<i64, _>("id"),
+        row.get::<String, _>("username"),
+        row.get::<String, _>("created_at"),
+        row.get::<Option<Vec<u8>>, _>("avatar"),
+    )
 }
 
 #[instrument(skip(pool))]
@@ -122,10 +123,7 @@ pub async fn list_users(
             .map_err(|e| {
                 DBError::new_list_error(format!("Failed to save user credentials: {}", e))
             })?;
-    let users = rows
-        .into_iter()
-        .map(|row| get_user_row(row))
-        .collect();
+    let users = rows.into_iter().map(|row| get_user_row(row)).collect();
 
     Ok(users)
 }
