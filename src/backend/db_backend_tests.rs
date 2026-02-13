@@ -1,14 +1,11 @@
 #![allow(dead_code)]
-use crate::backend::db_backend::{
-    fetch_user_password, list_users, save_or_update_user,
-};
+use crate::backend::db_backend::{fetch_user_password, list_users, save_or_update_user};
 use crate::backend::test_helpers::{
-    assert_has_avatar, assert_user_count, assert_username, create_test_user,
-    setup_test_db,
+    assert_has_avatar, assert_user_count, assert_username, create_test_user, setup_test_db,
 };
 use secrecy::SecretString;
 use sqlx::sqlite::SqliteRow;
-use sqlx::{query, Row};
+use sqlx::{Row, query};
 
 #[cfg(test)]
 mod tests {
@@ -26,7 +23,7 @@ mod tests {
 
         let result = save_or_update_user(
             &pool,
-            None,  // id = None → INSERT
+            None, // id = None → INSERT
             username.to_string(),
             Some(password),
             Some(avatar.clone()),
@@ -50,10 +47,10 @@ mod tests {
 
         let result = save_or_update_user(
             &pool,
-            None,  // id = None → INSERT
+            None, // id = None → INSERT
             username.to_string(),
             Some(password),
-            None,  // avatar = None
+            None, // avatar = None
         )
         .await;
 
@@ -71,7 +68,7 @@ mod tests {
         let (pool, _temp_dir) = setup_test_db().await;
 
         let username = "test_user_empty_pass";
-        let empty_password = SecretString::new("".into());  // Password vuota
+        let empty_password = SecretString::new("".into()); // Password vuota
 
         let result = save_or_update_user(
             &pool,
@@ -105,10 +102,10 @@ mod tests {
         // Poi aggiorna solo username
         let result = save_or_update_user(
             &pool,
-            Some(user_id),  // id = Some → UPDATE
+            Some(user_id), // id = Some → UPDATE
             new_username.to_string(),
-            None,  // password = None
-            None,  // avatar = None
+            None, // password = None
+            None, // avatar = None
         )
         .await;
 
@@ -127,10 +124,9 @@ mod tests {
         let user_id = create_test_user(&pool, "test_user", "test_password_123", None).await;
 
         // Recupera la vecchia password per comparazione
-        let old_password_hash =
-            fetch_user_password(&pool, "test_user")
-                .await
-                .expect("Failed to fetch old password");
+        let old_password_hash = fetch_user_password(&pool, "test_user")
+            .await
+            .expect("Failed to fetch old password");
 
         let new_password = SecretString::new("new_password_456".into());
 
@@ -138,22 +134,21 @@ mod tests {
         let result = save_or_update_user(
             &pool,
             Some(user_id),
-            "test_user".to_string(),  // username invariato
+            "test_user".to_string(), // username invariato
             Some(new_password),
-            None,  // avatar = None
+            None, // avatar = None
         )
         .await;
 
         assert!(result.is_ok(), "UPDATE password should succeed");
 
         // Verifica che temp_old_password sia stato salvato
-        let temp_password_row: Option<SqliteRow> = query(
-            "SELECT temp_old_password FROM users WHERE id = ?"
-        )
-        .bind(user_id)
-        .fetch_optional(&pool)
-        .await
-        .expect("Failed to query temp_old_password");
+        let temp_password_row: Option<SqliteRow> =
+            query("SELECT temp_old_password FROM users WHERE id = ?")
+                .bind(user_id)
+                .fetch_optional(&pool)
+                .await
+                .expect("Failed to query temp_old_password");
 
         assert!(
             temp_password_row.is_some(),
@@ -178,8 +173,8 @@ mod tests {
         let result = save_or_update_user(
             &pool,
             Some(user_id),
-            "test_user".to_string(),  // username invariato
-            None,  // password = None
+            "test_user".to_string(), // username invariato
+            None,                    // password = None
             Some(new_avatar.clone()),
         )
         .await;
@@ -228,14 +223,13 @@ mod tests {
         let user_id = create_test_user(&pool, "test_user", "test_password_123", None).await;
 
         // Recupera la password originale (hash)
-        let old_password_hash =
-            fetch_user_password(&pool, "test_user")
-                .await
-                .expect("Failed to fetch old password");
+        let old_password_hash = fetch_user_password(&pool, "test_user")
+            .await
+            .expect("Failed to fetch old password");
 
         // Aggiorna la password
         let new_password = SecretString::new("completely_new_pass".into());
-        save_or_update_user(
+        let _ = save_or_update_user(
             &pool,
             Some(user_id),
             "test_user".to_string(),
@@ -245,13 +239,12 @@ mod tests {
         .await;
 
         // Verifica che temp_old_password contenga la vecchia password
-        let temp_password_row: SqliteRow = query(
-            "SELECT temp_old_password FROM users WHERE id = ?"
-        )
-        .bind(user_id)
-        .fetch_one(&pool)
-        .await
-        .expect("Failed to query temp_old_password");
+        let temp_password_row: SqliteRow =
+            query("SELECT temp_old_password FROM users WHERE id = ?")
+                .bind(user_id)
+                .fetch_one(&pool)
+                .await
+                .expect("Failed to query temp_old_password");
 
         assert_eq!(
             temp_password_row.get::<String, _>("temp_old_password"),
@@ -267,13 +260,12 @@ mod tests {
         let user_id = create_test_user(&pool, "test_user", "test_password_123", None).await;
 
         // Salva la prima password hash
-        let first_hash =
-            fetch_user_password(&pool, "test_user")
-                .await
-                .expect("Failed to fetch first password");
+        let first_hash = fetch_user_password(&pool, "test_user")
+            .await
+            .expect("Failed to fetch first password");
 
         // Primo aggiornamento password
-        save_or_update_user(
+        let _ = save_or_update_user(
             &pool,
             Some(user_id),
             "test_user".to_string(),
@@ -283,13 +275,12 @@ mod tests {
         .await;
 
         // Salva la seconda password hash
-        let second_hash =
-            fetch_user_password(&pool, "test_user")
-                .await
-                .expect("Failed to fetch second password");
+        let second_hash = fetch_user_password(&pool, "test_user")
+            .await
+            .expect("Failed to fetch second password");
 
         // Secondo aggiornamento password
-        save_or_update_user(
+        let _ = save_or_update_user(
             &pool,
             Some(user_id),
             "test_user".to_string(),
@@ -299,13 +290,12 @@ mod tests {
         .await;
 
         // Recupera temp_old_password dopo due aggiornamenti
-        let temp_password_row: SqliteRow = query(
-            "SELECT temp_old_password FROM users WHERE id = ?"
-        )
-        .bind(user_id)
-        .fetch_one(&pool)
-        .await
-        .expect("Failed to query temp_old_password");
+        let temp_password_row: SqliteRow =
+            query("SELECT temp_old_password FROM users WHERE id = ?")
+                .bind(user_id)
+                .fetch_one(&pool)
+                .await
+                .expect("Failed to query temp_old_password");
 
         // Verifica che temp_old_password contenga la seconda password hash (non la prima!)
         assert_eq!(
@@ -334,7 +324,10 @@ mod tests {
         )
         .await;
 
-        assert!(result.is_ok(), "UPDATE with nonexistent user should succeed");
+        assert!(
+            result.is_ok(),
+            "UPDATE with nonexistent user should succeed"
+        );
         // Verifica che l'utente originale sia ancora presente
         let users = list_users(&pool).await.expect("Failed to list users");
         assert_user_count(&users, 1, "Should have exactly one user");
@@ -349,7 +342,7 @@ mod tests {
 
         let result = save_or_update_user(
             &pool,
-            None,  // id = None → INSERT
+            None, // id = None → INSERT
             username.to_string(),
             Some(SecretString::new("password456".into())),
             None,
