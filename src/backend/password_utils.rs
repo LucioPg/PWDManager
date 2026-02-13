@@ -240,3 +240,28 @@ pub async fn decrypt_stored_password(
         .map_err(|e| DBError::new_password_conversion_error(e.to_string()))?;
     Ok(plaintext)
 }
+
+/*
+PASSWORD MIGRATION:
+le password salvate sono in formato vec<u8>
+e non possono essere decriptate senza la master password dell'utente usata al momento della criptazione.
+Si rende necessario riconvertire le password salvate in chiaro attraverso la master password precedente a quella in sostituzione
+e quindi ripetere la criptazione con la master password nuova.
+Quando un utente cambia la master password, la precedente viene salvata in "temp_old_password".
+Riassumendo per punti il procedimento per eseguire la migrazione è questo:
+1. ottenere la master password vecchia interrogando o riceverla come argomento.
+2. estrarre il salt dalla master password vecchia.
+3. creare il cipher con la master password vecchia.
+4. decriptare le password salvate con il cipher vecchio.
+5. salvare le nuove password criptate nel database.
+6. update delle nuove password criptate nel database.
+7. ripetere passi 4-5-6.
+8. al termine rimuovere il campo "temp_old_password" dal database.
+
+dato il grosso potenziale di carico di questo processo è necessario eseguire il processo in parallelo usando rayon all'interno di un spawn_blocking di tokio.
+L'ideale sarebbe quello di fare gli update in batch di un certo numero per evitare di bloccare il thread principale.
+
+Sarebbe una buona cosa notificare il frontend dell'avanzamento del processo di migrazione, in modo da poter mostrare un indicatore di avanzamento.
+questo implicherebbe usare un contatore condiviso all'interno di un segnale e quindi aggiornare la progress bar nel frontend.
+
+ */
