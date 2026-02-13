@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 use crate::backend::db_backend::{
-    fetch_user_password, init_db, list_users, save_or_update_user,
+    fetch_user_password, list_users, save_or_update_user,
 };
 use crate::backend::init_queries::QUERIES;
 use secrecy::SecretString;
@@ -184,8 +184,6 @@ mod tests {
                 .await
                 .expect("Failed to fetch old password");
 
-        eprintln!("DEBUG: old_password_hash length = {}", old_password_hash.len());
-
         let new_password = SecretString::new("new_password_456".into());
 
         // Aggiorna solo password
@@ -234,7 +232,7 @@ mod tests {
             Some(user_id),
             "test_user".to_string(),  // username invariato
             None,  // password = None
-            Some(new_avatar.clone()),  // avatar nuovo
+            Some(new_avatar.clone()),
         )
         .await;
 
@@ -294,36 +292,129 @@ mod tests {
         save_or_update_user(
             &pool,
             Some(user_id),
-            "test_user".to_string(),  // username invariato
+            "test_user".to_string(),
             Some(new_password),
-            None,  // avatar = None
+            None,
         )
         .await;
 
         // Verifica che temp_old_password contenga la vecchia password
-        let temp_password_row: Option<SqliteRow> = query(
+        let temp_password_row: SqliteRow = query(
             "SELECT temp_old_password FROM users WHERE id = ?"
         )
         .bind(user_id)
-        .fetch_optional(&pool)
+        .fetch_one(&pool)
         .await
         .expect("Failed to query temp_old_password");
 
-        assert!(
-            temp_password_row.is_some(),
-            "temp_old_password should be set"
-        );
-        let temp_password = temp_password_row.unwrap();
         assert_eq!(
-            temp_password.get::<String, _>("temp_old_password"),
+            temp_password_row.get::<String, _>("temp_old_password"),
             old_password_hash,
             "temp_old_password should contain old password hash"
         );
     }
 
-    // ============ Categoria 3: Test temp_old_password ============
-    // I test verranno aggiunti nei prossimi task
+    #[tokio::test]
+    async fn test_temp_password_overwritten_on_multiple_updates() {
+        let (pool, _temp_dir) = setup_test_db().await;
 
-    // ============ Categoria 4: Test Casi di Errore ============
-    // I test verranno aggiunti nei prossimi task
+        let user_id = create_test_user(&pool).await;
+
+        // Salva la prima password hash
+        let first_hash =
+            fetch_user_password(&pool, "test_user")
+                .await
+                .expect("Failed to fetch first password");
+
+        // Primo aggiornamento password
+        save_or_update_user(
+            &pool,
+            Some(user_id),
+            "test_user".to_string(),
+            Some(SecretString::new("password_second".into())),
+            None,
+        )
+        .await;
+
+        // Salva la seconda password hash
+        let second_hash =
+            fetch_user_password(&pool, "test_user")
+                .await
+                .expect("Failed to fetch second password");
+
+        // Secondo aggiornamento password
+        save_or_update_user(
+            &pool,
+            Some(user_id),
+            "test_user".to_string(),
+            Some(SecretString::new("password_third".into())),
+            None,
+        )
+        .await;
+
+        // Recupera temp_old_password dopo due aggiornamenti
+        let temp_password_row: SqliteRow = query(
+            "SELECT temp_old_password FROM users WHERE id = ?"
+        )
+        .bind(user_id)
+        .fetch_one(&pool)
+        .await
+        .expect("Failed to query temp_old_password");
+
+        // Verifica che temp_old_password contenga la seconda password hash (non la prima!)
+        assert_eq!(
+            temp_password_row.get::<String, _>("temp_old_password"),
+            second_hash,
+            "temp_old_password should contain second password hash"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_update_nonexistent_user() {
+        let (pool, _temp_dir) = setup_test_db().await;
+
+        // Prima crea un utente
+        create_test_user(&pool).await;
+
+        let fake_id = 99999i64;
+
+        // Tenta UPDATE con ID inesistente
+        let result = save_or_update_user(
+            &pool,
+            Some(fake_id),
+            "test_user".to_string(),
+            Some(SecretString::new("password456".into())),
+            None,
+        )
+        .await;
+
+        assert!(result.is_ok(), "UPDATE with nonexistent user should succeed");
+        // Verifica che l'utente originale sia ancora presente
+        let users = list_users(&pool).await.expect("Failed to list users");
+        assert_eq!(users.len(), 1, "Should have exactly one user");
+    }
+
+    #[tokio::test]
+    async fn test_special_characters_username() {
+        let (pool, _temp_dir) = setup_test_db().await;
+
+        // Tenta SQL injection: username con caratteri speciali
+        let username = "user'; DROP TABLE users; --".to_string();
+
+        let result = save_or_update_user(
+            &pool,
+            None,  // id = None → INSERT
+            username.clone(),
+            Some(SecretString::new("password456".into())),
+            None,
+        )
+        .await;
+
+        assert!(result.is_ok(), "INSERT should succeed");
+
+        // Verifica che l'utente sia nel database
+        let users = list_users(&pool).await.expect("Failed to list users");
+        assert_eq!(users.len(), 1, "Should have exactly one user");
+        assert_eq!(users[0].1, username, "Username should match");
+    }
 }

@@ -55,8 +55,8 @@ async fn set_temp_password(
     password: &SecretString,
 ) -> Result<(), DBError> {
     query("UPDATE users SET temp_old_password = ? WHERE id = ?")
-        .bind(user_id)
         .bind(password.expose_secret())
+        .bind(user_id)
         .execute(pool)
         .await
         .map_err(|e| {
@@ -73,12 +73,16 @@ async fn builder_update_fields(
     avatar: Option<Vec<u8>>,
 ) -> Result<Vec<(UpdateFieldName, UpdateFieldType)>, DBError> {
     let mut parts: Vec<(UpdateFieldName, UpdateFieldType)> = vec![];
-    parts.push((UpdateFieldName::Username, UpdateFieldType::Text(username)));
+    parts.push((UpdateFieldName::Username, UpdateFieldType::Text(username.clone())));
     if let Some(psw) = password {
         if !psw.expose_secret().trim().is_empty() {
+            // Prima recupera la vecchia password hash usando user_id e salvala in temp_old_password
+            if let Ok(user_auth) = fetch_password_created_at_from_id(pool, user_id).await {
+                set_temp_password(pool, user_id, &user_auth.password.0).await?;
+            }
+
             let hash_password = crate::backend::utils::encrypt(psw.clone())
                 .map_err(|e| DBError::new_save_error(format!("Failed to encrypt: {}", e)))?;
-            set_temp_password(pool, user_id, &psw).await?; // SET TEMPORARY PASSWORD FOR NOT LOSE OLD ENCRYPTED PASSWORDS
             parts.push((
                 UpdateFieldName::Password,
                 UpdateFieldType::Secret(SecretString::new(hash_password.into())),
