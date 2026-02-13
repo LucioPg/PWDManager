@@ -5,4 +5,5 @@ pub mod ui_utils;
 mod user_auth_helper;
 pub mod utils;
 
-pub use password_utils::*;
+#[cfg(test)]
+mod password_utils_tests;
