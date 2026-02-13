@@ -14,17 +14,34 @@ use std::str::FromStr;
 #[cfg(feature = "desktop")]
 use tracing::{debug, instrument};
 
-enum UpdateFieldName {
-    Username = 1,
-    Password = 2,
-    Avatar = 3,
+/// Struct per rappresentare un aggiornamento utente con field opzionali
+#[derive(Debug, Clone)]
+pub struct UserUpdate {
+    pub username: Option<String>,
+    pub password: Option<SecretString>,
+    pub avatar: Option<Vec<u8>>,
 }
 
-#[derive(Debug, Clone)]
-enum UpdateFieldType {
-    Text(String),
-    Secret(SecretString),
-    Binary(Vec<u8>),
+impl UserUpdate {
+    /// Verifica se c'è almeno un campo da aggiornare
+    pub fn has_updates(&self) -> bool {
+        self.username.is_some() || self.password.is_some() || self.avatar.is_some()
+    }
+
+    /// Costruisce la lista dei campi SQL da aggiornare (es. "username = ?, password = ?")
+    pub fn build_sql_fields(&self) -> Vec<&'static str> {
+        let mut fields = Vec::new();
+        if self.username.is_some() {
+            fields.push("username = ?");
+        }
+        if self.password.is_some() {
+            fields.push("password = ?");
+        }
+        if self.avatar.is_some() {
+            fields.push("avatar = ?");
+        }
+        fields
+    }
 }
 
 #[cfg(feature = "desktop")]
@@ -65,15 +82,20 @@ async fn set_temp_password(
     Ok(())
 }
 
-async fn builder_update_fields(
+/// Prepara l'aggiornamento utente recuperando la vecchia password se necessario
+async fn prepare_user_update(
     pool: &SqlitePool,
     user_id: i64,
     username: String,
     password: Option<SecretString>,
     avatar: Option<Vec<u8>>,
-) -> Result<Vec<(UpdateFieldName, UpdateFieldType)>, DBError> {
-    let mut parts: Vec<(UpdateFieldName, UpdateFieldType)> = vec![];
-    parts.push((UpdateFieldName::Username, UpdateFieldType::Text(username.clone())));
+) -> Result<UserUpdate, DBError> {
+    let mut update = UserUpdate {
+        username: Some(username),
+        password: None,
+        avatar,
+    };
+
     if let Some(psw) = password {
         if !psw.expose_secret().trim().is_empty() {
             // Prima recupera la vecchia password hash usando user_id e salvala in temp_old_password
@@ -83,54 +105,11 @@ async fn builder_update_fields(
 
             let hash_password = crate::backend::utils::encrypt(psw.clone())
                 .map_err(|e| DBError::new_save_error(format!("Failed to encrypt: {}", e)))?;
-            parts.push((
-                UpdateFieldName::Password,
-                UpdateFieldType::Secret(SecretString::new(hash_password.into())),
-            ));
+            update.password = Some(SecretString::new(hash_password.into()));
         }
     }
-    if let Some(avatar_bytes) = avatar {
-        parts.push((
-            UpdateFieldName::Avatar,
-            UpdateFieldType::Binary(avatar_bytes),
-        ));
-    }
-    Ok(parts)
-}
 
-fn builder_update_user_query(fields: &Vec<(UpdateFieldName, UpdateFieldType)>) -> String {
-    let sql = fields
-        .iter()
-        .map(|(field, _)| match field {
-            UpdateFieldName::Username => "username = ?",
-            UpdateFieldName::Password => "password = ?",
-            UpdateFieldName::Avatar => "avatar = ?",
-        })
-        .collect::<Vec<_>>()
-        .join(", ");
-    format!("UPDATE users SET {} where id = ?", sql)
-}
-
-fn generate_sql_update_query_and_binding<'q>(
-    sql: &'q str,
-    fields: &'q Vec<(UpdateFieldName, UpdateFieldType)>,
-) -> Query<'q, Sqlite, SqliteArguments<'q>> {
-    let mut query = sqlx::query(sql);
-    for (_, value) in fields {
-        match value {
-            UpdateFieldType::Text(value) => {
-                query = query.bind(value);
-            }
-            UpdateFieldType::Secret(value) => {
-                query = query.bind(value.expose_secret());
-            }
-            UpdateFieldType::Binary(value) => {
-                query = query.bind(value);
-            }
-        }
-        // query = query.bind(value);
-    }
-    query
+    Ok(update)
 }
 
 pub async fn save_or_update_user(
@@ -147,37 +126,33 @@ pub async fn save_or_update_user(
     match id {
         // --- CASO UPDATE ---
         Some(user_id) => {
-            let fields = builder_update_fields(pool, user_id, username, password, avatar).await?;
-            let sql = builder_update_user_query(&fields);
-            let query = generate_sql_update_query_and_binding(sql.as_str(), &fields);
+            let update = prepare_user_update(pool, user_id, username, password, avatar).await?;
+
+            if !update.has_updates() {
+                return Ok(());
+            }
+
+            let sql_fields = update.build_sql_fields();
+            let sql = format!("UPDATE users SET {} WHERE id = ?", sql_fields.join(", "));
+
+            let mut query = sqlx::query(&sql);
+
+            // Binda in ordine: prima i campi dell'update, poi user_id
+            if let Some(username) = update.username {
+                query = query.bind(username);
+            }
+            if let Some(password) = update.password {
+                query = query.bind(password.expose_secret().to_string());
+            }
+            if let Some(avatar) = update.avatar {
+                query = query.bind(avatar);
+            }
+            query = query.bind(user_id);
+
             query
-                .bind(user_id)
                 .execute(pool)
                 .await
                 .map_err(|e| DBError::new_save_error(format!("Update failed: {}", e)))?;
-
-            // match password {
-            // Some(psw) if !psw.expose_secret().trim().is_empty() => {
-            //     let hash_password = crate::backend::utils::encrypt(psw)
-            //         .map_err(|e| DBError::new_save_error(format!("Failed to encrypt: {}", e)))?;
-            //     sqlx::query("UPDATE users SET username = ?, password = ?, avatar = ? WHERE id = ?")
-            //         .bind(username)
-            //         .bind(hash_password)
-            //         .bind(avatar)
-            //         .bind(user_id)
-            //         .execute(pool)
-            //         .await
-            //         .map_err(|e| DBError::new_save_error(format!("Update failed: {}", e)))?;
-            // }
-            // _ => {
-            //     sqlx::query("UPDATE users SET username = ?, avatar = ? WHERE id = ?")
-            //         .bind(username)
-            //         .bind(avatar)
-            //         .bind(user_id)
-            //         .execute(pool)
-            //         .await
-            //         .map_err(|e| DBError::new_save_error(format!("Update failed: {}", e)))?;
-            // }
         }
         // --- CASO INSERT ---
         None => {
