@@ -264,4 +264,12 @@ L'ideale sarebbe quello di fare gli update in batch di un certo numero per evita
 Sarebbe una buona cosa notificare il frontend dell'avanzamento del processo di migrazione, in modo da poter mostrare un indicatore di avanzamento.
 questo implicherebbe usare un contatore condiviso all'interno di un segnale e quindi aggiornare la progress bar nel frontend.
 
+quindi dopo la modifica della password è sempre possibile eseguire il processo di migrazione, fintanto che esiste il campo "temp_old_password" nel database.
+si potrebbe creare un sistema di checkpoint creando una tabella che conserva l'ultimo id processato e l'ultimo id processabile.
+
+la re-criptazione dovrebbe accadere dopo aver modificato la password principale.
+L'utente dovrebbe essere avvisato che modificando la master password potrebbe cominciare un processo di migrazione lungo ma che può essere messo in pausa.
+
+
+
  */
