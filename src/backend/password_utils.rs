@@ -81,17 +81,6 @@ async fn create_stored_password_pipeline(
     raw_password: SecretString,
     notes: Option<String>,
 ) -> Result<(), DBError> {
-    /*
-    /// 0. fare fetch della master password e del created_at dell'utente.
-    /// 1. prendere il salt della master password.
-    /// 2. prendere il campo created_at dell'utente.
-    /// 3. creare il nonce.
-    /// Se possibile, parallelamente*:
-    /// 4. derivare la criptazione con aes*
-    /// 4. fare valutazione forza password*
-    /// 5. creare struct StoredPassword
-    /// 6. fare l'insert
-     */
     let user_auth: UserAuth = fetch_password_created_at_from_id(&pool, user_id).await?;
     let salt = get_salt(&user_auth.password);
     let nonce = create_nonce();
