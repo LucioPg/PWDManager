@@ -10,7 +10,6 @@ use sqlx::sqlite::{
     SqliteArguments, SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqliteRow,
 };
 use sqlx::{Row, Sqlite, query};
-use std::borrow::Cow;
 use std::str::FromStr;
 #[cfg(feature = "desktop")]
 use tracing::{debug, instrument};
@@ -32,7 +31,9 @@ enum UpdateFieldType {
 pub async fn init_db() -> Result<SqlitePool, DBError> {
     let options = SqliteConnectOptions::from_str("sqlite:database.db")
         .map_err(|e| DBError::new_general_error(e.to_string()))?
+        .pragma("foreign_keys", "ON")
         .journal_mode(SqliteJournalMode::Wal) //fondamentale per la concorrenza
+        .foreign_keys(true)
         .create_if_missing(true);
 
     let pool = SqlitePool::connect_with(options)

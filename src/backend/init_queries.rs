@@ -16,6 +16,6 @@ pub static QUERIES: &[&str] = &[
                 strength TEXT NOT NULL CHECK (strength IN ('weak', 'medium', 'strong')),
                 created_at TEXT DEFAULT (datetime('now')),
                 nonce BLOB NOT NULL UNIQUE,
-                FOREIGN KEY(user_id) REFERENCES users(id)
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     )",
 ];
