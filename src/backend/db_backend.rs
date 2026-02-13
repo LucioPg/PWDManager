@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 use crate::backend::init_queries::QUERIES;
+use crate::backend::user_auth_helper::UserAuth;
 use crate::backend::utils::verify_password;
 use custom_errors::{AuthError, DBError};
-use dioxus::logger::init;
 use dioxus::prelude::*;
 use secrecy::{ExposeSecret, SecretString};
 use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
@@ -32,7 +32,7 @@ pub async fn init_db() -> Result<SqlitePool, DBError> {
 
 pub async fn save_or_update_user(
     pool: &SqlitePool,
-    id: Option<i32>, // Se Some, fa l'UPDATE. Se None, fa l'INSERT.
+    id: Option<i64>, // Se Some, fa l'UPDATE. Se None, fa l'INSERT.
     username: String,
     password: Option<SecretString>,
     avatar: Option<Vec<u8>>,
@@ -89,7 +89,7 @@ pub async fn save_or_update_user(
 }
 
 #[instrument(fields(user_id = id))]
-pub async fn delete_user(pool: &SqlitePool, id: i32) -> Result<(), DBError> {
+pub async fn delete_user(pool: &SqlitePool, id: i64) -> Result<(), DBError> {
     debug!(user_id = id, "Attempting to delete user from database");
     let _ = query("DELETE FROM users WHERE id = ?")
         .bind(id)
@@ -105,7 +105,7 @@ pub async fn delete_user(pool: &SqlitePool, id: i32) -> Result<(), DBError> {
 #[instrument(skip(pool))]
 pub async fn list_users(
     pool: &SqlitePool,
-) -> Result<Vec<(i32, String, String, Option<Vec<u8>>)>, DBError> {
+) -> Result<Vec<(i64, String, String, Option<Vec<u8>>)>, DBError> {
     debug!("Fetching list of users from database");
     let rows =
         query("SELECT id, username, created_at, avatar FROM users ORDER BY id DESC LIMIT 10")
@@ -118,7 +118,7 @@ pub async fn list_users(
         .into_iter()
         .map(|row| {
             (
-                row.get::<i32, _>("id"),
+                row.get::<i64, _>("id"),
                 row.get::<String, _>("username"),
                 row.get::<String, _>("created_at"),
                 row.get::<Option<Vec<u8>>, _>("avatar"),
@@ -132,7 +132,7 @@ pub async fn list_users(
 #[instrument(skip(pool))]
 pub async fn list_users_no_avatar(
     pool: &SqlitePool,
-) -> Result<Vec<(i32, String, String)>, DBError> {
+) -> Result<Vec<(i64, String, String)>, DBError> {
     debug!("Fetching list of users from database");
     let rows = query("SELECT id, username, created_at FROM users ORDER BY id DESC LIMIT 10")
         .fetch_all(pool)
@@ -142,7 +142,7 @@ pub async fn list_users_no_avatar(
         .into_iter()
         .map(|row| {
             (
-                row.get::<i32, _>("id"),
+                row.get::<i64, _>("id"),
                 row.get::<String, _>("username"),
                 row.get::<String, _>("created_at"),
             )
@@ -151,6 +151,7 @@ pub async fn list_users_no_avatar(
 
     Ok(users)
 }
+
 #[instrument(skip(pool))]
 async fn fetch_user_password(pool: &SqlitePool, username: &str) -> Result<String, DBError> {
     debug!("Fetching user credentials in database");
@@ -169,10 +170,28 @@ async fn fetch_user_password(pool: &SqlitePool, username: &str) -> Result<String
 }
 
 #[instrument(skip(pool))]
+pub async fn fetch_password_created_at_from_id(
+    pool: &SqlitePool,
+    user_id: i64,
+) -> Result<UserAuth, DBError> {
+    debug!("Fetching user credentials in database");
+
+    let user_auth =
+        sqlx::query_as::<_, UserAuth>("SELECT password, created_at FROM users WHERE id = ?")
+            .bind(user_id as i64) // SQLite preferisce i64 per gli ID
+            .fetch_optional(pool) // Rimosso & perché pool è già un riferimento o clonabile
+            .await
+            .map_err(|e| DBError::new_select_error(e.to_string()))?; // Cattura l'errore reale del DB
+
+    // Ora gestisci il caso in cui la query ha avuto successo ma non ha trovato righe
+    user_auth.ok_or_else(|| DBError::new_select_error("User not found".into()))
+}
+
+#[instrument(skip(pool))]
 pub async fn fetch_user_data(
     pool: &SqlitePool,
     username: &str,
-) -> Result<(i32, String, String, Option<Vec<u8>>), DBError> {
+) -> Result<(i64, String, String, Option<Vec<u8>>), DBError> {
     debug!("Fetching user credentials in database");
     let row = query("SELECT id, username, created_at, avatar FROM users WHERE username = ?")
         .bind(username)
@@ -180,7 +199,7 @@ pub async fn fetch_user_data(
         .await;
     match row {
         Ok(Some(row)) => Ok((
-            row.get::<i32, _>("id"),
+            row.get::<i64, _>("id"),
             row.get::<String, _>("username"),
             row.get::<String, _>("created_at"),
             row.get::<Option<Vec<u8>>, _>("avatar"),
@@ -210,7 +229,7 @@ pub async fn check_user(
 }
 
 // #[instrument]
-// pub async fn login_user(pool: &SqlitePool, user_id: i32) -> Result<bool, AuthError> {
+// pub async fn login_user(pool: &SqlitePool, user_id: i64) -> Result<bool, AuthError> {
 //     let _ = query("UPDATE users SET logged = TRUE WHERE id = ?")
 //         .bind(user_id)
 //         .execute(pool).await.map_err(|_| AuthGeneralError::LoginError).map_err(|e| AuthError::AuthenticationError);
@@ -218,7 +237,7 @@ pub async fn check_user(
 // }
 //
 // #[instrument]
-// pub async fn logout_user(pool: &SqlitePool, user_id: i32) -> Result<bool, AuthError> {
+// pub async fn logout_user(pool: &SqlitePool, user_id: i64) -> Result<bool, AuthError> {
 //     let _ = query("UPDATE users SET logged = FALSE WHERE id = ?")
 //         .bind(user_id)
 //         .execute(pool).await.map_err(|_| AuthGeneralError::LogoutError).map_err(|e| AuthError::AuthenticationError);
