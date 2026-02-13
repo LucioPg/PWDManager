@@ -1,6 +1,6 @@
 /target
 /.idea
-/database.db
+/database.db*
 */target/*
 /.claude/
 /node_modules/*
