@@ -1,11 +1,11 @@
 #![allow(dead_code)]
 use crate::backend::init_queries::QUERIES;
-use crate::backend::user_auth_helper::{DbSecretVec, PasswordStrength, StoredPassword, UserAuth};
+use crate::backend::user_auth_helper::{StoredPassword, UserAuth};
 use crate::backend::utils::verify_password;
 use custom_errors::{AuthError, DBError};
 use dioxus::prelude::*;
 use secrecy::{ExposeSecret, SecretString};
-use sqlx::sqlite::{SqliteConnectOptions, SqlitePool};
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqliteRow};
 use sqlx::{Row, query};
 use std::str::FromStr;
 #[cfg(feature = "desktop")]
@@ -102,6 +102,14 @@ pub async fn delete_user(pool: &SqlitePool, id: i64) -> Result<(), DBError> {
     Ok(())
 }
 
+fn get_user_row(row:SqliteRow) -> (i64, String, String, Option<Vec<u8>>) {
+    (
+    row.get::<i64, _>("id"),
+    row.get::<String, _>("username"),
+    row.get::<String, _>("created_at"),
+    row.get::<Option<Vec<u8>>, _>("avatar"),)
+}
+
 #[instrument(skip(pool))]
 pub async fn list_users(
     pool: &SqlitePool,
@@ -116,14 +124,7 @@ pub async fn list_users(
             })?;
     let users = rows
         .into_iter()
-        .map(|row| {
-            (
-                row.get::<i64, _>("id"),
-                row.get::<String, _>("username"),
-                row.get::<String, _>("created_at"),
-                row.get::<Option<Vec<u8>>, _>("avatar"),
-            )
-        })
+        .map(|row| get_user_row(row))
         .collect();
 
     Ok(users)
@@ -178,7 +179,7 @@ pub async fn fetch_password_created_at_from_id(
 
     let user_auth =
         sqlx::query_as::<_, UserAuth>("SELECT password, created_at FROM users WHERE id = ?")
-            .bind(user_id as i64) // SQLite preferisce i64 per gli ID
+            .bind(user_id) // SQLite preferisce i64 per gli ID
             .fetch_optional(pool) // Rimosso & perché pool è già un riferimento o clonabile
             .await
             .map_err(|e| DBError::new_select_error(e.to_string()))?; // Cattura l'errore reale del DB
@@ -198,12 +199,7 @@ pub async fn fetch_user_data(
         .fetch_optional(pool)
         .await;
     match row {
-        Ok(Some(row)) => Ok((
-            row.get::<i64, _>("id"),
-            row.get::<String, _>("username"),
-            row.get::<String, _>("created_at"),
-            row.get::<Option<Vec<u8>>, _>("avatar"),
-        )),
+        Ok(Some(row)) => Ok(get_user_row(row)),
         Ok(None) => Err(DBError::new_select_error("User not found".into())),
         Err(e) => Err(DBError::new_fetch_error(format!(
             "Failed to fetch user data: {}",
@@ -231,7 +227,7 @@ pub async fn check_user(
 pub async fn save_or_update_stored_password(
     pool: &SqlitePool,
     stored_password: StoredPassword,
-) -> dioxus::Result<(), DBError> {
+) -> Result<(), DBError> {
     debug!("Attempting to save/update user password");
 
     // Validazione comune
