@@ -3,7 +3,7 @@ pub static QUERIES: &[&str] = &[
                 id INTEGER PRIMARY KEY,
                 username TEXT NOT NULL UNIQUE,
                 password TEXT NOT NULL,
-                temp_old_password BLOB,
+                temp_old_password TEXT,
                 created_at TEXT DEFAULT (datetime('now')),
                 avatar BLOB
             );",
