@@ -1,3 +1,8 @@
+//! Modulo per la gestione dell'autenticazione e delle password nel database.
+//!
+//! Fornisce wrapper per i tipi `secrecy` che li rendono compatibili con SQLx,
+//! oltre a struct per l'autenticazione utente e per le password salvate.
+
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::{
     Decode, Encode, Type,
@@ -7,6 +12,22 @@ use sqlx::{
 
 use sqlx_template::SqlxTemplate;
 
+/// Wrapper per [`SecretString`] che lo rende compatibile con SQLx/SQLite.
+///
+/// SQLx richiede che i tipi implementino trait specifici per essere codificati/decodificati
+/// nel database. Questo wrapper implementa tali trait espondo temporaneamente il segreto
+/// interno quando necessario per la codifica SQLite.
+///
+/// # Esempi
+///
+/// ```rust,no_run
+/// use user_auth_helper::DbSecretString;
+/// use secrecy::SecretString;
+///
+/// let secret = SecretString::new("mia_password".into());
+/// let db_secret = DbSecretString(secret);
+/// // Ora db_secret può essere usato con SQLx
+/// ```
 #[derive(Debug, Clone)]
 pub struct DbSecretString(pub SecretString);
 
@@ -40,6 +61,10 @@ impl<'r> sqlx::Decode<'r, sqlx::Sqlite> for DbSecretString {
     }
 }
 
+/// Implementazione di [`From<SecretString>`] per [`DbSecretString`].
+///
+/// Permette di convertire facilmente una `SecretString` in `DbSecretString`
+/// usabile con SQLx.
 impl From<SecretString> for DbSecretString {
     fn from(secret: SecretString) -> Self {
         Self(secret)
@@ -57,6 +82,23 @@ impl std::ops::Deref for DbSecretString {
 // Per Vec<u8> - il caso più comune per password/binari
 pub type SecretSliceU8 = SecretBox<[u8]>;
 
+/// Wrapper per [`SecretBox<[u8]>`] che lo rende compatibile con SQLx/SQLite.
+///
+/// Utilizzato per salvare dati binari criptati (come le password) nel database SQLite.
+/// Il nonce usato per la criptazione AES-GCM è anch'esso un `Vec<u8>`.
+///
+/// # Esempi
+///
+/// ```rust,no_run
+/// use user_auth_helper::DbSecretVec;
+/// use secrecy::SecretBox;
+///
+/// let data: Vec<u8> = vec
+/// 0x01, 0x02, 0x03
+/// ];
+/// let db_secret = DbSecretVec(SecretBox::from(data));
+/// // Ora db_secret può essere usato con SQLx
+/// ```
 #[derive(Debug, Clone)]
 pub struct DbSecretVec(pub SecretSliceU8);
 
@@ -110,6 +152,15 @@ impl std::ops::Deref for DbSecretVec {
 }
 
 #[derive(sqlx::FromRow)] // Necessario per mappare i risultati
+/// Struct per l'autenticazione utente contenente password e data di creazione.
+///
+/// Utilizzata per recuperare la password hash e la data di creazione di un utente,
+/// necessarie per la derivazione della chiave di criptazione AES.
+///
+/// # Campi
+///
+/// * `password` - Password hash (Argon2) dell'utente
+/// * `created_at` - Data di creazione dell'utente in formato ISO 8601
 pub struct UserAuth {
     pub password: DbSecretString,
     pub created_at: String, // o il tipo che usi (es. SystemTime o PrimitiveDateTime)
@@ -117,6 +168,16 @@ pub struct UserAuth {
 
 #[derive(Debug, Clone, PartialEq, sqlx::Type)]
 #[sqlx(type_name = "TEXT", rename_all = "lowercase")]
+/// Enum che rappresenta la forze della password.
+///
+/// Viene salvata nel database come testo ('weak', 'medium', 'strong') e
+/// controllata da un constraint CHECK.
+///
+/// # Varianti
+///
+/// * `WEAK` - Password debole (< 8 caratteri)
+/// * `MEDIUM` - Password media (8-15 caratteri)
+/// * `STRONG` - Password forte (16+ caratteri)
 pub enum PasswordStrength {
     WEAK,
     MEDIUM,
@@ -128,6 +189,21 @@ pub enum PasswordStrength {
 #[db("sqlite")]
 #[tp_upsert(by = "id")]
 #[tp_select_builder]
+/// Struct per una password salvata nel database.
+///
+/// Utilizza [`sqlx_template`](SqlxTemplate) per generare automaticamente le query SQL
+/// di INSERT/UPDATE/SELECT tramite il metodo `upsert_by_id`.
+///
+/// # Campi
+///
+/// * `id` - ID opzionale (None per INSERT, Some per UPDATE)
+/// * `user_id` - ID dell'utente proprietario della password
+/// * `location` - Luogo/nome dove è salvata la password (es. "Google", "Netflix")
+/// * `password` - Password criptata con AES-256-GCM (salvata come BLOB)
+/// * `notes` - Note opzionali sulla password
+/// * `strength` - Forze della password (WEAK/MEDIUM/STRONG)
+/// * `created_at` - Data di creazione opzionale
+/// * `nonce` - Nonce usato per la criptazione AES (12 byte, deve essere UNIQUE)
 pub struct StoredPassword {
     pub id: Option<i64>,            // INTEGER PRIMARY KEY,
     pub user_id: i64,               // INTEGER NOT NULL,
@@ -140,6 +216,22 @@ pub struct StoredPassword {
 }
 
 impl StoredPassword {
+    /// Crea una nuova struct [`StoredPassword`] convertendo la password in [`DbSecretVec`].
+    ///
+    /// # Parametri
+    ///
+    /// * `id` - ID opzionale (None per nuove password)
+    /// * `user_id` - ID dell'utente proprietario
+    /// * `location` - Luogo dove è salvata la password
+    /// * `password` - Password criptata come bytes
+    /// * `notes` - Note opzionali
+    /// * `strength` - Forze della password
+    /// * `created_at` - Data di creazione opzionale
+    /// * `nonce` - Nonce usato per la criptazione AES
+    ///
+    /// # Valore Restituito
+    ///
+    /// Return `StoredPassword` con la password avvolta in `DbSecretVec`
     pub fn new(
         id: Option<i64>,
         user_id: i64,

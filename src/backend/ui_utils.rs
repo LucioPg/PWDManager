@@ -1,3 +1,10 @@
+//! Modulo per le utilità UI relative all'avatar utente.
+//!
+//! Fornisce funzioni per:
+//! - Aprire i file dialog nativi per selezionare immagini
+//! - Gestire i segnali Dioxus per loading/stato/errore
+//! - Elaborare e scalare le immagini selezionate
+
 use crate::backend::utils::scale_avatar;
 use dioxus::prelude::*; // o i tuoi import specifici
 use rfd::FileDialog;

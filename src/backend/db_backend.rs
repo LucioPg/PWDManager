@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+﻿#![allow(dead_code)]
 use crate::backend::init_queries::QUERIES;
 use crate::backend::user_auth_helper::{StoredPassword, UserAuth};
 use crate::backend::utils::verify_password;
@@ -44,6 +44,27 @@ impl UserUpdate {
     }
 }
 
+/// Inizializza il database SQLite con le tabelle necessarie.
+///
+/// # Parametri
+///
+/// * `pool` - Il pool SQLite restituito (inizializzato e con WAL mode)
+///
+/// # Valòre Restituito
+///
+/// Return [`SqlitePool`](sqlx::SqlitePool) se l'inizializzazione ha successo.
+///
+/// # Errori
+///
+/// - `DBError::new_general_error` - Fallisce la connessione al database
+/// - `DBError::new_general_error` con messaggio specifico per fallimento creazione tabelle
+///
+/// # Comportamento
+///
+/// 1. Configura il database in modalità WAL (Write-Ahead Logging) per concorrenza
+/// 2. Abilita le foreign keys per l'integrità referenziale
+/// 3. Crea le tabelle mancanti se necessario (`.create_if_missing(true)`)
+/// 4. Esegue tutte le query di inizializzazione definite in `QUERIES`
 #[cfg(feature = "desktop")]
 pub async fn init_db() -> Result<SqlitePool, DBError> {
     let options = SqliteConnectOptions::from_str("sqlite:database.db")
@@ -66,6 +87,25 @@ pub async fn init_db() -> Result<SqlitePool, DBError> {
     Ok(pool)
 }
 
+/// Salva temporaneamente la vecchia password dell'utente prima di un aggiornamento.
+///
+/// Questa funzione viene utilizzata internamente da `prepare_user_update` per
+/// preservare la password corrente prima di applicare un aggiornamento.
+/// Il valore viene salvato nel campo `temp_old_password` della tabella users.
+///
+/// # Parametri
+///
+/// * `pool` - Pool SQLite per la connessione al database
+/// * `user_id` - ID dell'utente di cui salvare la password temporanea
+/// * `password` - Password corrente da salvare temporaneamente
+///
+/// # Valore Restituito
+///
+/// Return `Ok(())` se il salvataggio ha successo
+///
+/// # Errori
+///
+/// - `DBError::new_save_temp_password_error` - Errore durante il salvataggio
 async fn set_temp_password(
     pool: &SqlitePool,
     user_id: i64,
@@ -82,7 +122,28 @@ async fn set_temp_password(
     Ok(())
 }
 
-/// Prepara l'aggiornamento utente recuperando la vecchia password se necessario
+/// Prepara l'aggiornamento utente recuperando la vecchia password se necessario.
+///
+/// Questa funzione gestisce la logica di preparazione per l'aggiornamento utente:
+/// - Crea una struct `UserUpdate` con i campi forniti
+/// - Se viene fornita una nuova password, prima recupera e salva quella corrente in `temp_old_password`
+/// - Cripta la nuova password se fornita
+///
+/// # Parametri
+///
+/// * `pool` - Pool SQLite per le operazioni sul database
+/// * `user_id` - ID dell'utente da aggiornare
+/// * `username` - Nuovo username (se fornito)
+/// * `password` - Nuova password opzionale (se fornita, viene criptata)
+/// * `avatar` - Nuovo avatar opzionale come bytes
+///
+/// # Valore Restituito
+///
+/// Return `UserUpdate` con i campi da aggiornare
+///
+/// # Errori
+///
+/// - `DBError::new_save_error` - Errore durante la criptazione della password
 async fn prepare_user_update(
     pool: &SqlitePool,
     user_id: i64,
@@ -112,6 +173,31 @@ async fn prepare_user_update(
     Ok(update)
 }
 
+/// Salva un nuovo utente o aggiorna uno esistente nel database.
+///
+/// # Parametri
+///
+/// * `pool` - Pool SQLite per la connessione al database
+/// * `id` - Se `Some(i64)` fa l'UPDATE dell'utente esistente. Se `None` fa l'INSERT di un nuovo utente.
+/// * `username` - Username dell'utente
+/// * `password` - Password opzionale (se fornita, viene criptata con Argon2)
+/// * `avatar` - Avatar opzionale come bytes (immagine PNG)
+///
+/// # Valore Restituito
+///
+/// Return `Ok(())` se il salvataggio/aggiornamento ha successo
+///
+/// # Comportamento
+///
+/// - **INSERT** (`id = None`): Crea un nuovo utente con la password criptata
+/// - **UPDATE** (`id = Some(user_id)`): Aggiorna solo i campi forniti (username, password, avatar)
+///   - Se la password viene aggiornata, quella corrente viene prima salvata in `temp_old_password`
+///   - Se nessun campo è stato fornito, restituisce `Ok(())` senza fare nulla
+///
+/// # Errori
+///
+/// - `DBError::new_save_error` - Errore durante l'INSERT/UPDATE
+/// - `DBError::new_save_error` - Errore durante la criptazione della password
 pub async fn save_or_update_user(
     pool: &SqlitePool,
     id: Option<i64>, // Se Some, fa l'UPDATE. Se None, fa l'INSERT.
@@ -176,6 +262,23 @@ pub async fn save_or_update_user(
     Ok(())
 }
 
+/// Cancella un utente dal database.
+///
+/// La cancellazione elimina l'utente e tutte le password associate grazie
+/// alla `FOREIGN KEY(user_id) ON DELETE CASCADE` sulla tabella passwords.
+///
+/// # Parametri
+///
+/// * `pool` - Pool SQLite per la connessione al database
+/// * `id` - ID dell'utente da cancellare
+///
+/// # Valore Restituito
+///
+/// Return `Ok(())` se la cancellazione ha successo
+///
+/// # Errori
+///
+/// - `DBError::new_delete_error` - Errore durante la cancellazione
 #[instrument(fields(user_id = id))]
 pub async fn delete_user(pool: &SqlitePool, id: i64) -> Result<(), DBError> {
     debug!(user_id = id, "Attempting to delete user from database");
@@ -190,6 +293,19 @@ pub async fn delete_user(pool: &SqlitePool, id: i64) -> Result<(), DBError> {
     Ok(())
 }
 
+/// recupera i dati base di un utente dal database.
+///
+/// # Parametri
+///
+/// * `row` - La riga del database contenete i dati dell'utente
+///
+/// # Valòre Restituito
+///
+/// Return tupla con:
+/// - `i64` - ID dell'utente
+/// - `String` - Username
+/// - `String` - Data di creazione (formato ISO 8601)
+/// - `Option<Vec<u8>>` - Avatar come bytes (opzionale)
 fn get_user_row(row: SqliteRow) -> (i64, String, String, Option<Vec<u8>>) {
     (
         row.get::<i64, _>("id"),
@@ -199,6 +315,27 @@ fn get_user_row(row: SqliteRow) -> (i64, String, String, Option<Vec<u8>>) {
     )
 }
 
+/// recupera la lista degli utenti (senza avatar).
+///
+/// # Parametri
+///
+/// * `pool` - Pool SQLite per la connessione al database
+///
+/// # Valòre Restituito
+///
+/// Return [`Vec<(i64, String, String, Option<Vec<u8>>)`] - Lista di utenti, ognuno come tupla (ID, username, created_at, avatar)
+///
+/// # Limiti
+///
+/// * Ultimi 10 utenti ordinati per ID decrescente
+///
+/// # Errori
+///
+/// - `DBError::new_list_error` - Errore nel recupero della lista
+///
+/// # Note
+///
+/// - Gli avatar vengono esclusi per ottimizzare le performance
 #[instrument(skip(pool))]
 pub async fn list_users(
     pool: &SqlitePool,
@@ -216,6 +353,23 @@ pub async fn list_users(
     Ok(users)
 }
 
+/// Recupera la lista degli utenti senza avatar.
+///
+/// # Parametri
+///
+/// * `pool` - Pool SQLite per la connessione al database
+///
+/// # Valore Restituito
+///
+/// Return [`Vec<(i64, String, String)>`] - Lista di utenti come tute (ID, username, created_at)
+///
+/// # Limiti
+///
+/// * Ultimi 10 utenti ordinati per ID decrescente
+///
+/// # Note
+///
+/// - Questa versione non recupera l'avatar per ottimizzare le performance
 #[instrument(skip(pool))]
 pub async fn list_users_no_avatar(
     pool: &SqlitePool,
@@ -239,6 +393,21 @@ pub async fn list_users_no_avatar(
     Ok(users)
 }
 
+/// Recupera la password hash di un utente dal database.
+///
+/// # Parametri
+///
+/// * `pool` - Pool SQLite per la connessione al database
+/// * `username` - Username dell'utente di cui recuperare la password
+///
+/// # Valore Restituito
+///
+/// Return `String` - La password hash (Argon2) dell'utente
+///
+/// # Errori
+///
+/// - `DBError::new_select_error` - Utente non trovato
+/// - `DBError::new_fetch_error` - Errore durante la query
 #[instrument(skip(pool))]
 pub async fn fetch_user_password(pool: &SqlitePool, username: &str) -> Result<String, DBError> {
     debug!("Fetching user credentials in database");
@@ -256,6 +425,21 @@ pub async fn fetch_user_password(pool: &SqlitePool, username: &str) -> Result<St
     }
 }
 
+/// Recupera la password e la data di creazione di un utente dal database.
+///
+/// # Parametri
+///
+/// * `pool` - Pool SQLite per la connessione al database
+/// * `user_id` - ID dell'utente di cui recuperare i dati
+///
+/// # Valore Restituito
+///
+/// Return `UserAuth` - Struct contenete password hash e data di creazione
+///
+/// # Errori
+///
+/// - `DBError::new_select_error` - Utente non trovato
+/// - `DBError::new_select_error` - Errore durante la query
 #[instrument(skip(pool))]
 pub async fn fetch_password_created_at_from_id(
     pool: &SqlitePool,
@@ -274,6 +458,21 @@ pub async fn fetch_password_created_at_from_id(
     user_auth.ok_or_else(|| DBError::new_select_error("User not found".into()))
 }
 
+/// Recupera tutti i dati di un utente dal database.
+///
+/// # Parametri
+///
+/// * `pool` - Pool SQLite per la connessione al database
+/// * `username` - Username dell'utente di cui recuperare i dati
+///
+/// # Valore Restituito
+///
+/// Return `tute (i64, String, String, Option<Vec<u8>>)` - (ID, username, created_at, avatar)
+///
+/// # Errori
+///
+/// - `DBError::new_select_error` - Utente non trovato
+/// - `DBError::new_fetch_error` - Errore durante la query
 #[instrument(skip(pool))]
 pub async fn fetch_user_data(
     pool: &SqlitePool,
@@ -294,6 +493,25 @@ pub async fn fetch_user_data(
     }
 }
 
+/// Verifica le credenziali di un utente.
+///
+/// Recupera la password hash dal database e la confronta con quella fornita
+/// usando `verify_password` che usa Argon2.
+///
+/// # Parametri
+///
+/// * `pool` - Pool SQLite per la connessione al database
+/// * `username` - Username dell'utente da verificare
+/// * `password` - Password in chiaro da verificare (deve essere quella non criptata)
+///
+/// # Valore Restituito
+///
+/// Return `Ok(())` se le credenziali sono corrette
+///
+/// # Errori
+///
+/// - `AuthError::DB` - Errore nel recupero della password dal database
+/// - `AuthError::Decryption` - Password errata o errore nella verifica
 #[instrument(skip(pool))]
 pub async fn check_user(
     pool: &SqlitePool,
@@ -310,6 +528,25 @@ pub async fn check_user(
     Ok(())
 }
 
+/// Salva o aggiorna una password nel database usando sqlx-template.
+///
+/// Utilizza il metodo generato `upsert_by_id` che gestisce sia INSERT che UPDATE:
+/// - `id = None` → INSERT di una nuova password
+/// - `id = Some(id)` → INSERT OR REPLACE (aggiorna la password esistente)
+///
+/// # Parametri
+///
+/// * `pool` - Pool SQLite per la connessione al database
+/// * `stored_password` - Struct `StoredPassword` con i dati della password da salvare
+///
+/// # Valore Restituito
+///
+/// Return `Ok(())` se il salvataggio/aggiornamento ha successo
+///
+/// # Errori
+///
+/// - `DBError::new_password_save_error` - Password o location vuote
+/// - `DBError::new_password_save_error` - Errore durante l'upsert
 pub async fn save_or_update_stored_password(
     pool: &SqlitePool,
     stored_password: StoredPassword,
@@ -335,6 +572,24 @@ pub async fn save_or_update_stored_password(
     Ok(())
 }
 
+/// Recupera tutte le password di un utente dal database.
+///
+/// Utilizza il builder pattern di sqlx-template per:
+/// - Filtrare per `user_id`
+/// - Ordinare per `created_at` decrescente
+///
+/// # Parametri
+///
+/// * `pool` - Pool SQLite per la connessione al database
+/// * `user_id` - ID dell'utente di cui recuperare le password
+///
+/// # Valore Restituito
+///
+/// Return `Vec<StoredPassword>` - Lista di tutte le password dell'utente
+///
+/// # Errori
+///
+/// - `DBError::new_list_error` - Errore nel builder o nella query
 #[instrument(skip(pool))]
 pub async fn get_all_passwords_for_user(
     pool: &SqlitePool,
