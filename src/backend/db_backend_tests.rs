@@ -199,6 +199,26 @@ mod tests {
         .await;
 
         assert!(result.is_ok(), "UPDATE password should succeed");
+
+        // Verifica che temp_old_password sia stato salvato
+        let temp_password_row: Option<SqliteRow> = query(
+            "SELECT temp_old_password FROM users WHERE id = ?"
+        )
+        .bind(user_id)
+        .fetch_optional(&pool)
+        .await
+        .expect("Failed to query temp_old_password");
+
+        assert!(
+            temp_password_row.is_some(),
+            "temp_old_password should be set"
+        );
+        let temp_password = temp_password_row.unwrap();
+        assert_eq!(
+            temp_password.get::<String, _>("temp_old_password"),
+            old_password_hash,
+            "temp_old_password should contain old password hash"
+        );
     }
 
     // ============ Categoria 3: Test temp_old_password ============
