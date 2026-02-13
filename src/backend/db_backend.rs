@@ -261,7 +261,7 @@ pub async fn list_users_no_avatar(
 }
 
 #[instrument(skip(pool))]
-async fn fetch_user_password(pool: &SqlitePool, username: &str) -> Result<String, DBError> {
+pub async fn fetch_user_password(pool: &SqlitePool, username: &str) -> Result<String, DBError> {
     debug!("Fetching user credentials in database");
     let row = query("SELECT password FROM users WHERE username = ?")
         .bind(username)
