@@ -11,6 +11,7 @@ pub static QUERIES: &[&str] = &[
                 user_id INTEGER NOT NULL,
                 location TEXT NOT NULL,
                 password BLOB NOT NULL,
+                temp_old_password BLOB,
                 notes TEXT,
                 strength TEXT NOT NULL CHECK (strength IN ('weak', 'medium', 'strong')),
                 created_at TEXT DEFAULT (datetime('now')),
