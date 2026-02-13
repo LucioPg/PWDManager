@@ -277,6 +277,50 @@ mod tests {
         assert_eq!(users[0].3, Some(new_avatar), "Avatar should be updated");
     }
 
+    #[tokio::test]
+    async fn test_temp_password_saved_on_update() {
+        let (pool, _temp_dir) = setup_test_db().await;
+
+        let user_id = create_test_user(&pool).await;
+
+        // Recupera la password originale (hash)
+        let old_password_hash =
+            fetch_user_password(&pool, "test_user")
+                .await
+                .expect("Failed to fetch old password");
+
+        // Aggiorna la password
+        let new_password = SecretString::new("completely_new_pass".into());
+        save_or_update_user(
+            &pool,
+            Some(user_id),
+            "test_user".to_string(),  // username invariato
+            Some(new_password),
+            None,  // avatar = None
+        )
+        .await;
+
+        // Verifica che temp_old_password contenga la vecchia password
+        let temp_password_row: Option<SqliteRow> = query(
+            "SELECT temp_old_password FROM users WHERE id = ?"
+        )
+        .bind(user_id)
+        .fetch_optional(&pool)
+        .await
+        .expect("Failed to query temp_old_password");
+
+        assert!(
+            temp_password_row.is_some(),
+            "temp_old_password should be set"
+        );
+        let temp_password = temp_password_row.unwrap();
+        assert_eq!(
+            temp_password.get::<String, _>("temp_old_password"),
+            old_password_hash,
+            "temp_old_password should contain old password hash"
+        );
+    }
+
     // ============ Categoria 3: Test temp_old_password ============
     // I test verranno aggiunti nei prossimi task
 
