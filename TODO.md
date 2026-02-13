@@ -44,4 +44,4 @@
 ## To be Threaeded
 
 - [x] scaled_avatar
-- [ ] funzione di crypt e salvataggio password
+- [x] funzione di crypt e salvataggio password
