@@ -43,12 +43,15 @@ fn create_nonce() -> Nonce<Aes256Gcm> {
     Aes256Gcm::generate_nonce(&mut OsRng)
     // (nonce, nonce.to_vec())
 }
-async fn create_cipher_password(
-    new_password: &SecretString,
-    salt: Salt<'_>,
-    master_password: &DbSecretString,
-    nonce: &Nonce<Aes256Gcm>,
-) -> Result<Vec<u8>, DBError> {
+
+fn get_nonce_from_vec(nonce_vec: &Vec<u8>) -> Result<Nonce<Aes256Gcm>, DBError> {
+    if nonce_vec.len() != 12 {
+        return Err(DBError::new_nonce_corruption_error());
+    }
+    Ok(*Nonce::<Aes256Gcm>::from_slice(&nonce_vec))
+}
+
+fn create_cipher(salt: Salt<'_>, master_password: &DbSecretString) -> Result<Aes256Gcm, DBError> {
     let mut derived_key = [0u8; 32];
     Argon2::default()
         .hash_password_into(
@@ -56,14 +59,21 @@ async fn create_cipher_password(
             salt.as_str().as_bytes(),
             &mut derived_key,
         )
-        .unwrap();
-    let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&derived_key));
+        .map_err(|e| DBError::new_cipher_create_error(e.to_string()))?;
+    Ok(Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&derived_key)))
+}
+async fn create_cipher_password(
+    new_password: &SecretString,
+    salt: Salt<'_>,
+    master_password: &DbSecretString,
+    nonce: &Nonce<Aes256Gcm>,
+) -> Result<Vec<u8>, DBError> {
+    let cipher = create_cipher(salt, master_password)?;
     cipher
         .encrypt(nonce, new_password.expose_secret().as_bytes())
         .map_err(|e| DBError::new_password_save_error(e.to_string()))
 }
 
-#[allow(dead_code)]
 async fn create_stored_password_pipeline(
     pool: &SqlitePool,
     user_id: i64,
@@ -105,4 +115,21 @@ async fn create_stored_password_pipeline(
     } else {
         Err(DBError::new_password_save_error("Errore generale".into()))
     }
+}
+
+async fn decrypt_stored_password(
+    pool: &SqlitePool,
+    stored_password: &StoredPassword,
+) -> Result<String, DBError> {
+    let user_auth: UserAuth =
+        fetch_password_created_at_from_id(&pool, stored_password.user_id).await?;
+    let salt = get_salt(&user_auth.password);
+    let nonce = get_nonce_from_vec(&stored_password.nonce)?;
+    let cipher = create_cipher(salt, &user_auth.password)?;
+    let plaintext_bytes = cipher
+        .decrypt(&nonce, stored_password.password.expose_secret().as_ref())
+        .map_err(|e| DBError::new_password_fetch_error(e.to_string()))?;
+    let plaintext = String::from_utf8(plaintext_bytes)
+        .map_err(|e| DBError::new_password_conversion_error(e.to_string()))?;
+    Ok(plaintext)
 }

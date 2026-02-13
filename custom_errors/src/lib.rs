@@ -22,6 +22,14 @@ pub enum DBError {
     DBPasswordDeleteError(String),
     #[error("Database password fetch error: {0}")]
     DBPasswordFetchError(String),
+    #[error("Cipher creation error: {0}")]
+    DBPCipherCreateError(String),
+    #[error("Cipher decryption error: {0}")]
+    DBPCipherDecryptError(String),
+    #[error("Decrypted password conversion to string error: {0}")]
+    DBPasswordConversionError(String),
+    #[error("Nonce corruption error")]
+    DBNonceCorruptionError(String),
 }
 
 impl DBError {
@@ -60,6 +68,21 @@ impl DBError {
     }
     pub fn new_password_fetch_error(msg: String) -> Self {
         DBError::DBPasswordFetchError(msg)
+    }
+
+    pub fn new_cipher_create_error(msg: String) -> Self {
+        DBError::DBPCipherCreateError(msg)
+    }
+    pub fn new_cipher_decrypt_error(msg: String) -> Self {
+        DBError::DBPCipherDecryptError(msg)
+    }
+
+    pub fn new_password_conversion_error(msg: String) -> Self {
+        DBError::DBPasswordConversionError(msg)
+    }
+
+    pub fn new_nonce_corruption_error() -> Self {
+        DBError::DBNonceCorruptionError("Nonce corrotto".into())
     }
 }
 
