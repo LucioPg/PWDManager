@@ -7,3 +7,6 @@ pub mod utils;
 
 #[cfg(test)]
 mod password_utils_tests;
+
+#[cfg(test)]
+mod db_backend_tests;
