@@ -247,6 +247,36 @@ mod tests {
         assert_eq!(users[0].3, Some(new_avatar), "Avatar should be updated");
     }
 
+    #[tokio::test]
+    async fn test_update_all_fields() {
+        let (pool, _temp_dir) = setup_test_db().await;
+
+        let user_id = create_test_user(&pool).await;
+
+        let new_username = "fully_updated".to_string();
+        let new_password = SecretString::new("new_pass_789".into());
+        let new_avatar = vec![99u8, 88u8, 77u8];
+
+        // Aggiorna tutti i campi
+        let result = save_or_update_user(
+            &pool,
+            Some(user_id),
+            new_username.clone(),
+            Some(new_password),
+            Some(new_avatar.clone()),
+        )
+        .await;
+
+        assert!(result.is_ok(), "UPDATE all fields should succeed");
+
+        // Verifica tutti i campi
+        let users = list_users(&pool).await.expect("Failed to list users");
+        assert_eq!(users.len(), 1, "Should still have one user");
+        assert_eq!(users[0].0, user_id, "User ID should not change");
+        assert_eq!(users[0].1, new_username, "Username should be updated");
+        assert_eq!(users[0].3, Some(new_avatar), "Avatar should be updated");
+    }
+
     // ============ Categoria 3: Test temp_old_password ============
     // I test verranno aggiunti nei prossimi task
 
