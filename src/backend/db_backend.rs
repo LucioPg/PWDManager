@@ -591,7 +591,7 @@ pub async fn save_or_update_stored_password(
 ///
 /// - `DBError::new_list_error` - Errore nel builder o nella query
 #[instrument(skip(pool))]
-pub async fn get_all_passwords_for_user(
+pub async fn get_all_stored_passwords_for_user(
     pool: &SqlitePool,
     user_id: i64,
 ) -> Result<Vec<StoredPassword>, DBError> {

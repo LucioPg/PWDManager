@@ -1,5 +1,5 @@
 use crate::backend::db_backend::{
-    fetch_user_data, get_all_passwords_for_user, init_db, save_or_update_user,
+    fetch_user_data, get_all_stored_passwords_for_user, init_db, save_or_update_user,
 };
 use crate::backend::password_utils::{
     calc_strength, create_stored_password_pipeline, decrypt_stored_password,
@@ -56,7 +56,7 @@ async fn test_encrypt_decrypt_password() {
     .expect("Failed to encrypt password");
 
     // Test 2: Recupera la password cifrata
-    let stored_passwords = get_all_passwords_for_user(&pool, user_id)
+    let stored_passwords = get_all_stored_passwords_for_user(&pool, user_id)
         .await
         .expect("Failed to fetch stored passwords");
 
@@ -126,7 +126,7 @@ async fn test_decrypt_invalid_nonce() {
     .await
     .expect("Failed to encrypt password");
 
-    let mut stored_passwords = get_all_passwords_for_user(&pool, user_id)
+    let mut stored_passwords = get_all_stored_passwords_for_user(&pool, user_id)
         .await
         .expect("Failed to fetch stored passwords");
     let mut stored_password = stored_passwords.pop().unwrap();
@@ -191,7 +191,7 @@ async fn test_multiple_passwords_for_same_user() {
     }
 
     // Recupera tutte le password
-    let stored_passwords = get_all_passwords_for_user(&pool, user_id)
+    let stored_passwords = get_all_stored_passwords_for_user(&pool, user_id)
         .await
         .expect("Failed to fetch stored passwords");
 
@@ -227,7 +227,7 @@ async fn test_encrypted_password_is_different_from_original() {
     .await
     .expect("Failed to encrypt password");
 
-    let stored_passwords = get_all_passwords_for_user(&pool, user_id)
+    let stored_passwords = get_all_stored_passwords_for_user(&pool, user_id)
         .await
         .expect("Failed to fetch stored passwords");
     let stored_password = &stored_passwords[0];
