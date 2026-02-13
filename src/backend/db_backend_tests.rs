@@ -5,7 +5,7 @@ use crate::backend::db_backend::{
 use crate::backend::init_queries::QUERIES;
 use secrecy::SecretString;
 use sqlx::sqlite::{
-    SqliteConnectOptions, SqliteJournalMode, SqlitePool,
+    SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqliteRow,
 };
 use sqlx::{query, Row};
 use std::str::FromStr;
@@ -170,6 +170,35 @@ mod tests {
         assert_eq!(users.len(), 1, "Should still have one user");
         assert_eq!(users[0].0, user_id, "User ID should not change");
         assert_eq!(users[0].1, new_username, "Username should be updated");
+    }
+
+    #[tokio::test]
+    async fn test_update_password_only() {
+        let (pool, _temp_dir) = setup_test_db().await;
+
+        let user_id = create_test_user(&pool).await;
+
+        // Recupera la vecchia password per comparazione
+        let old_password_hash =
+            fetch_user_password(&pool, "test_user")
+                .await
+                .expect("Failed to fetch old password");
+
+        eprintln!("DEBUG: old_password_hash length = {}", old_password_hash.len());
+
+        let new_password = SecretString::new("new_password_456".into());
+
+        // Aggiorna solo password
+        let result = save_or_update_user(
+            &pool,
+            Some(user_id),
+            "test_user".to_string(),  // username invariato
+            Some(new_password),
+            None,  // avatar = None
+        )
+        .await;
+
+        assert!(result.is_ok(), "UPDATE password should succeed");
     }
 
     // ============ Categoria 3: Test temp_old_password ============
