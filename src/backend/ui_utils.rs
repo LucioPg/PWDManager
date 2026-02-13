@@ -23,7 +23,7 @@ use tokio::task::spawn_blocking;
 ///
 /// # Signal
 ///
-/// - `img_signal`: Aggiornato con l'immagine processata (Vec<u8>) o None
+/// - `img_signal`: Aggiornato con l'immagine processata ('Vec<u8>') o None
 /// - `is_loading_signal`: Impostato a true durante il processamento, false al termine
 /// - `is_picking_signal`: Impostato a true mentre il dialog è aperto, false quando chiuso
 /// - `err_signal`: Contiene messaggi di errore se qualcosa va storto

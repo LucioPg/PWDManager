@@ -323,7 +323,7 @@ fn get_user_row(row: SqliteRow) -> (i64, String, String, Option<Vec<u8>>) {
 ///
 /// # Valòre Restituito
 ///
-/// Return [`Vec<(i64, String, String, Option<Vec<u8>>)`] - Lista di utenti, ognuno come tupla (ID, username, created_at, avatar)
+/// Return [`Vec<(i64, String, String, Option<Vec<u8>)>`] - Lista di utenti, ognuno come tupla (ID, username, created_at, avatar)
 ///
 /// # Limiti
 ///

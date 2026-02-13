@@ -93,7 +93,7 @@ pub type SecretSliceU8 = SecretBox<[u8]>;
 /// use user_auth_helper::DbSecretVec;
 /// use secrecy::SecretBox;
 ///
-/// let data: Vec<u8> = vec
+/// let data: Vec<u8> = vec [
 /// 0x01, 0x02, 0x03
 /// ];
 /// let db_secret = DbSecretVec(SecretBox::from(data));
