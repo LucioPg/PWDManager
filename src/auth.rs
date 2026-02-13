@@ -3,7 +3,7 @@ use dioxus::prelude::*;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct User {
-    pub id: i32,
+    pub id: i64,
     pub username: String,
     created_at: String,
     pub avatar: String,
@@ -23,7 +23,7 @@ impl AuthState {
 
     pub fn login(
         &mut self,
-        id: i32,
+        id: i64,
         username: String,
         created_at: String,
         avatar: Option<Vec<u8>>,
