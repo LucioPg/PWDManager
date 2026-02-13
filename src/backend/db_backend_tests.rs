@@ -5,7 +5,7 @@ use crate::backend::db_backend::{
 use crate::backend::init_queries::QUERIES;
 use secrecy::SecretString;
 use sqlx::sqlite::{
-    SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqliteQueryAs,
+    SqliteConnectOptions, SqliteJournalMode, SqlitePool,
 };
 use sqlx::{query, Row};
 use std::str::FromStr;
@@ -19,10 +19,8 @@ async fn setup_test_db() -> (SqlitePool, TempDir) {
 
     // 2. Configura database con WAL mode per concorrenza
     let db_path = temp_dir.path().join("test_users.db");
-    let options = SqliteConnectOptions::from_str(format!(
-        "sqlite:{}",
-        db_path.display()
-    ))
+    let db_path_str = format!(r"sqlite:{}", db_path.to_str().unwrap());
+    let options = SqliteConnectOptions::from_str(&db_path_str)
     .expect("Invalid DB path")
     .journal_mode(SqliteJournalMode::Wal)  // Fondamentale per concorrenza
     .foreign_keys(true)
@@ -50,7 +48,7 @@ async fn create_test_user(pool: &SqlitePool) -> i64 {
         pool,
         None,  // id = None → INSERT
         "test_user".to_string(),
-        Some(SecretString::new("test_password_123".to_string())),
+        Some(SecretString::new("test_password_123".into())),
         Some(vec![1u8, 2u8, 3u8]),  // avatar
     )
     .await
@@ -67,7 +65,32 @@ mod tests {
     use super::*;
 
     // ============ Categoria 1: Test INSERT ============
-    // I test verranno aggiunti nei prossimi task
+
+    #[tokio::test]
+    async fn test_insert_new_user_success() {
+        let (pool, _temp_dir) = setup_test_db().await;
+
+        let username = "test_user".to_string();
+        let password = SecretString::new("secure_password_123".into());
+        let avatar = vec![1u8, 2u8, 3u8];
+
+        let result = save_or_update_user(
+            &pool,
+            None,  // id = None → INSERT
+            username.clone(),
+            Some(password),
+            Some(avatar.clone()),
+        )
+        .await;
+
+        assert!(result.is_ok(), "INSERT should succeed");
+
+        // Verifica che l'utente sia nel database
+        let users = list_users(&pool).await.expect("Failed to list users");
+        assert_eq!(users.len(), 1, "Should have exactly one user");
+        assert_eq!(users[0].0, 1, "User ID should be 1 (auto-increment)");
+        assert_eq!(users[0].1, username, "Username should match");
+    }
 
     // ============ Categoria 2: Test UPDATE ============
     // I test verranno aggiunti nei prossimi task
