@@ -21,6 +21,9 @@ sqlx-template = "0.2.1"
 futures = "0.3"
 rayon = "1.11.0"
 
+[dev-dependencies]
+tempfile = "3"
+
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"
 
