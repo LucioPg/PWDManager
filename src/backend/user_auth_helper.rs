@@ -236,7 +236,7 @@ impl StoredPassword {
         id: Option<i64>,
         user_id: i64,
         location: String,
-        password: Vec<u8>,
+        password: SecretBox<[u8]>,
         notes: Option<String>,
         strength: PasswordStrength,
         created_at: Option<String>,

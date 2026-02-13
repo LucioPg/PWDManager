@@ -18,7 +18,7 @@ use argon2::password_hash::Salt;
 use argon2::{Argon2, PasswordHash};
 use custom_errors::DBError;
 use rayon::prelude::*;
-use secrecy::{ExposeSecret, SecretString};
+use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;
 
 /// Calcola la forze di una password in base alla sua lunghezza.
@@ -144,11 +144,12 @@ async fn create_cipher_password(
     salt: Salt<'_>,
     user_auth: &UserAuth,
     nonce: &Nonce<Aes256Gcm>,
-) -> Result<Vec<u8>, DBError> {
+) -> Result<SecretBox<[u8]>, DBError> {
     let cipher = create_cipher(salt, user_auth)?;
-    cipher
+    let cipher_vec = cipher
         .encrypt(nonce, new_password.expose_secret().as_bytes())
-        .map_err(|e| DBError::new_password_save_error(e.to_string()))
+        .map_err(|e| DBError::new_password_save_error(e.to_string()))?;
+    Ok(SecretBox::new(cipher_vec.into()))
 }
 
 /// Pipeline completa per salvare una nuova password nel database.
@@ -201,11 +202,18 @@ pub async fn create_stored_password_pipeline(
             None,
             nonce.to_vec(),
         );
-        save_or_update_stored_password(&pool, stored_password).await?;
+        save_or_update_stored_password(&pool, stored_password).await?; // questa potrebbe accettare un vec di stored password per fare in modo che vengano fatte in bulk, inoltre andrebbe estratta da questa funzione
         Ok(())
     } else {
         Err(DBError::new_password_save_error("Errore generale".into()))
     }
+}
+
+async fn helper_upsert_stored_passwords(
+    pool: &SqlitePool,
+    stored_passwords: Vec<StoredPassword>,
+) -> Result<(), DBError> {
+    todo!();
 }
 
 /// Decripta una password salvata nel database.
@@ -252,6 +260,9 @@ Riassumendo per punti il procedimento per eseguire la migrazione è questo:
 1. ottenere la master password vecchia interrogando o riceverla come argomento.
 2. estrarre il salt dalla master password vecchia.
 3. creare il cipher con la master password vecchia.
+4. estrarre il salt dalla master password nuova.
+5. creare il cipher con la master password nuova.
+5. creare il nonce con il salt della master password nuova.
 4. decriptare le password salvate con il cipher vecchio.
 5. salvare le nuove password criptate nel database.
 6. update delle nuove password criptate nel database.

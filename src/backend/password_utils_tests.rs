@@ -5,7 +5,7 @@ use crate::backend::password_utils::{
     calc_strength, create_stored_password_pipeline, decrypt_stored_password,
 };
 use crate::backend::user_auth_helper::{PasswordStrength, StoredPassword};
-use secrecy::{ExposeSecret, SecretString};
+use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;
 
 /// Helper function per creare un utente di test e restituire l'ID
@@ -151,7 +151,7 @@ async fn test_decrypt_nonexistent_user() {
         None,
         99999, // User ID inesistente
         "https://fake.com".to_string(),
-        vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+        SecretBox::new(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].into()),
         None,
         PasswordStrength::MEDIUM,
         None,
