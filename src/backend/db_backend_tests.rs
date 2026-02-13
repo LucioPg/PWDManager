@@ -2,63 +2,13 @@
 use crate::backend::db_backend::{
     fetch_user_password, list_users, save_or_update_user,
 };
-use crate::backend::init_queries::QUERIES;
-use secrecy::SecretString;
-use sqlx::sqlite::{
-    SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqliteRow,
+use crate::backend::test_helpers::{
+    assert_has_avatar, assert_user_count, assert_username, create_test_user,
+    setup_test_db,
 };
+use secrecy::SecretString;
+use sqlx::sqlite::SqliteRow;
 use sqlx::{query, Row};
-use std::str::FromStr;
-use tempfile::TempDir;
-
-/// Helper: Crea un database SQLite pulito in una directory temporanea
-/// Restituisce (pool, temp_dir) - temp_dir garantisce cleanup quando esce dallo scope
-async fn setup_test_db() -> (SqlitePool, TempDir) {
-    // 1. Crea directory temporanea (auto-cleanup)
-    let temp_dir = TempDir::new().expect("Failed to create temp dir");
-
-    // 2. Configura database con WAL mode per concorrenza
-    let db_path = temp_dir.path().join("test_users.db");
-    let db_path_str = format!(r"sqlite:{}", db_path.to_str().unwrap());
-    let options = SqliteConnectOptions::from_str(&db_path_str)
-    .expect("Invalid DB path")
-    .journal_mode(SqliteJournalMode::Wal)  // Fondamentale per concorrenza
-    .foreign_keys(true)
-    .create_if_missing(true);
-
-    // 3. Connetiti e inizializza
-    let pool = SqlitePool::connect_with(options)
-        .await
-        .expect("Failed to connect to test DB");
-
-    // 4. Esegui query di inizializzazione (crea tabella users)
-    for init_query in QUERIES {
-        query(init_query)
-            .execute(&pool)
-            .await
-            .expect("Failed to create table during test setup");
-    }
-
-    (pool, temp_dir)
-}
-
-/// Helper: Crea un utente di test base e returna il suo ID
-async fn create_test_user(pool: &SqlitePool) -> i64 {
-    save_or_update_user(
-        pool,
-        None,  // id = None → INSERT
-        "test_user".to_string(),
-        Some(SecretString::new("test_password_123".into())),
-        Some(vec![1u8, 2u8, 3u8]),  // avatar
-    )
-    .await
-    .expect("Failed to create test user");
-
-    // Recupera l'ID dell'utente creato
-    let users = list_users(pool).await.expect("Failed to list users");
-    assert_eq!(users.len(), 1, "Should have exactly one user");
-    users[0].0  // Return user_id
-}
 
 #[cfg(test)]
 mod tests {
@@ -70,14 +20,14 @@ mod tests {
     async fn test_insert_new_user_success() {
         let (pool, _temp_dir) = setup_test_db().await;
 
-        let username = "test_user".to_string();
+        let username = "test_user";
         let password = SecretString::new("secure_password_123".into());
         let avatar = vec![1u8, 2u8, 3u8];
 
         let result = save_or_update_user(
             &pool,
             None,  // id = None → INSERT
-            username.clone(),
+            username.to_string(),
             Some(password),
             Some(avatar.clone()),
         )
@@ -87,22 +37,21 @@ mod tests {
 
         // Verifica che l'utente sia nel database
         let users = list_users(&pool).await.expect("Failed to list users");
-        assert_eq!(users.len(), 1, "Should have exactly one user");
-        assert_eq!(users[0].0, 1, "User ID should be 1 (auto-increment)");
-        assert_eq!(users[0].1, username, "Username should match");
+        assert_user_count(&users, 1, "Should have exactly one user");
+        assert_username(&users, 0, username);
     }
 
     #[tokio::test]
     async fn test_insert_new_user_without_avatar() {
         let (pool, _temp_dir) = setup_test_db().await;
 
-        let username = "test_user_no_avatar".to_string();
+        let username = "test_user_no_avatar";
         let password = SecretString::new("password456".into());
 
         let result = save_or_update_user(
             &pool,
             None,  // id = None → INSERT
-            username.clone(),
+            username.to_string(),
             Some(password),
             None,  // avatar = None
         )
@@ -112,22 +61,22 @@ mod tests {
 
         // Verifica che l'utente sia stato creato senza avatar
         let users = list_users(&pool).await.expect("Failed to list users");
-        assert_eq!(users.len(), 1, "Should have exactly one user");
-        assert_eq!(users[0].1, username, "Username should match");
-        assert!(users[0].3.is_none(), "Avatar should be None");
+        assert_user_count(&users, 1, "Should have exactly one user");
+        assert_username(&users, 0, username);
+        assert_has_avatar(&users, 0, false);
     }
 
     #[tokio::test]
     async fn test_insert_new_user_empty_password() {
         let (pool, _temp_dir) = setup_test_db().await;
 
-        let username = "test_user_empty_pass".to_string();
+        let username = "test_user_empty_pass";
         let empty_password = SecretString::new("".into());  // Password vuota
 
         let result = save_or_update_user(
             &pool,
             None,
-            username,
+            username.to_string(),
             Some(empty_password),
             None,
         )
@@ -150,14 +99,14 @@ mod tests {
         let (pool, _temp_dir) = setup_test_db().await;
 
         // Prima crea un utente
-        let user_id = create_test_user(&pool).await;
-        let new_username = "updated_username".to_string();
+        let user_id = create_test_user(&pool, "test_user", "test_password_123", None).await;
+        let new_username = "updated_username";
 
         // Poi aggiorna solo username
         let result = save_or_update_user(
             &pool,
             Some(user_id),  // id = Some → UPDATE
-            new_username.clone(),
+            new_username.to_string(),
             None,  // password = None
             None,  // avatar = None
         )
@@ -167,16 +116,15 @@ mod tests {
 
         // Verifica aggiornamento
         let users = list_users(&pool).await.expect("Failed to list users");
-        assert_eq!(users.len(), 1, "Should still have one user");
-        assert_eq!(users[0].0, user_id, "User ID should not change");
-        assert_eq!(users[0].1, new_username, "Username should be updated");
+        assert_user_count(&users, 1, "Should still have one user");
+        assert_username(&users, 0, new_username);
     }
 
     #[tokio::test]
     async fn test_update_password_only() {
         let (pool, _temp_dir) = setup_test_db().await;
 
-        let user_id = create_test_user(&pool).await;
+        let user_id = create_test_user(&pool, "test_user", "test_password_123", None).await;
 
         // Recupera la vecchia password per comparazione
         let old_password_hash =
@@ -223,7 +171,7 @@ mod tests {
     async fn test_update_avatar_only() {
         let (pool, _temp_dir) = setup_test_db().await;
 
-        let user_id = create_test_user(&pool).await;
+        let user_id = create_test_user(&pool, "test_user", "test_password_123", None).await;
         let new_avatar = vec![9u8, 8u8, 7u8, 6u8];
 
         // Aggiorna solo avatar
@@ -240,18 +188,17 @@ mod tests {
 
         // Verifica aggiornamento
         let users = list_users(&pool).await.expect("Failed to list users");
-        assert_eq!(users.len(), 1, "Should still have one user");
-        assert_eq!(users[0].0, user_id, "User ID should not change");
-        assert_eq!(users[0].3, Some(new_avatar), "Avatar should be updated");
+        assert_user_count(&users, 1, "Should still have one user");
+        assert_has_avatar(&users, 0, true);
     }
 
     #[tokio::test]
     async fn test_update_all_fields() {
         let (pool, _temp_dir) = setup_test_db().await;
 
-        let user_id = create_test_user(&pool).await;
+        let user_id = create_test_user(&pool, "test_user", "test_password_123", None).await;
 
-        let new_username = "fully_updated".to_string();
+        let new_username = "fully_updated";
         let new_password = SecretString::new("new_pass_789".into());
         let new_avatar = vec![99u8, 88u8, 77u8];
 
@@ -259,7 +206,7 @@ mod tests {
         let result = save_or_update_user(
             &pool,
             Some(user_id),
-            new_username.clone(),
+            new_username.to_string(),
             Some(new_password),
             Some(new_avatar.clone()),
         )
@@ -269,17 +216,16 @@ mod tests {
 
         // Verifica tutti i campi
         let users = list_users(&pool).await.expect("Failed to list users");
-        assert_eq!(users.len(), 1, "Should still have one user");
-        assert_eq!(users[0].0, user_id, "User ID should not change");
-        assert_eq!(users[0].1, new_username, "Username should be updated");
-        assert_eq!(users[0].3, Some(new_avatar), "Avatar should be updated");
+        assert_user_count(&users, 1, "Should still have one user");
+        assert_username(&users, 0, new_username);
+        assert_has_avatar(&users, 0, true);
     }
 
     #[tokio::test]
     async fn test_temp_password_saved_on_update() {
         let (pool, _temp_dir) = setup_test_db().await;
 
-        let user_id = create_test_user(&pool).await;
+        let user_id = create_test_user(&pool, "test_user", "test_password_123", None).await;
 
         // Recupera la password originale (hash)
         let old_password_hash =
@@ -318,7 +264,7 @@ mod tests {
     async fn test_temp_password_overwritten_on_multiple_updates() {
         let (pool, _temp_dir) = setup_test_db().await;
 
-        let user_id = create_test_user(&pool).await;
+        let user_id = create_test_user(&pool, "test_user", "test_password_123", None).await;
 
         // Salva la prima password hash
         let first_hash =
@@ -374,7 +320,7 @@ mod tests {
         let (pool, _temp_dir) = setup_test_db().await;
 
         // Prima crea un utente
-        create_test_user(&pool).await;
+        create_test_user(&pool, "test_user", "test_password_123", None).await;
 
         let fake_id = 99999i64;
 
@@ -391,7 +337,7 @@ mod tests {
         assert!(result.is_ok(), "UPDATE with nonexistent user should succeed");
         // Verifica che l'utente originale sia ancora presente
         let users = list_users(&pool).await.expect("Failed to list users");
-        assert_eq!(users.len(), 1, "Should have exactly one user");
+        assert_user_count(&users, 1, "Should have exactly one user");
     }
 
     #[tokio::test]
@@ -399,12 +345,12 @@ mod tests {
         let (pool, _temp_dir) = setup_test_db().await;
 
         // Tenta SQL injection: username con caratteri speciali
-        let username = "user'; DROP TABLE users; --".to_string();
+        let username = "user'; DROP TABLE users; --";
 
         let result = save_or_update_user(
             &pool,
             None,  // id = None → INSERT
-            username.clone(),
+            username.to_string(),
             Some(SecretString::new("password456".into())),
             None,
         )
@@ -414,7 +360,7 @@ mod tests {
 
         // Verifica che l'utente sia nel database
         let users = list_users(&pool).await.expect("Failed to list users");
-        assert_eq!(users.len(), 1, "Should have exactly one user");
-        assert_eq!(users[0].1, username, "Username should match");
+        assert_user_count(&users, 1, "Should have exactly one user");
+        assert_username(&users, 0, username);
     }
 }
