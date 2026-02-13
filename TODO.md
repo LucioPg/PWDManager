@@ -45,3 +45,17 @@
 
 - [x] scaled_avatar
 - [x] funzione di crypt e salvataggio password
+
+## Stored Passwords migration
+
+### Frontend
+
+- [ ] Creare trigger async di ri-cryptaggio password nel caso un utente cambi la password.
+- [ ] Creare dialog di avviso di migrazione password
+- [ ] Creare dialog di migrazione password con progressbar e tasto pausa.
+
+### Backend
+
+- [ ] Creare funzione di fetch per temp_old_password
+- [ ] Creare meccanismo di lavoro parallelo con rayon e tokio spawn_blocking
+- [ ] Creare funzione di aggregazione delle query per salvare in batch.
