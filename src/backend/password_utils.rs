@@ -183,14 +183,19 @@ pub async fn create_stored_password_pipeline(
     location: String,
     raw_password: SecretString,
     notes: Option<String>,
+    strength: Option<PasswordStrength>,
 ) -> Result<(), DBError> {
     let user_auth: UserAuth = fetch_password_created_at_from_id(&pool, user_id).await?;
     let salt = get_salt(&user_auth.password);
     let nonce = create_nonce();
-    let (password, strength) = tokio::join!(
-        create_cipher_password(&raw_password, salt, &user_auth, &nonce),
-        calc_strength(&raw_password.expose_secret())
-    );
+    let (password, strength_result) = if strength.is_none() {
+        let task_encrypt = create_cipher_password(&raw_password, salt, &user_auth, &nonce);
+        let task_calc_strength = calc_strength(&raw_password.expose_secret());
+        tokio::join!(task_encrypt, task_calc_strength)
+    } else {
+        let encrypted = create_cipher_password(&raw_password, salt, &user_auth, &nonce).await;
+        (encrypted, strength.unwrap())
+    };
     if let Ok(password) = password {
         let stored_password = StoredPassword::new(
             None,
@@ -198,7 +203,7 @@ pub async fn create_stored_password_pipeline(
             location,
             password,
             notes,
-            strength,
+            strength_result,
             None,
             nonce.to_vec(),
         );

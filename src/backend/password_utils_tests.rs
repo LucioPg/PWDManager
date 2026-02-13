@@ -50,6 +50,7 @@ async fn test_encrypt_decrypt_password() {
         location.clone(),
         raw_password.clone(),
         notes.clone(),
+        None,
     )
     .await
     .expect("Failed to encrypt password");
@@ -120,6 +121,7 @@ async fn test_decrypt_invalid_nonce() {
         "https://test.com".to_string(),
         raw_password,
         None,
+        None,
     )
     .await
     .expect("Failed to encrypt password");
@@ -182,6 +184,7 @@ async fn test_multiple_passwords_for_same_user() {
             location.to_string(),
             SecretString::new(raw_pwd.to_string().into()),
             None,
+            None,
         )
         .await
         .expect("Failed to encrypt password");
@@ -218,6 +221,7 @@ async fn test_encrypted_password_is_different_from_original() {
         user_id,
         "https://encrypted.com".to_string(),
         SecretString::new(raw_password.into()),
+        None,
         None,
     )
     .await
