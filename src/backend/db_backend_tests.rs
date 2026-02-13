@@ -144,7 +144,33 @@ mod tests {
     }
 
     // ============ Categoria 2: Test UPDATE ============
-    // I test verranno aggiunti nei prossimi task
+
+    #[tokio::test]
+    async fn test_update_username_only() {
+        let (pool, _temp_dir) = setup_test_db().await;
+
+        // Prima crea un utente
+        let user_id = create_test_user(&pool).await;
+        let new_username = "updated_username".to_string();
+
+        // Poi aggiorna solo username
+        let result = save_or_update_user(
+            &pool,
+            Some(user_id),  // id = Some → UPDATE
+            new_username.clone(),
+            None,  // password = None
+            None,  // avatar = None
+        )
+        .await;
+
+        assert!(result.is_ok(), "UPDATE username should succeed");
+
+        // Verifica aggiornamento
+        let users = list_users(&pool).await.expect("Failed to list users");
+        assert_eq!(users.len(), 1, "Should still have one user");
+        assert_eq!(users[0].0, user_id, "User ID should not change");
+        assert_eq!(users[0].1, new_username, "Username should be updated");
+    }
 
     // ============ Categoria 3: Test temp_old_password ============
     // I test verranno aggiunti nei prossimi task
