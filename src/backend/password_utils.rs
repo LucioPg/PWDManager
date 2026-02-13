@@ -1,17 +1,17 @@
-use custom_errors::DBError;
+use crate::backend::db_backend::fetch_password_created_at_from_id;
+use crate::backend::user_auth_helper::{
+    DbSecretString, PasswordStrength, StoredPassword, UserAuth,
+};
+use aes_gcm::aead::{Aead, AeadCore, Nonce, OsRng};
+use aes_gcm::{Aes256Gcm, Key, KeyInit};
+use argon2::password_hash::Salt;
+use argon2::{Argon2, PasswordHash};
+use custom_errors::{DBError, EncryptionError};
 use secrecy::{ExposeSecret, SecretString};
 use sqlx::SqlitePool;
 use tracing::debug;
 
-#[derive(Debug, Clone, PartialEq, sqlx::Type)]
-#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
-pub enum PasswordStrength {
-    WEAK,
-    MEDIUM,
-    STRONG,
-}
-
-fn calc_strength(password: &str) -> PasswordStrength {
+async fn calc_strength(password: &str) -> PasswordStrength {
     if password.len() < 8 {
         return PasswordStrength::WEAK;
     };
@@ -34,8 +34,8 @@ sqlx::query!(
 
 pub async fn save_or_update_password(
     pool: &SqlitePool,
-    id: Option<i32>, // Se Some, fa l'UPDATE. Se None, fa l'INSERT.
-    user_id: i32,
+    id: Option<i64>, // Se Some, fa l'UPDATE. Se None, fa l'INSERT.
+    user_id: i64,
     location: String,
     password: SecretString,
     notes: Option<String>,
@@ -48,24 +48,25 @@ pub async fn save_or_update_password(
     match id {
         // --- CASO UPDATE ---
         Some(id) => {
-            if !password.expose_secret().trim().is_empty() && !location.trim().is_empty() {
-                let password_clone = password.clone();
-                let hash_password =
-                    crate::backend::utils::encrypt(password_clone).map_err(|e| {
-                        DBError::new_password_save_error(format!("Failed to encrypt: {}", e))
-                    })?;
-                let password_strength = calc_strength(&password.expose_secret());
-                sqlx::query("UPDATE passwords SET location = ?, password = ?, strength = ?, notes = ? WHERE id = ? AND user_di = ?")
-                    .bind(location)
-                    .bind(hash_password)
-                    .bind(password_strength)
-                    .bind(notes)
-                    .bind(user_id)
-                    .execute(pool)
-                    .await
-                    .map_err(|e| DBError::new_password_save_error(format!("Update failed: {}", e)))?;
-            }
+            todo!("completare la logica per l'aggiornamento di una password")
+            // if !password.expose_secret().trim().is_empty() && !location.trim().is_empty() {
+            //     let password_clone = password.clone();
+            //     let hash_password =
+            //         crate::backend::utils::encrypt(password_clone).map_err(|e| {
+            //             DBError::new_password_save_error(format!("Failed to encrypt: {}", e))
+            //         })?;
+            //     let password_strength = calc_strength(&password.expose_secret());
+            //     sqlx::query("UPDATE passwords SET location = ?, password = ?, strength = ?, notes = ? WHERE id = ? AND user_di = ?")
+            //         .bind(location)
+            //         .bind(hash_password)
+            //         .bind(password_strength)
+            //         .bind(notes)
+            //         .bind(user_id)
+            //         .execute(pool)
+            //         .await
+            //         .map_err(|e| DBError::new_password_save_error(format!("Update failed: {}", e)))?;
         }
+
         // _ => {
         //     todo!("completare la logica per l'inserimento di una nuova password")
         //         // sqlx::query("UPDATE users SET username = ?, avatar = ? WHERE id = ?")
@@ -91,6 +92,77 @@ pub async fn save_or_update_password(
             //     .await
             //     .map_err(|e| DBError::new_save_error(format!("Insert failed: {}", e)))?;
         }
+    }
+}
+// Ok(())
+
+fn get_salt(hash_password: &DbSecretString) -> Salt<'_> {
+    let hash_password = hash_password.0.expose_secret();
+    let parsed_hash = PasswordHash::new(hash_password).unwrap();
+    parsed_hash.salt.unwrap()
+}
+
+fn create_nonce() -> Nonce<Aes256Gcm> {
+    Aes256Gcm::generate_nonce(&mut OsRng)
+    // (nonce, nonce.to_vec())
+}
+async fn create_cipher_password(
+    new_password: &SecretString,
+    salt: Salt<'_>,
+    master_password: &DbSecretString,
+    nonce: &Nonce<Aes256Gcm>,
+) -> Result<Vec<u8>, DBError> {
+    let mut derived_key = [0u8; 32];
+    Argon2::default()
+        .hash_password_into(
+            master_password.0.expose_secret().as_bytes(),
+            salt.as_str().as_bytes(),
+            &mut derived_key,
+        )
+        .unwrap();
+    let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&derived_key));
+    cipher
+        .encrypt(nonce, new_password.expose_secret().as_bytes())
+        .map_err(|e| DBError::new_password_save_error(e.to_string()))
+}
+
+#[allow(dead_code)]
+async fn store_password_pipeline(
+    pool: &SqlitePool,
+    user_id: i64,
+    location: String,
+    raw_password: SecretString,
+    notes: Option<String>,
+) -> Result<(), DBError> {
+    /*
+    /// 0. fare fetch della master password e del created_at dell'utente.
+    /// 1. prendere il salt della master password.
+    /// 2. prendere il campo created_at dell'utente.
+    /// 3. creare il nonce.
+    /// Se possibile, parallelamente*:
+    /// 4. derivare la criptazione con aes*
+    /// 4. fare valutazione forza password*
+    /// 5. creare struct StoredPassword
+    /// 6. fare l'insert
+     */
+    let user_auth: UserAuth = fetch_password_created_at_from_id(&pool, user_id).await?;
+    let salt = get_salt(&user_auth.password);
+    let nonce = create_nonce();
+    let (password, strength) = tokio::join!(
+        create_cipher_password(&raw_password, salt, &user_auth.password, &nonce),
+        calc_strength(&raw_password.expose_secret())
+    );
+    if let Ok(password) = password {
+        let stored_password = StoredPassword::new(
+            None,
+            user_id,
+            location,
+            password,
+            notes,
+            strength,
+            None,
+            nonce.to_vec(),
+        );
     }
 
     Ok(())
