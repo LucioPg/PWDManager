@@ -27,7 +27,7 @@
 
 ## Gestione password registrate
 
-- [ ] creare tabella password
+- [x] creare tabella password
 - [ ] creare form di inserimento password
 - [ ] creare form di modifica password e dati
 - [ ] creare dialog di eliminazione password
