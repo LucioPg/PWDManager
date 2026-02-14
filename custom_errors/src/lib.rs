@@ -32,6 +32,8 @@ pub enum DBError {
     DBNonceCorruptionError(String),
     #[error("Database save temp password error")]
     DBSaveTempPasswordError(String),
+    #[error("Cipher encrypt password error")]
+    DBCipherEncryptionError(String),
 }
 
 impl DBError {
@@ -88,6 +90,10 @@ impl DBError {
     }
     pub fn new_save_temp_password_error(msg: String) -> Self {
         DBError::DBSaveTempPasswordError(msg.into())
+    }
+
+    pub fn new_cipher_encryption_error(msg: String) -> Self {
+        DBError::DBCipherEncryptionError(msg.into())
     }
 }
 
