@@ -20,6 +20,8 @@ use custom_errors::DBError;
 use rayon::prelude::*;
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;
+use std::sync::Arc;
+use tokio::task;
 
 /// Calcola la forze di una password in base alla sua lunghezza.
 ///
@@ -34,6 +36,16 @@ use sqlx::SqlitePool;
 /// - `MEDIUM` - Tra 8 e 15 caratteri
 /// - `STRONG` - 16 o più caratteri
 pub async fn calc_strength(password: &str) -> PasswordStrength {
+    if password.len() < 8 {
+        return PasswordStrength::WEAK;
+    };
+    if password.len() >= 8 && password.len() < 16 {
+        return PasswordStrength::MEDIUM;
+    };
+    PasswordStrength::STRONG
+}
+
+pub fn calc_strength_sync(password: &str) -> PasswordStrength {
     if password.len() < 8 {
         return PasswordStrength::WEAK;
     };
@@ -126,14 +138,14 @@ fn get_nonce_from_vec(nonce_vec: &Vec<u8>) -> Result<Nonce<Aes256Gcm>, DBError> 
 /// # Errori
 ///
 /// - `DBError::new_cipher_create_error` - Errore nella derivazione della chiave
-fn create_cipher(salt: Salt<'_>, user_auth: &UserAuth) -> Result<Aes256Gcm, DBError> {
+fn create_cipher(salt: &Salt<'_>, user_auth: &UserAuth) -> Result<Aes256Gcm, DBError> {
     let mut derived_key = [0u8; 32];
     let diversificator = user_auth.created_at.to_string();
-    let new_salt = format!("{}{}", salt.as_str(), diversificator);
+    // let new_salt = format!("{}{}", salt.as_str(), diversificator);
     Argon2::default()
         .hash_password_into(
             user_auth.password.expose_secret().as_bytes(),
-            new_salt.as_bytes(),
+            salt.as_str().as_bytes(),
             &mut derived_key,
         )
         .map_err(|e| DBError::new_cipher_create_error(e.to_string()))?;
@@ -141,8 +153,18 @@ fn create_cipher(salt: Salt<'_>, user_auth: &UserAuth) -> Result<Aes256Gcm, DBEr
 }
 async fn create_password_with_cipher(
     new_password: &SecretString,
-    salt: Salt<'_>,
-    user_auth: &UserAuth,
+    nonce: &Nonce<Aes256Gcm>,
+    cipher: &Aes256Gcm,
+) -> Result<SecretBox<[u8]>, DBError> {
+    // let cipher = create_cipher(salt, user_auth)?;
+    let cipher_vec = cipher
+        .encrypt(nonce, new_password.expose_secret().as_bytes())
+        .map_err(|e| DBError::new_cipher_encryption_error(e.to_string()))?;
+    Ok(SecretBox::new(cipher_vec.into()))
+}
+
+fn create_password_with_cipher_sync(
+    new_password: &SecretString,
     nonce: &Nonce<Aes256Gcm>,
     cipher: &Aes256Gcm,
 ) -> Result<SecretBox<[u8]>, DBError> {
@@ -189,15 +211,13 @@ pub async fn create_stored_password_pipeline(
     let user_auth: UserAuth = fetch_password_created_at_from_id(&pool, user_id).await?;
     let salt = get_salt(&user_auth.password);
     let nonce = create_nonce();
-    let cipher = create_cipher(salt, &user_auth)?;
+    let cipher = create_cipher(&salt, &user_auth)?;
     let (password, strength_result) = if strength.is_none() {
-        let task_encrypt =
-            create_password_with_cipher(&raw_password, salt, &user_auth, &nonce, &cipher);
+        let task_encrypt = create_password_with_cipher(&raw_password, &nonce, &cipher);
         let task_calc_strength = calc_strength(&raw_password.expose_secret());
         tokio::join!(task_encrypt, task_calc_strength)
     } else {
-        let encrypted =
-            create_password_with_cipher(&raw_password, salt, &user_auth, &nonce, &cipher).await;
+        let encrypted = create_password_with_cipher(&raw_password, &nonce, &cipher).await;
         (encrypted, strength.unwrap())
     };
     if let Ok(password) = password {
@@ -217,24 +237,52 @@ pub async fn create_stored_password_pipeline(
         Err(DBError::new_password_save_error("Errore generale".into()))
     }
 }
-
 pub async fn create_stored_passwords(
-    cipher: Aes256Gcm,
+    cipher: Aes256Gcm, // Assumendo che Aes256Gcm sia Send + Sync
     user_auth: UserAuth,
     stored_raw_passwords: Vec<StoredPasswordRaw>,
 ) -> Result<Vec<StoredPassword>, DBError> {
-    let stored_passwords: Vec<StoredPassword> = Vec::new();
-    if !stored_raw_passwords.is_empty() {
-        let salt = format!(
-            "{}{}",
-            get_salt(&user_auth.password).as_str(),
-            &user_auth.created_at.to_string()
-        );
-        for raw_password in stored_raw_passwords {
-            let nonce = create_nonce();
-        }
+    if stored_raw_passwords.is_empty() {
+        return Ok(Vec::new());
     }
-    Ok(stored_passwords)
+
+    // Avvolgiamo cipher e user_auth in Arc per passarli ai thread di Rayon
+    let cipher = Arc::new(cipher);
+    let user_auth = Arc::new(user_auth);
+
+    // Spostiamo il calcolo pesante su un thread pool dedicato alla CPU
+    task::spawn_blocking(move || {
+        stored_raw_passwords
+            .into_par_iter()
+            .map(|spr| {
+                let nonce = create_nonce();
+
+                // Usiamo il cipher condiviso
+                let encryption = create_password_with_cipher_sync(&spr.password, &nonce, &cipher)
+                    .map_err(|_| {
+                    DBError::new_cipher_encryption_error("Cipher error".to_string())
+                })?;
+                let strength_result: PasswordStrength = if spr.strength.is_none() {
+                    calc_strength_sync(&spr.password.expose_secret())
+                } else {
+                    spr.strength.unwrap()
+                };
+
+                Ok(StoredPassword::new(
+                    spr.id,
+                    user_auth.id,
+                    spr.location,
+                    encryption, // Assunto che encryption sia il tipo corretto
+                    spr.notes,
+                    strength_result,
+                    None,
+                    nonce.to_vec(),
+                ))
+            })
+            .collect::<Result<Vec<StoredPassword>, DBError>>() // Trasforma Vec<Result> in Result<Vec>
+    })
+    .await
+    .map_err(|e| DBError::new_password_save_error(format!("Join error: {}", e)))?
 }
 
 async fn helper_upsert_stored_passwords(
@@ -268,7 +316,7 @@ pub async fn decrypt_stored_password(
         fetch_password_created_at_from_id(&pool, stored_password.user_id).await?;
     let salt = get_salt(&user_auth.password);
     let nonce = get_nonce_from_vec(&stored_password.nonce)?;
-    let cipher = create_cipher(salt, &user_auth)?;
+    let cipher = create_cipher(&salt, &user_auth)?;
     let plaintext_bytes = cipher
         .decrypt(&nonce, stored_password.password.expose_secret().as_ref())
         .map_err(|e| DBError::new_password_fetch_error(e.to_string()))?;

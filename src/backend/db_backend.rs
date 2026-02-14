@@ -448,7 +448,7 @@ pub async fn fetch_password_created_at_from_id(
     debug!("Fetching user credentials in database");
 
     let user_auth =
-        sqlx::query_as::<_, UserAuth>("SELECT password, created_at FROM users WHERE id = ?")
+        sqlx::query_as::<_, UserAuth>("SELECT id, password, created_at FROM users WHERE id = ?")
             .bind(user_id) // SQLite preferisce i64 per gli ID
             .fetch_optional(pool) // Rimosso & perché pool è già un riferimento o clonabile
             .await

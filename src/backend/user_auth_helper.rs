@@ -162,6 +162,7 @@ impl std::ops::Deref for DbSecretVec {
 /// * `password` - Password hash (Argon2) dell'utente
 /// * `created_at` - Data di creazione dell'utente in formato ISO 8601
 pub struct UserAuth {
+    pub id: i64,
     pub password: DbSecretString,
     pub created_at: String, // o il tipo che usi (es. SystemTime o PrimitiveDateTime)
 }
