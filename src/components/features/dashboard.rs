@@ -5,6 +5,7 @@ use dioxus::prelude::*;
 pub fn Dashboard() -> Element {
     let auth_state = use_context::<crate::auth::AuthState>();
     let username = auth_state.get_username();
+    let nav = use_navigator();
     rsx! {
         div { class: "content-container animate-fade-in",
             div { class: "mb-8",
@@ -30,6 +31,12 @@ pub fn Dashboard() -> Element {
             }
             div { class: "card card-lg",
                 p { class: "text-body text-center", "Your passwords will appear here" }
+            }
+            div { class: "card card-lg",
+                button { class: "btn btn-primary",
+                    r#type: "button",
+                    onclick: move |_| {nav.push("/progress");},
+                    "progress" }
             }
         }
     }

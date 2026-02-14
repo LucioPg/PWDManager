@@ -6,8 +6,8 @@ mod components;
 use crate::auth::User;
 use crate::backend::db_backend::list_users_no_avatar;
 use crate::components::{
-    AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, RouteWrapper,
-    Settings, Spinner, SpinnerSize, ToastContainer, ToastHubState, UpsertUser,
+    AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, ProgressChn,
+    RouteWrapper, Settings, Spinner, SpinnerSize, ToastContainer, ToastHubState, UpsertUser,
     show_toast_error, show_toast_success,
 };
 use backend::db_backend::init_db;
@@ -161,7 +161,8 @@ enum Route {
     Login,
     #[route("/register")]
     UpsertUser { user_to_edit: Option<User> },
-
+    #[route("/progress")]
+    ProgressChn,
     #[route("/:..segments")]
     PageNotFound { segments: Vec<String> },
 }
