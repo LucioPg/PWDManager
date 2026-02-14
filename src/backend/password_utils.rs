@@ -21,7 +21,9 @@ use rayon::prelude::*;
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;
 use std::sync::Arc;
+use tokio::sync::mpsc::Sender;
 use tokio::task;
+use tokio_util::sync::CancellationToken;
 
 /// Calcola la forze di una password in base alla sua lunghezza.
 ///
@@ -35,11 +37,11 @@ use tokio::task;
 /// - `WEAK` - Meno di 8 caratteri
 /// - `MEDIUM` - Tra 8 e 15 caratteri
 /// - `STRONG` - 16 o più caratteri
-pub async fn calc_strength(password: &str) -> PasswordStrength {
-    if password.len() < 8 {
+pub async fn calc_strength(password: &SecretString) -> PasswordStrength {
+    if password.expose_secret().len() < 8 {
         return PasswordStrength::WEAK;
     };
-    if password.len() >= 8 && password.len() < 16 {
+    if password.expose_secret().len() >= 8 && password.expose_secret().len() < 16 {
         return PasswordStrength::MEDIUM;
     };
     PasswordStrength::STRONG
@@ -53,6 +55,26 @@ pub fn calc_strength_sync(password: &str) -> PasswordStrength {
         return PasswordStrength::MEDIUM;
     };
     PasswordStrength::STRONG
+}
+
+pub async fn calc_strength_channel(
+    password: &str,
+    token: CancellationToken,
+    tx: Sender<usize>,
+) -> Result<PasswordStrength, ()> {
+    let password = password.to_string();
+
+    let result = task::spawn_blocking(move || {
+        if token.is_cancelled() {
+            return Err(());
+        }
+        let stregth = calc_strength_sync(&password);
+        let _ = tx.send(1);
+        Ok(stregth)
+    })
+    .await
+    .map_err(|_| ())??;
+    Ok(result)
 }
 
 /*
@@ -214,7 +236,7 @@ pub async fn create_stored_password_pipeline(
     let cipher = create_cipher(&salt, &user_auth)?;
     let (password, strength_result) = if strength.is_none() {
         let task_encrypt = create_password_with_cipher(&raw_password, &nonce, &cipher);
-        let task_calc_strength = calc_strength(&raw_password.expose_secret());
+        let task_calc_strength = calc_strength(&raw_password);
         tokio::join!(task_encrypt, task_calc_strength)
     } else {
         let encrypted = create_password_with_cipher(&raw_password, &nonce, &cipher).await;

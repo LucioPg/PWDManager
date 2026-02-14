@@ -116,17 +116,17 @@ async fn test_encrypt_decrypt_password_rayon() {
         (
             "https://site1.com-strong",
             "Password1",
-            calc_strength("Password1").await,
+            calc_strength(&SecretString::new("Password1".into())).await,
         ),
         (
             "https://site2.com-medium",
             "Password2",
-            calc_strength("Password2").await,
+            calc_strength(&SecretString::new("PAssword2".into())).await,
         ),
         (
             "https://site3.com-weak",
             "VeryLongSecurePassword123!",
-            calc_strength("VeryLongSecurePassword123!").await,
+            calc_strength(&SecretString::new("VeryLongSecurePassword123!".into())).await,
         ),
     ];
     let mut stored_raw_passwords: Vec<StoredRawPassword> = vec![];
@@ -205,19 +205,19 @@ async fn test_encrypt_decrypt_password_rayon() {
 
 #[tokio::test]
 async fn test_password_strength_weak() {
-    let strength = calc_strength("abc").await;
+    let strength = calc_strength(&SecretString::new("abc".into())).await;
     assert_eq!(strength, PasswordStrength::WEAK);
 }
 
 #[tokio::test]
 async fn test_password_strength_medium() {
-    let strength = calc_strength("password123").await;
+    let strength = calc_strength(&SecretString::new("password123".into())).await;
     assert_eq!(strength, PasswordStrength::MEDIUM);
 }
 
 #[tokio::test]
 async fn test_password_strength_strong() {
-    let strength = calc_strength("veryStrongPassword123!@#").await;
+    let strength = calc_strength(&SecretString::new("veryStrongPassword123!@#".into())).await;
     assert_eq!(strength, PasswordStrength::STRONG);
 }
 
