@@ -1,10 +1,14 @@
 use crate::backend::db_backend::{
-    fetch_user_data, get_all_stored_passwords_for_user, init_db, save_or_update_user,
+    fetch_password_created_at_from_id, fetch_user_data, get_all_stored_passwords_for_user, init_db,
+    save_or_update_user,
 };
 use crate::backend::password_utils::{
-    calc_strength, create_stored_password_pipeline, decrypt_stored_password,
+    calc_strength, create_cipher, create_stored_password_pipeline, create_stored_passwords,
+    decrypt_stored_password,
 };
-use crate::backend::user_auth_helper::{PasswordStrength, StoredPassword};
+use crate::backend::user_auth_helper::{
+    DbSecretString, PasswordStrength, StoredPassword, StoredPasswordRaw, UserAuth,
+};
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;
 
@@ -43,6 +47,117 @@ async fn test_encrypt_decrypt_password() {
     let raw_password = SecretString::new("MySecurePassword456".into());
     let location = "https://example.com".to_string();
     let notes = Some("Test password".to_string());
+
+    create_stored_password_pipeline(
+        &pool,
+        user_id,
+        location.clone(),
+        raw_password.clone(),
+        notes.clone(),
+        None,
+    )
+    .await
+    .expect("Failed to encrypt password");
+
+    // Test 2: Recupera la password cifrata
+    let stored_passwords = get_all_stored_passwords_for_user(&pool, user_id)
+        .await
+        .expect("Failed to fetch stored passwords");
+
+    assert_eq!(
+        stored_passwords.len(),
+        1,
+        "Should have exactly one stored password"
+    );
+    let stored_password = &stored_passwords[0];
+
+    // Verifica che i metadati siano corretti
+    assert_eq!(stored_password.location, location);
+    assert_eq!(stored_password.notes, notes);
+    assert_eq!(stored_password.user_id, user_id);
+    assert!(
+        !stored_password.nonce.is_empty(),
+        "Nonce should not be empty"
+    );
+    assert_eq!(stored_password.nonce.len(), 12, "Nonce should be 12 bytes");
+
+    // Test 3: Decifra la password
+    let decrypted_password = decrypt_stored_password(&pool, stored_password)
+        .await
+        .expect("Failed to decrypt password");
+
+    assert_eq!(
+        decrypted_password,
+        raw_password.expose_secret(),
+        "Decrypted password should match original"
+    );
+}
+
+#[tokio::test]
+async fn test_encrypt_decrypt_password_rayon() {
+    // Setup: inizializza il database
+    let pool = init_db().await.expect("Failed to initialize database");
+
+    // Crea un utente di test
+    let master_password = "MasterPass123!";
+    let user_id = create_test_user(&pool, "testuser", master_password).await;
+    let user_auth = UserAuth {
+        id: user_id,
+        password: DbSecretString(SecretString::from(master_password)),
+        created_at: "2026-02-13 18:16:31".to_string(),
+    };
+    // Test 1: Cifra una password
+    let raw_password = SecretString::new("MySecurePassword456".into());
+    let location = "https://example.com".to_string();
+    let notes = Some("Test password".to_string());
+    let strength = calc_strength(master_password).await;
+    let salt = crate::backend::utils::generate_salt();
+    let cipher = create_cipher(&salt.as_salt(), &user_auth);
+    let data: Vec<_> = vec![
+        (
+            "https://site1.com-strong",
+            "Password1",
+            PasswordStrength::STRONG,
+        ),
+        (
+            "https://site2.com-medium",
+            "Password2",
+            PasswordStrength::MEDIUM,
+        ),
+        (
+            "https://site3.com-weak",
+            "VeryLongSecurePassword123!",
+            PasswordStrength::WEAK,
+        ),
+    ];
+    let mut stored_raw_passwords: Vec<StoredPasswordRaw> = vec![];
+    for (locat, raw_pwd, strength) in &data {
+        let rp = SecretString::new(raw_pwd.to_owned().into());
+        let stored_password_raw = StoredPasswordRaw {
+            id: None,
+            user_id,
+            location: locat.to_string(),
+            password: rp,
+            notes: Some("test rayon".to_string()),
+            strength: Some(strength.to_owned()),
+        };
+        stored_raw_passwords.push(stored_password_raw)
+    }
+
+    let result = create_stored_passwords(cipher.unwrap(), user_auth, stored_raw_passwords).await;
+    match result {
+        Ok(sp) => {
+            assert_eq!(
+                sp.len(),
+                data.len(),
+                "Should have exactly same number of items"
+            );
+            for s in sp {
+                println!("{:?}", s);
+            }
+        }
+        Err(e) => panic!("Failed to create stored passwords: {:?}", e),
+    }
 
     create_stored_password_pipeline(
         &pool,
