@@ -7,7 +7,7 @@ use crate::backend::password_utils::{
     decrypt_stored_password,
 };
 use crate::backend::user_auth_helper::{
-    DbSecretString, PasswordStrength, StoredPassword, StoredPasswordRaw, UserAuth,
+    DbSecretString, PasswordStrength, StoredPassword, StoredRawPassword, UserAuth,
 };
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;
@@ -129,10 +129,10 @@ async fn test_encrypt_decrypt_password_rayon() {
             calc_strength("VeryLongSecurePassword123!").await,
         ),
     ];
-    let mut stored_raw_passwords: Vec<StoredPasswordRaw> = vec![];
+    let mut stored_raw_passwords: Vec<StoredRawPassword> = vec![];
     for (locat, raw_pwd, strength) in &data {
         let rp = SecretString::new(raw_pwd.to_owned().into());
-        let stored_password_raw = StoredPasswordRaw {
+        let stored_password_raw = StoredRawPassword {
             id: None,
             user_id,
             location: locat.to_string(),

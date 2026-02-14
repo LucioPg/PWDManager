@@ -10,7 +10,7 @@ use crate::backend::db_backend::{
     fetch_password_created_at_from_id, save_or_update_stored_password,
 };
 use crate::backend::user_auth_helper::{
-    DbSecretString, DbSecretVec, PasswordStrength, StoredPassword, StoredPasswordRaw, UserAuth,
+    DbSecretString, DbSecretVec, PasswordStrength, StoredPassword, StoredRawPassword, UserAuth,
 };
 use aes_gcm::aead::{Aead, AeadCore, Nonce, OsRng};
 use aes_gcm::{Aes256Gcm, Key, KeyInit};
@@ -241,7 +241,7 @@ pub async fn create_stored_password_pipeline(
 pub async fn create_stored_passwords(
     cipher: Aes256Gcm, // Assumendo che Aes256Gcm sia Send + Sync
     user_auth: UserAuth,
-    stored_raw_passwords: Vec<StoredPasswordRaw>,
+    stored_raw_passwords: Vec<StoredRawPassword>,
 ) -> Result<Vec<StoredPassword>, DBError> {
     if stored_raw_passwords.is_empty() {
         return Ok(Vec::new());
@@ -325,6 +325,8 @@ pub async fn decrypt_stored_password(
         .map_err(|e| DBError::new_password_conversion_error(e.to_string()))?;
     Ok(plaintext)
 }
+
+pub async fn create_stored_raw_password_pipeline() {}
 
 /*
 PASSWORD MIGRATION:
