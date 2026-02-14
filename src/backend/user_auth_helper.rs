@@ -255,3 +255,12 @@ impl StoredPassword {
         }
     }
 }
+
+pub struct StoredPasswordRaw {
+    pub id: Option<i64>,
+    pub user_id: i64,
+    pub location: String,
+    pub password: SecretString,
+    pub notes: Option<String>,
+    pub strength: Option<PasswordStrength>,
+}
