@@ -10,7 +10,7 @@ use crate::backend::db_backend::{
     fetch_password_created_at_from_id, save_or_update_stored_password,
 };
 use crate::backend::user_auth_helper::{
-    DbSecretString, DbSecretVec, PasswordStrength, StoredPassword, UserAuth,
+    DbSecretString, DbSecretVec, PasswordStrength, StoredPassword, StoredPasswordRaw, UserAuth,
 };
 use aes_gcm::aead::{Aead, AeadCore, Nonce, OsRng};
 use aes_gcm::{Aes256Gcm, Key, KeyInit};
@@ -139,16 +139,17 @@ fn create_cipher(salt: Salt<'_>, user_auth: &UserAuth) -> Result<Aes256Gcm, DBEr
         .map_err(|e| DBError::new_cipher_create_error(e.to_string()))?;
     Ok(Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&derived_key)))
 }
-async fn create_cipher_password(
+async fn create_password_with_cipher(
     new_password: &SecretString,
     salt: Salt<'_>,
     user_auth: &UserAuth,
     nonce: &Nonce<Aes256Gcm>,
+    cipher: &Aes256Gcm,
 ) -> Result<SecretBox<[u8]>, DBError> {
-    let cipher = create_cipher(salt, user_auth)?;
+    // let cipher = create_cipher(salt, user_auth)?;
     let cipher_vec = cipher
         .encrypt(nonce, new_password.expose_secret().as_bytes())
-        .map_err(|e| DBError::new_password_save_error(e.to_string()))?;
+        .map_err(|e| DBError::new_cipher_encryption_error(e.to_string()))?;
     Ok(SecretBox::new(cipher_vec.into()))
 }
 
@@ -188,12 +189,15 @@ pub async fn create_stored_password_pipeline(
     let user_auth: UserAuth = fetch_password_created_at_from_id(&pool, user_id).await?;
     let salt = get_salt(&user_auth.password);
     let nonce = create_nonce();
+    let cipher = create_cipher(salt, &user_auth)?;
     let (password, strength_result) = if strength.is_none() {
-        let task_encrypt = create_cipher_password(&raw_password, salt, &user_auth, &nonce);
+        let task_encrypt =
+            create_password_with_cipher(&raw_password, salt, &user_auth, &nonce, &cipher);
         let task_calc_strength = calc_strength(&raw_password.expose_secret());
         tokio::join!(task_encrypt, task_calc_strength)
     } else {
-        let encrypted = create_cipher_password(&raw_password, salt, &user_auth, &nonce).await;
+        let encrypted =
+            create_password_with_cipher(&raw_password, salt, &user_auth, &nonce, &cipher).await;
         (encrypted, strength.unwrap())
     };
     if let Ok(password) = password {
@@ -212,6 +216,25 @@ pub async fn create_stored_password_pipeline(
     } else {
         Err(DBError::new_password_save_error("Errore generale".into()))
     }
+}
+
+pub async fn create_stored_passwords(
+    cipher: Aes256Gcm,
+    user_auth: UserAuth,
+    stored_raw_passwords: Vec<StoredPasswordRaw>,
+) -> Result<Vec<StoredPassword>, DBError> {
+    let stored_passwords: Vec<StoredPassword> = Vec::new();
+    if !stored_raw_passwords.is_empty() {
+        let salt = format!(
+            "{}{}",
+            get_salt(&user_auth.password).as_str(),
+            &user_auth.created_at.to_string()
+        );
+        for raw_password in stored_raw_passwords {
+            let nonce = create_nonce();
+        }
+    }
+    Ok(stored_passwords)
 }
 
 async fn helper_upsert_stored_passwords(
@@ -285,7 +308,5 @@ si potrebbe creare un sistema di checkpoint creando una tabella che conserva l'u
 
 la re-criptazione dovrebbe accadere dopo aver modificato la password principale.
 L'utente dovrebbe essere avvisato che modificando la master password potrebbe cominciare un processo di migrazione lungo ma che può essere messo in pausa.
-
-
 
  */
