@@ -138,7 +138,7 @@ fn get_nonce_from_vec(nonce_vec: &Vec<u8>) -> Result<Nonce<Aes256Gcm>, DBError> 
 /// # Errori
 ///
 /// - `DBError::new_cipher_create_error` - Errore nella derivazione della chiave
-fn create_cipher(salt: &Salt<'_>, user_auth: &UserAuth) -> Result<Aes256Gcm, DBError> {
+pub fn create_cipher(salt: &Salt<'_>, user_auth: &UserAuth) -> Result<Aes256Gcm, DBError> {
     let mut derived_key = [0u8; 32];
     let diversificator = user_auth.created_at.to_string();
     // let new_salt = format!("{}{}", salt.as_str(), diversificator);
@@ -237,6 +237,7 @@ pub async fn create_stored_password_pipeline(
         Err(DBError::new_password_save_error("Errore generale".into()))
     }
 }
+
 pub async fn create_stored_passwords(
     cipher: Aes256Gcm, // Assumendo che Aes256Gcm sia Send + Sync
     user_auth: UserAuth,

@@ -14,7 +14,7 @@ pub fn base64_encode(bytes: &[u8]) -> String {
     BASE64_STANDARD.encode(bytes)
 }
 
-fn generate_salt() -> SaltString {
+pub fn generate_salt() -> SaltString {
     SaltString::generate(&mut OsRng)
 }
 
