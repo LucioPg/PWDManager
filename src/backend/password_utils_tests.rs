@@ -110,24 +110,23 @@ async fn test_encrypt_decrypt_password_rayon() {
     let raw_password = SecretString::new("MySecurePassword456".into());
     let location = "https://example.com".to_string();
     let notes = Some("Test password".to_string());
-    let strength = calc_strength(master_password).await;
     let salt = crate::backend::utils::generate_salt();
     let cipher = create_cipher(&salt.as_salt(), &user_auth);
     let data: Vec<_> = vec![
         (
             "https://site1.com-strong",
             "Password1",
-            PasswordStrength::STRONG,
+            calc_strength("Password1").await,
         ),
         (
             "https://site2.com-medium",
             "Password2",
-            PasswordStrength::MEDIUM,
+            calc_strength("Password2").await,
         ),
         (
             "https://site3.com-weak",
             "VeryLongSecurePassword123!",
-            PasswordStrength::WEAK,
+            calc_strength("VeryLongSecurePassword123!").await,
         ),
     ];
     let mut stored_raw_passwords: Vec<StoredPasswordRaw> = vec![];
