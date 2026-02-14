@@ -210,6 +210,65 @@ async fn test_multiple_passwords_for_same_user() {
 }
 
 #[tokio::test]
+async fn test_multiple_passwords_for_same_user_with_predefined_strength() {
+    let pool = init_db().await.expect("Failed to initialize database");
+
+    let user_id = create_test_user(&pool, "testuser3", "MasterPass456!").await;
+
+    // Crea più password per lo stesso utente
+    let passwords = vec![
+        (
+            "https://site1.com-strong",
+            "Password1",
+            PasswordStrength::STRONG,
+        ),
+        (
+            "https://site2.com-medium",
+            "Password2",
+            PasswordStrength::MEDIUM,
+        ),
+        (
+            "https://site3.com-weak",
+            "VeryLongSecurePassword123!",
+            PasswordStrength::WEAK,
+        ),
+    ];
+
+    for (location, raw_pwd, strength) in &passwords {
+        create_stored_password_pipeline(
+            &pool,
+            user_id,
+            location.to_string(),
+            SecretString::new(raw_pwd.to_string().into()),
+            None,
+            Some(strength.to_owned()),
+        )
+        .await
+        .expect("Failed to encrypt password");
+    }
+
+    // Recupera tutte le password
+    let stored_passwords = get_all_stored_passwords_for_user(&pool, user_id)
+        .await
+        .expect("Failed to fetch stored passwords");
+
+    assert_eq!(stored_passwords.len(), 3, "Should have 3 stored passwords");
+
+    // Verifica che ogni password possa essere decifrata correttamente
+    for (i, (expected_location, expected_password, expected_strength)) in
+        passwords.iter().enumerate()
+    {
+        let stored = &stored_passwords[i];
+        assert_eq!(stored.location, *expected_location);
+        assert_eq!(stored.strength, expected_strength.clone());
+        let decrypted = decrypt_stored_password(&pool, stored)
+            .await
+            .expect("Failed to decrypt password");
+        assert_eq!(decrypted, *expected_password);
+    }
+}
+
+#[tokio::test]
 async fn test_encrypted_password_is_different_from_original() {
     let pool = init_db().await.expect("Failed to initialize database");
 
