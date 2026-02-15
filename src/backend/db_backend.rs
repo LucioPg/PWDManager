@@ -5,11 +5,8 @@ use crate::backend::utils::verify_password;
 use custom_errors::{AuthError, DBError};
 use dioxus::prelude::*;
 use secrecy::{ExposeSecret, SecretString};
-use sqlx::query::Query;
-use sqlx::sqlite::{
-    SqliteArguments, SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqliteRow,
-};
-use sqlx::{Row, Sqlite, query};
+use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqliteRow};
+use sqlx::{Row, query};
 use std::str::FromStr;
 #[cfg(feature = "desktop")]
 use tracing::{debug, instrument};
