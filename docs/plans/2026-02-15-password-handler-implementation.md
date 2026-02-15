@@ -1233,9 +1233,55 @@ FormField::<FormSecret> {
 
 ---
 
+### Bug Fix #3: Strength Sempre "Not Evaluated" 🔧
+
+**Issue:** La valutazione della password veniva eseguita correttamente (le reasons apparivano nel tooltip), ma lo strength rimaneva sempre "Not Evaluated".
+
+**Root Cause:**
+In `evaluate_password_strength_tx()`, la condizione per calcolare lo strength era sbagliata:
+
+```rust
+// CODICE BUGGATO
+let mut strength = PasswordStrength::NotEvaluated;
+// ... esegui sezioni ...
+
+if strength != PasswordStrength::NotEvaluated {  // SEMPRE FALSE!
+    strength = if reasons.is_empty() {
+        PasswordStrength::STRONG
+    } else if reasons.len() <= 2 {
+        PasswordStrength::MEDIUM
+    } else {
+        PasswordStrength::WEAK
+    };
+}
+```
+
+La variabile `strength` viene inizializzata a `NotEvaluated` e la condizione `if strength != NotEvaluated` è **sempre false**, quindi lo strength non viene mai calcolato.
+
+**Fix Applied:** Commit `d6d934d`
+```rust
+// CODICE CORRETTO
+strength = if reasons.is_empty() {
+    PasswordStrength::STRONG
+} else if reasons.len() <= 2 {
+    PasswordStrength::MEDIUM
+} else {
+    PasswordStrength::WEAK
+};
+```
+
+Rimossa la condizione errata - lo strength deve sempre essere calcolato alla fine della valutazione.
+
+**File modificato:** `src/backend/strength_utils.rs`
+
+---
+
 ### Git History Summary
 
 ```
+3f63cef - chore: remove debug tracing from password handler
+d6d934d - fix: remove incorrect condition in strength calculation
+64dbc3e - docs: document use_effect issues and callback-based solution
 3a302e9 - refactor: use callback-based approach for password evaluation
 9dc6001 - fix: unify password evaluation use_effect to fix closure move bug
 5bc5615 - fix: use include_str! for password blacklist
@@ -1251,21 +1297,25 @@ b160824 - feat: add PasswordEvaluation types
 
 ---
 
-### Current Status (After Bug Fix #2)
+### Current Status (After Bug Fix #3)
 
-**Status:** ✅ READY FOR MANUAL TESTING
+**Status:** ✅ EVALUATION WORKING
 
 **What Works:**
 - ✅ Types compile
 - ✅ Section functions work
 - ✅ Components render
 - ✅ Blacklist loads
-- ✅ FormField accepts input
-- ✅ Callback triggers on input
-- ✅ Debounce task spawns
-- ✅ Evaluation should run
+- ✅ FormField accepts input with callback
+- ✅ Debounce task spawns correctly
+- ✅ Evaluation executes and returns results
+- ✅ Strength displays correctly (Weak/Medium/Strong)
+- ✅ Reasons show in tooltip
 
-**Next Step:** Task 11 - Manual Testing Checklist
+**Minor issues to address:**
+- Tooltip text color (fixed in CSS)
+
+**Next Step:** Task 11 - Final Manual Testing Checklist
 
 ---
 
