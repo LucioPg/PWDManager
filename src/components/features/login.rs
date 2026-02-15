@@ -5,7 +5,7 @@ use crate::components::{
     use_toast,
 };
 use dioxus::prelude::*;
-use secrecy::{ExposeSecret, SecretString};
+use secrecy::SecretString;
 use sqlx::SqlitePool;
 use tracing::{debug, instrument};
 
