@@ -1,3 +1,6 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
+
 use dioxus::prelude::*;
 
 /// Dimensioni disponibili per lo Spinner
