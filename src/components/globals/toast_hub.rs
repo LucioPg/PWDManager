@@ -203,17 +203,17 @@ pub fn ToastContainer() -> Element {
     });
 
     let toast_type = |ts: &ToastType| match ts {
-        ToastType::Success => "toast-success",
-        ToastType::Error => "toast-error",
-        ToastType::Warning => "toast-warning",
-        ToastType::Info => "toast-info",
+        ToastType::Success => "pwd-toast-success",
+        ToastType::Error => "pwd-toast-error",
+        ToastType::Warning => "pwd-toast-warning",
+        ToastType::Info => "pwd-toast-info",
     };
 
     rsx! {
-        div { class: "toast-container",
+        div { class: "pwd-toast-container",
             for toast in state.read().messages.iter() {
-                {let transition_class = if toast.is_leaving { "toast-out" }
-                else { "toast-in" };
+                {let transition_class = if toast.is_leaving { "pwd-toast-out" }
+                else { "pwd-toast-in" };
                     rsx! {
                         div {
                             key: "{toast.id}",
