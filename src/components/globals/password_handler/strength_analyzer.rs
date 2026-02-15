@@ -8,6 +8,7 @@ pub struct StrengthAnalyzerProps {
     pub reasons: Vec<String>,
     #[props(default)]
     pub is_evaluating: bool,
+    pub score: Option<i32>,
 }
 
 #[component]
@@ -22,40 +23,64 @@ pub fn StrengthAnalyzer(props: StrengthAnalyzerProps) -> Element {
         PasswordStrength::STRONG => ("text-success-600", "Strong".to_string()),
     };
 
+    // Calculate cursor position (0-100%)
+    let cursor_position = props.score.unwrap_or(0);
+
     rsx! {
-        div { class: "strength-analyzer flex items-center gap-2",
-            // Stato evaluating
-            if props.is_evaluating {
-                span { class: "text-gray-500 italic", "Evaluating..." }
-            } else {
-                // Strength text
-                span { class: "{text_class} font-medium", "{strength_text}" }
+        div { class: "strength-analyzer flex flex-col gap-2",
+            // Top row: strength text and tooltip button
+            div { class: "flex items-center gap-2",
+                // Stato evaluating
+                if props.is_evaluating {
+                    span { class: "text-gray-500 italic", "Evaluating..." }
+                } else {
+                    // Strength text
+                    span { class: "{text_class} font-medium", "{strength_text}" }
 
-                // Tooltip button con (?)
-                if !props.reasons.is_empty() {
-                    div { class: "relative",
-                        button {
-                            class: "strength-info-btn btn btn-circle btn-ghost btn-xs",
-                            r#type: "button",
-                            onclick: move |_| show_tooltip.set(!show_tooltip()),
-                            "?"
-                        }
+                    // Score display
+                    if let Some(score) = props.score {
+                        span { class: "text-gray-500 text-sm", "({score}%)" }
+                    }
 
-                        // Tooltip dropdown
-                        if show_tooltip() {
-                            div { class: "strength-reasons-tooltip absolute top-full left-0 mt-2 z-10",
-                                div { class: "dropdown-content mockup-code bg-base-200 shadow-lg rounded-lg p-3 min-w-[200px]",
-                                    h4 { class: "font-bold text-sm mb-2", "Why this rating?" }
-                                    ul { class: "text-xs space-y-1",
-                                        for reason in &props.reasons {
-                                            li { class: "flex items-start gap-1",
-                                                span { class: "text-base-content/70", "•" }
-                                                span { "{reason}" }
+                    // Tooltip button con (?)
+                    if !props.reasons.is_empty() {
+                        div { class: "relative",
+                            button {
+                                class: "strength-info-btn btn btn-circle btn-ghost btn-xs",
+                                r#type: "button",
+                                onclick: move |_| show_tooltip.set(!show_tooltip()),
+                                "?"
+                            }
+
+                            // Tooltip dropdown
+                            if show_tooltip() {
+                                div { class: "strength-reasons-tooltip absolute top-full left-0 mt-2 z-10",
+                                    div { class: "dropdown-content mockup-code bg-base-200 shadow-lg rounded-lg p-3 min-w-[200px]",
+                                        h4 { class: "font-bold text-sm mb-2", "Why this rating?" }
+                                        ul { class: "text-xs space-y-1",
+                                            for reason in &props.reasons {
+                                                li { class: "flex items-start gap-1",
+                                                    span { class: "text-base-content/70", "•" }
+                                                    span { "{reason}" }
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+            }
+
+            // Strength bar with gradient and cursor
+            if !props.is_evaluating && props.score.is_some() {
+                div { class: "strength-bar-container",
+                    div { class: "strength-bar",
+                        // Cursor indicator
+                        div {
+                            class: "strength-cursor",
+                            style: "left: {cursor_position}%",
                         }
                     }
                 }

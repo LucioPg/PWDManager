@@ -11,6 +11,7 @@ use tracing;
 pub struct PasswordEvaluation {
     pub strength: PasswordStrength,
     pub reasons: Vec<String>,
+    pub score: Option<i32>,
 }
 
 // Blacklist delle password comuni - embedded direttamente nel binary
@@ -162,6 +163,10 @@ pub async fn evaluate_password_strength_tx(
     let mut reasons = Vec::new();
     let mut strength = PasswordStrength::NotEvaluated;
     let mut is_error = false;
+    let mut score: i32 = 0;
+
+    let pwd = password.expose_secret();
+    let pwd_len = pwd.len();
 
     // Orchestrator: esegui sezioni in sequenza
     let sections: Vec<(&str, fn(&SecretString) -> Result<Option<String>, ()>)> = vec![
@@ -197,20 +202,46 @@ pub async fn evaluate_password_strength_tx(
         }
     }
 
-    // Calcola strength finale basata su reasons
-    // (la condizione precedente era sbagliata: strength è inizializzato a NotEvaluated
-    // e non viene mai cambiato prima di questo punto, quindi il check era sempre false)
+    // Calcola strength e score finale
     if !is_error {
-        strength = if reasons.is_empty() {
+        // Calcola score (0-100)
+        // Lunghezza: fino a 30 punti (1 punto per carattere, max 30)
+        score += pwd_len.min(30) as i32;
+
+        // Varietà caratteri: fino a 40 punti
+        let has_upper = pwd.chars().any(|c| c.is_uppercase());
+        let has_lower = pwd.chars().any(|c| c.is_lowercase());
+        let has_digit = pwd.chars().any(|c| c.is_ascii_digit());
+        let has_special = pwd.chars().any(|c| !c.is_alphanumeric());
+        let variety_count = [has_upper, has_lower, has_digit, has_special].iter().filter(|&&b| b).count();
+        score += (variety_count * 10) as i32;
+
+        // Bonus lunghezza extra: +10 se > 12 caratteri
+        if pwd_len > 12 {
+            score += 10;
+        }
+
+        // Penalità per reasons (ogni reason sottrae punti)
+        score -= (reasons.len() as i32) * 10;
+
+        // Clampa score tra 0 e 100
+        score = score.clamp(0, 100);
+
+        // Determina strength basata su score
+        strength = if score >= 70 {
             PasswordStrength::STRONG
-        } else if reasons.len() <= 2 {
+        } else if score >= 40 {
             PasswordStrength::MEDIUM
         } else {
             PasswordStrength::WEAK
         };
     }
 
-    let evaluation = PasswordEvaluation { strength, reasons };
+    let evaluation = PasswordEvaluation {
+        strength,
+        reasons,
+        score: if is_error { None } else { Some(score) },
+    };
 
     // Invia risultato
     if let Err(e) = tx.send(evaluation).await {

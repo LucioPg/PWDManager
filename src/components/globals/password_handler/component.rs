@@ -26,6 +26,7 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
     let mut strength = use_signal(|| PasswordStrength::NotEvaluated);
     let mut reasons = use_signal(|| Vec::<String>::new());
     let mut is_evaluating = use_signal(|| false);
+    let mut score = use_signal(|| Option::<i32>::None);
 
     let mut debounce_task = use_signal(|| None::<Task>);
     let mut cancel_token = use_signal(|| Arc::new(CancellationToken::new()));
@@ -37,6 +38,7 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
         // Reset evaluation state
         strength.set(PasswordStrength::NotEvaluated);
         reasons.set(Vec::new());
+        score.set(None);
 
         // Cancel previous task
         if let Some(task) = debounce_task.read().as_ref() {
@@ -58,6 +60,7 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
             let mut strength_sig = strength.clone();
             let mut reasons_sig = reasons.clone();
             let mut evaluating_sig = is_evaluating.clone();
+            let mut score_sig = score.clone();
             let on_change = props.on_password_change.clone();
 
             let task = spawn(async move {
@@ -75,6 +78,7 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
                 if let Some(eval) = rx.recv().await {
                     strength_sig.set(eval.strength);
                     reasons_sig.set(eval.reasons);
+                    score_sig.set(eval.score);
                     on_change.call(new_pwd);
                 }
 
@@ -92,6 +96,7 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
         // Reset evaluation state
         strength.set(PasswordStrength::NotEvaluated);
         reasons.set(Vec::new());
+        score.set(None);
 
         // Cancel previous task
         if let Some(task) = debounce_task.read().as_ref() {
@@ -113,6 +118,7 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
             let mut strength_sig = strength.clone();
             let mut reasons_sig = reasons.clone();
             let mut evaluating_sig = is_evaluating.clone();
+            let mut score_sig = score.clone();
             let on_change = props.on_password_change.clone();
 
             let task = spawn(async move {
@@ -130,6 +136,7 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
                 if let Some(eval) = rx.recv().await {
                     strength_sig.set(eval.strength);
                     reasons_sig.set(eval.reasons);
+                    score_sig.set(eval.score);
                     on_change.call(pwd);
                 }
 
@@ -177,6 +184,7 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
                 strength: strength.read().clone(),
                 reasons: reasons.read().clone(),
                 is_evaluating: is_evaluating(),
+                score: score.read().clone(),
             }
 
             // Password mismatch warning
