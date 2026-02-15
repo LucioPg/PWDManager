@@ -65,6 +65,93 @@ pub fn init_blacklist_from_path(_file_path: &str) -> std::io::Result<()> {
     init_blacklist()
 }
 
+/// Controlla se la password è nella blacklist delle 10k password comuni
+fn blacklist_section(password: &SecretString) -> Result<Option<String>, ()> {
+    // Use existing COMMON_PASSWORDS static
+    if let Some(blacklist) = COMMON_PASSWORDS.get() {
+        if blacklist.contains(&password.expose_secret().to_lowercase()) {
+            return Ok(Some("Password is in the top 10,000 most common".to_string()));
+        }
+    }
+    Ok(None)
+}
+
+/// Verifica lunghezza minima password
+fn length_section(password: &SecretString) -> Result<Option<String>, ()> {
+    const MIN_LENGTH: usize = 8;
+    if password.expose_secret().len() < MIN_LENGTH {
+        return Ok(Some(format!("Password must be at least {} characters", MIN_LENGTH)));
+    }
+    Ok(None)
+}
+
+/// Verifica presenza di maiuscole, minuscole, numeri, speciali
+fn character_variety_section(password: &SecretString) -> Result<Option<String>, ()> {
+    let pwd = password.expose_secret();
+    let has_upper = pwd.chars().any(|c| c.is_uppercase());
+    let has_lower = pwd.chars().any(|c| c.is_lowercase());
+    let has_digit = pwd.chars().any(|c| c.is_ascii_digit());
+    let has_special = pwd.chars().any(|c| !c.is_alphanumeric());
+
+    let missing: Vec<_> = vec![
+        if !has_upper { Some("uppercase") } else { None },
+        if !has_lower { Some("lowercase") } else { None },
+        if !has_digit { Some("numbers") } else { None },
+        if !has_special { Some("special characters") } else { None },
+    ].into_iter().flatten().collect();
+
+    if !missing.is_empty() {
+        return Ok(Some(format!("Missing: {}", missing.join(", "))));
+    }
+    Ok(None)
+}
+
+/// Analizza pattern per penalizzare ripetizioni e sequenze
+fn pattern_analysis_section(password: &SecretString) -> Result<Option<String>, ()> {
+    let chars: Vec<char> = password.expose_secret().chars().collect();
+    if chars.len() < 3 {
+        return Ok(None);
+    }
+
+    // Check repeated chars (e.g., "aaa")
+    let mut repeated_count = 1;
+    for i in 1..chars.len() {
+        if chars[i] == chars[i - 1] {
+            repeated_count += 1;
+            if repeated_count >= 3 {
+                return Ok(Some("Password contains repetitive patterns".to_string()));
+            }
+        } else {
+            repeated_count = 1;
+        }
+    }
+
+    // Check for longer sequences (4+ consecutive characters)
+    // This catches "abcd", "1234", etc. but not short sequences like "123" in "RandomPass123!@#Word"
+    for window_size in [4, 5] {
+        if chars.len() < window_size {
+            continue;
+        }
+
+        for i in window_size..=chars.len() {
+            let window = &chars[i - window_size..i];
+
+            // Check if all characters in window are sequential
+            let is_sequential = window.windows(2).all(|w| {
+                let prev = w[0] as i32;
+                let curr = w[1] as i32;
+                curr == prev + 1 || curr == prev - 1
+            });
+
+            if is_sequential {
+                return Ok(Some("Password contains sequential patterns".to_string()));
+            }
+        }
+    }
+
+    Ok(None)
+}
+
 pub async fn evaluate_password_strength_tx(
     password: &SecretString,
     token: CancellationToken,
@@ -217,6 +304,11 @@ mod tests {
 
     #[test]
     fn test_blacklist_section_with_common_password() {
+        // Initialize the blacklist for testing
+        let _ = COMMON_PASSWORDS.get_or_init(|| {
+            vec!["password".to_string(), "123456".to_string()].into_iter().collect()
+        });
+
         let pwd = SecretString::new("password".to_string().into());
         let result = blacklist_section(&pwd);
         assert_eq!(result, Ok(Some("Password is in the top 10,000 most common".to_string())));
