@@ -155,39 +155,62 @@ fn pattern_analysis_section(password: &SecretString) -> Result<Option<String>, (
 pub async fn evaluate_password_strength_tx(
     password: &SecretString,
     token: CancellationToken,
-    tx: mpsc::Sender<PasswordStrength>,
+    tx: mpsc::Sender<PasswordEvaluation>,
 ) {
-    let password_clone = password.clone();
+    use tracing::error;
 
-    tokio::task::spawn_blocking(move || {
+    let mut reasons = Vec::new();
+    let mut strength = PasswordStrength::NotEvaluated;
+
+    // Orchestrator: esegui sezioni in sequenza
+    let sections: Vec<(&str, fn(&SecretString) -> Result<Option<String>, ()>)> = vec![
+        ("blacklist", blacklist_section),
+        ("length", length_section),
+        ("variety", character_variety_section),
+        ("pattern", pattern_analysis_section),
+    ];
+
+    for (section_name, section_fn) in sections {
+        // Check cancellation prima di ogni sezione
         if token.is_cancelled() {
-            return;
+            strength = PasswordStrength::NotEvaluated;
+            reasons.push("Evaluation cancelled".to_string());
+            break;
         }
 
-        let pass_ref = password_clone.expose_secret();
-
-        // 1. Controllo Blacklist (Sola lettura, thread-safe)
-        if let Some(blacklist) = COMMON_PASSWORDS.get() {
-            if blacklist.contains(&pass_ref.to_lowercase()) {
-                let _ = tx.blocking_send(PasswordStrength::WEAK);
-                return;
+        match section_fn(password) {
+            Ok(Some(reason)) => {
+                reasons.push(reason);
             }
+            Ok(None) => {
+                // Sezione passata, continua
+            }
+            Err(()) => {
+                error!(section = %section_name, "Fatal error in password evaluation section");
+                reasons.push("Error".to_string());
+                strength = PasswordStrength::NotEvaluated;
+                break;
+            }
+        }
+    }
+
+    // Calcola strength finale basata su reasons
+    if strength != PasswordStrength::NotEvaluated {
+        strength = if reasons.is_empty() {
+            PasswordStrength::STRONG
+        } else if reasons.len() <= 2 {
+            PasswordStrength::MEDIUM
         } else {
-            println!("Attenzione Blacklist: NON CARICATA");
-        }
+            PasswordStrength::WEAK
+        };
+    }
 
-        let chars: Vec<char> = pass_ref.chars().collect();
-        let len = chars.len();
+    let evaluation = PasswordEvaluation { strength, reasons };
 
-        if len == 0 {
-            let _ = tx.blocking_send(PasswordStrength::WEAK);
-            return;
-        }
-
-        let strength = calculate_internal_score(chars);
-
-        let _ = tx.blocking_send(strength);
-    });
+    // Invia risultato
+    if let Err(e) = tx.send(evaluation).await {
+        error!(error = %e, "Failed to send password evaluation result");
+    }
 }
 
 pub async fn evaluate_password_strength(
