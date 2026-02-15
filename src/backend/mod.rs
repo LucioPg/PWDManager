@@ -13,3 +13,4 @@ mod test_helpers;
 
 #[cfg(test)]
 mod db_backend_tests;
+pub mod strength_utils;

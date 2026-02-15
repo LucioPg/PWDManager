@@ -5,6 +5,7 @@ mod components;
 
 use crate::auth::User;
 use crate::backend::db_backend::list_users_no_avatar;
+use crate::backend::strength_utils::init_blacklist;
 use crate::components::{
     AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, ProgressChn,
     RouteWrapper, Settings, Spinner, SpinnerSize, ToastContainer, ToastHubState, UpsertUser,
@@ -14,11 +15,13 @@ use backend::db_backend::init_db;
 use dioxus::core::Task;
 use dioxus::prelude::*;
 use gui_launcher::launch_desktop;
+use std::error::Error;
 
 // Asset CSS di Tailwind
 static TAILWIND_CSS: &str = include_str!("../assets/tailwind.css");
 static MAIN_CSS: &str = include_str!("../assets/main.css");
 const LOGO_BYTES: &[u8] = include_bytes!("../assets/logo.png");
+
 const SHOW_USERS_LIST: bool = true;
 #[component]
 fn App() -> Element {
@@ -51,6 +54,14 @@ fn App() -> Element {
             }
             _ => println!("Cleanup: pool non presente"), // Chiude tutte le connessioni al database
         }
+    });
+    use_effect(move || {
+        // Inizializza la blacklist usando il sistema asset di Dioxus
+        init_blacklist().unwrap_or_else(|e| {
+            let error = format!("Caricamento BLACKLIST Fallito: {}", e.to_string());
+
+            show_toast_error(error, toast_state);
+        });
     });
 
     use_effect(move || {
@@ -103,6 +114,8 @@ fn App() -> Element {
             use_context_provider(|| pool.clone());
             rsx! {
                 // Carica il CSS di Tailwind globalmente
+                // Stylesheet {href: BLACKLIST_FILE, }
+                // Stylesheet {href: MAIN_CSS_TEST, }
                 document::Style {"{TAILWIND_CSS}"}
                 document::Style {"{MAIN_CSS}"}
                 ToastContainer {}
