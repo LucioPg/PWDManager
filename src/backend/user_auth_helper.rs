@@ -4,11 +4,7 @@
 //! oltre a struct per l'autenticazione utente e per le password salvate.
 
 use secrecy::{ExposeSecret, SecretBox, SecretString};
-use sqlx::{
-    Decode, Encode, Type,
-    encode::IsNull,
-    sqlite::{Sqlite, SqliteArgumentValue, SqliteTypeInfo, SqliteValueRef},
-};
+use sqlx::{Type, sqlite::Sqlite};
 
 use sqlx_template::SqlxTemplate;
 
