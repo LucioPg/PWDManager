@@ -126,6 +126,9 @@ pub fn FormField<T: FormValue>(
     #[props(default)]
     readonly: bool,
     #[props(default)] autocomplete: bool,
+    /// Callback chiamato quando il valore cambia (opzionale)
+    #[props(default)]
+    on_change: Option<Callback<T>>,
 ) -> Element {
     let input_class = if readonly {
         "input-base input-readonly"
@@ -154,7 +157,10 @@ pub fn FormField<T: FormValue>(
                 value: "{value.read().to_form_string()}",
                 oninput: move |e| {
                     if let Some(new_value) = T::from_form_string(e.value()) {
-                        value.set(new_value);
+                        value.set(new_value.clone());
+                        if let Some(callback) = on_change {
+                            callback.call(new_value);
+                        }
                     }
                 },
                 disabled: disabled,

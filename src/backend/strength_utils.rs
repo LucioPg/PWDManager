@@ -40,7 +40,9 @@ pub fn init_blacklist() -> std::io::Result<()> {
         .collect();
 
     let count = set.len();
-    COMMON_PASSWORDS.set(set).expect("Blacklist already initialized");
+    COMMON_PASSWORDS
+        .set(set)
+        .expect("Blacklist already initialized");
     tracing::info!("Blacklist initialized successfully! ({} passwords)", count);
     Ok(())
 }
@@ -56,7 +58,9 @@ fn blacklist_section(password: &SecretString) -> Result<Option<String>, ()> {
     // Use existing COMMON_PASSWORDS static
     if let Some(blacklist) = COMMON_PASSWORDS.get() {
         if blacklist.contains(&password.expose_secret().to_lowercase()) {
-            return Ok(Some("Password is in the top 10,000 most common".to_string()));
+            return Ok(Some(
+                "Password is in the top 10,000 most common".to_string(),
+            ));
         }
     }
     Ok(None)
@@ -66,7 +70,10 @@ fn blacklist_section(password: &SecretString) -> Result<Option<String>, ()> {
 fn length_section(password: &SecretString) -> Result<Option<String>, ()> {
     const MIN_LENGTH: usize = 8;
     if password.expose_secret().len() < MIN_LENGTH {
-        return Ok(Some(format!("Password must be at least {} characters", MIN_LENGTH)));
+        return Ok(Some(format!(
+            "Password must be at least {} characters",
+            MIN_LENGTH
+        )));
     }
     Ok(None)
 }
@@ -83,8 +90,15 @@ fn character_variety_section(password: &SecretString) -> Result<Option<String>, 
         if !has_upper { Some("uppercase") } else { None },
         if !has_lower { Some("lowercase") } else { None },
         if !has_digit { Some("numbers") } else { None },
-        if !has_special { Some("special characters") } else { None },
-    ].into_iter().flatten().collect();
+        if !has_special {
+            Some("special characters")
+        } else {
+            None
+        },
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
 
     if !missing.is_empty() {
         return Ok(Some(format!("Missing: {}", missing.join(", "))));
@@ -143,8 +157,8 @@ pub async fn evaluate_password_strength_tx(
     token: CancellationToken,
     tx: mpsc::Sender<PasswordEvaluation>,
 ) {
-    use tracing::error;
-
+    use tracing::{error, info};
+    info!("evaluation is about to start...");
     let mut reasons = Vec::new();
     let mut strength = PasswordStrength::NotEvaluated;
 
@@ -315,12 +329,19 @@ mod tests {
     fn test_blacklist_section_with_common_password() {
         // Initialize the blacklist for testing
         let _ = COMMON_PASSWORDS.get_or_init(|| {
-            vec!["password".to_string(), "123456".to_string()].into_iter().collect()
+            vec!["password".to_string(), "123456".to_string()]
+                .into_iter()
+                .collect()
         });
 
         let pwd = SecretString::new("password".to_string().into());
         let result = blacklist_section(&pwd);
-        assert_eq!(result, Ok(Some("Password is in the top 10,000 most common".to_string())));
+        assert_eq!(
+            result,
+            Ok(Some(
+                "Password is in the top 10,000 most common".to_string()
+            ))
+        );
     }
 
     #[test]
@@ -334,7 +355,10 @@ mod tests {
     fn test_length_section_too_short() {
         let pwd = SecretString::new("Short1!".to_string().into());
         let result = length_section(&pwd);
-        assert_eq!(result, Ok(Some("Password must be at least 8 characters".to_string())));
+        assert_eq!(
+            result,
+            Ok(Some("Password must be at least 8 characters".to_string()))
+        );
     }
 
     #[test]
