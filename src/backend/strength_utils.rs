@@ -7,6 +7,12 @@ use std::sync::OnceLock;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct PasswordEvaluation {
+    pub strength: PasswordStrength,
+    pub reasons: Vec<String>,
+}
+
 // Definisci l'asset della blacklist usando il sistema manganis di Dioxus 0.7.3
 // L'attributo #[used] forza l'inclusione dell'asset anche se non referenziato direttamente nel RSX
 #[used]
@@ -20,6 +26,7 @@ static COMMON_PASSWORDS: OnceLock<HashSet<String>> = OnceLock::new();
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum PasswordStrength {
+    NotEvaluated,
     WEAK,
     MEDIUM,
     STRONG,
