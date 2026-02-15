@@ -38,7 +38,7 @@ pub fn Logout() -> Element {
                 }
                 h2 { class: "text-h2", "Confirm Logout" }
                 p { class: "text-body mb-8", "Are you sure you want to logout from your account?" }
-                div { class: "flex gap-4",
+                div { class: "flex flex-col gap-4",
                     button {
                         class: "btn-danger btn-block",
                         r#type: "submit",
