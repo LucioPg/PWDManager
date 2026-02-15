@@ -133,8 +133,8 @@ pub struct PasswordHandlerProps {
 - `strength: PasswordStrength`
 - `reasons: Vec<String>`
 - `is_evaluating: bool`
-- `debounce_handle: Option<Interval>`
-- `cancel_token: CancellationToken`
+- `debounce_task: Option<Task>` // Task handle for cancellation
+- `cancel_token: Arc<CancellationToken>` // Arc per shared ownership
 
 **Behavior:**
 1. Utente digita in entrambi i campi
@@ -146,23 +146,54 @@ pub struct PasswordHandlerProps {
 
 **Debounce Logic:**
 ```rust
+use std::sync::Arc;
+use tokio::time::{sleep, Duration};
+use tokio_util::sync::CancellationToken;
+
 // Reset stato
 strength.set(PasswordStrength::NotEvaluated);
 reasons.set(Vec::new());
 
-// Cancella debounce precedente
-if let Some(interval) = debounce_handle.read().as_ref() {
-    interval.cancel();
+// Cancella task precedente
+if let Some(task) = debounce_task.read().as_ref() {
+    task.abort();
 }
+debounce_task.set(None);
 
 // Cancella valutazione corrente
-cancel_token.read().cancel();
-cancel_token.set(CancellationToken::new());
+let token = Arc::new(CancellationToken::new());
+cancel_token.set(token.clone());
 
 // Avvia nuovo debounce timer (500ms)
-let interval = set_interval(Duration::from_millis(500), move || {
-    // Avvia valutazione...
+let pwd_clone = password.read().clone();
+let mut strength_sig = strength.clone();
+let mut reasons_sig = reasons.clone();
+let mut evaluating_sig = is_evaluating.clone();
+let mut debounce_task_sig = debounce_task.clone();
+let on_change = on_password_change.clone();
+
+let task = spawn(async move {
+    sleep(Duration::from_millis(500)).await;
+
+    if token.is_cancelled() {
+        return;
+    }
+
+    evaluating_sig.set(true);
+
+    let (tx, mut rx) = mpsc::channel(1);
+    evaluate_password_strength_tx(&pwd_clone.0, token.clone(), tx).await;
+
+    if let Some(eval) = rx.recv().await {
+        strength_sig.set(eval.strength);
+        reasons_sig.set(eval.reasons);
+        on_change.call(pwd_clone);
+    }
+
+    evaluating_sig.set(false);
 });
+
+debounce_task.set(Some(task));
 ```
 
 ### 4. StrengthAnalyzer Component
@@ -375,8 +406,9 @@ mod tests {
 3. **Create PasswordHandler**
    - File `component.rs`
    - Implement internal state with signals
-   - Implement debounce timer (500ms)
-   - Implement granular cancellation
+   - Implement debounce timer using `tokio::time::sleep` (NOT `set_interval`)
+   - Use `Arc<CancellationToken>` for cancellation (CancellationToken is not Clone)
+   - Use `Task` handle for spawn cancellation (NOT `Interval`)
 
 4. **Integrate into UpsertUser**
    - Replace FormField pairs with PasswordHandler
@@ -404,9 +436,10 @@ mod tests {
 **Existing:**
 - `dioxus` 0.7
 - `secrecy` (SecretString)
-- `tokio` (async runtime)
+- `tokio` (async runtime, time::sleep)
 - `tracing` (logging)
 - `tokio-util` (CancellationToken)
+- `std::sync::Arc` (per CancellationToken shared ownership)
 
 **No new dependencies required.**
 
@@ -421,6 +454,59 @@ mod tests {
 **Backwards compatibility:**
 - Legacy `evaluate_password_strength()` maintained with `#[deprecated]`
 - No breaking changes to existing database operations
+
+## Technical Notes
+
+### Dioxus 0.7 Specific Considerations
+
+**1. CancellationToken Arc Wrapper**
+```rust
+// CancellationToken non è Clone, usare Arc
+use std::sync::Arc;
+let cancel_token: Arc<CancellationToken> = Arc::new(CancellationToken::new());
+let token_clone = Arc::clone(&cancel_token); // Per passare agli async tasks
+```
+
+**2. Debounce with tokio::time::sleep**
+```rust
+// NON usare set_interval per debounce (si ripete!)
+// USARE tokio::time::sleep per esecuzione singola dopo delay
+use tokio::time::{sleep, Duration};
+
+sleep(Duration::from_millis(500)).await;
+// poi esegui la valutazione...
+```
+
+**3. Task Cancellation**
+```rust
+// Usare spawn() che ritorna un Task
+let task = spawn(async move { /* ... */ });
+
+// Cancellare con abort()
+if let Some(task) = debounce_task.read().as_ref() {
+    task.abort();
+}
+```
+
+**4. Cleanup on Unmount**
+```rust
+use_effect(move || {
+    // Cleanup quando il componente viene smontato
+    async move {
+        if let Some(task) = debounce_task.read().as_ref() {
+            task.abort();
+        }
+        cancel_token.cancel();
+    }
+});
+```
+
+### Type Safety Notes
+
+- `FormSecret` wraps `SecretString` for UI components
+- `PasswordEvaluation` contains both strength and reasons
+- All password operations use `SecretString::expose_secret()` minimally
+- Never log passwords in plain text - only error messages
 
 ## References
 
