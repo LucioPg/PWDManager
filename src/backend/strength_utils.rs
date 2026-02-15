@@ -2,10 +2,10 @@ use ::std::panic;
 use dioxus::prelude::*;
 use secrecy::{ExposeSecret, SecretString};
 use std::collections::HashSet;
-use std::path::PathBuf;
 use std::sync::OnceLock;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
+use tracing;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PasswordEvaluation {
@@ -13,13 +13,9 @@ pub struct PasswordEvaluation {
     pub reasons: Vec<String>,
 }
 
-// Definisci l'asset della blacklist usando il sistema manganis di Dioxus 0.7.3
-// L'attributo #[used] forza l'inclusione dell'asset anche se non referenziato direttamente nel RSX
-#[used]
-static BLACKLIST_ASSET: Asset = asset!(
-    "/assets/10k-most-common.txt",
-    AssetOptions::builder().with_hash_suffix(false)
-);
+// Blacklist delle password comuni - embedded direttamente nel binary
+// Usiamo include_str! per embeddare il file a compile-time
+const BLACKLIST_CONTENT: &str = include_str!("../../assets/10k-most-common.txt");
 
 // Caricamento pigro della blacklist in memoria
 static COMMON_PASSWORDS: OnceLock<HashSet<String>> = OnceLock::new();
@@ -32,30 +28,20 @@ pub enum PasswordStrength {
     STRONG,
 }
 
-/// Inizializza la blacklist dall'asset Dioxus
-/// L'asset viene automaticamente copiato nella cartella assets/ accanto all'eseguibile durante il bundle
+/// Inizializza la blacklist delle password comuni
+/// Il file è embedded nel binary a compile-time usando include_str!
 pub fn init_blacklist() -> std::io::Result<()> {
-    println!("Caricamento blacklist dall'asset Dioxus...");
+    tracing::info!("Initializing password blacklist from embedded content");
 
-    // Ottieni il percorso dell'asset
-    // In desktop, gli asset sono copiati nella cartella "assets/" accanto all'eseguibile
-    let asset_path_str = BLACKLIST_ASSET.to_string();
-    let asset_path = PathBuf::from(asset_path_str.trim_start_matches('/'));
-
-    println!("Percorso asset: {:?}", asset_path);
-
-    // Leggi il contenuto del file
-    let content = std::fs::read_to_string(&asset_path).map_err(|e| {
-        eprintln!("Errore lettura blacklist da {:?}: {}", asset_path, e);
-        e
-    })?;
-
-    // Crea l'HashSet delle password blacklistate
-    let set: HashSet<String> = content.lines().map(|l| l.trim().to_lowercase()).collect();
+    // Crea l'HashSet delle password blacklistate dal contenuto embedded
+    let set: HashSet<String> = BLACKLIST_CONTENT
+        .lines()
+        .map(|l| l.trim().to_lowercase())
+        .collect();
 
     let count = set.len();
-    let _ = COMMON_PASSWORDS.set(set);
-    println!("Blacklist caricata con successo! ({} password)", count);
+    COMMON_PASSWORDS.set(set).expect("Blacklist already initialized");
+    tracing::info!("Blacklist initialized successfully! ({} passwords)", count);
     Ok(())
 }
 
