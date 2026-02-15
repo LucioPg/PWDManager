@@ -5,6 +5,7 @@
 //! - Criptare le password con AES-256-GCM usando Argon2 come KDF
 //! - Decriptare le password salvate
 //! - Salvare le password nel database
+#![allow(dead_code)]
 
 use crate::backend::db_backend::{
     fetch_password_created_at_from_id, save_or_update_stored_password,
@@ -306,13 +307,6 @@ pub async fn create_stored_passwords(
     })
     .await
     .map_err(|e| DBError::new_password_save_error(format!("Join error: {}", e)))?
-}
-
-async fn helper_upsert_stored_passwords(
-    pool: &SqlitePool,
-    stored_passwords: Vec<StoredPassword>,
-) -> Result<(), DBError> {
-    todo!();
 }
 
 /// Decripta una password salvata nel database.
