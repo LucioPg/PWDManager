@@ -50,12 +50,29 @@
 
 ### Frontend
 
+#### Strength
+
+- [ ] Estrarre componente salvataggio password da componente registrazione.
+- [ ] Agganciare funzione di calcolo strength a TUTTI i componenti che salvano password.
+- [ ] Usare spinner in attesa calcolo strength.
+- [ ] Mostrare risultato testuale e grafico di forza della password.
+- [ ] Usare pulsante info per spiegare il risultato della valutazione della forza della password.
+
+#### Migration
+
 - [ ] Creare trigger async di ri-cryptaggio password nel caso un utente cambi la password.
-- [ ] Creare dialog di avviso di migrazione password
+- [ ] Creare dialog di avviso di migrazione password.
 - [ ] Creare dialog di migrazione password con progressbar e tasto pausa.
 
 ### Backend
 
-- [ ] Creare funzione di fetch per temp_old_password
-- [ ] Creare meccanismo di lavoro parallelo con rayon e tokio spawn_blocking
+#### Strength
+
+- [ ] Sostituire funzione di calcolo strength con strength_utils.
+- [ ] Creare meccanismo di spiegazione della valutazione della forza della password.
+
+#### Migration
+
+- [ ] Creare funzione di fetch per temp_old_password.
+- [ ] Creare meccanismo di lavoro parallelo con rayon e tokio spawn_blocking.
 - [ ] Creare funzione di aggregazione delle query per salvare in batch.
