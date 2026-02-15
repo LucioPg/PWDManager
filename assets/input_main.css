@@ -1046,6 +1046,14 @@ button[class*="btn-"] {
   .strength-reasons-tooltip {
     animation: fadeIn 0.2s ease-out;
   }
+
+  .strength-reasons-tooltip h4 {
+    color: #1f2937; /* gray-800 */
+  }
+
+  .strength-reasons-tooltip li {
+    color: #374151; /* gray-700 */
+  }
 }
 
 @keyframes fadeIn {

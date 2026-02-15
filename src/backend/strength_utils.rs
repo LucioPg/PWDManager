@@ -195,15 +195,15 @@ pub async fn evaluate_password_strength_tx(
     }
 
     // Calcola strength finale basata su reasons
-    if strength != PasswordStrength::NotEvaluated {
-        strength = if reasons.is_empty() {
-            PasswordStrength::STRONG
-        } else if reasons.len() <= 2 {
-            PasswordStrength::MEDIUM
-        } else {
-            PasswordStrength::WEAK
-        };
-    }
+    // (la condizione precedente era sbagliata: strength è inizializzato a NotEvaluated
+    // e non viene mai cambiato prima di questo punto, quindi il check era sempre false)
+    strength = if reasons.is_empty() {
+        PasswordStrength::STRONG
+    } else if reasons.len() <= 2 {
+        PasswordStrength::MEDIUM
+    } else {
+        PasswordStrength::WEAK
+    };
 
     let evaluation = PasswordEvaluation { strength, reasons };
 
