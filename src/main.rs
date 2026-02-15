@@ -8,21 +8,24 @@ use crate::backend::db_backend::list_users_no_avatar;
 use crate::backend::strength_utils::init_blacklist;
 use crate::components::{
     AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, ProgressChn,
-    RouteWrapper, Settings, Spinner, SpinnerSize, ToastContainer, ToastHubState, UpsertUser,
+    RouteWrapper, Settings, Spinner, SpinnerSize, Style, ToastContainer, ToastHubState, UpsertUser,
     show_toast_error, show_toast_success,
 };
 use backend::db_backend::init_db;
 use dioxus::core::Task;
 use dioxus::prelude::*;
 use gui_launcher::launch_desktop;
-use std::error::Error;
 
-// Asset CSS di Tailwind
-static TAILWIND_CSS: &str = include_str!("../assets/tailwind.css");
-static MAIN_CSS: &str = include_str!("../assets/main.css");
-const LOGO_BYTES: &[u8] = include_bytes!("../assets/logo.png");
+// const LOGO_BYTES: &[u8] = include_bytes!("../assets/logo.png");
+//
+// // Asset CSS di Tailwind only in dev
+// #[cfg(debug_assertions)]
+// // static TAILWIND_CSS: &str = include_str!("../assets/tailwind.css");
+// static TAILWIND_CSS: Asset = asset!("../assets/tailwind.css");
+// #[cfg(debug_assertions)]
+// // static MAIN_CSS: &str = include_str!("../assets/main.css");
+// static MAIN_CSS: Asset = asset!("../assets/main.css");
 
-const SHOW_USERS_LIST: bool = true;
 #[component]
 fn App() -> Element {
     let auth_state = auth::AuthState::new();
@@ -40,7 +43,7 @@ fn App() -> Element {
     // Flag per ricordare se abbiamo già notificato l'inizializzazione del DB
     let mut db_init_notified = use_signal(|| false);
     let mut users_list_printed = use_signal(|| false);
-
+    if cfg!(debug_assertions) {}
     // Cleanup del pool quando il componente viene smontato o l'app si chiude
     use_drop(move || {
         let db_resource_clone = db_resource_clone_drop.clone();
@@ -79,25 +82,27 @@ fn App() -> Element {
                     new_handle.cancel();
                 }
                 // Lista utenti: solo la prima volta (se abilitato)
-                if SHOW_USERS_LIST && !users_list_printed() {
-                    let pool_clone = pool.clone();
-                    let handle = spawn(async move {
-                        match list_users_no_avatar(&pool_clone).await {
-                            Ok(users) => {
-                                println!("=== LISTA UTENTI ===");
-                                println!("ID  --  Username  --  Creation Date");
-                                for (id, username, password) in users {
-                                    println!("{}\t{}\t{}", id, username, password);
+                if cfg!(debug_assertions) {
+                    if !users_list_printed() {
+                        let pool_clone = pool.clone();
+                        let handle = spawn(async move {
+                            match list_users_no_avatar(&pool_clone).await {
+                                Ok(users) => {
+                                    println!("=== LISTA UTENTI ===");
+                                    println!("ID  --  Username  --  Creation Date");
+                                    for (id, username, password) in users {
+                                        println!("{}\t{}\t{}", id, username, password);
+                                    }
+                                    println!("===================");
+                                    users_list_printed.set(true);
                                 }
-                                println!("===================");
-                                users_list_printed.set(true);
+                                Err(e) => {
+                                    println!("Errore nel recupero utenti: {:?}", e);
+                                }
                             }
-                            Err(e) => {
-                                println!("Errore nel recupero utenti: {:?}", e);
-                            }
-                        }
-                    });
-                    spawn_handle.set(Some(handle));
+                        });
+                        spawn_handle.set(Some(handle));
+                    }
                 }
             }
             Some(Err(_)) => {
@@ -114,10 +119,7 @@ fn App() -> Element {
             use_context_provider(|| pool.clone());
             rsx! {
                 // Carica il CSS di Tailwind globalmente
-                // Stylesheet {href: BLACKLIST_FILE, }
-                // Stylesheet {href: MAIN_CSS_TEST, }
-                document::Style {"{TAILWIND_CSS}"}
-                document::Style {"{MAIN_CSS}"}
+                Style {}
                 ToastContainer {}
                 Router::<Route> {}
             }
@@ -125,8 +127,7 @@ fn App() -> Element {
         Some(Err(e)) => {
             // Mostriamo l'errore all'utente in modo elegante
             rsx! {
-                document::Style {"{TAILWIND_CSS}"}
-                document::Style {"{MAIN_CSS}"}
+                Style {}
                 div { class: "error-container",
                     h1 { "Errore critico del Database" }
                     p { "{e}" }
@@ -136,8 +137,7 @@ fn App() -> Element {
         }
         None => {
             rsx! {
-                document::Style {"{TAILWIND_CSS}"}
-                document::Style {"{MAIN_CSS}"}
+                Style {}
                 div {
                     class: "flex gap-4 justify-center items-center h-screen",
                     Spinner {

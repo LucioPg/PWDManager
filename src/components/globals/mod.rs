@@ -8,6 +8,7 @@ pub mod pagenotfound;
 mod route_wrapper;
 pub mod spinner;
 pub mod stat_card;
+mod style;
 pub mod tabs;
 mod toast_hub;
 
@@ -21,5 +22,6 @@ pub use pagenotfound::*;
 pub use route_wrapper::*;
 pub use spinner::*;
 pub use stat_card::*;
+pub use style::*;
 pub use tabs::*;
 pub use toast_hub::*;

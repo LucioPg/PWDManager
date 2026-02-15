@@ -1,5 +1,6 @@
+use crate::Route;
 use crate::backend::utils::base64_encode;
-use crate::{LOGO_BYTES, Route};
+use crate::components::globals::style::LOGO_BYTES;
 use dioxus::prelude::*;
 
 #[component]
