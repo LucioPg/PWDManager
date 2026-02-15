@@ -209,3 +209,71 @@ fn calculate_internal_score(chars: Vec<char>) -> PasswordStrength {
         PasswordStrength::WEAK
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use secrecy::SecretString;
+
+    #[test]
+    fn test_blacklist_section_with_common_password() {
+        let pwd = SecretString::new("password".to_string().into());
+        let result = blacklist_section(&pwd);
+        assert_eq!(result, Ok(Some("Password is in the top 10,000 most common".to_string())));
+    }
+
+    #[test]
+    fn test_blacklist_section_with_strong_password() {
+        let pwd = SecretString::new("CorrectHorseBatteryStaple!123".to_string().into());
+        let result = blacklist_section(&pwd);
+        assert_eq!(result, Ok(None));
+    }
+
+    #[test]
+    fn test_length_section_too_short() {
+        let pwd = SecretString::new("Short1!".to_string().into());
+        let result = length_section(&pwd);
+        assert_eq!(result, Ok(Some("Password must be at least 8 characters".to_string())));
+    }
+
+    #[test]
+    fn test_length_section_valid() {
+        let pwd = SecretString::new("LongEnough123!".to_string().into());
+        let result = length_section(&pwd);
+        assert_eq!(result, Ok(None));
+    }
+
+    #[test]
+    fn test_variety_section_missing_uppercase() {
+        let pwd = SecretString::new("lowercase123!".to_string().into());
+        let result = character_variety_section(&pwd);
+        assert!(result.is_ok());
+        if let Ok(Some(reason)) = result {
+            assert!(reason.contains("uppercase") || reason.contains("variety"));
+        }
+    }
+
+    #[test]
+    fn test_variety_section_all_categories() {
+        let pwd = SecretString::new("HasAll123!@#".to_string().into());
+        let result = character_variety_section(&pwd);
+        assert_eq!(result, Ok(None));
+    }
+
+    #[test]
+    fn test_pattern_section_repetitive() {
+        let pwd = SecretString::new("aaaaBBBB1111".to_string().into());
+        let result = pattern_analysis_section(&pwd);
+        assert!(result.is_ok());
+        if let Ok(Some(reason)) = result {
+            assert!(reason.contains("repetitive") || reason.contains("pattern"));
+        }
+    }
+
+    #[test]
+    fn test_pattern_section_strong() {
+        let pwd = SecretString::new("RandomPass123!@#Word".to_string().into());
+        let result = pattern_analysis_section(&pwd);
+        assert_eq!(result, Ok(None));
+    }
+}
