@@ -4,11 +4,11 @@ use crate::backend::ui_utils::pick_and_process_avatar;
 use crate::backend::utils::get_user_avatar_with_default;
 use crate::components::{
     ActionButton, AvatarSelector, AvatarSize, ButtonSize, ButtonType, ButtonVariant, FormField,
-    FormSecret, InputType, UserDeletionDialog, schedule_toast_success, show_toast_error,
-    show_toast_success, use_toast,
+    FormSecret, InputType, PasswordHandler, UserDeletionDialog, schedule_toast_success,
+    show_toast_error, show_toast_success, use_toast,
 };
 use dioxus::prelude::*;
-use secrecy::{ExposeSecret, SecretString};
+use secrecy::ExposeSecret;
 use sqlx::SqlitePool;
 use tracing::instrument;
 
@@ -52,9 +52,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
             .unwrap_or_default()
     });
     #[allow(unused_mut)]
-    let mut password = use_signal(|| FormSecret(SecretString::new("".into())));
-    #[allow(unused_mut)]
-    let mut repassword = use_signal(|| FormSecret(SecretString::new("".into())));
+    let mut evaluated_password = use_signal(|| Option::<FormSecret>::None);
     let mut avatar = use_signal(|| {
         user_to_edit
             .as_ref()
@@ -173,25 +171,44 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         show_delete_modal.set(false);
     };
     let on_submit = move |_| {
-        let p = password.read().clone();
-        let rp = repassword.read().clone();
-        let u = username.read().clone();
-        let a = new_avatar.read().clone();
-        let pool = pool_clone_on_submit.clone();
-        let mut auth_state = auth_state_submit_clone.clone();
-        // Validazione Client-Side
-        if p != rp {
-            error.set(Some("Passwords do not match!".to_string()));
-            return;
-        }
+        let pwd = match evaluated_password.read().clone() {
+            Some(p) => p,
+            None => {
+                error.set(Some("Please complete password validation".to_string()));
+                return;
+            }
+        };
 
-        if !is_updating && p.expose_secret().trim().is_empty() {
+        // Validate password is not empty for registration (CREATE mode)
+        if !is_updating && pwd.expose_secret().trim().is_empty() {
             error.set(Some("Password is required for registration".to_string()));
             return;
         }
 
+        let u = username.read().clone();
+        let a = new_avatar.read().clone();
+        let pool = pool_clone_on_submit.clone();
+        let mut auth_state = auth_state_submit_clone.clone();
+
+        // For update mode, allow empty password
+        if is_updating && pwd.expose_secret().trim().is_empty() {
+            // Password not being changed, continue with update
+            spawn(async move {
+                match save_or_update_user(&pool, user_id, u, None, a).await {
+                    Ok(_) => {
+                        auth_state.logout();
+                        let message = "User Updated successfully!";
+                        schedule_toast_success(message.to_string(), toast);
+                        nav.push("/login");
+                    }
+                    Err(e) => error.set(Some(e.to_string())),
+                }
+            });
+            return;
+        }
+
         spawn(async move {
-            match save_or_update_user(&pool, user_id, u, Some(p.0), a).await {
+            match save_or_update_user(&pool, user_id, u, Some(pwd.0), a).await {
                 Ok(_) => {
                     auth_state.logout();
                     let message = if is_updating {
@@ -232,19 +249,11 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                         value: username,
                         required: true,
                     }
-                    FormField {
-                        label: "Password",
-                        input_type: InputType::Password,
-                        placeholder: "Create a password",
-                        value: password,
-                        required: password_required,
-                    }
-                    FormField {
-                        label: "Confirm Password",
-                        input_type: InputType::Password,
-                        placeholder: "Confirm your password",
-                        value: repassword,
-                        required: password_required,
+                    PasswordHandler {
+                        on_password_change: move |pwd| {
+                            evaluated_password.set(Some(pwd));
+                        },
+                        password_required: password_required,
                     }
                     // ActionButtons {
                     //     primary_text: "{submit_btn_text}",
