@@ -1,17 +1,20 @@
 # PasswordHandler & StrengthAnalyzer - Design Document
 
-**Date:** 2025-02-15
+**Date:** 2026-02-15
 **Status:** Approved
 **Author:** Brainstorming session with user
 
 ## Overview
 
-Questo design definisce l'implementazione di due componenti riutilizzabili per la gestione e la valutazione della robustezza delle password in PWDManager:
+Questo design definisce l'implementazione di due componenti riutilizzabili per la gestione e la valutazione della
+robustezza delle password in PWDManager:
 
-- **PasswordHandler**: Componente container che gestisce input password/retype-password, debounce, valutazione e cancellazione
+- **PasswordHandler**: Componente container che gestisce input password/retype-password, debounce, valutazione e
+  cancellazione
 - **StrengthAnalyzer**: Componente standalone che visualizza lo stato di valutazione con colori e reasons
 
-Questi componenti saranno utilizzati sia per la MasterPassword (registrazione/account settings) che per le future StoredPassword.
+Questi componenti saranno utilizzati sia per la MasterPassword (registrazione/account settings) che per le future
+StoredPassword.
 
 ## Goals
 
@@ -78,6 +81,7 @@ pub enum PasswordStrength {
 ```
 
 **Color Mapping:**
+
 - `NotEvaluated` → Grigio (`text-gray-500`)
 - `WEAK` → Rosso (`text-error-600`)
 - `MEDIUM` → Arancione (`text-warning-600`)
@@ -88,17 +92,20 @@ pub enum PasswordStrength {
 **Sezioni indipendenti (Single Responsibility Principle):**
 
 Ogni sezione è una funzione che ritorna `Result<Option<String>, ()>`:
+
 - `Ok(Some(reason))` → Fallito con reason
 - `Ok(None)` → Superato
 - `Err(())` → Errore fatale, interrompi tutto
 
 **Sezioni:**
+
 1. **Blacklist check**: Controlla se la password è nella lista delle 10k password comuni
 2. **Length check**: Verifica che la password abbia almeno 8 caratteri
 3. **Character variety**: Controlla presenza di maiuscole, minuscole, numeri, speciali
 4. **Pattern analysis**: Calcola score penalizzando ripetizioni e sequenze
 
 **Funzione principale:**
+
 ```rust
 pub async fn evaluate_password_strength_tx(
     password: &SecretString,
@@ -108,6 +115,7 @@ pub async fn evaluate_password_strength_tx(
 ```
 
 **Orchestrator pattern:**
+
 - For loop su sezioni
 - Break su `token.is_cancelled()`
 - Log errori con `tracing::error!()`
@@ -118,6 +126,7 @@ pub async fn evaluate_password_strength_tx(
 **Location:** `src/components/globals/password_handler/component.rs`
 
 **Props:**
+
 ```rust
 #[derive(Props, Clone, PartialEq)]
 pub struct PasswordHandlerProps {
@@ -128,6 +137,7 @@ pub struct PasswordHandlerProps {
 ```
 
 **Internal State (use_signal):**
+
 - `password: FormSecret`
 - `repassword: FormSecret`
 - `strength: PasswordStrength`
@@ -137,6 +147,7 @@ pub struct PasswordHandlerProps {
 - `cancel_token: Arc<CancellationToken>` // Arc per shared ownership
 
 **Behavior:**
+
 1. Utente digita in entrambi i campi
 2. Quando `password == repassword` e non vuoti → avvia debounce timer (500ms)
 3. Scaduto il timer → avvia valutazione con `evaluate_password_strength_tx()`
@@ -145,6 +156,7 @@ pub struct PasswordHandlerProps {
 6. On unmount → cancella timer e token
 
 **Debounce Logic:**
+
 ```rust
 use std::sync::Arc;
 use tokio::time::{sleep, Duration};
@@ -201,6 +213,7 @@ debounce_task.set(Some(task));
 **Location:** `src/components/globals/password_handler/strength_analyzer.rs`
 
 **Props:**
+
 ```rust
 #[derive(Props, Clone, PartialEq)]
 pub struct StrengthAnalyzerProps {
@@ -211,6 +224,7 @@ pub struct StrengthAnalyzerProps {
 ```
 
 **Visualizzazione:**
+
 ```
 Strength: [Evaluating... / Weak / Medium / Strong] [?]?
 
@@ -221,6 +235,7 @@ Why this rating?
 ```
 
 **States:**
+
 - `is_evaluating = true` → Mostra "Evaluating..." in grigio corsivo
 - `strength = NotEvaluated` → Testo grigio
 - `strength = WEAK/MEDIUM/STRONG` → Testo colorato
@@ -231,14 +246,17 @@ Why this rating?
 **Changes to `src/components/features/upsert_user.rs`:**
 
 **Remove:**
+
 - Signals `password` e `repassword`
 - Due `FormField` per password e retype
 
 **Add:**
+
 - Signal `evaluated_password: Option<FormSecret>`
 - Single `PasswordHandler` component
 
 **Modified on_submit:**
+
 ```rust
 let on_submit = move |_| {
     let pwd = match evaluated_password.read().clone() {
@@ -253,6 +271,7 @@ let on_submit = move |_| {
 ```
 
 **RSX:**
+
 ```rust
 form { onsubmit: on_submit, class: "flex flex-col gap-3 w-full",
     FormField {
@@ -320,14 +339,14 @@ form { onsubmit: on_submit, class: "flex flex-col gap-3 w-full",
 
 ## Error Handling & Edge Cases
 
-| Case | Behavior |
-|------|----------|
-| Password vuote | `NotEvaluated`, grigio |
-| Password non corrispondenti | Reason: "Passwords do not match" |
-| Valutazione cancellata | `NotEvaluated`, reason: "Evaluation cancelled" |
-| Errore durante valutazione | `NotEvaluated`, reason: "Error" (logged) |
-| Utente lascia la pagina | Cleanup in `use_effect` |
-| Debounce race condition | Ogni input cancella il precedente |
+| Case                        | Behavior                                       |
+|-----------------------------|------------------------------------------------|
+| Password vuote              | `NotEvaluated`, grigio                         |
+| Password non corrispondenti | Reason: "Passwords do not match"               |
+| Valutazione cancellata      | `NotEvaluated`, reason: "Evaluation cancelled" |
+| Errore durante valutazione  | `NotEvaluated`, reason: "Error" (logged)       |
+| Utente lascia la pagina     | Cleanup in `use_effect`                        |
+| Debounce race condition     | Ogni input cancella il precedente              |
 
 ## Security Considerations
 
@@ -392,36 +411,36 @@ mod tests {
 ## Implementation Flow
 
 1. **Refactor strength_utils**
-   - Add `PasswordEvaluation` struct
-   - Add `NotEvaluated` to `PasswordStrength`
-   - Create independent section functions
-   - Implement for loop orchestrator
-   - Add error logging with `tracing::error!()`
+    - Add `PasswordEvaluation` struct
+    - Add `NotEvaluated` to `PasswordStrength`
+    - Create independent section functions
+    - Implement for loop orchestrator
+    - Add error logging with `tracing::error!()`
 
 2. **Create StrengthAnalyzer**
-   - File `strength_analyzer.rs`
-   - Implement color-based rendering
-   - Implement tooltip/dropdown for reasons
+    - File `strength_analyzer.rs`
+    - Implement color-based rendering
+    - Implement tooltip/dropdown for reasons
 
 3. **Create PasswordHandler**
-   - File `component.rs`
-   - Implement internal state with signals
-   - Implement debounce timer using `tokio::time::sleep` (NOT `set_interval`)
-   - Use `Arc<CancellationToken>` for cancellation (CancellationToken is not Clone)
-   - Use `Task` handle for spawn cancellation (NOT `Interval`)
+    - File `component.rs`
+    - Implement internal state with signals
+    - Implement debounce timer using `tokio::time::sleep` (NOT `set_interval`)
+    - Use `Arc<CancellationToken>` for cancellation (CancellationToken is not Clone)
+    - Use `Task` handle for spawn cancellation (NOT `Interval`)
 
 4. **Integrate into UpsertUser**
-   - Replace FormField pairs with PasswordHandler
-   - Add evaluated_password signal
-   - Modify on_submit to use evaluated password
+    - Replace FormField pairs with PasswordHandler
+    - Add evaluated_password signal
+    - Modify on_submit to use evaluated password
 
 5. **CSS and styling**
-   - Add classes to `input_main.css`
-   - Verify colors and animations
+    - Add classes to `input_main.css`
+    - Verify colors and animations
 
 6. **Testing**
-   - Manual tests as per checklist
-   - Verify log file for errors
+    - Manual tests as per checklist
+    - Verify log file for errors
 
 ## Future Enhancements (Nice-to-Have)
 
@@ -434,6 +453,7 @@ mod tests {
 ## Dependencies
 
 **Existing:**
+
 - `dioxus` 0.7
 - `secrecy` (SecretString)
 - `tokio` (async runtime, time::sleep)
@@ -446,12 +466,14 @@ mod tests {
 ## Migration Path
 
 **From existing UpsertUser:**
+
 1. Remove password/repassword FormField pairs
 2. Add PasswordHandler component
 3. Add evaluated_password signal
 4. Update on_submit validation
 
 **Backwards compatibility:**
+
 - Legacy `evaluate_password_strength()` maintained with `#[deprecated]`
 - No breaking changes to existing database operations
 
@@ -460,6 +482,7 @@ mod tests {
 ### Dioxus 0.7 Specific Considerations
 
 **1. CancellationToken Arc Wrapper**
+
 ```rust
 // CancellationToken non è Clone, usare Arc
 use std::sync::Arc;
@@ -468,6 +491,7 @@ let token_clone = Arc::clone(&cancel_token); // Per passare agli async tasks
 ```
 
 **2. Debounce with tokio::time::sleep**
+
 ```rust
 // NON usare set_interval per debounce (si ripete!)
 // USARE tokio::time::sleep per esecuzione singola dopo delay
@@ -478,6 +502,7 @@ sleep(Duration::from_millis(500)).await;
 ```
 
 **3. Task Cancellation**
+
 ```rust
 // Usare spawn() che ritorna un Task
 let task = spawn(async move { /* ... */ });
@@ -489,6 +514,7 @@ if let Some(task) = debounce_task.read().as_ref() {
 ```
 
 **4. Cleanup on Unmount**
+
 ```rust
 use_effect(move || {
     // Cleanup quando il componente viene smontato
