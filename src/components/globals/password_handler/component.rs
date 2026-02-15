@@ -53,16 +53,7 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
         let pwd_match = new_pwd.0.expose_secret() == re_pwd.0.expose_secret();
         let is_empty = new_pwd.0.expose_secret().is_empty();
 
-        tracing::info!(
-            is_empty = is_empty,
-            pwd_match = pwd_match,
-            pwd_len = new_pwd.0.expose_secret().len(),
-            re_pwd_len = re_pwd.0.expose_secret().len(),
-            "Password callback - condition check"
-        );
-
         if !is_empty && pwd_match {
-            tracing::info!("Spawning debounce task for password evaluation");
             // Start debounce timer
             let mut strength_sig = strength.clone();
             let mut reasons_sig = reasons.clone();
@@ -70,7 +61,6 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
             let on_change = props.on_password_change.clone();
 
             let task = spawn(async move {
-                tracing::info!("Debounce task started, waiting {}ms", DEBOUNCE_MS);
                 sleep(Duration::from_millis(DEBOUNCE_MS)).await;
 
                 if token.is_cancelled() {
