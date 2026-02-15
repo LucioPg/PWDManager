@@ -161,6 +161,7 @@ pub async fn evaluate_password_strength_tx(
     info!("evaluation is about to start...");
     let mut reasons = Vec::new();
     let mut strength = PasswordStrength::NotEvaluated;
+    let mut is_error = false;
 
     // Orchestrator: esegui sezioni in sequenza
     let sections: Vec<(&str, fn(&SecretString) -> Result<Option<String>, ()>)> = vec![
@@ -175,6 +176,7 @@ pub async fn evaluate_password_strength_tx(
         if token.is_cancelled() {
             strength = PasswordStrength::NotEvaluated;
             reasons.push("Evaluation cancelled".to_string());
+            is_error = true;
             break;
         }
 
@@ -188,6 +190,7 @@ pub async fn evaluate_password_strength_tx(
             Err(()) => {
                 error!(section = %section_name, "Fatal error in password evaluation section");
                 reasons.push("Error".to_string());
+                is_error = true;
                 strength = PasswordStrength::NotEvaluated;
                 break;
             }
@@ -197,13 +200,15 @@ pub async fn evaluate_password_strength_tx(
     // Calcola strength finale basata su reasons
     // (la condizione precedente era sbagliata: strength è inizializzato a NotEvaluated
     // e non viene mai cambiato prima di questo punto, quindi il check era sempre false)
-    strength = if reasons.is_empty() {
-        PasswordStrength::STRONG
-    } else if reasons.len() <= 2 {
-        PasswordStrength::MEDIUM
-    } else {
-        PasswordStrength::WEAK
-    };
+    if !is_error {
+        strength = if reasons.is_empty() {
+            PasswordStrength::STRONG
+        } else if reasons.len() <= 2 {
+            PasswordStrength::MEDIUM
+        } else {
+            PasswordStrength::WEAK
+        };
+    }
 
     let evaluation = PasswordEvaluation { strength, reasons };
 
