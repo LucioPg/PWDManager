@@ -30,9 +30,11 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
     let mut debounce_task = use_signal(|| None::<Task>);
     let mut cancel_token = use_signal(|| Arc::new(CancellationToken::new()));
 
-    // Helper closure to trigger password evaluation
-    // Extracted to avoid ~100 lines of code duplication between the two use_effect blocks
-    let mut trigger_evaluation = move || {
+    // Watch both password and repassword changes for debounce evaluation
+    // Single use_effect monitors both signals to avoid closure move issues
+    // and to prevent duplicate evaluations when both fields change
+    use_effect(move || {
+        // Read both signals to establish dependencies
         let pwd = password.read().clone();
         let re_pwd = repassword.read().clone();
 
@@ -85,18 +87,6 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
 
             debounce_task.set(Some(task));
         }
-    };
-
-    // Watch password changes for debounce evaluation
-    use_effect(move || {
-        let _ = password.read();
-        trigger_evaluation();
-    });
-
-    // Watch repassword changes to trigger re-evaluation
-    use_effect(move || {
-        let _ = repassword.read();
-        trigger_evaluation();
     });
 
     // Cleanup on component unmount
