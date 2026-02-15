@@ -9,7 +9,6 @@ gui-launcher = {path = "gui_launcher" }
 custom_errors = {path = "custom_errors"}
 tracing = "0.1.44"
 dioxus = { version = "0.7.3", features = ["desktop", "router"] }
-manganis = "0.7.0-rc.4"
 sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite", "macros"] }
 tokio = { version = "1.49.0", features = ["full", "tracing"] }
 argon2 = { version = "0.5.3", features = ["std", "zeroize"] }

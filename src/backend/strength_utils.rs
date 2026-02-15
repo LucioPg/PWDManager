@@ -1,6 +1,5 @@
 use ::std::panic;
-use dioxus::html::completions::CompleteWithBraces::math;
-use manganis::{Asset, asset};
+use dioxus::prelude::*;
 use secrecy::{ExposeSecret, SecretString};
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -11,7 +10,10 @@ use tokio_util::sync::CancellationToken;
 // Definisci l'asset della blacklist usando il sistema manganis di Dioxus 0.7.3
 // L'attributo #[used] forza l'inclusione dell'asset anche se non referenziato direttamente nel RSX
 #[used]
-static BLACKLIST_ASSET: Asset = asset!("/resources/10k-most-common.txt");
+static BLACKLIST_ASSET: Asset = asset!(
+    "/assets/10k-most-common.txt",
+    AssetOptions::builder().with_hash_suffix(false)
+);
 
 // Caricamento pigro della blacklist in memoria
 static COMMON_PASSWORDS: OnceLock<HashSet<String>> = OnceLock::new();
@@ -42,9 +44,7 @@ pub fn init_blacklist() -> std::io::Result<()> {
     })?;
 
     // Crea l'HashSet delle password blacklistate
-    let set: HashSet<String> = content.lines()
-        .map(|l| l.trim().to_lowercase())
-        .collect();
+    let set: HashSet<String> = content.lines().map(|l| l.trim().to_lowercase()).collect();
 
     let count = set.len();
     let _ = COMMON_PASSWORDS.set(set);
