@@ -171,18 +171,21 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         show_delete_modal.set(false);
     };
     let on_submit = move |_| {
-        let pwd = match evaluated_password.read().clone() {
-            Some(p) => p,
-            None => {
-                error.set(Some("Please complete password validation".to_string()));
+        // In modalità update, evaluated_password può essere None (password non cambiata)
+        let pwd = evaluated_password.read().clone();
+
+        // Per la registrazione, la password deve essere validata
+        if !is_updating && pwd.is_none() {
+            error.set(Some("Please complete password validation".to_string()));
+            return;
+        }
+
+        // Per la registrazione, la password non può essere vuota
+        if let Some(ref p) = pwd {
+            if !is_updating && p.expose_secret().trim().is_empty() {
+                error.set(Some("Password is required for registration".to_string()));
                 return;
             }
-        };
-
-        // Validate password is not empty for registration (CREATE mode)
-        if !is_updating && pwd.expose_secret().trim().is_empty() {
-            error.set(Some("Password is required for registration".to_string()));
-            return;
         }
 
         let u = username.read().clone();
@@ -190,25 +193,17 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         let pool = pool_clone_on_submit.clone();
         let mut auth_state = auth_state_submit_clone.clone();
 
-        // For update mode, allow empty password
-        if is_updating && pwd.expose_secret().trim().is_empty() {
-            // Password not being changed, continue with update
-            spawn(async move {
-                match save_or_update_user(&pool, user_id, u, None, a).await {
-                    Ok(_) => {
-                        auth_state.logout();
-                        let message = "User Updated successfully!";
-                        schedule_toast_success(message.to_string(), toast);
-                        nav.push("/login");
-                    }
-                    Err(e) => error.set(Some(e.to_string())),
-                }
-            });
-            return;
-        }
+        // In modalità update: se password vuota o None → mantieni password attuale
+        let password_to_save = pwd.and_then(|p| {
+            if p.expose_secret().trim().is_empty() {
+                None  // Password vuota → non cambiare
+            } else {
+                Some(p.0)  // Password presente → aggiorna
+            }
+        });
 
         spawn(async move {
-            match save_or_update_user(&pool, user_id, u, Some(pwd.0), a).await {
+            match save_or_update_user(&pool, user_id, u, password_to_save, a).await {
                 Ok(_) => {
                     auth_state.logout();
                     let message = if is_updating {
