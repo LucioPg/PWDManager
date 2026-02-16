@@ -461,13 +461,20 @@
 /* ============================================================
    INPUTS & FORM ELEMENTS
    ============================================================ */
-@utility input-base {
+@utility pwd-input {
     @apply w-full px-4 py-3 bg-white border border-neutral-300 rounded-lg;
     @apply text-base text-neutral-700 placeholder-neutral-400;
     @apply transition-all duration-200;
     @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
     @apply hover:border-neutral-400;
     @apply disabled:bg-neutral-50 disabled:text-neutral-400 disabled:cursor-not-allowed;
+}
+
+/* Textarea specific styles */
+textarea.pwd-input {
+    min-height: 100px;
+    resize: vertical;
+    line-height: 1.5;
 }
 
 
@@ -764,7 +771,8 @@
 }
 
 .password-input-with-toggle {
-    @apply pr-12; /* Space for the toggle button */
+    @apply pr-12;
+    /* Space for the toggle button */
 }
 
 .password-visibility-toggle {
@@ -1068,87 +1076,86 @@ button[class*="btn-"] {
    PASSWORD HANDLER - Strength Analyzer
    ============================================================ */
 @layer components {
-  .strength-analyzer {
-    min-height: 24px;
-  }
+    .strength-analyzer {
+        min-height: 24px;
+    }
 
-  .strength-info-btn {
-    width: 20px;
-    height: 20px;
-    min-width: 20px;
-    font-size: 0.75rem;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: theme('colors.base-300');
-    color: theme('colors.base-content');
-    border: none;
-    cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-  }
+    .strength-info-btn {
+        width: 20px;
+        height: 20px;
+        min-width: 20px;
+        font-size: 0.75rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: theme('colors.base-300');
+        color: theme('colors.base-content');
+        border: none;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
 
-  .strength-info-btn:hover {
-    transform: scale(1.2);
-    box-shadow: 0 0 12px 3px rgba(59, 130, 246, 0.6);
-  }
+    .strength-info-btn:hover {
+        transform: scale(1.2);
+        box-shadow: 0 0 12px 3px rgba(59, 130, 246, 0.6);
+    }
 
-  .strength-reasons-tooltip {
-    animation: fadeIn 0.2s ease-out;
-  }
+    .strength-reasons-tooltip {
+        animation: fadeIn 0.2s ease-out;
+    }
 
-  .strength-reasons-tooltip h4 {
-    color: #1f2937; /* gray-800 */
-  }
+    .strength-reasons-tooltip h4 {
+        color: #1f2937; /* gray-800 */
+    }
 
-  .strength-reasons-tooltip li {
-    color: #374151; /* gray-700 */
-  }
+    .strength-reasons-tooltip li {
+        color: #374151; /* gray-700 */
+    }
 
-  /* Strength bar with gradient */
-  .strength-bar-container {
-    width: 100%;
-    padding: 4px 0;
-  }
+    /* Strength bar with gradient */
+    .strength-bar-container {
+        width: 100%;
+        padding: 4px 0;
+    }
 
-  .strength-bar {
-    width: 100%;
-    height: 8px;
-    border-radius: 4px;
-    background: linear-gradient(
-      to right,
-      #ef4444 0%,      /* red-500: WEAK */
-      #f97316 15%,     /* orange-500 */
-      #eab308 30%,     /* yellow-500: MEDIUM */
-      #22c55e 50%,     /* green-500: STRONG */
-      #3b82f6 70%,     /* blue-500: EPIC */
-      #8b5cf6 95%,     /* violet-500: GOD */
-      #a855f7 100%     /* purple-500: GOD */
-    );
-    position: relative;
-  }
+    .strength-bar {
+        width: 100%;
+        height: 8px;
+        border-radius: 4px;
+        background: linear-gradient(
+                to right,
+                #ef4444 0%, /* red-500: WEAK */ #f97316 15%, /* orange-500 */ #eab308 30%, /* yellow-500: MEDIUM */ #22c55e 50%, /* green-500: STRONG */ #3b82f6 70%, /* blue-500: EPIC */ #8b5cf6 95%, /* violet-500: GOD */ #a855f7 100% /* purple-500: GOD */
+        );
+        position: relative;
+    }
 
-  .strength-cursor {
-    position: absolute;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    width: 16px;
-    height: 16px;
-    background-color: white;
-    border: 2px solid #374151; /* gray-700 */
-    border-radius: 50%;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    transition: left 0.3s ease-out;
-  }
+    .strength-cursor {
+        position: absolute;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 16px;
+        height: 16px;
+        background-color: white;
+        border: 2px solid #374151; /* gray-700 */
+        border-radius: 50%;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        transition: left 0.3s ease-out;
+    }
+
+    .storedrawpassword-container {
+        @apply flex flex-row gap-2 m-4;
+    }
+
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

@@ -62,6 +62,7 @@ impl FormValue for i32 {
 #[derive(Clone, PartialEq, Debug)]
 pub enum InputType {
     Text,
+    Textarea,
     Password,
     #[allow(dead_code)]
     Email,
@@ -77,12 +78,18 @@ impl InputType {
     pub fn as_str(&self) -> &str {
         match self {
             InputType::Text => "text",
+            InputType::Textarea => "text", // textarea non usa type, ma serve per compatibilità
             InputType::Password => "password",
             InputType::Email => "email",
             InputType::Number => "number",
             InputType::Tel => "tel",
             InputType::Url => "url",
         }
+    }
+
+    /// Ritorna true se il tipo richiede un elemento textarea
+    pub fn is_textarea(&self) -> bool {
+        matches!(self, InputType::Textarea)
     }
 }
 
@@ -139,13 +146,7 @@ pub fn FormField<T: FormValue>(
     #[props(default)]
     alphanumeric_only: bool,
 ) -> Element {
-    let input_class = if readonly {
-        "input-base input-readonly"
-    } else if disabled {
-        "input-base input-disabled"
-    } else {
-        "input-base"
-    };
+    let input_class = "pwd-input";
 
     // Funzione di filtro per i caratteri
     let filter_input = move |input: String| -> String {
@@ -247,8 +248,43 @@ pub fn FormField<T: FormValue>(
                 }
             }
         }
+    } else if input_type.is_textarea() {
+        // Layout per textarea
+        rsx! {
+            div { class: if let Some(custom_class) = class {
+                format!("form-group {}", custom_class)
+            } else {
+                "form-group".to_string()
+            },
+                label { class: "form-label",
+                    "{label}"
+                    if required {
+                        span { class: "text-error ml-1", "*" }
+                    }
+                }
+                textarea {
+                    class: "{input_class}",
+                    placeholder: "{placeholder}",
+                    value: "{value.read().to_form_string()}",
+                    oninput: move |e| {
+                        let filtered = filter_input(e.value());
+                        if let Some(new_value) = T::from_form_string(filtered) {
+                            value.set(new_value.clone());
+                            if let Some(callback) = on_change {
+                                callback.call(new_value);
+                            }
+                        }
+                    },
+                    disabled: disabled,
+                    readonly: readonly,
+                    name: name,
+                    required: required,
+                    autocomplete: if autocomplete { "on" } else { "off" },
+                }
+            }
+        }
     } else {
-        // Layout standard senza toggle
+        // Layout standard per input
         rsx! {
             div { class: if let Some(custom_class) = class {
                 format!("form-group {}", custom_class)
