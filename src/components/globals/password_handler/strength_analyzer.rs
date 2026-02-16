@@ -79,10 +79,11 @@ pub fn StrengthAnalyzer(props: StrengthAnalyzerProps) -> Element {
             if !props.is_evaluating && props.score.is_some() {
                 div { class: "strength-bar-container",
                     div { class: "strength-bar",
-                        // Cursor indicator
+                        // Cursor indicator with tooltip
                         div {
                             class: "strength-cursor",
                             style: "left: {cursor_position}%",
+                            title: "Score: {cursor_position}%",
                         }
                     }
                 }
