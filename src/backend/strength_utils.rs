@@ -27,6 +27,8 @@ pub enum PasswordStrength {
     WEAK,
     MEDIUM,
     STRONG,
+    EPIC,
+    GOD,
 }
 
 /// Inizializza la blacklist delle password comuni
@@ -205,20 +207,39 @@ pub async fn evaluate_password_strength_tx(
     // Calcola strength e score finale
     if !is_error {
         // Calcola score (0-100)
-        // Lunghezza: fino a 30 punti (1 punto per carattere, max 30)
-        score += pwd_len.min(30) as i32;
+        // Lunghezza: fino a 20 punti (0.5 punti per carattere, max 20)
+        score += (pwd_len as f64 * 0.5).min(20.0) as i32;
 
-        // Varietà caratteri: fino a 40 punti
+        // Varietà caratteri: fino a 60 punti (15 per tipo)
+        // Aumentato il peso della varietà per bilanciare meglio
         let has_upper = pwd.chars().any(|c| c.is_uppercase());
         let has_lower = pwd.chars().any(|c| c.is_lowercase());
         let has_digit = pwd.chars().any(|c| c.is_ascii_digit());
         let has_special = pwd.chars().any(|c| !c.is_alphanumeric());
         let variety_count = [has_upper, has_lower, has_digit, has_special].iter().filter(|&&b| b).count();
-        score += (variety_count * 10) as i32;
+        score += (variety_count * 15) as i32;
 
-        // Bonus lunghezza extra: +10 se > 12 caratteri
-        if pwd_len > 12 {
+        // Bonus lunghezza extra: +5 se > 12, +10 se > 16
+        if pwd_len > 16 {
             score += 10;
+        } else if pwd_len > 12 {
+            score += 5;
+        }
+
+        // Bonus caratteri speciali multipli: +5 se 2+ caratteri speciali
+        let special_count = pwd.chars().filter(|c| !c.is_alphanumeric()).count();
+        if special_count >= 2 {
+            score += 5;
+        }
+
+        // Bonus entropia: basato su caratteri unici
+        // +5 se >= 12 caratteri unici, +10 se >= 16 caratteri unici
+        let unique_chars: std::collections::HashSet<char> = pwd.chars().collect();
+        let unique_count = unique_chars.len();
+        if unique_count >= 16 {
+            score += 10;
+        } else if unique_count >= 12 {
+            score += 5;
         }
 
         // Penalità per reasons (ogni reason sottrae punti)
@@ -227,10 +248,15 @@ pub async fn evaluate_password_strength_tx(
         // Clampa score tra 0 e 100
         score = score.clamp(0, 100);
 
-        // Determina strength basata su score
-        strength = if score >= 70 {
+        // Determina strength basata su score con i nuovi livelli
+        // Soglie aggiornate per rendere MEDIUM più ampia
+        strength = if score > 95 {
+            PasswordStrength::GOD
+        } else if score >= 85 {
+            PasswordStrength::EPIC
+        } else if score >= 70 {
             PasswordStrength::STRONG
-        } else if score >= 40 {
+        } else if score >= 50 {
             PasswordStrength::MEDIUM
         } else {
             PasswordStrength::WEAK
@@ -298,15 +324,18 @@ fn calculate_internal_score(chars: Vec<char>) -> PasswordStrength {
         let has_digit = chars.iter().any(|c| c.is_digit(10));
         let has_special = chars.iter().any(|c| !c.is_alphanumeric());
 
-        score += (len as i32) * 4;
+        // Lunghezza: 0.5 pt per carattere (max 20)
+        score += ((len as f64) * 0.5).min(20.0) as i32;
+
+        // Varietà: 15 pt per tipo (max 60)
         if has_upper {
-            score += 10;
+            score += 15;
         }
         if has_lower {
-            score += 10;
+            score += 15;
         }
         if has_digit {
-            score += 10;
+            score += 15;
         }
         if has_special {
             score += 15;
@@ -333,21 +362,26 @@ fn calculate_internal_score(chars: Vec<char>) -> PasswordStrength {
         }
         score -= sequences * 10;
 
-        // 5. Valutazione Finale
+        // 5. Valutazione Finale con nuovi livelli
         let types_count = [has_upper, has_lower, has_digit, has_special]
             .iter()
             .filter(|&&b| b)
             .count();
 
-        // Se troppo corta o solo un tipo di carattere, non può essere Medium o Strong
+        // Se troppo corta o solo un tipo di carattere, non può essere oltre WEAK
         if len < 8 || types_count < 2 {
-            score = score.min(45);
+            score = score.min(49);
         }
 
+        score = score.clamp(0, 100);
+
+        // Soglie aggiornate per rendere MEDIUM più ampia
         match score {
-            s if s < 50 => PasswordStrength::WEAK,
-            s if s < 85 => PasswordStrength::MEDIUM,
-            _ => PasswordStrength::STRONG,
+            s if s > 95 => PasswordStrength::GOD,
+            s if s >= 85 => PasswordStrength::EPIC,
+            s if s >= 70 => PasswordStrength::STRONG,
+            s if s >= 50 => PasswordStrength::MEDIUM,
+            _ => PasswordStrength::WEAK,
         }
     });
     result.unwrap_or_else(|_| {

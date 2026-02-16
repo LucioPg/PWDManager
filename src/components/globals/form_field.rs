@@ -132,6 +132,12 @@ pub fn FormField<T: FormValue>(
     /// Mostra il pulsante per toggle visibilità password (solo per InputType::Password)
     #[props(default)]
     show_visibility_toggle: bool,
+    /// Rifiuta spazi nel campo
+    #[props(default)]
+    forbid_spaces: bool,
+    /// Accetta solo caratteri alfanumerici (lettere e numeri)
+    #[props(default)]
+    alphanumeric_only: bool,
 ) -> Element {
     let input_class = if readonly {
         "input-base input-readonly"
@@ -139,6 +145,18 @@ pub fn FormField<T: FormValue>(
         "input-base input-disabled"
     } else {
         "input-base"
+    };
+
+    // Funzione di filtro per i caratteri
+    let filter_input = move |input: String| -> String {
+        let mut result = input;
+        if forbid_spaces {
+            result = result.chars().filter(|c| !c.is_whitespace()).collect();
+        }
+        if alphanumeric_only {
+            result = result.chars().filter(|c| c.is_alphanumeric()).collect();
+        }
+        result
     };
 
     // Stato per la visibilità della password
@@ -172,7 +190,8 @@ pub fn FormField<T: FormValue>(
                         placeholder: "{placeholder}",
                         value: "{value.read().to_form_string()}",
                         oninput: move |e| {
-                            if let Some(new_value) = T::from_form_string(e.value()) {
+                            let filtered = filter_input(e.value());
+                            if let Some(new_value) = T::from_form_string(filtered) {
                                 value.set(new_value.clone());
                                 if let Some(callback) = on_change {
                                     callback.call(new_value);
@@ -248,7 +267,8 @@ pub fn FormField<T: FormValue>(
                     placeholder: "{placeholder}",
                     value: "{value.read().to_form_string()}",
                     oninput: move |e| {
-                        if let Some(new_value) = T::from_form_string(e.value()) {
+                        let filtered = filter_input(e.value());
+                        if let Some(new_value) = T::from_form_string(filtered) {
                             value.set(new_value.clone());
                             if let Some(callback) = on_change {
                                 callback.call(new_value);

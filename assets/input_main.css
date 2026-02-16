@@ -1102,11 +1102,13 @@ button[class*="btn-"] {
     border-radius: 4px;
     background: linear-gradient(
       to right,
-      #ef4444 0%,      /* red-500 */
-      #f97316 25%,     /* orange-500 */
-      #eab308 50%,     /* yellow-500 */
-      #84cc16 75%,     /* lime-500 */
-      #22c55e 100%     /* green-500 */
+      #ef4444 0%,      /* red-500: WEAK */
+      #f97316 15%,     /* orange-500 */
+      #eab308 30%,     /* yellow-500: MEDIUM */
+      #22c55e 50%,     /* green-500: STRONG */
+      #3b82f6 70%,     /* blue-500: EPIC */
+      #8b5cf6 95%,     /* violet-500: GOD */
+      #a855f7 100%     /* purple-500: GOD */
     );
     position: relative;
   }

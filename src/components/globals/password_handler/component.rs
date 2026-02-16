@@ -167,6 +167,7 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
                 autocomplete: false,
                 on_change: on_password_change,
                 show_visibility_toggle: true,
+                forbid_spaces: true,
             }
 
             // Retype password field
@@ -179,6 +180,7 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
                 autocomplete: false,
                 on_change: on_repassword_change,
                 show_visibility_toggle: true,
+                forbid_spaces: true,
             }
 
             // Strength analyzer

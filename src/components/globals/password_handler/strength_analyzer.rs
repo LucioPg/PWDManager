@@ -21,6 +21,8 @@ pub fn StrengthAnalyzer(props: StrengthAnalyzerProps) -> Element {
         PasswordStrength::WEAK => ("text-error-600", "Weak".to_string()),
         PasswordStrength::MEDIUM => ("text-warning-600", "Medium".to_string()),
         PasswordStrength::STRONG => ("text-success-600", "Strong".to_string()),
+        PasswordStrength::EPIC => ("text-blue-600", "Epic".to_string()),
+        PasswordStrength::GOD => ("text-purple-600", "God".to_string()),
     };
 
     // Calculate cursor position (0-100%)

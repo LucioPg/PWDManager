@@ -248,6 +248,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                         placeholder: "Choose a username",
                         value: username,
                         required: true,
+                        alphanumeric_only: true,
                     }
                     PasswordHandler {
                         on_password_change: move |pwd| {

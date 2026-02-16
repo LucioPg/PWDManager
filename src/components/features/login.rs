@@ -59,6 +59,7 @@ pub fn Login() -> Element {
                         value: username,
                         name: Some("username".to_string()),
                         required: true,
+                        alphanumeric_only: true,
                     }
                     FormField {
                         label: "Password".to_string(),
@@ -68,6 +69,7 @@ pub fn Login() -> Element {
                         name: Some("password".to_string()),
                         required: true,
                         show_visibility_toggle: true,
+                        forbid_spaces: true,
                     }
                     ActionButtons {
                         primary_text: "Login".to_string(),
