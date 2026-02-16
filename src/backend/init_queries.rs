@@ -48,7 +48,7 @@ pub static QUERIES: &[&str] = &[
                 location TEXT NOT NULL,
                 password BLOB NOT NULL,
                 notes TEXT,
-                strength TEXT NOT NULL CHECK (strength IN ('weak', 'medium', 'strong')),
+                strength INTEGER NOT NULL CHECK (0 <= strength >= 100),
                 created_at TEXT DEFAULT (datetime('now')),
                 nonce BLOB NOT NULL UNIQUE,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
