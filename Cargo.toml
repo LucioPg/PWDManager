@@ -38,3 +38,6 @@ members = ["gui_launcher", ".", "custom_errors"]
 [features]
 default = ["desktop"]
 desktop = ["dioxus/desktop"]
+# ide-only serve per fare in modo che la ide analizzi il codice normalmente ma il compilatore non tenterà di compilare
+# utile per avere highlight mentre si lavora su elementi non ancora completati. (ricordarsi di attivare la feature nel pannello di cargo della ide)
+ide-only = []

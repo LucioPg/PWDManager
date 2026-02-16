@@ -1,5 +1,10 @@
 pub mod base_modal;
+mod stored_password_upsert;
 pub mod user_deletion;
 
 pub use base_modal::*;
 pub use user_deletion::*;
+
+// ide-only serve per avere highlight mentre si lavora su elementi non ancora completati.
+#[cfg(feature = "ide-only")]
+pub use stored_password_upsert::*;
