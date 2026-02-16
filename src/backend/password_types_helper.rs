@@ -339,11 +339,11 @@ impl PasswordScore {
     }
     pub fn from_score(score: i64) -> PasswordStrength {
         match score {
-            0..=20 => PasswordStrength::WEAK,
-            21..=40 => PasswordStrength::MEDIUM,
-            41..=70 => PasswordStrength::STRONG,
-            71..=90 => PasswordStrength::EPIC,
-            _ => PasswordStrength::GOD,
+            s if s > 95 => PasswordStrength::GOD,
+            s if s >= 85 => PasswordStrength::EPIC,
+            s if s >= 70 => PasswordStrength::STRONG,
+            s if s >= 50 => PasswordStrength::MEDIUM,
+            _ => PasswordStrength::WEAK,
         }
     }
 }
@@ -373,10 +373,10 @@ mod test {
             PasswordScore::new(0).value(),
             PasswordScore::new(-1000100).value()
         );
-        let ps = PasswordScore::new(90);
+        let ps = PasswordScore::new(86);
         assert_eq!(ps.strength(), PasswordStrength::EPIC);
 
-        let ps = PasswordScore::new(40);
+        let ps = PasswordScore::new(51);
         assert_eq!(ps.strength(), PasswordStrength::MEDIUM);
 
         let ps = PasswordScore::new(-50);
@@ -385,7 +385,7 @@ mod test {
         let ps = PasswordScore::new(50000);
         assert_eq!(ps.strength(), PasswordStrength::GOD);
 
-        let ps = PasswordScore::new(50);
+        let ps = PasswordScore::new(71);
         assert_eq!(ps.strength(), PasswordStrength::STRONG);
     }
 }
