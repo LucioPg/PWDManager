@@ -1075,7 +1075,22 @@ button[class*="btn-"] {
   .strength-info-btn {
     width: 20px;
     height: 20px;
+    min-width: 20px;
     font-size: 0.75rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: theme('colors.base-300');
+    color: theme('colors.base-content');
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .strength-info-btn:hover {
+    transform: scale(1.2);
+    box-shadow: 0 0 12px 3px rgba(59, 130, 246, 0.6);
   }
 
   .strength-reasons-tooltip {

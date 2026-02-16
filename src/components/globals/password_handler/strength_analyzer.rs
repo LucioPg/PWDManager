@@ -48,7 +48,7 @@ pub fn StrengthAnalyzer(props: StrengthAnalyzerProps) -> Element {
                     if !props.reasons.is_empty() {
                         div { class: "relative",
                             button {
-                                class: "strength-info-btn btn btn-circle btn-ghost btn-xs",
+                                class: "strength-info-btn",
                                 r#type: "button",
                                 onclick: move |_| show_tooltip.set(!show_tooltip()),
                                 "?"
@@ -56,6 +56,12 @@ pub fn StrengthAnalyzer(props: StrengthAnalyzerProps) -> Element {
 
                             // Tooltip dropdown
                             if show_tooltip() {
+                                // Overlay invisibile per chiudere il tooltip su click outside
+                                div {
+                                    class: "fixed inset-0 z-[5]",
+                                    onclick: move |_| show_tooltip.set(false),
+                                }
+
                                 div { class: "strength-reasons-tooltip absolute top-full left-0 mt-2 z-10",
                                     div { class: "dropdown-content mockup-code bg-base-200 shadow-lg rounded-lg p-3 min-w-[200px]",
                                         h4 { class: "font-bold text-sm mb-2", "Why this rating?" }
