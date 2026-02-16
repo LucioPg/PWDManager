@@ -38,6 +38,9 @@ use tokio_util::sync::CancellationToken;
 /// - `WEAK` - Meno di 8 caratteri
 /// - `MEDIUM` - Tra 8 e 15 caratteri
 /// - `STRONG` - 16 o più caratteri
+#[deprecated(
+    note = "Usare evaluate_password_strength(password: SecretString, cancellation_token: Option<CancellationToken>)"
+)]
 pub async fn calc_strength(password: &SecretString) -> PasswordStrength {
     if password.expose_secret().len() < 8 {
         return PasswordStrength::WEAK;
@@ -48,6 +51,9 @@ pub async fn calc_strength(password: &SecretString) -> PasswordStrength {
     PasswordStrength::STRONG
 }
 
+#[deprecated(
+    note = "Usare evaluate_password_strength(password: SecretString, cancellation_token: Option<CancellationToken>)"
+)]
 pub fn calc_strength_sync(password: &str) -> PasswordStrength {
     if password.len() < 8 {
         return PasswordStrength::WEAK;
@@ -58,6 +64,9 @@ pub fn calc_strength_sync(password: &str) -> PasswordStrength {
     PasswordStrength::STRONG
 }
 
+#[deprecated(
+    note = "Usare evaluate_password_strength(password: SecretString, cancellation_token: Option<CancellationToken>)"
+)]
 pub async fn calc_strength_channel(
     password: &str,
     token: CancellationToken,
