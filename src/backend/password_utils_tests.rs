@@ -6,9 +6,10 @@ use crate::backend::password_types_helper::{
     DbSecretString, PasswordStrength, StoredPassword, StoredRawPassword, UserAuth,
 };
 use crate::backend::password_utils::{
-    calc_strength, create_cipher, create_stored_password_pipeline, create_stored_passwords,
+    create_cipher, create_stored_password_pipeline, create_stored_passwords,
     decrypt_stored_password,
 };
+use crate::backend::strength_utils::evaluate_password_strength;
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;
 
@@ -116,17 +117,26 @@ async fn test_encrypt_decrypt_password_rayon() {
         (
             "https://site1.com-strong",
             "Password1",
-            calc_strength(&SecretString::new("Password1".into())).await,
+            evaluate_password_strength(&SecretString::new("Password1".into()), None)
+                .await
+                .strength,
         ),
         (
             "https://site2.com-medium",
             "Password2",
-            calc_strength(&SecretString::new("PAssword2".into())).await,
+            evaluate_password_strength(&SecretString::new("PAssword2".into()), None)
+                .await
+                .strength,
         ),
         (
             "https://site3.com-weak",
             "VeryLongSecurePassword123!",
-            calc_strength(&SecretString::new("VeryLongSecurePassword123!".into())).await,
+            evaluate_password_strength(
+                &SecretString::new("VeryLongSecurePassword123!".into()),
+                None,
+            )
+            .await
+            .strength,
         ),
     ];
     let mut stored_raw_passwords: Vec<StoredRawPassword> = vec![];
@@ -205,20 +215,48 @@ async fn test_encrypt_decrypt_password_rayon() {
 
 #[tokio::test]
 async fn test_password_strength_weak() {
-    let strength = calc_strength(&SecretString::new("abc".into())).await;
-    assert_eq!(strength, PasswordStrength::WEAK);
+    let evaluation = evaluate_password_strength(&SecretString::new("abc".into()), None).await;
+    assert_eq!(evaluation.strength, PasswordStrength::WEAK);
+    // La password è troppo corta, quindi dovrebbe avere reasons
+    assert!(!evaluation.reasons.is_empty());
+    assert!(evaluation.score.is_some());
+    // Score dovrebbe essere basso
+    assert!(evaluation.score.unwrap() < 50);
 }
 
 #[tokio::test]
 async fn test_password_strength_medium() {
-    let strength = calc_strength(&SecretString::new("password123".into())).await;
-    assert_eq!(strength, PasswordStrength::MEDIUM);
+    // "password123" è nella blacklist, quindi uso una password diversa
+    // "MyPass123!" ha tutti i 4 tipi di caratteri e lunghezza 10
+    // Score: 5 (length) + 60 (4 variety) + 0 bonus = 65 -> MEDIUM
+    let evaluation =
+        evaluate_password_strength(&SecretString::new("MyPass123!".into()), None).await;
+    assert_eq!(evaluation.strength, PasswordStrength::MEDIUM);
+    assert!(evaluation.score.is_some());
+    // Score MEDIUM è tra 50 e 69
+    let score = evaluation.score.unwrap();
+    assert!(score >= 50 && score < 70, "Expected MEDIUM score (50-69), got {}", score);
 }
 
 #[tokio::test]
 async fn test_password_strength_strong() {
-    let strength = calc_strength(&SecretString::new("veryStrongPassword123!@#".into())).await;
-    assert_eq!(strength, PasswordStrength::STRONG);
+    let evaluation = evaluate_password_strength(
+        &SecretString::new("veryStrongPassword123!@#".into()),
+        None,
+    )
+    .await;
+    // Con il nuovo sistema, questa password dovrebbe essere STRONG o superiore
+    // Verifica usando lo score (>= 70 per STRONG, >= 85 per EPIC, > 95 per GOD)
+    assert!(
+        matches!(
+            evaluation.strength,
+            PasswordStrength::STRONG | PasswordStrength::EPIC | PasswordStrength::GOD
+        ),
+        "Expected STRONG or better, got {:?}",
+        evaluation.strength
+    );
+    assert!(evaluation.score.is_some());
+    assert!(evaluation.score.unwrap() >= 70);
 }
 
 #[tokio::test]
