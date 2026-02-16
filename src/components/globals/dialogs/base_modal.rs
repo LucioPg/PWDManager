@@ -1,6 +1,7 @@
 use dioxus::prelude::*;
 
 /// Posizionamento del modal
+#[allow(dead_code)]
 #[derive(Clone, Copy, PartialEq, Debug, Default)]
 pub enum ModalVariant {
     #[default]
