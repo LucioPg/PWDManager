@@ -234,7 +234,7 @@ impl StoredPassword {
         }
     }
 }
-
+#[derive(Debug, Clone)]
 pub struct StoredRawPassword {
     pub id: Option<i64>,
     pub user_id: i64,
@@ -245,6 +245,16 @@ pub struct StoredRawPassword {
 }
 
 impl StoredRawPassword {
+    pub fn new() -> Self {
+        StoredRawPassword {
+            id: None,
+            user_id: 0,
+            location: "".to_string(),
+            password: "".to_string().into(),
+            notes: None,
+            strength: None,
+        }
+    }
     pub fn get_form_fields(
         &self,
     ) -> (
@@ -261,6 +271,16 @@ impl StoredRawPassword {
             self.notes.clone(),
             self.strength.clone(),
         )
+    }
+}
+
+impl PartialEq for StoredRawPassword {
+    fn eq(&self, other: &Self) -> bool {
+        match (&self.id, &other.id) {
+            (Some(id1), Some(id2)) => id1 == id2 && self.location == other.location,
+            (None, None) => true,
+            _ => false,
+        }
     }
 }
 
