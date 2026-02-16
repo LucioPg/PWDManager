@@ -334,6 +334,18 @@ impl PasswordScore {
     pub fn value(&self) -> u8 {
         self.0
     }
+    pub fn strength(&self) -> PasswordStrength {
+        PasswordScore::from_score(self.0 as i64)
+    }
+    pub fn from_score(score: i64) -> PasswordStrength {
+        match score {
+            0..=20 => PasswordStrength::WEAK,
+            21..=40 => PasswordStrength::MEDIUM,
+            41..=70 => PasswordStrength::STRONG,
+            71..=90 => PasswordStrength::EPIC,
+            _ => PasswordStrength::GOD,
+        }
+    }
 }
 impl fmt::Display for PasswordScore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -361,5 +373,19 @@ mod test {
             PasswordScore::new(0).value(),
             PasswordScore::new(-1000100).value()
         );
+        let ps = PasswordScore::new(90);
+        assert_eq!(ps.strength(), PasswordStrength::EPIC);
+
+        let ps = PasswordScore::new(40);
+        assert_eq!(ps.strength(), PasswordStrength::MEDIUM);
+
+        let ps = PasswordScore::new(-50);
+        assert_eq!(ps.strength(), PasswordStrength::WEAK);
+
+        let ps = PasswordScore::new(50000);
+        assert_eq!(ps.strength(), PasswordStrength::GOD);
+
+        let ps = PasswordScore::new(50);
+        assert_eq!(ps.strength(), PasswordStrength::STRONG);
     }
 }
