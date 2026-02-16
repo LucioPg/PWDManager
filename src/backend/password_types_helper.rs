@@ -5,6 +5,7 @@
 
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::{Type, sqlite::Sqlite};
+use std::fmt;
 
 use sqlx_template::SqlxTemplate;
 
@@ -313,4 +314,52 @@ pub enum PasswordStrength {
     STRONG,
     EPIC,
     GOD,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct PasswordScore(u8);
+
+impl PasswordScore {
+    pub const MAX: u8 = 100;
+
+    fn clamp(value: i64) -> u8 {
+        let positive = value.max(0); // clamp inferiore
+        positive.min(Self::MAX as i64) as u8
+    }
+    pub fn new<T: Into<i64>>(value: T) -> Self {
+        let v = value.into();
+        Self(PasswordScore::clamp(v))
+    }
+
+    pub fn value(&self) -> u8 {
+        self.0
+    }
+}
+impl fmt::Display for PasswordScore {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn test_password_score() {
+        assert_eq!(PasswordScore::MAX, PasswordScore::new(100).value());
+        assert_eq!(PasswordScore::MAX, PasswordScore::new(101).value());
+        assert_eq!(PasswordScore::new(0).value(), PasswordScore::new(0).value());
+        assert_eq!(
+            PasswordScore::new(100).value(),
+            PasswordScore::new(1000000).value()
+        );
+        assert_eq!(
+            PasswordScore::new(-100).value(),
+            PasswordScore::new(-1000000).value()
+        );
+        assert_eq!(
+            PasswordScore::new(0).value(),
+            PasswordScore::new(-1000100).value()
+        );
+    }
 }
