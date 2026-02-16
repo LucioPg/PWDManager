@@ -3,6 +3,7 @@ use dioxus::prelude::*;
 use secrecy::{ExposeSecret, SecretString};
 use std::collections::HashSet;
 use std::sync::OnceLock;
+use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 use tracing;
@@ -162,6 +163,9 @@ pub async fn evaluate_password_strength_tx(
 ) {
     use tracing::{error, info};
     info!("evaluation is about to start...");
+
+    // todo remove it's just for testing the spinner since it is too fast otherwise
+    tokio::time::sleep(Duration::from_millis(300)).await;
     let mut reasons = Vec::new();
     let mut strength = PasswordStrength::NotEvaluated;
     let mut is_error = false;
@@ -216,7 +220,10 @@ pub async fn evaluate_password_strength_tx(
         let has_lower = pwd.chars().any(|c| c.is_lowercase());
         let has_digit = pwd.chars().any(|c| c.is_ascii_digit());
         let has_special = pwd.chars().any(|c| !c.is_alphanumeric());
-        let variety_count = [has_upper, has_lower, has_digit, has_special].iter().filter(|&&b| b).count();
+        let variety_count = [has_upper, has_lower, has_digit, has_special]
+            .iter()
+            .filter(|&&b| b)
+            .count();
         score += (variety_count * 15) as i32;
 
         // Bonus lunghezza extra: +5 se > 12, +10 se > 16

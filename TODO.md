@@ -1,3 +1,9 @@
+## Generali
+
+- [ ] rimuovere possibilità di aprire in devtools in release
+- [ ] rimuovere menu contestuali in release
+- [ ] rimuovere menu finestra (windows, help etc...)
+
 ## Registrazione
 
 - [x] Verificare che il nome utente non sia già usato
@@ -31,15 +37,10 @@
 - [ ] creare form di inserimento password
 - [ ] creare form di modifica password e dati
 - [ ] creare dialog di eliminazione password
-- [ ] creare trigger async di ri-cryptaggio password nel caso un utente cambi la password.
+- [ ] creare trigger async di ri-cryptaggio password nel caso un utente cambi la password. \[vedi sezione Stored
+  Passwords migration]
 - [x] aggiungere un "diversificatore" per chiave AES prelevato dalla stringa di creazione dell'utente per evitare il
   KEY-REUSE.
-
-## Generali
-
-- [ ] rimuovere possibilità di aprire in devtools in release
-- [ ] rimuovere menu contestuali in release
-- [ ] rimuovere menu finestra (windows, help etc...)
 
 ## To be Threaeded
 
@@ -54,7 +55,7 @@
 
 - [x] Estrarre componente salvataggio password da componente registrazione.
 - [x] Agganciare funzione di calcolo strength a TUTTI i componenti che salvano password.
-- [ ] Usare spinner in attesa calcolo strength.
+- [x] Usare spinner in attesa calcolo strength.
 - [x] Mostrare risultato testuale e grafico di forza della password.
 - [x] Usare pulsante info per spiegare il risultato della valutazione della forza della password.
 

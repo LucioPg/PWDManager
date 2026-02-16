@@ -1,6 +1,7 @@
 use dioxus::prelude::*;
 
 use super::PasswordStrength;
+use crate::components::globals::spinner::{Spinner, SpinnerSize};
 
 #[derive(Props, Clone, PartialEq)]
 pub struct StrengthAnalyzerProps {
@@ -32,9 +33,13 @@ pub fn StrengthAnalyzer(props: StrengthAnalyzerProps) -> Element {
         div { class: "strength-analyzer flex flex-col gap-2",
             // Top row: strength text and tooltip button
             div { class: "flex items-center gap-2",
-                // Stato evaluating
+                // Stato evaluating con spinner
                 if props.is_evaluating {
-                    span { class: "text-gray-500 italic", "Evaluating..." }
+                    Spinner {
+                        size: SpinnerSize::Small,
+                        color_class: "text-blue-500".to_string(),
+                        duration: 0.8,
+                    }
                 } else {
                     // Strength text
                     span { class: "{text_class} font-medium", "{strength_text}" }
