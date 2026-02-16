@@ -2,12 +2,12 @@ use crate::backend::db_backend::{
     fetch_password_created_at_from_id, fetch_user_data, get_all_stored_passwords_for_user, init_db,
     save_or_update_user,
 };
+use crate::backend::password_types_helper::{
+    DbSecretString, PasswordStrength, StoredPassword, StoredRawPassword, UserAuth,
+};
 use crate::backend::password_utils::{
     calc_strength, create_cipher, create_stored_password_pipeline, create_stored_passwords,
     decrypt_stored_password,
-};
-use crate::backend::user_auth_helper::{
-    DbSecretString, PasswordStrength, StoredPassword, StoredRawPassword, UserAuth,
 };
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;

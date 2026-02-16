@@ -10,7 +10,7 @@
 use crate::backend::db_backend::{
     fetch_password_created_at_from_id, save_or_update_stored_password,
 };
-use crate::backend::user_auth_helper::{
+use crate::backend::password_types_helper::{
     DbSecretString, PasswordStrength, StoredPassword, StoredRawPassword, UserAuth,
 };
 use aes_gcm::aead::{Aead, AeadCore, Nonce, OsRng};
