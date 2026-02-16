@@ -16,14 +16,21 @@ pub struct PasswordHandlerProps {
     pub on_password_change: Callback<FormSecret>,
     #[props(default = true)]
     pub password_required: bool,
+    /// Password iniziale per modalità edit (pre-compilata)
+    #[props(default = None)]
+    pub initial_password: Option<FormSecret>,
+    /// Strength pre-calcolata per modalità edit
+    #[props(default = None)]
+    pub initial_strength: Option<PasswordStrength>,
 }
 
 #[component]
 pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
-    // Internal state
-    let mut password = use_signal(|| FormSecret(SecretString::new(String::new().into())));
-    let mut repassword = use_signal(|| FormSecret(SecretString::new(String::new().into())));
-    let mut strength = use_signal(|| PasswordStrength::NotEvaluated);
+    // Internal state - inizializza con valori iniziali se presenti (modalità edit)
+    let initial_pwd = props.initial_password.clone().unwrap_or_else(|| FormSecret(SecretString::new(String::new().into())));
+    let mut password = use_signal(|| initial_pwd.clone());
+    let mut repassword = use_signal(|| initial_pwd.clone());
+    let mut strength = use_signal(|| props.initial_strength.clone().unwrap_or(PasswordStrength::NotEvaluated));
     let mut reasons = use_signal(|| Vec::<String>::new());
     let mut is_evaluating = use_signal(|| false);
     let mut score = use_signal(|| Option::<i32>::None);
