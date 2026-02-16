@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
 
-use super::PasswordStrength;
+use crate::backend::password_types_helper::PasswordStrength;
 use crate::components::globals::spinner::{Spinner, SpinnerSize};
 
 #[derive(Props, Clone, PartialEq)]

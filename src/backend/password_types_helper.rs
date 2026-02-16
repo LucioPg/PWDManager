@@ -4,7 +4,7 @@
 //! oltre a struct per l'autenticazione utente e per le password salvate.
 
 use secrecy::{ExposeSecret, SecretBox, SecretString};
-use sqlx::{Type, sqlite::Sqlite};
+use sqlx::{sqlite::Sqlite, Type};
 
 use sqlx_template::SqlxTemplate;
 
@@ -163,23 +163,8 @@ pub struct UserAuth {
     pub created_at: String, // o il tipo che usi (es. SystemTime o PrimitiveDateTime)
 }
 
-#[derive(Debug, Clone, PartialEq, sqlx::Type)]
-#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
-/// Enum che rappresenta la forze della password.
-///
-/// Viene salvata nel database come testo ('weak', 'medium', 'strong') e
-/// controllata da un constraint CHECK.
-///
-/// # Varianti
-///
-/// * `WEAK` - Password debole (< 8 caratteri)
-/// * `MEDIUM` - Password media (8-15 caratteri)
-/// * `STRONG` - Password forte (16+ caratteri)
-pub enum PasswordStrength {
-    WEAK,
-    MEDIUM,
-    STRONG,
-}
+
+
 
 #[derive(sqlx::FromRow, Debug, SqlxTemplate)]
 #[table("passwords")]
@@ -260,4 +245,55 @@ pub struct StoredRawPassword {
     pub password: SecretString,
     pub notes: Option<String>,
     pub strength: Option<PasswordStrength>,
+}
+
+impl StoredRawPassword {
+    pub fn get_form_fields(
+        &self,
+    ) -> (
+        i64,
+        String,
+        SecretString,
+        Option<String>,
+        Option<PasswordStrength>,
+    ) {
+        (
+            self.id.unwrap(),
+            self.location.clone(),
+            self.password.clone(),
+            self.notes.clone(),
+            self.strength.clone(),
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PasswordEvaluation {
+    pub strength: PasswordStrength,
+    pub reasons: Vec<String>,
+    pub score: Option<i32>,
+}
+
+#[derive(Debug, Clone, PartialEq, sqlx::Type)]
+#[sqlx(type_name = "TEXT", rename_all = "lowercase")]
+/// Enum che rappresenta la forze della password.
+///
+/// Viene salvata nel database come testo ('weak', 'medium', 'strong') e
+/// controllata da un constraint CHECK.
+///
+/// # Varianti
+///
+/// * `NotEvaluated` - Password non valutata
+/// * `WEAK` - Password debole
+/// * `MEDIUM` - Password media
+/// * `STRONG` - Password forte
+/// * `EPIC` - Password molto forte
+/// * `GOD` - Password molto molto forte
+pub enum PasswordStrength {
+    NotEvaluated,
+    WEAK,
+    MEDIUM,
+    STRONG,
+    EPIC,
+    GOD,
 }

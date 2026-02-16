@@ -7,13 +7,7 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 use tracing;
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct PasswordEvaluation {
-    pub strength: PasswordStrength,
-    pub reasons: Vec<String>,
-    pub score: Option<i32>,
-}
+use crate::backend::password_types_helper::{PasswordEvaluation, PasswordStrength};
 
 // Blacklist delle password comuni - embedded direttamente nel binary
 // Usiamo include_str! per embeddare il file a compile-time
@@ -21,16 +15,6 @@ const BLACKLIST_CONTENT: &str = include_str!("../../assets/10k-most-common.txt")
 
 // Caricamento pigro della blacklist in memoria
 static COMMON_PASSWORDS: OnceLock<HashSet<String>> = OnceLock::new();
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum PasswordStrength {
-    NotEvaluated,
-    WEAK,
-    MEDIUM,
-    STRONG,
-    EPIC,
-    GOD,
-}
 
 /// Inizializza la blacklist delle password comuni
 /// Il file è embedded nel binary a compile-time usando include_str!
@@ -164,8 +148,37 @@ pub async fn evaluate_password_strength_tx(
     use tracing::{error, info};
     info!("evaluation is about to start...");
 
-    // todo remove it's just for testing the spinner since it is too fast otherwise
     tokio::time::sleep(Duration::from_millis(300)).await;
+    // let token_clone = (*token).clone();
+    let evaluation = evaluate_password_strength(password, Some(token)).await;
+    // Invia risultato
+    if let Err(e) = tx.send(evaluation).await {
+        error!(error = %e, "Failed to send password evaluation result");
+    }
+}
+
+fn cancellation(
+    token: Option<CancellationToken>,
+    mut strength: PasswordStrength,
+    mut reasons: Vec<String>,
+    mut is_error: bool,
+) -> (PasswordStrength, Vec<String>, bool) {
+    if token.is_some() {
+        if token.unwrap().is_cancelled() {
+            strength = PasswordStrength::NotEvaluated;
+            reasons.push("Evaluation cancelled".to_string());
+            is_error = true;
+            return (strength, reasons, is_error);
+        };
+    }
+    (strength, reasons, is_error)
+}
+
+// #[cfg(feature = "ide-only")]
+pub async fn evaluate_password_strength(
+    password: &SecretString,
+    token: Option<CancellationToken>,
+) -> PasswordEvaluation {
     let mut reasons = Vec::new();
     let mut strength = PasswordStrength::NotEvaluated;
     let mut is_error = false;
@@ -184,10 +197,8 @@ pub async fn evaluate_password_strength_tx(
 
     for (section_name, section_fn) in sections {
         // Check cancellation prima di ogni sezione
-        if token.is_cancelled() {
-            strength = PasswordStrength::NotEvaluated;
-            reasons.push("Evaluation cancelled".to_string());
-            is_error = true;
+        (strength, reasons, is_error) = cancellation(token.clone(), strength, reasons, is_error);
+        if is_error {
             break;
         }
 
@@ -270,56 +281,51 @@ pub async fn evaluate_password_strength_tx(
         };
     }
 
-    let evaluation = PasswordEvaluation {
+    PasswordEvaluation {
         strength,
         reasons,
         score: if is_error { None } else { Some(score) },
-    };
-
-    // Invia risultato
-    if let Err(e) = tx.send(evaluation).await {
-        error!(error = %e, "Failed to send password evaluation result");
     }
 }
 
-pub async fn evaluate_password_strength(
-    password: &SecretString,
-    token: CancellationToken,
-) -> PasswordStrength {
-    let password_clone = password.clone();
-
-    let strength = tokio::task::spawn_blocking(move || {
-        if token.is_cancelled() {
-            return Err(PasswordStrength::WEAK);
-        }
-
-        let pass_ref = password_clone.expose_secret();
-
-        // 1. Controllo Blacklist (Sola lettura, thread-safe)
-        if let Some(blacklist) = COMMON_PASSWORDS.get() {
-            if blacklist.contains(&pass_ref.to_lowercase()) {
-                return Err(PasswordStrength::WEAK);
-            }
-        } else {
-            println!("Attenzione Blacklist: NON CARICATA");
-        }
-
-        let chars: Vec<char> = pass_ref.chars().collect();
-        let len = chars.len();
-
-        if len == 0 {
-            return Err(PasswordStrength::WEAK);
-        }
-
-        Ok(calculate_internal_score(chars))
-    })
-    .await;
-    match strength {
-        Ok(Ok(s)) => s,
-        Ok(Err(s)) => s,
-        Err(_) => PasswordStrength::WEAK,
-    }
-}
+// pub async fn evaluate_password_strength(
+//     password: &SecretString,
+//     token: CancellationToken,
+// ) -> PasswordStrength {
+//     let password_clone = password.clone();
+//
+//     let strength = tokio::task::spawn_blocking(move || {
+//         if token.is_cancelled() {
+//             return Err(PasswordStrength::WEAK);
+//         }
+//
+//         let pass_ref = password_clone.expose_secret();
+//
+//         // 1. Controllo Blacklist (Sola lettura, thread-safe)
+//         if let Some(blacklist) = COMMON_PASSWORDS.get() {
+//             if blacklist.contains(&pass_ref.to_lowercase()) {
+//                 return Err(PasswordStrength::WEAK);
+//             }
+//         } else {
+//             println!("Attenzione Blacklist: NON CARICATA");
+//         }
+//
+//         let chars: Vec<char> = pass_ref.chars().collect();
+//         let len = chars.len();
+//
+//         if len == 0 {
+//             return Err(PasswordStrength::WEAK);
+//         }
+//
+//         Ok(calculate_internal_score(chars))
+//     })
+//     .await;
+//     match strength {
+//         Ok(Ok(s)) => s,
+//         Ok(Err(s)) => s,
+//         Err(_) => PasswordStrength::WEAK,
+//     }
+// }
 
 fn calculate_internal_score(chars: Vec<char>) -> PasswordStrength {
     let result = panic::catch_unwind(move || {

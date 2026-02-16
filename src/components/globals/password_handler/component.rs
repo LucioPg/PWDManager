@@ -5,8 +5,8 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio::time::{sleep, Duration};
 use tokio_util::sync::CancellationToken;
-
-use crate::backend::strength_utils::{evaluate_password_strength_tx, PasswordStrength};
+use crate::backend::password_types_helper::PasswordStrength;
+use crate::backend::strength_utils::evaluate_password_strength_tx;
 use crate::components::globals::form_field::{FormSecret, InputType};
 
 const DEBOUNCE_MS: u64 = 500;
