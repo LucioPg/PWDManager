@@ -67,6 +67,7 @@ pub fn Login() -> Element {
                         value: password,
                         name: Some("password".to_string()),
                         required: true,
+                        show_visibility_toggle: true,
                     }
                     ActionButtons {
                         primary_text: "Login".to_string(),

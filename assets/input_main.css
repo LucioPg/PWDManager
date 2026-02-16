@@ -756,6 +756,41 @@
     }
 }
 
+/* ============================================================
+   PASSWORD INPUT WITH VISIBILITY TOGGLE
+   ============================================================ */
+.password-input-wrapper {
+    @apply relative flex items-center;
+}
+
+.password-input-with-toggle {
+    @apply pr-12; /* Space for the toggle button */
+}
+
+.password-visibility-toggle {
+    @apply absolute right-3 p-1 rounded;
+    @apply text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100;
+    @apply transition-colors duration-150;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-neutral-500;
+    @apply flex items-center justify-center;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+/* Hide native browser password reveal button (Edge/IE) */
+input[type="password"]::-ms-reveal,
+input[type="text"]::-ms-reveal {
+    display: none;
+}
+
+/* Hide native browser password reveal button (WebKit/Chrome) */
+input[type="password"]::-webkit-credentials-auto-fill-button,
+input[type="password"]::-webkit-caps-lock-indicator {
+    visibility: hidden;
+}
+
 
 /* ============================================================
    TOAST NOTIFICATIONS

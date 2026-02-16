@@ -166,6 +166,7 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
                 required: props.password_required,
                 autocomplete: false,
                 on_change: on_password_change,
+                show_visibility_toggle: true,
             }
 
             // Retype password field
@@ -177,6 +178,7 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
                 required: props.password_required,
                 autocomplete: false,
                 on_change: on_repassword_change,
+                show_visibility_toggle: true,
             }
 
             // Strength analyzer

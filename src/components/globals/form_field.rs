@@ -129,6 +129,9 @@ pub fn FormField<T: FormValue>(
     /// Callback chiamato quando il valore cambia (opzionale)
     #[props(default)]
     on_change: Option<Callback<T>>,
+    /// Mostra il pulsante per toggle visibilità password (solo per InputType::Password)
+    #[props(default)]
+    show_visibility_toggle: bool,
 ) -> Element {
     let input_class = if readonly {
         "input-base input-readonly"
@@ -138,36 +141,126 @@ pub fn FormField<T: FormValue>(
         "input-base"
     };
 
-    rsx! {
-        div { class: if let Some(custom_class) = class {
-            format!("form-group {}", custom_class)
-        } else {
-            "form-group".to_string()
-        },
-            label { class: "form-label",
-                "{label}"
-                if required {
-                    span { class: "text-error ml-1", "*" }
+    // Stato per la visibilità della password
+    let mut password_visible = use_signal(|| false);
+
+    // Determina il tipo di input effettivo
+    let effective_type = if input_type == InputType::Password && password_visible() {
+        "text"
+    } else {
+        input_type.as_str()
+    };
+
+    // Se c'è il toggle di visibilità, usa un layout con wrapper
+    if show_visibility_toggle && input_type == InputType::Password {
+        rsx! {
+            div { class: if let Some(custom_class) = class {
+                format!("form-group {}", custom_class)
+            } else {
+                "form-group".to_string()
+            },
+                label { class: "form-label",
+                    "{label}"
+                    if required {
+                        span { class: "text-error ml-1", "*" }
+                    }
                 }
-            }
-            input {
-                class: "{input_class}",
-                r#type: "{input_type.as_str()}",
-                placeholder: "{placeholder}",
-                value: "{value.read().to_form_string()}",
-                oninput: move |e| {
-                    if let Some(new_value) = T::from_form_string(e.value()) {
-                        value.set(new_value.clone());
-                        if let Some(callback) = on_change {
-                            callback.call(new_value);
+                div { class: "password-input-wrapper",
+                    input {
+                        class: "{input_class} password-input-with-toggle",
+                        r#type: "{effective_type}",
+                        placeholder: "{placeholder}",
+                        value: "{value.read().to_form_string()}",
+                        oninput: move |e| {
+                            if let Some(new_value) = T::from_form_string(e.value()) {
+                                value.set(new_value.clone());
+                                if let Some(callback) = on_change {
+                                    callback.call(new_value);
+                                }
+                            }
+                        },
+                        disabled: disabled,
+                        readonly: readonly,
+                        name: name,
+                        required: required,
+                        autocomplete: if autocomplete { "on" } else { "off" },
+                    }
+                    button {
+                        class: "password-visibility-toggle",
+                        r#type: "button",
+                        onclick: move |_| {
+                            password_visible.set(!password_visible());
+                        },
+                        disabled: disabled || readonly,
+                        aria_label: if password_visible() { "Nascondi password" } else { "Mostra password" },
+                        if password_visible() {
+                            // Icona "occhio chiuso" - password visibile
+                            svg {
+                                xmlns: "http://www.w3.org/2000/svg",
+                                width: "20",
+                                height: "20",
+                                view_box: "0 0 24 24",
+                                fill: "none",
+                                stroke: "currentColor",
+                                stroke_width: "2",
+                                stroke_linecap: "round",
+                                stroke_linejoin: "round",
+                                path { d: "M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" }
+                                line { x1: "1", y1: "1", x2: "23", y2: "23" }
+                            }
+                        } else {
+                            // Icona "occhio aperto" - password nascosta
+                            svg {
+                                xmlns: "http://www.w3.org/2000/svg",
+                                width: "20",
+                                height: "20",
+                                view_box: "0 0 24 24",
+                                fill: "none",
+                                stroke: "currentColor",
+                                stroke_width: "2",
+                                stroke_linecap: "round",
+                                stroke_linejoin: "round",
+                                path { d: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" }
+                                circle { cx: "12", cy: "12", r: "3" }
+                            }
                         }
                     }
-                },
-                disabled: disabled,
-                readonly: readonly,
-                name: name,
-                required: required,
-                autocomplete: if autocomplete { "on" } else { "off" },
+                }
+            }
+        }
+    } else {
+        // Layout standard senza toggle
+        rsx! {
+            div { class: if let Some(custom_class) = class {
+                format!("form-group {}", custom_class)
+            } else {
+                "form-group".to_string()
+            },
+                label { class: "form-label",
+                    "{label}"
+                    if required {
+                        span { class: "text-error ml-1", "*" }
+                    }
+                }
+                input {
+                    class: "{input_class}",
+                    r#type: "{effective_type}",
+                    placeholder: "{placeholder}",
+                    value: "{value.read().to_form_string()}",
+                    oninput: move |e| {
+                        if let Some(new_value) = T::from_form_string(e.value()) {
+                            value.set(new_value.clone());
+                            if let Some(callback) = on_change {
+                                callback.call(new_value);
+                            }
+                        }
+                    },
+                    disabled: disabled,
+                    readonly: readonly,
+                    name: name,
+                    required: required,
+                    autocomplete: if autocomplete { "on" } else { "off" },
+                }
             }
         }
     }
