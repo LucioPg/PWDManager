@@ -1,3 +1,4 @@
+use crate::backend::password_types_helper::{PasswordEvaluation, PasswordStrength};
 use ::std::panic;
 use dioxus::prelude::*;
 use secrecy::{ExposeSecret, SecretString};
@@ -7,7 +8,6 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 use tracing;
-use crate::backend::password_types_helper::{PasswordEvaluation, PasswordStrength};
 
 // Blacklist delle password comuni - embedded direttamente nel binary
 // Usiamo include_str! per embeddare il file a compile-time

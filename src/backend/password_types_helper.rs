@@ -4,7 +4,7 @@
 //! oltre a struct per l'autenticazione utente e per le password salvate.
 
 use secrecy::{ExposeSecret, SecretBox, SecretString};
-use sqlx::{sqlite::Sqlite, Type};
+use sqlx::{Type, sqlite::Sqlite};
 
 use sqlx_template::SqlxTemplate;
 
@@ -162,9 +162,6 @@ pub struct UserAuth {
     pub password: DbSecretString,
     pub created_at: String, // o il tipo che usi (es. SystemTime o PrimitiveDateTime)
 }
-
-
-
 
 #[derive(sqlx::FromRow, Debug, SqlxTemplate)]
 #[table("passwords")]
