@@ -52,11 +52,11 @@
 
 #### Strength
 
-- [ ] Estrarre componente salvataggio password da componente registrazione.
-- [ ] Agganciare funzione di calcolo strength a TUTTI i componenti che salvano password.
+- [x] Estrarre componente salvataggio password da componente registrazione.
+- [x] Agganciare funzione di calcolo strength a TUTTI i componenti che salvano password.
 - [ ] Usare spinner in attesa calcolo strength.
-- [ ] Mostrare risultato testuale e grafico di forza della password.
-- [ ] Usare pulsante info per spiegare il risultato della valutazione della forza della password.
+- [x] Mostrare risultato testuale e grafico di forza della password.
+- [x] Usare pulsante info per spiegare il risultato della valutazione della forza della password.
 
 #### Migration
 
@@ -68,11 +68,11 @@
 
 #### Strength
 
-- [ ] Sostituire funzione di calcolo strength con strength_utils.
-- [ ] Creare meccanismo di spiegazione della valutazione della forza della password.
+- [ ] Sostituire funzione di calcolo strength con strength_utils. --- Parzialmente fatto
+- [x] Creare meccanismo di spiegazione della valutazione della forza della password.
 
 #### Migration
 
 - [ ] Creare funzione di fetch per temp_old_password.
-- [ ] Creare meccanismo di lavoro parallelo con rayon e tokio spawn_blocking.
+- [ ] Creare meccanismo di lavoro parallelo con rayon e tokio spawn_blocking. parzialmente fatto
 - [ ] Creare funzione di aggregazione delle query per salvare in batch.
