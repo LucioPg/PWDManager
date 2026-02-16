@@ -1,6 +1,6 @@
 ﻿#![allow(dead_code)]
 use crate::backend::init_queries::QUERIES;
-use crate::backend::user_auth_helper::{StoredPassword, UserAuth};
+use crate::backend::password_types_helper::{StoredPassword, UserAuth};
 use crate::backend::utils::verify_password;
 use custom_errors::{AuthError, DBError};
 use dioxus::prelude::*;
