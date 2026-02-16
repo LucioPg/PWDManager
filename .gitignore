@@ -13,3 +13,5 @@ CLAUDE.md
 /assets/input2_main.css
 /assets/not_used_main.css
 **/*.bkp
+# Git worktrees
+/.worktrees/
