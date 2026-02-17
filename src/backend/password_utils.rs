@@ -7,9 +7,7 @@
 //! - Salvare le password nel database
 #![allow(dead_code)]
 
-use crate::backend::db_backend::{
-    fetch_password_created_at_from_id, save_or_update_stored_password,
-};
+use crate::backend::db_backend::{fetch_user_auth_from_id, save_or_update_stored_password};
 use crate::backend::password_types_helper::{
     DbSecretString, PasswordScore, StoredPassword, StoredRawPassword, UserAuth,
 };
@@ -167,7 +165,7 @@ pub async fn create_stored_password_pipeline(
     score: Option<PasswordScore>,
 ) -> Result<(), DBError> {
     // 1. Recupero credenziali e setup crittografico
-    let user_auth = fetch_password_created_at_from_id(pool, user_id).await?;
+    let user_auth = fetch_user_auth_from_id(pool, user_id).await?;
     let salt = get_salt(&user_auth.password);
     let nonce = create_nonce();
     let cipher = create_cipher(&salt, &user_auth)?;
@@ -270,8 +268,7 @@ pub async fn decrypt_stored_password(
     pool: &SqlitePool,
     stored_password: &StoredPassword,
 ) -> Result<String, DBError> {
-    let user_auth: UserAuth =
-        fetch_password_created_at_from_id(&pool, stored_password.user_id).await?;
+    let user_auth: UserAuth = fetch_user_auth_from_id(&pool, stored_password.user_id).await?;
     let salt = get_salt(&user_auth.password);
     let nonce = get_nonce_from_vec(&stored_password.nonce)?;
     let cipher = create_cipher(&salt, &user_auth)?;

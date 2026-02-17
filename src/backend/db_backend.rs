@@ -157,7 +157,7 @@ async fn prepare_user_update(
     if let Some(psw) = password {
         if !psw.expose_secret().trim().is_empty() {
             // Prima recupera la vecchia password hash usando user_id e salvala in temp_old_password
-            if let Ok(user_auth) = fetch_password_created_at_from_id(pool, user_id).await {
+            if let Ok(user_auth) = fetch_user_auth_from_id(pool, user_id).await {
                 set_temp_password(pool, user_id, &user_auth.password.0).await?;
             }
 
@@ -438,19 +438,14 @@ pub async fn fetch_user_password(pool: &SqlitePool, username: &str) -> Result<St
 /// - `DBError::new_select_error` - Utente non trovato
 /// - `DBError::new_select_error` - Errore durante la query
 #[instrument(skip(pool))]
-pub async fn fetch_password_created_at_from_id(
-    pool: &SqlitePool,
-    user_id: i64,
-) -> Result<UserAuth, DBError> {
+pub async fn fetch_user_auth_from_id(pool: &SqlitePool, user_id: i64) -> Result<UserAuth, DBError> {
     debug!("Fetching user credentials in database");
-
     let user_auth =
         sqlx::query_as::<_, UserAuth>("SELECT id, password, created_at FROM users WHERE id = ?")
             .bind(user_id) // SQLite preferisce i64 per gli ID
             .fetch_optional(pool) // Rimosso & perché pool è già un riferimento o clonabile
             .await
             .map_err(|e| DBError::new_select_error(e.to_string()))?; // Cattura l'errore reale del DB
-
     // Ora gestisci il caso in cui la query ha avuto successo ma non ha trovato righe
     user_auth.ok_or_else(|| DBError::new_select_error("User not found".into()))
 }

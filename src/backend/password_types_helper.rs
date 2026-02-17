@@ -161,7 +161,6 @@ impl std::ops::Deref for DbSecretVec {
 pub struct UserAuth {
     pub id: i64,
     pub password: DbSecretString,
-    pub created_at: String, // o il tipo che usi (es. SystemTime o PrimitiveDateTime)
 }
 
 #[derive(sqlx::FromRow, Debug, SqlxTemplate)]

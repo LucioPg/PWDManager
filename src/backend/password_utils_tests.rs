@@ -1,5 +1,5 @@
 use crate::backend::db_backend::{
-    fetch_password_created_at_from_id, fetch_user_data, get_all_stored_passwords_for_user, init_db,
+    fetch_user_data, get_all_stored_passwords_for_user, init_db,
     save_or_update_user,
 };
 use crate::backend::password_types_helper::{
@@ -105,7 +105,6 @@ async fn test_encrypt_decrypt_password_rayon() {
     let user_auth = UserAuth {
         id: user_id,
         password: DbSecretString(SecretString::from(master_password)),
-        created_at: "2026-02-13 18:16:31".to_string(),
     };
     // Test 1: Cifra una password
     let raw_password = SecretString::new("MySecurePassword456".into());
