@@ -60,15 +60,16 @@ pub fn Dashboard() -> Element {
                     variant: StatVariant::Warning,
                 }
             }
-            div { class: "card card-lg",
-                p { class: "text-body text-center", "Your passwords will appear here" }
-            }
-            div { class: "card-no-border items-end",
+                        div { class: "card-no-border items-end",
                 button { class: "btn btn-success",
                     r#type: "button",
                     onclick: move |_| {stored_password_dialog_open.set(true);},
                     "New Password" }
             }
+            div { class: "card card-lg",
+                p { class: "text-body text-center", "Your passwords will appear here" }
+            }
+
 
         }
         StoredPasswordUpsertDialog {
