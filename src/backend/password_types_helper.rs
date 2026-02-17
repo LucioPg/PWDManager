@@ -148,7 +148,7 @@ impl std::ops::Deref for DbSecretVec {
     }
 }
 
-#[derive(sqlx::FromRow)] // Necessario per mappare i risultati
+#[derive(sqlx::FromRow, Debug)] // Necessario per mappare i risultati
 /// Struct per l'autenticazione utente contenente password e data di creazione.
 ///
 /// Utilizzata per recuperare la password hash e la data di creazione di un utente,
