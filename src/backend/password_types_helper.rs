@@ -302,7 +302,10 @@ impl From<PasswordScore> for PasswordEvaluation {
 impl PasswordEvaluation {
     pub fn strength(&self) -> PasswordStrength {
         match self.score {
-            Some(score) => PasswordScore::from_score(score.0 as i64),
+            Some(s) => {
+                let value = s.value() as i64;
+                PasswordScore::from_score(Some(value))
+            }
             None => PasswordStrength::NotEvaluated,
         }
     }
@@ -352,13 +355,14 @@ impl PasswordScore {
         self.0
     }
 
-    pub fn from_score(score: i64) -> PasswordStrength {
+    pub fn from_score(score: Option<i64>) -> PasswordStrength {
         match score {
-            s if s > 95 => PasswordStrength::GOD,
-            s if s >= 85 => PasswordStrength::EPIC,
-            s if s >= 70 => PasswordStrength::STRONG,
-            s if s >= 50 => PasswordStrength::MEDIUM,
-            _ => PasswordStrength::WEAK,
+            Some(s) if s > 95 => PasswordStrength::GOD,
+            Some(s) if s >= 85 => PasswordStrength::EPIC,
+            Some(s) if s >= 70 => PasswordStrength::STRONG,
+            Some(s) if s >= 50 => PasswordStrength::MEDIUM,
+            Some(_) => PasswordStrength::WEAK,
+            None => PasswordStrength::NotEvaluated,
         }
     }
 }

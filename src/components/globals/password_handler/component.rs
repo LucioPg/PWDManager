@@ -1,4 +1,4 @@
-use crate::backend::password_types_helper::PasswordStrength;
+use crate::backend::password_types_helper::{PasswordScore, PasswordStrength};
 use crate::backend::strength_utils::evaluate_password_strength_tx;
 use crate::components::globals::form_field::{FormSecret, InputType};
 use dioxus::core::Task;
@@ -21,19 +21,35 @@ pub struct PasswordHandlerProps {
     pub initial_password: Option<FormSecret>,
     /// Strength pre-calcolata per modalità edit
     #[props(default = None)]
-    pub initial_strength: Option<PasswordStrength>,
+    pub initial_score: Option<PasswordScore>,
 }
 
 #[component]
 pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
     // Internal state - inizializza con valori iniziali se presenti (modalità edit)
-    let initial_pwd = props.initial_password.clone().unwrap_or_else(|| FormSecret(SecretString::new(String::new().into())));
+    let initial_pwd = props
+        .initial_password
+        .clone()
+        .unwrap_or_else(|| FormSecret(SecretString::new(String::new().into())));
     let mut password = use_signal(|| initial_pwd.clone());
+    #[allow(unused_mut)]
     let mut repassword = use_signal(|| initial_pwd.clone());
-    let mut strength = use_signal(|| props.initial_strength.clone().unwrap_or(PasswordStrength::NotEvaluated));
+    #[allow(unused_mut)]
+    let mut score = use_signal(|| props.initial_score.clone());
+    let mut strength = use_memo(move || {
+        // 1. Leggiamo il segnale (restituisce Option<PasswordScore>)
+        let score_opt = score.read().clone();
+
+        // 2. Estraiamo il valore Option<i64> interno (se esiste)
+        let raw_val = score_opt.map(|s| s.value() as i64);
+
+        // 3. Passiamo l'Option<i64> alla tua funzione
+        PasswordScore::from_score(raw_val)
+    });
     let mut reasons = use_signal(|| Vec::<String>::new());
+    #[allow(unused_mut)]
     let mut is_evaluating = use_signal(|| false);
-    let mut score = use_signal(|| Option::<i32>::None);
+    let mut score = use_signal(|| Option::<PasswordScore>::None);
 
     let mut debounce_task = use_signal(|| None::<Task>);
     let mut cancel_token = use_signal(|| Arc::new(CancellationToken::new()));
@@ -83,7 +99,7 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
                 evaluate_password_strength_tx(&new_pwd.0, (*token).clone(), tx).await;
 
                 if let Some(eval) = rx.recv().await {
-                    strength_sig.set(eval.strength);
+                    strength_sig.set(eval.strength());
                     reasons_sig.set(eval.reasons);
                     score_sig.set(eval.score);
                     on_change.call(new_pwd);
@@ -97,62 +113,6 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
     };
 
     // Callback triggered when repassword changes
-    let on_repassword_change = move |new_re_pwd: FormSecret| {
-        repassword.set(new_re_pwd.clone());
-
-        // Reset evaluation state
-        strength.set(PasswordStrength::NotEvaluated);
-        reasons.set(Vec::new());
-        score.set(None);
-
-        // Cancel previous task
-        if let Some(task) = debounce_task.read().as_ref() {
-            task.cancel();
-        }
-        debounce_task.set(None);
-
-        // Create new cancellation token
-        let token = Arc::new(CancellationToken::new());
-        cancel_token.set(token.clone());
-
-        // Check if passwords match and are not empty
-        let pwd = password.read().clone();
-        let pwd_match = pwd.0.expose_secret() == new_re_pwd.0.expose_secret();
-        let is_empty = pwd.0.expose_secret().is_empty();
-
-        if !is_empty && pwd_match {
-            // Start debounce timer
-            let mut strength_sig = strength.clone();
-            let mut reasons_sig = reasons.clone();
-            let mut evaluating_sig = is_evaluating.clone();
-            let mut score_sig = score.clone();
-            let on_change = props.on_password_change.clone();
-
-            let task = spawn(async move {
-                sleep(Duration::from_millis(DEBOUNCE_MS)).await;
-
-                if token.is_cancelled() {
-                    return;
-                }
-
-                evaluating_sig.set(true);
-
-                let (tx, mut rx) = mpsc::channel(1);
-                evaluate_password_strength_tx(&pwd.0, (*token).clone(), tx).await;
-
-                if let Some(eval) = rx.recv().await {
-                    strength_sig.set(eval.strength);
-                    reasons_sig.set(eval.reasons);
-                    score_sig.set(eval.score);
-                    on_change.call(pwd);
-                }
-
-                evaluating_sig.set(false);
-            });
-
-            debounce_task.set(Some(task));
-        }
-    };
 
     // Cleanup on component unmount
     use_drop(move || {
@@ -185,7 +145,7 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
                 value: repassword,
                 required: props.password_required,
                 autocomplete: false,
-                on_change: on_repassword_change,
+                on_change: on_password_change,
                 show_visibility_toggle: true,
                 forbid_spaces: true,
             }
