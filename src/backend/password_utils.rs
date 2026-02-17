@@ -288,6 +288,7 @@ pub async fn decrypt_bulk_stored_passwords(
                     password: SecretString::new(plaintext.into()),
                     notes: sp.notes,
                     score: Some(sp.score),
+                    created_at: sp.created_at,
                 })
             })
             .collect::<Result<Vec<StoredRawPassword>, DBError>>()

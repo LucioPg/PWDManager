@@ -242,6 +242,7 @@ pub struct StoredRawPassword {
     pub password: SecretString,
     pub notes: Option<String>,
     pub score: Option<PasswordScore>,
+    pub created_at: Option<String>,
 }
 
 impl StoredRawPassword {
@@ -253,6 +254,7 @@ impl StoredRawPassword {
             password: "".to_string().into(),
             notes: None,
             score: None,
+            created_at: None,
         }
     }
     #[allow(dead_code)]

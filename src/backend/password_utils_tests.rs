@@ -141,6 +141,7 @@ async fn test_encrypt_decrypt_password_rayon() {
             password: rp,
             notes: Some("test rayon".to_string()),
             score: password_evaluation.score,
+            created_at: None,
         };
         stored_raw_passwords.push(stored_password_raw)
     }
