@@ -7,7 +7,9 @@
 //! - Salvare le password nel database
 #![allow(dead_code)]
 
-use crate::backend::db_backend::{fetch_user_auth_from_id, save_or_update_stored_password};
+use crate::backend::db_backend::{
+    fetch_all_stored_passwords_for_user, fetch_user_auth_from_id, save_or_update_stored_password,
+};
 use crate::backend::password_types_helper::{
     DbSecretString, PasswordScore, StoredPassword, StoredRawPassword, UserAuth,
 };
@@ -246,6 +248,20 @@ pub async fn create_stored_passwords(
     })
     .await
     .map_err(|e| DBError::new_password_save_error(format!("Join error: {}", e)))?
+}
+
+pub async fn get_stored_raw_passwords(
+    pool: &SqlitePool,
+    user_id: i64,
+) -> Result<Vec<StoredRawPassword>, DBError> {
+    let stored_passwords: Vec<StoredPassword> =
+        fetch_all_stored_passwords_for_user(pool, user_id).await?;
+    let stored_raw_passwords = decrypt_bulk_stored_passwords(
+        fetch_user_auth_from_id(pool, user_id).await?,
+        stored_passwords,
+    )
+    .await?;
+    Ok(stored_raw_passwords)
 }
 
 pub async fn decrypt_bulk_stored_passwords(
