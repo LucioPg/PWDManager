@@ -101,11 +101,14 @@ pub struct StoredPassword {
     pub location: String,           // TEXT NOT NULL,
     pub password: DbSecretVec,      // BLOB NOT NULL,
     pub notes: Option<String>,      // TEXT,
-    pub strength: PasswordStrength, // TEXT NOT NULL,
+    pub score: PasswordScore,       // INTEGER NOT NULL (0-100)
     pub created_at: Option<String>, // TEXT,
     pub nonce: Vec<u8>,             // BLOB NOT NULL UNIQUE,
 }
 ```
+
+**Nota:** `score` è di tipo `PasswordScore` (wrapper di `u8`), non `PasswordStrength`.
+`PasswordStrength` è derivato dallo score nel frontend tramite `PasswordScore::get_strength()`.
 
 ### Funzioni generate automaticamente
 
@@ -134,7 +137,7 @@ impl StoredPasswordSelectBuilder {
     // Filtri esatti
     pub fn user_id(&mut self, val: &i64) -> Result<&mut Self, sqlx::Error>;
     pub fn location(&mut self, val: &str) -> Result<&mut Self, sqlx::Error>;
-    pub fn strength(&mut self, val: &PasswordStrength) -> Result<&mut Self, sqlx::Error>;
+    pub fn score(&mut self, val: &PasswordScore) -> Result<&mut Self, sqlx::Error>;
 
     // LIKE e varianti stringa
     pub fn location_like(&mut self, pattern: &str) -> Result<&mut Self, sqlx::Error>;
@@ -144,6 +147,8 @@ impl StoredPasswordSelectBuilder {
     // Comparazioni numeriche
     pub fn id_gt(&mut self, val: &i64) -> Result<&mut Self, sqlx::Error>;
     pub fn id_lt(&mut self, val: &i64) -> Result<&mut Self, sqlx::Error>;
+    pub fn score_gt(&mut self, val: &PasswordScore) -> Result<&mut Self, sqlx::Error>;
+    pub fn score_lt(&mut self, val: &PasswordScore) -> Result<&mut Self, sqlx::Error>;
 
     // Ordinamenti
     pub fn order_by_created_at_asc(&mut self) -> Result<&mut Self, sqlx::Error>;
@@ -217,7 +222,7 @@ pub struct StoredPassword {
     pub location: String,
     pub password: DbSecretVec,
     pub notes: Option<String>,
-    pub strength: PasswordStrength,
+    pub score: PasswordScore,    // ← Score numerico (0-100)
     pub created_at: Option<String>,
     pub nonce: Vec<u8>,
 }
@@ -231,7 +236,7 @@ Il builder genera automaticamente metodi per **ogni campo** della struct:
 |--------------------|-----------------|---------|
 | `user_id: i64` | `.user_id(&i64)` | `.user_id(&123)` |
 | `location: String` | `.location("text")` | `.location("github.com")` |
-| `strength: PasswordStrength` | `.strength(&enum)` | `.strength(&PasswordStrength::STRONG)` |
+| `score: PasswordScore` | `.score(&score)` | `.score(&PasswordScore::new(85))` |
 | `created_at: String` | `.created_at("date")` | `.created_at("2024-01-15")` |
 
 Oltre ai metodi per campo, hai anche:
@@ -284,10 +289,11 @@ SELECT * FROM passwords WHERE user_id = ? ORDER BY created_at DESC
 #### Query con condizioni multiple
 
 ```rust
-// Tutte le password forti dell'utente 123, ordinate per location
+// Tutte le password con score >= 70 dell'utente 123, ordinate per location
+let min_score = PasswordScore::new(70);
 let results = StoredPassword::builder_select()
     .user_id(&123)?
-    .strength(&PasswordStrength::STRONG)?
+    .score_gte(&min_score)?
     .order_by_location_asc()?
     .find_all(pool)
     .await?;
