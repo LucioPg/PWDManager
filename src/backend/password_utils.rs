@@ -28,7 +28,6 @@ use tokio::sync::mpsc::Sender;
 use tokio::task;
 use tokio_util::sync::CancellationToken;
 
-
 /// Estrae il sale da una password hash Argon2.
 ///
 /// Il sale è necessario per derivare la chiave AES della password utente.
