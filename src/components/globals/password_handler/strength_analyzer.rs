@@ -1,6 +1,6 @@
 use dioxus::prelude::*;
 
-use crate::backend::password_types_helper::PasswordStrength;
+use crate::backend::password_types_helper::{PasswordScore, PasswordStrength};
 use crate::components::globals::spinner::{Spinner, SpinnerSize};
 
 #[derive(Props, Clone, PartialEq)]
@@ -9,7 +9,7 @@ pub struct StrengthAnalyzerProps {
     pub reasons: Vec<String>,
     #[props(default)]
     pub is_evaluating: bool,
-    pub score: Option<i32>,
+    pub score: Option<PasswordScore>,
 }
 
 #[component]
@@ -27,7 +27,7 @@ pub fn StrengthAnalyzer(props: StrengthAnalyzerProps) -> Element {
     };
 
     // Calculate cursor position (0-100%)
-    let cursor_position = props.score.unwrap_or(0);
+    let cursor_position = props.score.unwrap_or(PasswordScore::new(0));
 
     rsx! {
         div { class: "strength-analyzer flex flex-col gap-2",
@@ -93,8 +93,8 @@ pub fn StrengthAnalyzer(props: StrengthAnalyzerProps) -> Element {
                         // Cursor indicator with tooltip
                         div {
                             class: "strength-cursor",
-                            style: "left: {cursor_position}%",
-                            title: "Score: {cursor_position}%",
+                            style: "left: {cursor_position.value()}%",
+                            title: "Score: {cursor_position.value()}%",
                         }
                     }
                 }

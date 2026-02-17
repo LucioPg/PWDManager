@@ -1,4 +1,4 @@
-use crate::backend::password_types_helper::{PasswordEvaluation, PasswordStrength};
+use crate::backend::password_types_helper::{PasswordEvaluation, PasswordScore, PasswordStrength};
 use ::std::panic;
 use dioxus::prelude::*;
 use secrecy::{ExposeSecret, SecretString};
@@ -150,7 +150,7 @@ pub async fn evaluate_password_strength_tx(
 
     tokio::time::sleep(Duration::from_millis(300)).await;
     // let token_clone = (*token).clone();
-    let evaluation = evaluate_password_strength(password, Some(token)).await;
+    let evaluation = evaluate_password_strength(password, Some(token));
     // Invia risultato
     if let Err(e) = tx.send(evaluation).await {
         error!(error = %e, "Failed to send password evaluation result");
@@ -159,30 +159,26 @@ pub async fn evaluate_password_strength_tx(
 
 fn cancellation(
     token: Option<CancellationToken>,
-    mut strength: PasswordStrength,
+    score: Option<i64>,
     mut reasons: Vec<String>,
-    mut is_error: bool,
-) -> (PasswordStrength, Vec<String>, bool) {
-    if token.is_some() {
-        if token.unwrap().is_cancelled() {
-            strength = PasswordStrength::NotEvaluated;
+) -> (Option<i64>, Vec<String>, bool) {
+    if let Some(t) = token {
+        if t.is_cancelled() {
             reasons.push("Evaluation cancelled".to_string());
-            is_error = true;
-            return (strength, reasons, is_error);
+            return (None, reasons, true);
         };
     }
-    (strength, reasons, is_error)
+    (score, reasons, false)
 }
 
 // #[cfg(feature = "ide-only")]
-pub async fn evaluate_password_strength(
+pub fn evaluate_password_strength(
     password: &SecretString,
     token: Option<CancellationToken>,
 ) -> PasswordEvaluation {
     let mut reasons = Vec::new();
-    let mut strength = PasswordStrength::NotEvaluated;
     let mut is_error = false;
-    let mut score: i32 = 0;
+    let mut score: Option<i64> = None;
 
     let pwd = password.expose_secret();
     let pwd_len = pwd.len();
@@ -197,7 +193,7 @@ pub async fn evaluate_password_strength(
 
     for (section_name, section_fn) in sections {
         // Check cancellation prima di ogni sezione
-        (strength, reasons, is_error) = cancellation(token.clone(), strength, reasons, is_error);
+        (score, reasons, is_error) = cancellation(token.clone(), score, reasons);
         if is_error {
             break;
         }
@@ -212,8 +208,7 @@ pub async fn evaluate_password_strength(
             Err(()) => {
                 error!(section = %section_name, "Fatal error in password evaluation section");
                 reasons.push("Error".to_string());
-                is_error = true;
-                strength = PasswordStrength::NotEvaluated;
+                score = None;
                 break;
             }
         }
@@ -223,7 +218,9 @@ pub async fn evaluate_password_strength(
     if !is_error {
         // Calcola score (0-100)
         // Lunghezza: fino a 20 punti (0.5 punti per carattere, max 20)
-        score += (pwd_len as f64 * 0.5).min(20.0) as i32;
+        let bonus = (pwd_len as f64 * 0.5).min(20.0) as i64;
+        let score_ref = score.get_or_insert(0);
+        *score_ref += bonus;
 
         // Varietà caratteri: fino a 60 punti (15 per tipo)
         // Aumentato il peso della varietà per bilanciare meglio
@@ -235,56 +232,43 @@ pub async fn evaluate_password_strength(
             .iter()
             .filter(|&&b| b)
             .count();
-        score += (variety_count * 15) as i32;
+        let score_ref = score.get_or_insert(0);
+        *score_ref += (variety_count * 15) as i64;
 
         // Bonus lunghezza extra: +5 se > 12, +10 se > 16
+        let score_ref = score.get_or_insert(0);
         if pwd_len > 16 {
-            score += 10;
+            *score_ref += 10;
         } else if pwd_len > 12 {
-            score += 5;
+            *score_ref += 5;
         }
 
         // Bonus caratteri speciali multipli: +5 se 2+ caratteri speciali
         let special_count = pwd.chars().filter(|c| !c.is_alphanumeric()).count();
         if special_count >= 2 {
-            score += 5;
+            let score_ref = score.get_or_insert(0);
+            *score_ref += 5;
         }
 
         // Bonus entropia: basato su caratteri unici
         // +5 se >= 12 caratteri unici, +10 se >= 16 caratteri unici
         let unique_chars: std::collections::HashSet<char> = pwd.chars().collect();
         let unique_count = unique_chars.len();
+        let score_ref = score.get_or_insert(0);
         if unique_count >= 16 {
-            score += 10;
+            *score_ref += 10;
         } else if unique_count >= 12 {
-            score += 5;
+            *score_ref += 5;
         }
 
         // Penalità per reasons (ogni reason sottrae punti)
-        score -= (reasons.len() as i32) * 10;
-
-        // Clampa score tra 0 e 100
-        score = score.clamp(0, 100);
-
-        // Determina strength basata su score con i nuovi livelli
-        // Soglie aggiornate per rendere MEDIUM più ampia
-        strength = if score > 95 {
-            PasswordStrength::GOD
-        } else if score >= 85 {
-            PasswordStrength::EPIC
-        } else if score >= 70 {
-            PasswordStrength::STRONG
-        } else if score >= 50 {
-            PasswordStrength::MEDIUM
-        } else {
-            PasswordStrength::WEAK
-        };
+        let score_ref = score.get_or_insert(0);
+        *score_ref -= (reasons.len() as i64) * 10;
     }
 
     PasswordEvaluation {
-        strength,
+        score: score.map(|s| PasswordScore::new(s)),
         reasons,
-        score: if is_error { None } else { Some(score) },
     }
 }
 
@@ -327,7 +311,7 @@ pub async fn evaluate_password_strength(
 //     }
 // }
 
-fn calculate_internal_score(chars: Vec<char>) -> PasswordStrength {
+fn calculate_internal_score(chars: Vec<char>) -> PasswordScore {
     let result = panic::catch_unwind(move || {
         let mut score: i32 = 0;
         let len = chars.len();
@@ -386,20 +370,11 @@ fn calculate_internal_score(chars: Vec<char>) -> PasswordStrength {
             score = score.min(49);
         }
 
-        score = score.clamp(0, 100);
-
-        // Soglie aggiornate per rendere MEDIUM più ampia
-        match score {
-            s if s > 95 => PasswordStrength::GOD,
-            s if s >= 85 => PasswordStrength::EPIC,
-            s if s >= 70 => PasswordStrength::STRONG,
-            s if s >= 50 => PasswordStrength::MEDIUM,
-            _ => PasswordStrength::WEAK,
-        }
+        PasswordScore::new(score)
     });
     result.unwrap_or_else(|_| {
         eprintln!("Error evaluating password strength");
-        PasswordStrength::WEAK
+        PasswordScore::new(0)
     })
 }
 
@@ -499,12 +474,15 @@ mod tests {
         });
 
         let pwd = SecretString::new("abc".to_string().into());
-        let evaluation = evaluate_password_strength(&pwd, None).await;
+        let evaluation = evaluate_password_strength(&pwd, None);
 
-        assert_eq!(evaluation.strength, PasswordStrength::WEAK);
+        assert_eq!(evaluation.strength(), PasswordStrength::WEAK);
         assert!(evaluation.score.is_some());
         assert!(evaluation.score.unwrap() < 50, "Expected WEAK score (< 50)");
-        assert!(!evaluation.reasons.is_empty(), "Should have reasons for weak password");
+        assert!(
+            !evaluation.reasons.is_empty(),
+            "Should have reasons for weak password"
+        );
     }
 
     #[tokio::test]
@@ -517,12 +495,16 @@ mod tests {
 
         // Password con tutti i 4 tipi di caratteri ma non troppo lunga
         let pwd = SecretString::new("MyPass123!".to_string().into());
-        let evaluation = evaluate_password_strength(&pwd, None).await;
+        let evaluation = evaluate_password_strength(&pwd, None);
 
-        assert_eq!(evaluation.strength, PasswordStrength::MEDIUM);
+        assert_eq!(evaluation.strength(), PasswordStrength::MEDIUM);
         assert!(evaluation.score.is_some());
         let score = evaluation.score.unwrap();
-        assert!(score >= 50 && score < 70, "Expected MEDIUM score (50-69), got {}", score);
+        assert!(
+            score >= 50 && score < 70,
+            "Expected MEDIUM score (50-69), got {}",
+            score
+        );
     }
 
     #[tokio::test]
@@ -534,16 +516,16 @@ mod tests {
         });
 
         let pwd = SecretString::new("VeryStrongPassword123!@#".to_string().into());
-        let evaluation = evaluate_password_strength(&pwd, None).await;
+        let evaluation = evaluate_password_strength(&pwd, None);
 
         // Deve essere almeno STRONG
         assert!(
             matches!(
-                evaluation.strength,
+                evaluation.strength(),
                 PasswordStrength::STRONG | PasswordStrength::EPIC | PasswordStrength::GOD
             ),
             "Expected STRONG or better, got {:?}",
-            evaluation.strength
+            evaluation.strength()
         );
         assert!(evaluation.score.is_some());
         assert!(evaluation.score.unwrap() >= 70);
@@ -559,16 +541,20 @@ mod tests {
 
         // "password" è nella blacklist
         let pwd = SecretString::new("password".to_string().into());
-        let evaluation = evaluate_password_strength(&pwd, None).await;
+        let evaluation = evaluate_password_strength(&pwd, None);
 
         // Password nella blacklist dovrebbe essere WEAK
-        assert_eq!(evaluation.strength, PasswordStrength::WEAK);
-        assert!(!evaluation.reasons.is_empty(), "Should have reason for blacklisted password");
+        assert_eq!(evaluation.strength(), PasswordStrength::WEAK);
+        assert!(
+            !evaluation.reasons.is_empty(),
+            "Should have reason for blacklisted password"
+        );
 
         // Verifica che il reason contenga riferimento alla blacklist
-        let has_blacklist_reason = evaluation.reasons.iter().any(|r|
-            r.contains("10,000") || r.contains("common")
-        );
+        let has_blacklist_reason = evaluation
+            .reasons
+            .iter()
+            .any(|r| r.contains("10,000") || r.contains("common"));
         assert!(has_blacklist_reason, "Should mention blacklist in reasons");
     }
 
@@ -581,11 +567,14 @@ mod tests {
         });
 
         let pwd = SecretString::new("".to_string().into());
-        let evaluation = evaluate_password_strength(&pwd, None).await;
+        let evaluation = evaluate_password_strength(&pwd, None);
 
         // Password vuota dovrebbe essere WEAK
-        assert_eq!(evaluation.strength, PasswordStrength::WEAK);
-        assert!(!evaluation.reasons.is_empty(), "Should have reason for empty password");
+        assert_eq!(evaluation.strength(), PasswordStrength::WEAK);
+        assert!(
+            !evaluation.reasons.is_empty(),
+            "Should have reason for empty password"
+        );
     }
 
     #[tokio::test]
@@ -601,12 +590,18 @@ mod tests {
         token.cancel();
 
         let pwd = SecretString::new("SomePassword123!".to_string().into());
-        let evaluation = evaluate_password_strength(&pwd, Some(token)).await;
+        let evaluation = evaluate_password_strength(&pwd, Some(token));
 
         // Con cancellazione, dovrebbe essere NotEvaluated
-        assert_eq!(evaluation.strength, PasswordStrength::NotEvaluated);
-        assert!(evaluation.score.is_none(), "Score should be None when cancelled");
-        assert!(!evaluation.reasons.is_empty(), "Should have cancellation reason");
+        assert_eq!(evaluation.strength(), PasswordStrength::NotEvaluated);
+        assert!(
+            evaluation.score.is_none(),
+            "Score should be None when cancelled"
+        );
+        assert!(
+            !evaluation.reasons.is_empty(),
+            "Should have cancellation reason"
+        );
     }
 
     #[tokio::test]
@@ -621,10 +616,10 @@ mod tests {
         let token = CancellationToken::new();
 
         let pwd = SecretString::new("TestPass123!".to_string().into());
-        let evaluation = evaluate_password_strength(&pwd, Some(token)).await;
+        let evaluation = evaluate_password_strength(&pwd, Some(token));
 
         // Senza cancellazione, dovrebbe valutare normalmente
-        assert_ne!(evaluation.strength, PasswordStrength::NotEvaluated);
+        assert_ne!(evaluation.strength(), PasswordStrength::NotEvaluated);
         assert!(evaluation.score.is_some());
     }
 
@@ -638,7 +633,7 @@ mod tests {
 
         // Password corta senza maiuscole, numeri o speciali
         let pwd = SecretString::new("abc".to_string().into());
-        let evaluation = evaluate_password_strength(&pwd, None).await;
+        let evaluation = evaluate_password_strength(&pwd, None);
 
         // Dovrebbe avere reasons per lunghezza e varietà
         let reasons_text = evaluation.reasons.join(" ");
@@ -658,13 +653,16 @@ mod tests {
 
         // Password molto forte con alta varietà e lunghezza
         let pwd = SecretString::new("ThisIsAVeryStrongP@ssw0rd!2024#XyZ".to_string().into());
-        let evaluation = evaluate_password_strength(&pwd, None).await;
+        let evaluation = evaluate_password_strength(&pwd, None);
 
         // Dovrebbe essere EPIC o GOD
         assert!(
-            matches!(evaluation.strength, PasswordStrength::EPIC | PasswordStrength::GOD),
+            matches!(
+                evaluation.strength(),
+                PasswordStrength::EPIC | PasswordStrength::GOD
+            ),
             "Expected EPIC or GOD for very strong password, got {:?}",
-            evaluation.strength
+            evaluation.strength()
         );
         assert!(evaluation.score.unwrap() >= 85);
     }
@@ -679,16 +677,16 @@ mod tests {
 
         // Verifica che lo score sia sempre tra 0 e 100
         let test_passwords = vec![
-            "",                          // Vuota
-            "a",                         // Molto corta
-            "password",                  // Blacklist
-            "MyPass123!",                // Media
+            "",                         // Vuota
+            "a",                        // Molto corta
+            "password",                 // Blacklist
+            "MyPass123!",               // Media
             "VeryStrongPassword123!@#", // Forte
         ];
 
         for pwd_str in test_passwords {
             let pwd = SecretString::new(pwd_str.to_string().into());
-            let evaluation = evaluate_password_strength(&pwd, None).await;
+            let evaluation = evaluate_password_strength(&pwd, None);
 
             if let Some(score) = evaluation.score {
                 assert!(

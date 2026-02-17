@@ -181,7 +181,7 @@ pub struct UserAuth {
 /// * `location` - Luogo/nome dove è salvata la password (es. "Google", "Netflix")
 /// * `password` - Password criptata con AES-256-GCM (salvata come BLOB)
 /// * `notes` - Note opzionali sulla password
-/// * `strength` - Forze della password (WEAK/MEDIUM/STRONG)
+/// * `score` - Forze della password (WEAK/MEDIUM/STRONG/EPIC/GOD)
 /// * `created_at` - Data di creazione opzionale
 /// * `nonce` - Nonce usato per la criptazione AES (12 byte, deve essere UNIQUE)
 pub struct StoredPassword {
@@ -190,7 +190,7 @@ pub struct StoredPassword {
     pub location: String,           // TEXT NOT NULL,
     pub password: DbSecretVec,      // TEXT NOT NULL,
     pub notes: Option<String>,      //,
-    pub strength: PasswordStrength, // TEXT NOT NULL CHECK (strength IN ('weak', 'medium', 'strong')),
+    pub score: PasswordScore,       // integer NOT NULL ,
     pub created_at: Option<String>, // TEXT DEFAULT (datetime('now')),
     pub nonce: Vec<u8>,             // BLOB NOT NULL UNIQUE,
 }
@@ -205,7 +205,7 @@ impl StoredPassword {
     /// * `location` - Luogo dove è salvata la password
     /// * `password` - Password criptata come bytes
     /// * `notes` - Note opzionali
-    /// * `strength` - Forze della password
+    /// * `score` - Forze della password
     /// * `created_at` - Data di creazione opzionale
     /// * `nonce` - Nonce usato per la criptazione AES
     ///
@@ -218,7 +218,7 @@ impl StoredPassword {
         location: String,
         password: SecretBox<[u8]>,
         notes: Option<String>,
-        strength: PasswordStrength,
+        score: PasswordScore,
         created_at: Option<String>,
         nonce: Vec<u8>,
     ) -> Self {
@@ -229,7 +229,7 @@ impl StoredPassword {
             location,
             password,
             notes,
-            strength,
+            score,
             created_at,
             nonce,
         }
@@ -242,7 +242,7 @@ pub struct StoredRawPassword {
     pub location: String,
     pub password: SecretString,
     pub notes: Option<String>,
-    pub strength: Option<PasswordStrength>,
+    pub score: Option<PasswordScore>,
 }
 
 impl StoredRawPassword {
@@ -253,7 +253,7 @@ impl StoredRawPassword {
             location: "".to_string(),
             password: "".to_string().into(),
             notes: None,
-            strength: None,
+            score: None,
         }
     }
     pub fn get_form_fields(
@@ -263,14 +263,14 @@ impl StoredRawPassword {
         String,
         SecretString,
         Option<String>,
-        Option<PasswordStrength>,
+        Option<PasswordScore>,
     ) {
         (
             self.id.unwrap(),
             self.location.clone(),
             self.password.clone(),
             self.notes.clone(),
-            self.strength.clone(),
+            self.score.clone(),
         )
     }
 }
@@ -287,16 +287,32 @@ impl PartialEq for StoredRawPassword {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PasswordEvaluation {
-    pub strength: PasswordStrength,
+    pub score: Option<PasswordScore>,
     pub reasons: Vec<String>,
-    pub score: Option<i32>,
+}
+
+impl From<PasswordScore> for PasswordEvaluation {
+    fn from(score: PasswordScore) -> Self {
+        PasswordEvaluation {
+            score: Some(score),
+            reasons: vec![],
+        }
+    }
+}
+impl PasswordEvaluation {
+    pub fn strength(&self) -> PasswordStrength {
+        match self.score {
+            Some(score) => PasswordScore::from_score(score.0 as i64),
+            None => PasswordStrength::NotEvaluated,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, sqlx::Type)]
 #[sqlx(type_name = "TEXT", rename_all = "lowercase")]
 /// Enum che rappresenta la forze della password.
 ///
-/// Viene salvata nel database come testo ('weak', 'medium', 'strong') e
+/// Viene salvata nel database come testo ('not evaluated','weak', 'medium', 'strong', 'epic', 'god') e
 /// controllata da un constraint CHECK.
 ///
 /// # Varianti
@@ -316,7 +332,8 @@ pub enum PasswordStrength {
     GOD,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, sqlx::Type)]
+#[sqlx(transparent)]
 pub struct PasswordScore(u8);
 
 impl PasswordScore {
@@ -334,9 +351,7 @@ impl PasswordScore {
     pub fn value(&self) -> u8 {
         self.0
     }
-    pub fn strength(&self) -> PasswordStrength {
-        PasswordScore::from_score(self.0 as i64)
-    }
+
     pub fn from_score(score: i64) -> PasswordStrength {
         match score {
             s if s > 95 => PasswordStrength::GOD,
@@ -347,6 +362,19 @@ impl PasswordScore {
         }
     }
 }
+
+impl PartialEq<u8> for PasswordScore {
+    fn eq(&self, other: &u8) -> bool {
+        self.0 == *other
+    }
+}
+
+impl PartialOrd<u8> for PasswordScore {
+    fn partial_cmp(&self, other: &u8) -> Option<std::cmp::Ordering> {
+        self.0.partial_cmp(other)
+    }
+}
+
 impl fmt::Display for PasswordScore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
@@ -374,18 +402,39 @@ mod test {
             PasswordScore::new(-1000100).value()
         );
         let ps = PasswordScore::new(86);
-        assert_eq!(ps.strength(), PasswordStrength::EPIC);
+        let pe = PasswordEvaluation {
+            score: Some(ps),
+            reasons: vec![],
+        };
+        assert_eq!(pe.strength(), PasswordStrength::EPIC);
 
         let ps = PasswordScore::new(51);
-        assert_eq!(ps.strength(), PasswordStrength::MEDIUM);
+        let pe = PasswordEvaluation {
+            score: Some(ps),
+            reasons: vec![],
+        };
+        assert_eq!(pe.strength(), PasswordStrength::MEDIUM);
 
         let ps = PasswordScore::new(-50);
-        assert_eq!(ps.strength(), PasswordStrength::WEAK);
+        let pe = PasswordEvaluation {
+            score: Some(ps),
+            reasons: vec![],
+        };
+        assert_eq!(pe.strength(), PasswordStrength::WEAK);
 
         let ps = PasswordScore::new(50000);
-        assert_eq!(ps.strength(), PasswordStrength::GOD);
+        let pe = PasswordEvaluation {
+            score: Some(ps),
+            reasons: vec![],
+        };
+        assert_eq!(pe.strength(), PasswordStrength::GOD);
 
         let ps = PasswordScore::new(71);
-        assert_eq!(ps.strength(), PasswordStrength::STRONG);
+        let pe = PasswordEvaluation {
+            score: Some(ps),
+            reasons: vec![],
+        };
+        assert_eq!(pe.strength(), PasswordStrength::STRONG);
+        assert!(pe.score.unwrap() > 50);
     }
 }

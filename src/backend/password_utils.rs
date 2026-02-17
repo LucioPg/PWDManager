@@ -11,13 +11,15 @@ use crate::backend::db_backend::{
     fetch_password_created_at_from_id, save_or_update_stored_password,
 };
 use crate::backend::password_types_helper::{
-    DbSecretString, PasswordStrength, StoredPassword, StoredRawPassword, UserAuth,
+    DbSecretString, PasswordScore, PasswordStrength, StoredPassword, StoredRawPassword, UserAuth,
 };
+use crate::backend::strength_utils::evaluate_password_strength;
 use aes_gcm::aead::{Aead, AeadCore, Nonce, OsRng};
 use aes_gcm::{Aes256Gcm, Key, KeyInit};
 use argon2::password_hash::Salt;
 use argon2::{Argon2, PasswordHash};
 use custom_errors::DBError;
+use futures::TryFutureExt;
 use rayon::prelude::*;
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;
@@ -26,77 +28,6 @@ use tokio::sync::mpsc::Sender;
 use tokio::task;
 use tokio_util::sync::CancellationToken;
 
-/// Calcola la forze di una password in base alla sua lunghezza.
-///
-/// # Parametri
-///
-/// * `password` - La password di cui calcolare la forze (in chiaro)
-///
-/// # Valore Restituito
-///
-/// Return `PasswordStrength`:
-/// - `WEAK` - Meno di 8 caratteri
-/// - `MEDIUM` - Tra 8 e 15 caratteri
-/// - `STRONG` - 16 o più caratteri
-#[deprecated(
-    note = "Usare evaluate_password_strength(password: SecretString, cancellation_token: Option<CancellationToken>)"
-)]
-pub async fn calc_strength(password: &SecretString) -> PasswordStrength {
-    if password.expose_secret().len() < 8 {
-        return PasswordStrength::WEAK;
-    };
-    if password.expose_secret().len() >= 8 && password.expose_secret().len() < 16 {
-        return PasswordStrength::MEDIUM;
-    };
-    PasswordStrength::STRONG
-}
-
-#[deprecated(
-    note = "Usare evaluate_password_strength(password: SecretString, cancellation_token: Option<CancellationToken>)"
-)]
-pub fn calc_strength_sync(password: &str) -> PasswordStrength {
-    if password.len() < 8 {
-        return PasswordStrength::WEAK;
-    };
-    if password.len() >= 8 && password.len() < 16 {
-        return PasswordStrength::MEDIUM;
-    };
-    PasswordStrength::STRONG
-}
-
-#[deprecated(
-    note = "Usare evaluate_password_strength(password: SecretString, cancellation_token: Option<CancellationToken>)"
-)]
-pub async fn calc_strength_channel(
-    password: &str,
-    token: CancellationToken,
-    tx: Sender<usize>,
-) -> Result<PasswordStrength, ()> {
-    let password = password.to_string();
-
-    let result = task::spawn_blocking(move || {
-        if token.is_cancelled() {
-            return Err(());
-        }
-        let stregth = calc_strength_sync(&password);
-        let _ = tx.send(1);
-        Ok(stregth)
-    })
-    .await
-    .map_err(|_| ())??;
-    Ok(result)
-}
-
-/*
-esempio per usare la conversione enum -> text di sqlx
-sqlx::query!(
-    "INSERT INTO users (name, strength) VALUES (?1, ?2)",
-    "Lucio",
-    Strength::Strong as Strength
-)
-.execute(&pool)
-.await?;
- */
 
 /// Estrae il sale da una password hash Argon2.
 ///
@@ -238,36 +169,42 @@ pub async fn create_stored_password_pipeline(
     location: String,
     raw_password: SecretString,
     notes: Option<String>,
-    strength: Option<PasswordStrength>,
+    score: Option<PasswordScore>,
 ) -> Result<(), DBError> {
-    let user_auth: UserAuth = fetch_password_created_at_from_id(&pool, user_id).await?;
+    // 1. Recupero credenziali e setup crittografico
+    let user_auth = fetch_password_created_at_from_id(pool, user_id).await?;
     let salt = get_salt(&user_auth.password);
     let nonce = create_nonce();
     let cipher = create_cipher(&salt, &user_auth)?;
-    let (password, strength_result) = if strength.is_none() {
-        let task_encrypt = create_password_with_cipher(&raw_password, &nonce, &cipher);
-        let task_calc_strength = calc_strength(&raw_password);
-        tokio::join!(task_encrypt, task_calc_strength)
-    } else {
-        let encrypted = create_password_with_cipher(&raw_password, &nonce, &cipher).await;
-        (encrypted, strength.unwrap())
-    };
-    if let Ok(password) = password {
-        let stored_password = StoredPassword::new(
-            None,
-            user_id,
-            location,
-            password,
-            notes,
-            strength_result,
-            None,
-            nonce.to_vec(),
-        );
-        save_or_update_stored_password(&pool, stored_password).await?; // questa potrebbe accettare un vec di stored password per fare in modo che vengano fatte in bulk, inoltre andrebbe estratta da questa funzione
-        Ok(())
-    } else {
-        Err(DBError::new_password_save_error("Errore generale".into()))
-    }
+
+    // 2. Criptazione (eseguita una sola volta, fuori dai branch logici)
+    let encrypted_password = create_password_with_cipher(&raw_password, &nonce, &cipher)
+        .await
+        .map_err(|_| DBError::new_password_save_error("Errore durante la criptazione".into()))?;
+
+    // 3. Determinazione del punteggio (Uso di unwrap_or_else per calcolo lazy)
+    let password_score = score.unwrap_or_else(|| {
+        evaluate_password_strength(&raw_password, None)
+            .score
+            .unwrap_or(PasswordScore::new(0))
+    });
+
+    // 4. Creazione della struct
+    let stored_password = StoredPassword::new(
+        None,
+        user_id,
+        location,
+        encrypted_password,
+        notes,
+        password_score,
+        None,
+        nonce.to_vec(),
+    );
+
+    // 5. Persistenza
+    save_or_update_stored_password(pool, stored_password).await?;
+
+    Ok(())
 }
 
 pub async fn create_stored_passwords(
@@ -287,27 +224,27 @@ pub async fn create_stored_passwords(
     task::spawn_blocking(move || {
         stored_raw_passwords
             .into_par_iter()
-            .map(|spr| {
+            .map(|srp| {
                 let nonce = create_nonce();
 
                 // Usiamo il cipher condiviso
-                let encryption = create_password_with_cipher_sync(&spr.password, &nonce, &cipher)
+                let encryption = create_password_with_cipher_sync(&srp.password, &nonce, &cipher)
                     .map_err(|_| {
                     DBError::new_cipher_encryption_error("Cipher error".to_string())
                 })?;
-                let strength_result: PasswordStrength = if spr.strength.is_none() {
-                    calc_strength_sync(&spr.password.expose_secret())
-                } else {
-                    spr.strength.unwrap()
-                };
+                let score_evaluation: PasswordScore = srp.score.unwrap_or_else(|| {
+                    evaluate_password_strength(&srp.password, None)
+                        .score
+                        .unwrap_or(PasswordScore::new(0))
+                });
 
                 Ok(StoredPassword::new(
-                    spr.id,
+                    srp.id,
                     user_auth.id,
-                    spr.location,
+                    srp.location,
                     encryption, // Assunto che encryption sia il tipo corretto
-                    spr.notes,
-                    strength_result,
+                    srp.notes,
+                    score_evaluation,
                     None,
                     nonce.to_vec(),
                 ))
