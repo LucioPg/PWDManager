@@ -58,6 +58,17 @@ impl FormValue for i32 {
     }
 }
 
+// Implementazione per Option<String> (campi opzionali come notes)
+impl FormValue for Option<String> {
+    fn to_form_string(&self) -> String {
+        self.clone().unwrap_or_default()
+    }
+    fn from_form_string(s: String) -> Option<Self> {
+        // Restituisce Some(Some(String)) se non vuota, altrimenti Some(None)
+        Some(if s.is_empty() { None } else { Some(s) })
+    }
+}
+
 /// Tipo di input per il FormField
 #[derive(Clone, PartialEq, Debug)]
 pub enum InputType {

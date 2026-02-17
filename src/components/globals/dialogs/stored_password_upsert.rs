@@ -6,12 +6,11 @@ use crate::components::{
     ActionButton, ButtonSize, ButtonType, ButtonVariant, FormField, FormSecret, InputType,
     PasswordHandler,
 };
-use dioxus::html::completions::CompleteWithBraces::label;
 use dioxus::prelude::*;
 use secrecy::{ExposeSecret, SecretString};
 use sqlx::SqlitePool;
 
-#[cfg(feature = "ide-only")]
+// #[cfg(feature = "ide-only")]
 #[component]
 pub fn StoredPasswordUpsertDialog(
     /// Controlla la visibilità del modal
@@ -29,25 +28,21 @@ pub fn StoredPasswordUpsertDialog(
     let pool = use_context::<SqlitePool>();
     let empty_password = "".to_string();
     let secret_password = SecretString::new(empty_password.into());
-    let mut current_stored_raw_password: StoredRawPassword;
     let mut is_new = false;
-    if let Some(stored_raw_password) = stored_raw_password {
-        current_stored_raw_password = stored_raw_password;
-    } else {
-        is_new = true;
-        current_stored_raw_password = StoredRawPassword::new();
-    }
-    let (srp_id, location, password, notes, strength) =
-        current_stored_raw_password.get_form_fields();
+    let mut current_stored_raw_password: StoredRawPassword =
+        stored_raw_password.unwrap_or_else(|| {
+            is_new = true;
+            StoredRawPassword::new()
+        });
     let (title, alert_type) = if is_new {
         ("New Stored Password", "alert-info")
     } else {
         ("Edit Stored Password", "alert-warning")
     };
-    let mut location_sig = use_signal(|| location.clone());
-    let mut password_sig = use_signal(|| password.expose_secret().clone());
-    let mut notes_sig = use_signal(|| notes.clone());
-    let mut strength_sig = use_signal(|| strength.clone());
+    let mut location_sig = use_signal(|| current_stored_raw_password.location.clone());
+    let mut password_sig = use_signal(|| current_stored_raw_password.password.clone());
+    let mut notes_sig = use_signal(|| current_stored_raw_password.notes.clone());
+    let mut score_sig = use_signal(|| current_stored_raw_password.score.clone());
     let mut evaluated_password = use_signal(|| Option::<FormSecret>::None);
 
     rsx! {
@@ -106,7 +101,22 @@ pub fn StoredPasswordUpsertDialog(
                             evaluated_password.set(Some(pwd));
                         },
                         password_required: true,
+                        initial_password: if !is_new && !password_sig().expose_secret().is_empty() {
+                            Some(FormSecret(password_sig().clone()))
+                        } else {
+                            None
+                        },
+                        initial_score: if !is_new { score_sig().clone() } else { None },
                     }
+                FormField {
+                    label: "Notes".to_string(),
+                    input_type: InputType::Textarea,
+                    placeholder: "Optional notes".to_string(),
+                    value: notes_sig,
+                    name: Some("notes".to_string()),
+                    required: false,
+                    alphanumeric_only: false,
+                }
                 }
 
 
