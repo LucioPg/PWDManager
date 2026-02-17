@@ -248,6 +248,38 @@ pub async fn create_stored_passwords(
     .map_err(|e| DBError::new_password_save_error(format!("Join error: {}", e)))?
 }
 
+pub async fn decrypt_bulk_stored_passwords(
+    user_auth: UserAuth,
+    stored_passwords: Vec<StoredPassword>,
+) -> Result<Vec<StoredRawPassword>, DBError> {
+    //new_password_conversion_error
+    let salt = get_salt(&user_auth.password);
+    let cipher = create_cipher(&salt, &user_auth)?;
+    task::spawn_blocking(move || {
+        stored_passwords
+            .into_par_iter()
+            .map(|sp| {
+                let nonce = get_nonce_from_vec(&sp.nonce)?;
+                let plaintext_bytes = cipher
+                    .decrypt(&nonce, sp.password.expose_secret().as_ref())
+                    .map_err(|e| DBError::new_password_conversion_error(e.to_string()))?;
+                let plaintext = String::from_utf8(plaintext_bytes)
+                    .map_err(|e| DBError::new_password_conversion_error(e.to_string()))?;
+                Ok(StoredRawPassword {
+                    id: sp.id,
+                    user_id: user_auth.id,
+                    location: sp.location,
+                    password: SecretString::new(plaintext.into()),
+                    notes: sp.notes,
+                    score: Some(sp.score),
+                })
+            })
+            .collect::<Result<Vec<StoredRawPassword>, DBError>>()
+    })
+    .await
+    .map_err(|e| DBError::new_password_conversion_error(format!("Join error: {}", e)))?
+}
+
 /// Decripta una password salvata nel database.
 ///
 /// # Parametri
@@ -268,6 +300,7 @@ pub async fn decrypt_stored_password(
     pool: &SqlitePool,
     stored_password: &StoredPassword,
 ) -> Result<String, DBError> {
+    //new_password_conversion_error
     let user_auth: UserAuth = fetch_user_auth_from_id(&pool, stored_password.user_id).await?;
     let salt = get_salt(&user_auth.password);
     let nonce = get_nonce_from_vec(&stored_password.nonce)?;
