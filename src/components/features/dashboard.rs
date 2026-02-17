@@ -1,3 +1,4 @@
+use crate::components::StoredPasswordUpsertDialog;
 use crate::components::globals::{StatCard, StatVariant};
 use dioxus::prelude::*;
 
@@ -6,6 +7,7 @@ pub fn Dashboard() -> Element {
     let auth_state = use_context::<crate::auth::AuthState>();
     let username = auth_state.get_username();
     let nav = use_navigator();
+    let mut stored_password_dialog_open = use_signal(|| false);
     rsx! {
         div { class: "content-container animate-fade-in",
             div { class: "mb-8",
@@ -35,9 +37,16 @@ pub fn Dashboard() -> Element {
             div { class: "card card-lg",
                 button { class: "btn btn-primary",
                     r#type: "button",
-                    onclick: move |_| {nav.push("/progress");},
+                    onclick: move |_| {stored_password_dialog_open.set(true);},
                     "progress" }
             }
+
+        }
+        StoredPasswordUpsertDialog {
+            open: stored_password_dialog_open,
+            on_confirm: move |_| {stored_password_dialog_open.set(false);},
+            on_cancel: move |_| {stored_password_dialog_open.set(false);},
+            stored_raw_password: None,
         }
     }
 }

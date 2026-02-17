@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use super::base_modal::ModalVariant;
-use crate::backend::password_types_helper::{PasswordStrength, StoredPassword, StoredRawPassword};
+use crate::backend::password_types_helper::{StoredPassword, StoredRawPassword};
 use crate::components::{
     ActionButton, ButtonSize, ButtonType, ButtonVariant, FormField, FormSecret, InputType,
     PasswordHandler,
@@ -47,9 +47,13 @@ pub fn StoredPasswordUpsertDialog(
     let mut evaluated_password = use_signal(|| Option::<FormSecret>::None);
 
     let (title, alert_type) = if is_new {
-        ("New Stored Password", "alert-info")
+        ("New Stored Password".to_string(), "alert-info".to_string())
     } else {
-        ("Edit Stored Password", "alert-warning")
+        let l = location_sig.clone();
+        (
+            format!("Edit Stored Password: \"{}\"", l()),
+            "alert-warning".to_string(),
+        )
     };
 
     rsx! {
@@ -74,22 +78,13 @@ pub fn StoredPasswordUpsertDialog(
                 // Icona di warning
                 div {
                     class: "alert {alert_type} mb-4 flex items-center justify-center mx-10",
-                    svg {
-                        class: "w-6 h-6",
-                        fill: "none",
-                        stroke: "currentColor",
-                        view_box: "0 0 24 24",
-                        path {
-                            d: "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z",
-                            "stroke-linecap": "round",
-                            "stroke-linejoin": "round",
-                            "stroke-width": "2"
-                        }
-                    }
+                    p {
+                       class: "text-center",
+                    {title}}
                 }
 
                 // Titolo
-                h3 { class: "font-bold text-lg mb-2", "{title}" }
+                // h3 { class: "font-bold text-lg mb-2", "{title}" }
 
                 // Messaggio d
 
