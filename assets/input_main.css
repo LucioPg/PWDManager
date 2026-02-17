@@ -1151,6 +1151,60 @@ button[class*="btn-"] {
         @apply flex flex-row gap-2 m-4;
     }
 
+    /* ============================================================
+       TABLE ROW ACTION BUTTONS (pwd- prefixed)
+       ============================================================ */
+
+    /* Base styles for row action buttons */
+    .pwd-row-action-btn {
+        @apply p-2 rounded-lg transition-all duration-200;
+        @apply flex items-center justify-center;
+        @apply focus:outline-none focus:ring-2 focus:ring-offset-1;
+        cursor: pointer;
+        border: none;
+        background: transparent;
+    }
+
+    .pwd-row-action-btn:hover {
+        transform: scale(1.1);
+    }
+
+    .pwd-row-action-btn:active {
+        transform: scale(0.95);
+    }
+
+    /* Burger button (info tooltip toggle) */
+    .pwd-burger-btn {
+        @apply text-gray-500 hover:text-gray-700 hover:bg-gray-100;
+        @apply focus:ring-gray-400;
+    }
+
+    /* Edit button (gear icon) - yellow warning background, white icon */
+    .pwd-edit-btn {
+        @apply bg-warning-500 text-white;
+        @apply hover:bg-warning-600;
+        @apply focus:ring-warning-400;
+    }
+
+    /* Delete button (trash outline) */
+    .pwd-delete-btn {
+        @apply text-gray-500 hover:text-error-600 hover:bg-error-50;
+        @apply focus:ring-error-400;
+    }
+
+    /* Row tooltip styling */
+    .pwd-row-tooltip {
+        animation: fadeIn 0.2s ease-out;
+    }
+
+    .pwd-row-tooltip h4 {
+        color: #1f2937; /* gray-800 */
+    }
+
+    .pwd-row-tooltip p {
+        color: #374151; /* gray-700 */
+    }
+
 }
 
 @keyframes fadeIn {
