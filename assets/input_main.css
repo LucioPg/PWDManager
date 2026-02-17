@@ -485,6 +485,10 @@ textarea.pwd-input {
     @apply bg-white rounded-xl border border-neutral-200 shadow-sm;
 }
 
+.card-no-border {
+    @apply flex flex-col m-2;
+    @apply border-none;
+}
 
 /* ============================================================
    LOADING STATES
