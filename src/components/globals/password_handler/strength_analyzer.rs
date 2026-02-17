@@ -10,6 +10,9 @@ pub struct StrengthAnalyzerProps {
     #[props(default)]
     pub is_evaluating: bool,
     pub score: Option<PasswordScore>,
+    /// Whether to show the strength bar (gradient with cursor)
+    #[props(default = true)]
+    pub show_bar: bool,
 }
 
 #[component]
@@ -86,8 +89,8 @@ pub fn StrengthAnalyzer(props: StrengthAnalyzerProps) -> Element {
                 }
             }
 
-            // Strength bar with gradient and cursor
-            if !props.is_evaluating && props.score.is_some() {
+            // Strength bar with gradient and cursor (only if show_bar is true)
+            if props.show_bar && !props.is_evaluating && props.score.is_some() {
                 div { class: "strength-bar-container",
                     div { class: "strength-bar",
                         // Cursor indicator with tooltip
