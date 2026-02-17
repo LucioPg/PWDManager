@@ -1,6 +1,5 @@
 use crate::backend::db_backend::{
-    fetch_user_data, get_all_stored_passwords_for_user, init_db,
-    save_or_update_user,
+    fetch_user_data, get_all_stored_passwords_for_user, init_db, save_or_update_user,
 };
 use crate::backend::password_types_helper::{
     DbSecretString, PasswordScore, PasswordStrength, StoredPassword, StoredRawPassword, UserAuth,
