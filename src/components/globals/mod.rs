@@ -10,6 +10,7 @@ mod route_wrapper;
 pub mod spinner;
 pub mod stat_card;
 mod style;
+mod table;
 pub mod tabs;
 mod toast_hub;
 
@@ -25,5 +26,6 @@ pub use route_wrapper::*;
 pub use spinner::*;
 pub use stat_card::*;
 pub use style::*;
+pub use table::*;
 pub use tabs::*;
 pub use toast_hub::*;
