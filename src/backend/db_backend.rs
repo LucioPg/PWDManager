@@ -601,3 +601,31 @@ pub async fn get_all_stored_passwords_for_user(
         .await
         .map_err(|e| DBError::new_list_error(format!("Failed to fetch passwords: {}", e)))
 }
+
+#[cfg(test)]
+mod tests {
+    // Questo modulo può contenere test per gli helper functions stessi
+    use super::*;
+
+    #[tokio::test]
+    async fn test_get_user_auth() {
+        let pool = init_db().await.expect("Failed to initialize database");
+        let mut error: Option<DBError> = None;
+        let user_auth = match fetch_user_auth_from_id(&pool, 99).await {
+            Ok(data) => {
+                println!("{:?}", data);
+                Some(data)
+            }
+            Err(e) => {
+                println!("User auth not found for user_id: {}", e);
+                error = Some(e);
+                None
+            }
+        };
+        if let Some(e) = error {
+            println!("{:?}", e);
+        } else {
+            println!("{:?}", user_auth)
+        }
+    }
+}
