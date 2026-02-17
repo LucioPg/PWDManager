@@ -11,7 +11,7 @@ pub struct User {
 
 #[derive(Clone)]
 pub struct AuthState {
-    user: Signal<Option<User>>,
+    pub user: Signal<Option<User>>,
 }
 
 impl AuthState {
