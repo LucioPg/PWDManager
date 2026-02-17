@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
-use super::base_modal::ModalVariant;
-use crate::backend::password_types_helper::{StoredPassword, StoredRawPassword};
+use super::base_modal::{BaseModal, ModalVariant};
+use crate::backend::password_types_helper::StoredRawPassword;
 use crate::components::{
     ActionButton, ButtonSize, ButtonType, ButtonVariant, FormField, FormSecret, InputType,
     PasswordHandler,
@@ -46,18 +46,26 @@ pub fn StoredPasswordUpsertDialog(
     let mut score_sig = use_signal(|| current_stored_raw_password.score.clone());
     let mut evaluated_password = use_signal(|| Option::<FormSecret>::None);
 
-    let (title, alert_type) = if is_new {
-        ("New Stored Password".to_string(), "alert-info".to_string())
+    let (title, alert_type, created_at) = if is_new {
+        (
+            "New Stored Password".to_string(),
+            "alert-info".to_string(),
+            "".to_string(),
+        )
     } else {
         let l = location_sig.clone();
         (
             format!("Edit Stored Password: \"{}\"", l()),
             "alert-warning".to_string(),
+            current_stored_raw_password
+                .created_at
+                .clone()
+                .unwrap_or_default(),
         )
     };
 
     rsx! {
-            crate::components::globals::dialogs::BaseModal {
+            BaseModal {
                 open: open,
                 on_close: move |_| {
                     on_cancel.call(());
@@ -81,6 +89,7 @@ pub fn StoredPasswordUpsertDialog(
                     p {
                        class: "text-center",
                     {title}}
+                    p { class: "text-center", "{created_at}" }
                 }
 
                 // Titolo
