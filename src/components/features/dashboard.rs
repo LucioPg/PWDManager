@@ -19,6 +19,7 @@ pub fn Dashboard() -> Element {
         password: "amazingPassword1256@ds!!".to_string().into(),
         notes: Some("test".to_string()),
         score: Some(PasswordScore::new(60)),
+        created_at: Some("2025-01-15".to_string()),
     };
     current_stored_raw_password.set(Some(temp));
 
