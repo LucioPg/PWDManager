@@ -256,6 +256,7 @@ impl StoredRawPassword {
             score: None,
         }
     }
+    #[allow(dead_code)]
     pub fn get_form_fields(
         &self,
     ) -> (

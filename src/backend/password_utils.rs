@@ -11,7 +11,7 @@ use crate::backend::db_backend::{
     fetch_password_created_at_from_id, save_or_update_stored_password,
 };
 use crate::backend::password_types_helper::{
-    DbSecretString, PasswordScore, PasswordStrength, StoredPassword, StoredRawPassword, UserAuth,
+    DbSecretString, PasswordScore, StoredPassword, StoredRawPassword, UserAuth,
 };
 use crate::backend::strength_utils::evaluate_password_strength;
 use aes_gcm::aead::{Aead, AeadCore, Nonce, OsRng};
@@ -19,14 +19,11 @@ use aes_gcm::{Aes256Gcm, Key, KeyInit};
 use argon2::password_hash::Salt;
 use argon2::{Argon2, PasswordHash};
 use custom_errors::DBError;
-use futures::TryFutureExt;
 use rayon::prelude::*;
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;
 use std::sync::Arc;
-use tokio::sync::mpsc::Sender;
 use tokio::task;
-use tokio_util::sync::CancellationToken;
 
 /// Estrae il sale da una password hash Argon2.
 ///
@@ -102,7 +99,6 @@ fn get_nonce_from_vec(nonce_vec: &Vec<u8>) -> Result<Nonce<Aes256Gcm>, DBError> 
 /// - `DBError::new_cipher_create_error` - Errore nella derivazione della chiave
 pub fn create_cipher(salt: &Salt<'_>, user_auth: &UserAuth) -> Result<Aes256Gcm, DBError> {
     let mut derived_key = [0u8; 32];
-    let diversificator = user_auth.created_at.to_string();
     // let new_salt = format!("{}{}", salt.as_str(), diversificator);
     Argon2::default()
         .hash_password_into(

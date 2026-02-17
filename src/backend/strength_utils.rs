@@ -1,5 +1,4 @@
-use crate::backend::password_types_helper::{PasswordEvaluation, PasswordScore, PasswordStrength};
-use ::std::panic;
+use crate::backend::password_types_helper::{PasswordEvaluation, PasswordScore};
 use dioxus::prelude::*;
 use secrecy::{ExposeSecret, SecretString};
 use std::collections::HashSet;
@@ -33,12 +32,6 @@ pub fn init_blacklist() -> std::io::Result<()> {
         .expect("Blacklist already initialized");
     tracing::info!("Blacklist initialized successfully! ({} passwords)", count);
     Ok(())
-}
-
-/// Legacy: inizializza la blacklist da un percorso file (mantenuto per compatibilità)
-#[deprecated(note = "Usare init_blacklist() senza parametri")]
-pub fn init_blacklist_from_path(_file_path: &str) -> std::io::Result<()> {
-    init_blacklist()
 }
 
 /// Controlla se la password è nella blacklist delle 10k password comuni
@@ -272,115 +265,10 @@ pub fn evaluate_password_strength(
     }
 }
 
-// pub async fn evaluate_password_strength(
-//     password: &SecretString,
-//     token: CancellationToken,
-// ) -> PasswordStrength {
-//     let password_clone = password.clone();
-//
-//     let strength = tokio::task::spawn_blocking(move || {
-//         if token.is_cancelled() {
-//             return Err(PasswordStrength::WEAK);
-//         }
-//
-//         let pass_ref = password_clone.expose_secret();
-//
-//         // 1. Controllo Blacklist (Sola lettura, thread-safe)
-//         if let Some(blacklist) = COMMON_PASSWORDS.get() {
-//             if blacklist.contains(&pass_ref.to_lowercase()) {
-//                 return Err(PasswordStrength::WEAK);
-//             }
-//         } else {
-//             println!("Attenzione Blacklist: NON CARICATA");
-//         }
-//
-//         let chars: Vec<char> = pass_ref.chars().collect();
-//         let len = chars.len();
-//
-//         if len == 0 {
-//             return Err(PasswordStrength::WEAK);
-//         }
-//
-//         Ok(calculate_internal_score(chars))
-//     })
-//     .await;
-//     match strength {
-//         Ok(Ok(s)) => s,
-//         Ok(Err(s)) => s,
-//         Err(_) => PasswordStrength::WEAK,
-//     }
-// }
-
-fn calculate_internal_score(chars: Vec<char>) -> PasswordScore {
-    let result = panic::catch_unwind(move || {
-        let mut score: i32 = 0;
-        let len = chars.len();
-        // 2. Analisi Varietà
-        let has_upper = chars.iter().any(|c| c.is_uppercase());
-        let has_lower = chars.iter().any(|c| c.is_lowercase());
-        let has_digit = chars.iter().any(|c| c.is_digit(10));
-        let has_special = chars.iter().any(|c| !c.is_alphanumeric());
-
-        // Lunghezza: 0.5 pt per carattere (max 20)
-        score += ((len as f64) * 0.5).min(20.0) as i32;
-
-        // Varietà: 15 pt per tipo (max 60)
-        if has_upper {
-            score += 15;
-        }
-        if has_lower {
-            score += 15;
-        }
-        if has_digit {
-            score += 15;
-        }
-        if has_special {
-            score += 15;
-        }
-
-        // 3. Penalità Ripetizioni (es. "aaaa")
-        let mut repeats = 0;
-        for i in 0..len.saturating_sub(1) {
-            if chars[i] == chars[i + 1] {
-                repeats += 1;
-            }
-        }
-        score -= repeats * 5;
-
-        // 4. Penalità Sequenze (es. "abc", "123")
-        let mut sequences = 0;
-        for window in chars.windows(3) {
-            let v0 = window[0] as i32;
-            let v1 = window[1] as i32;
-            let v2 = window[2] as i32;
-            if (v1 == v0 + 1 && v2 == v1 + 1) || (v1 == v0 - 1 && v2 == v1 - 1) {
-                sequences += 1;
-            }
-        }
-        score -= sequences * 10;
-
-        // 5. Valutazione Finale con nuovi livelli
-        let types_count = [has_upper, has_lower, has_digit, has_special]
-            .iter()
-            .filter(|&&b| b)
-            .count();
-
-        // Se troppo corta o solo un tipo di carattere, non può essere oltre WEAK
-        if len < 8 || types_count < 2 {
-            score = score.min(49);
-        }
-
-        PasswordScore::new(score)
-    });
-    result.unwrap_or_else(|_| {
-        eprintln!("Error evaluating password strength");
-        PasswordScore::new(0)
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::backend::password_types_helper::PasswordStrength;
     use secrecy::SecretString;
 
     #[test]
