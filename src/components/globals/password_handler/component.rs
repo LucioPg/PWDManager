@@ -44,12 +44,11 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
         let raw_val = score_opt.map(|s| s.value() as i64);
 
         // 3. Passiamo l'Option<i64> alla tua funzione
-        PasswordScore::from_score(raw_val)
+        PasswordScore::get_strength(raw_val)
     });
     let mut reasons = use_signal(|| Vec::<String>::new());
     #[allow(unused_mut)]
     let mut is_evaluating = use_signal(|| false);
-    let mut score = use_signal(|| Option::<PasswordScore>::None);
 
     let mut debounce_task = use_signal(|| None::<Task>);
     let mut cancel_token = use_signal(|| Arc::new(CancellationToken::new()));
