@@ -29,21 +29,28 @@ pub fn StoredPasswordUpsertDialog(
     let empty_password = "".to_string();
     let secret_password = SecretString::new(empty_password.into());
     let mut is_new = false;
+    #[allow(unused_mut)]
     let mut current_stored_raw_password: StoredRawPassword =
         stored_raw_password.unwrap_or_else(|| {
             is_new = true;
             StoredRawPassword::new()
         });
+
+    #[allow(unused_mut)]
+    let mut location_sig = use_signal(|| current_stored_raw_password.location.clone());
+    #[allow(unused_mut)]
+    let mut password_sig = use_signal(|| current_stored_raw_password.password.clone());
+    #[allow(unused_mut)]
+    let mut notes_sig = use_signal(|| current_stored_raw_password.notes.clone());
+    #[allow(unused_mut)]
+    let mut score_sig = use_signal(|| current_stored_raw_password.score.clone());
+    let mut evaluated_password = use_signal(|| Option::<FormSecret>::None);
+
     let (title, alert_type) = if is_new {
         ("New Stored Password", "alert-info")
     } else {
         ("Edit Stored Password", "alert-warning")
     };
-    let mut location_sig = use_signal(|| current_stored_raw_password.location.clone());
-    let mut password_sig = use_signal(|| current_stored_raw_password.password.clone());
-    let mut notes_sig = use_signal(|| current_stored_raw_password.notes.clone());
-    let mut score_sig = use_signal(|| current_stored_raw_password.score.clone());
-    let mut evaluated_password = use_signal(|| Option::<FormSecret>::None);
 
     rsx! {
             crate::components::globals::dialogs::BaseModal {
