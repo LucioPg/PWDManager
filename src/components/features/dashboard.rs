@@ -1,4 +1,3 @@
-use crate::backend::db_backend::fetch_user_auth_from_id;
 use crate::backend::password_types_helper::{
     PasswordScore, PasswordStats, PasswordStrength, StoredRawPassword,
 };

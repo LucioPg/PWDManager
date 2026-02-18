@@ -1,11 +1,7 @@
-use crate::auth::AuthState;
-use crate::backend::db_backend::fetch_user_auth_from_id;
 use crate::backend::password_types_helper::StoredRawPassword;
-use crate::components::{Spinner, SpinnerSize, StoredRawPasswordRow, show_toast_error, use_toast};
-use custom_errors::DBError;
+use crate::components::{Spinner, SpinnerSize, StoredRawPasswordRow};
+
 use dioxus::prelude::*;
-use sqlx::SqlitePool;
-use std::ops::Deref;
 
 #[component]
 pub fn StoredRawPasswordsTable(data: ReadSignal<Option<Vec<StoredRawPassword>>>) -> Element {
