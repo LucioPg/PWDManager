@@ -1,27 +1,103 @@
-use crate::backend::password_types_helper::{PasswordScore, PasswordStrength, StoredRawPassword};
-use crate::components::StoredPasswordUpsertDialog;
+use crate::backend::db_backend::fetch_user_auth_from_id;
+use crate::backend::password_types_helper::{
+    PasswordScore, PasswordStats, PasswordStrength, StoredRawPassword,
+};
+use crate::backend::password_utils::get_stored_raw_passwords;
 use crate::components::globals::{StatCard, StatVariant};
+use crate::components::{
+    StoredPasswordUpsertDialog, StoredRawPasswordsTable, show_toast_error, use_toast,
+};
+use custom_errors::DBError;
 use dioxus::prelude::*;
+use sqlx::SqlitePool;
+use std::ops::Deref;
 
 #[component]
 pub fn Dashboard() -> Element {
     let auth_state = use_context::<crate::auth::AuthState>();
     let username = auth_state.get_username();
-    let nav = use_navigator();
     let mut stored_password_dialog_open = use_signal(|| false);
     #[allow(unused_mut)]
-    let mut current_stored_raw_password = use_signal(|| Option::<StoredRawPassword>::None);
+    let mut current_stored_raw_password =
+        use_context_provider(|| Signal::new(None::<StoredRawPassword>));
 
-    let temp = StoredRawPassword {
-        id: Some(55),
-        user_id: 1,
-        location: "Google".to_string(),
-        password: "amazingPassword1256@ds!!".to_string().into(),
-        notes: Some("test".to_string()),
-        score: Some(PasswordScore::new(60)),
-        created_at: Some("2025-01-15".to_string()),
-    };
-    current_stored_raw_password.set(Some(temp));
+    // DATA
+    let pool = use_context::<SqlitePool>();
+    let mut error = use_signal(|| <Option<DBError>>::None);
+    let user_id_option = auth_state.user.cloned().map(|u| u.id);
+    let toast = use_toast();
+
+    let stored_raw_passwords_data = use_resource(move || {
+        let pool_clone = pool.clone();
+        async move {
+            let user_id = user_id_option.unwrap_or_else(|| {
+                error.set(Some(DBError::new_select_error("User not logged in".into())));
+                return -1;
+            });
+            if user_id == -1 {
+                return None;
+            }
+            let result = get_stored_raw_passwords(&pool_clone, user_id).await;
+            match result {
+                Ok(passwords) => Some(passwords),
+                Err(e) => {
+                    error.set(Some(e));
+                    None
+                }
+            }
+        }
+    });
+
+    // stored raw passwords
+
+    #[allow(unused_mut)]
+    let current_filter = use_signal(|| <Option<PasswordStrength>>::None);
+
+    let stats = use_memo(move || {
+        let mut stats_ = PasswordStats::default();
+        if let Some(Some(list)) = &*stored_raw_passwords_data.read() {
+            for p in list {
+                let strength = PasswordScore::get_strength(p.score.map(|s| s.value() as i64));
+                match strength {
+                    PasswordStrength::WEAK => stats_.weak += 1,
+                    PasswordStrength::MEDIUM => stats_.medium += 1,
+                    PasswordStrength::STRONG => stats_.strong += 1,
+                    PasswordStrength::EPIC => stats_.epic += 1,
+                    PasswordStrength::GOD => stats_.god += 1,
+                    PasswordStrength::NotEvaluated => stats_.not_evaluated += 1,
+                }
+                stats_.total += 1;
+            }
+        }
+        stats_
+    });
+
+    let filtered_stored_raw_passwords = use_memo(move || {
+        let data = stored_raw_passwords_data.read();
+        let active_filter = current_filter();
+        // Invece di fare l'if let qui, mappiamo il contenuto del segnale
+        // Questo restituirà Some(Vec) se i dati sono pronti, None altrimenti
+        data.as_ref()
+            .and_then(|inner_option| inner_option.as_ref())
+            .map(|list| match active_filter {
+                None => list.clone(),
+                Some(target_strength) => list
+                    .iter()
+                    .filter(|p| {
+                        let current_strength =
+                            PasswordScore::get_strength(p.score.map(|s| s.value() as i64));
+                        target_strength == current_strength
+                    })
+                    .cloned()
+                    .collect(),
+            })
+    });
+
+    use_effect(move || {
+        if let Some(e) = error.read().deref() {
+            show_toast_error(format!("Error fetching user data: {}", e), toast.clone());
+        }
+    });
 
     rsx! {
         div { class: "content-container animate-fade-in",
@@ -31,34 +107,40 @@ pub fn Dashboard() -> Element {
             }
             div { class: "stats-grid",
                 StatCard {
-                    value: "0".to_string(),
+                    value: stats().total.to_string(),
                     label: "Total Passwords".to_string(),
                     variant: StatVariant::Primary,
+                    on_click: move |_| current_filter.clone().set(None)
                 }
                 StatCard {
-                    value: "0".to_string(),
+                    value: stats().god.to_string(),
                     label: "God Passwords".to_string(),
                     variant: StatVariant::Success,
+                    on_click: move |_| current_filter.clone().set(Some(PasswordStrength::GOD))
                 }
                 StatCard {
-                    value: "0".to_string(),
+                    value: stats().epic.to_string(),
                     label: "Epic Passwords".to_string(),
                     variant: StatVariant::Success,
+                    on_click: move |_| current_filter.clone().set(Some(PasswordStrength::EPIC))
                 }
                 StatCard {
-                    value: "0".to_string(),
+                    value: stats().strong.to_string(),
                     label: "Strong Passwords".to_string(),
                     variant: StatVariant::Success,
+                    on_click: move |_| current_filter.clone().set(Some(PasswordStrength::STRONG))
                 }
                 StatCard {
-                    value: "0".to_string(),
+                    value: stats().medium.to_string(),
                     label: "Medium Passwords".to_string(),
                     variant: StatVariant::Warning,
+                    on_click: move |_| current_filter.clone().set(Some(PasswordStrength::MEDIUM))
                 }
                 StatCard {
-                    value: "0".to_string(),
+                    value: stats().weak.to_string(),
                     label: "Weak Passwords".to_string(),
                     variant: StatVariant::Warning,
+                    on_click: move |_| current_filter.clone().set(Some(PasswordStrength::WEAK))
                 }
             }
                         div { class: "card-no-border items-end",
@@ -68,7 +150,9 @@ pub fn Dashboard() -> Element {
                     "New Password" }
             }
             div { class: "card card-lg",
-                p { class: "text-body text-center", "Your passwords will appear here" }
+                StoredRawPasswordsTable {
+                    data: filtered_stored_raw_passwords.clone(),
+                }
             }
 
 

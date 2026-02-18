@@ -12,21 +12,23 @@ pub struct StoredRawPasswordRowProps {
     pub on_edit: EventHandler<StoredRawPassword>,
     /// Callback when delete button is clicked
     pub on_delete: EventHandler<i64>,
+    // /// Callback when user clicks on burger button
+    // pub on_click: EventHandler<StoredRawPassword>,
 }
 
 #[component]
 pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
     let mut show_info_tooltip = use_signal(|| false);
     let password_id = props.stored_raw_password.id.unwrap_or(0);
-
+    let store_raw_password_clone = props.stored_raw_password.clone();
     // Get strength from score for StrengthAnalyzer
-    let strength = PasswordScore::get_strength(
-        props.stored_raw_password.score.map(|s| s.value() as i64),
-    );
-
+    let strength =
+        PasswordScore::get_strength(props.stored_raw_password.score.map(|s| s.value() as i64));
+    let mut current = use_context::<Signal<Option<StoredRawPassword>>>();
     rsx! {
         tr {
             key: "{password_id}",
+            onclick: move |_| current.set(Some(store_raw_password_clone.clone())),
             class: "stored-password-row hover:bg-base-200/50 transition-colors",
 
             // Column 1: Location (with ellipsis)
