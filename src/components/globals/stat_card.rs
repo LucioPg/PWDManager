@@ -1,3 +1,4 @@
+use crate::backend::password_types_helper::PasswordStrength;
 use dioxus::prelude::*;
 
 /// Variante di colore per la statistica
@@ -46,9 +47,12 @@ pub fn StatCard(
     /// Variante di colore (default: Primary)
     #[props(default)]
     variant: StatVariant,
+    /// on click handler
+    on_click: EventHandler<MouseEvent>,
 ) -> Element {
     rsx! {
         div { class: "stat-card",
+            onclick: move |evt| on_click.call(evt),
             p { class: "stat-value {variant.as_css_class()}", "{value}" }
             p { class: "stat-label", "{label}" }
         }
