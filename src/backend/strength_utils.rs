@@ -282,11 +282,8 @@ mod tests {
     #[test]
     fn test_blacklist_section_with_common_password() {
         // Initialize the blacklist for testing
-        let _ = COMMON_PASSWORDS.get_or_init(|| {
-            vec!["password".to_string(), "123456".to_string()]
-                .into_iter()
-                .collect()
-        });
+        // Use the real blacklist initialization for accurate testing
+        let _ = init_blacklist();
 
         let pwd = SecretString::new("password".to_string().into());
         let result = blacklist_section(&pwd);
@@ -363,11 +360,8 @@ mod tests {
     #[tokio::test]
     async fn test_evaluate_password_strength_weak_short_password() {
         // Initialize blacklist for testing
-        let _ = COMMON_PASSWORDS.get_or_init(|| {
-            vec!["password".to_string(), "123456".to_string()]
-                .into_iter()
-                .collect()
-        });
+        // Use the real blacklist initialization for accurate testing
+        let _ = init_blacklist();
 
         let pwd = SecretString::new("abc".to_string().into());
         let evaluation = evaluate_password_strength(&pwd, None);
@@ -383,11 +377,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_evaluate_password_strength_medium() {
-        let _ = COMMON_PASSWORDS.get_or_init(|| {
-            vec!["password".to_string(), "123456".to_string()]
-                .into_iter()
-                .collect()
-        });
+        // Use the real blacklist initialization for accurate testing
+        let _ = init_blacklist();
 
         // Password con tutti i 4 tipi di caratteri ma non troppo lunga
         let pwd = SecretString::new("MyPass123!".to_string().into());
@@ -405,11 +396,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_evaluate_password_strength_strong() {
-        let _ = COMMON_PASSWORDS.get_or_init(|| {
-            vec!["password".to_string(), "123456".to_string()]
-                .into_iter()
-                .collect()
-        });
+        // Use the real blacklist initialization for accurate testing
+        let _ = init_blacklist();
 
         let pwd = SecretString::new("VeryStrongPassword123!@#".to_string().into());
         let evaluation = evaluate_password_strength(&pwd, None);
@@ -429,11 +417,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_evaluate_password_strength_blacklisted_password() {
-        let _ = COMMON_PASSWORDS.get_or_init(|| {
-            vec!["password".to_string(), "123456".to_string()]
-                .into_iter()
-                .collect()
-        });
+        // Use the real blacklist initialization for accurate testing
+        let _ = init_blacklist();
 
         // "password" è nella blacklist
         let pwd = SecretString::new("password".to_string().into());
@@ -456,11 +441,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_evaluate_password_strength_empty_password() {
-        let _ = COMMON_PASSWORDS.get_or_init(|| {
-            vec!["password".to_string(), "123456".to_string()]
-                .into_iter()
-                .collect()
-        });
+        // Use the real blacklist initialization for accurate testing
+        let _ = init_blacklist();
 
         let pwd = SecretString::new("".to_string().into());
         let evaluation = evaluate_password_strength(&pwd, None);
@@ -475,11 +457,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_evaluate_password_strength_with_cancellation() {
-        let _ = COMMON_PASSWORDS.get_or_init(|| {
-            vec!["password".to_string(), "123456".to_string()]
-                .into_iter()
-                .collect()
-        });
+        // Use the real blacklist initialization for accurate testing
+        let _ = init_blacklist();
 
         let token = CancellationToken::new();
         // Cancella prima della valutazione
@@ -502,11 +481,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_evaluate_password_strength_without_cancellation() {
-        let _ = COMMON_PASSWORDS.get_or_init(|| {
-            vec!["password".to_string(), "123456".to_string()]
-                .into_iter()
-                .collect()
-        });
+        // Use the real blacklist initialization for accurate testing
+        let _ = init_blacklist();
 
         // Token non cancellato
         let token = CancellationToken::new();
@@ -521,11 +497,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_evaluate_password_strength_reasons_content() {
-        let _ = COMMON_PASSWORDS.get_or_init(|| {
-            vec!["password".to_string(), "123456".to_string()]
-                .into_iter()
-                .collect()
-        });
+        // Use the real blacklist initialization for accurate testing
+        let _ = init_blacklist();
 
         // Password corta senza maiuscole, numeri o speciali
         let pwd = SecretString::new("abc".to_string().into());
@@ -541,11 +514,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_evaluate_password_strength_epic_level() {
-        let _ = COMMON_PASSWORDS.get_or_init(|| {
-            vec!["password".to_string(), "123456".to_string()]
-                .into_iter()
-                .collect()
-        });
+        // Use the real blacklist initialization for accurate testing
+        let _ = init_blacklist();
 
         // Password molto forte con alta varietà e lunghezza
         let pwd = SecretString::new("ThisIsAVeryStrongP@ssw0rd!2024#XyZ".to_string().into());
@@ -565,11 +535,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_evaluate_password_strength_score_boundaries() {
-        let _ = COMMON_PASSWORDS.get_or_init(|| {
-            vec!["password".to_string(), "123456".to_string()]
-                .into_iter()
-                .collect()
-        });
+        // Use the real blacklist initialization for accurate testing
+        let _ = init_blacklist();
 
         // Verifica che lo score sia sempre tra 0 e 100
         let test_passwords = vec![

@@ -356,6 +356,9 @@ async fn test_multiple_passwords_for_same_user() {
 
 #[tokio::test]
 async fn test_multiple_passwords_for_same_user_with_predefined_strength() {
+    // Initialize blacklist for accurate password evaluation
+    let _ = crate::backend::strength_utils::init_blacklist();
+
     let pool = init_db().await.expect("Failed to initialize database");
 
     let user_id = create_test_user(&pool, "t", "t").await;
@@ -363,9 +366,9 @@ async fn test_multiple_passwords_for_same_user_with_predefined_strength() {
     // Crea più password per lo stesso utente
     let passwords = vec![
         (
-            "https://site1.com-strong",
+            "https://site1.com-weak",
             "ciaociao",
-            evaluate_password_strength(&SecretString::new("ciaociao!".into()), None),
+            evaluate_password_strength(&SecretString::new("ciaociao".into()), None),
         ),
         (
             "https://site2.com-medium",
@@ -373,7 +376,7 @@ async fn test_multiple_passwords_for_same_user_with_predefined_strength() {
             evaluate_password_strength(&SecretString::new("Password2!".into()), None),
         ),
         (
-            "https://site3.com-weak",
+            "https://site3.com-epic",
             "VeryLongSecurePassword123!",
             evaluate_password_strength(
                 &SecretString::new("VeryLongSecurePassword123!".into()),
