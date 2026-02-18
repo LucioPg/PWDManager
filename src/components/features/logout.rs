@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused)]
 
+use crate::components::globals::LogoutIcon;
 use crate::Route;
 use dioxus::prelude::*;
 use sqlx::SqlitePool;
@@ -24,17 +25,8 @@ pub fn Logout() -> Element {
     rsx! {
         div { class: "page-centered animate-scale-in",
             div { class: "auth-form-centered",
-                svg {
-                    class: "w-16 h-16 text-error-600 mx-auto mb-4",
-                    fill: "none",
-                    stroke: "currentColor",
-                    view_box: "0 0 24 24",
-                    path {
-                        stroke_linecap: "round",
-                        stroke_linejoin: "round",
-                        stroke_width: "2",
-                        d: "M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                    }
+                LogoutIcon {
+                    class: Some("w-16 h-16 text-error-600 mx-auto mb-4".to_string()),
                 }
                 h2 { class: "text-h2", "Confirm Logout" }
                 p { class: "text-body mb-8", "Are you sure you want to logout from your account?" }

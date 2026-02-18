@@ -1,5 +1,6 @@
 use crate::backend::password_types_helper::{PasswordScore, StoredRawPassword};
 use crate::components::globals::password_handler::StrengthAnalyzer;
+use crate::components::globals::svgs::{BurgerIcon, DeleteIcon, EditIcon};
 use dioxus::prelude::*;
 use secrecy::ExposeSecret;
 
@@ -66,20 +67,7 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                         r#type: "button",
                         onclick: move |_| show_info_tooltip.set(!show_info_tooltip()),
                         // Burger icon (three horizontal lines)
-                        svg {
-                            xmlns: "http://www.w3.org/2000/svg",
-                            width: "18",
-                            height: "18",
-                            view_box: "0 0 24 24",
-                            fill: "none",
-                            stroke: "currentColor",
-                            stroke_width: "2",
-                            stroke_linecap: "round",
-                            stroke_linejoin: "round",
-                            line { x1: "3", y1: "6", x2: "21", y2: "6" }
-                            line { x1: "3", y1: "12", x2: "21", y2: "12" }
-                            line { x1: "3", y1: "18", x2: "21", y2: "18" }
-                        }
+                        BurgerIcon {}
                     }
 
                     // Tooltip dropdown
@@ -131,21 +119,7 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                         move |_| props.on_edit.call(password.clone())
                     },
                     // Gear icon
-                    svg {
-                        xmlns: "http://www.w3.org/2000/svg",
-                        width: "18",
-                        height: "18",
-                        view_box: "0 0 24 24",
-                        fill: "none",
-                        stroke: "currentColor",
-                        stroke_width: "2",
-                        stroke_linecap: "round",
-                        stroke_linejoin: "round",
-                        path {
-                            d: "M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-                        }
-                        circle { cx: "12", cy: "12", r: "3" }
-                    }
+                    EditIcon {}
                 }
             }
 
@@ -156,22 +130,7 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                     r#type: "button",
                     onclick: move |_| props.on_delete.call(password_id),
                     // Trash icon (outline)
-                    svg {
-                        xmlns: "http://www.w3.org/2000/svg",
-                        width: "18",
-                        height: "18",
-                        view_box: "0 0 24 24",
-                        fill: "none",
-                        stroke: "currentColor",
-                        stroke_width: "2",
-                        stroke_linecap: "round",
-                        stroke_linejoin: "round",
-                        path { d: "M3 6h18" }
-                        path { d: "M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" }
-                        path { d: "M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" }
-                        line { x1: "10", y1: "11", x2: "10", y2: "17" }
-                        line { x1: "14", y1: "11", x2: "14", y2: "17" }
-                    }
+                    DeleteIcon {}
                 }
             }
         }
