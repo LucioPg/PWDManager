@@ -237,6 +237,7 @@ impl StoredPassword {
 #[derive(Debug, Clone)]
 pub struct StoredRawPassword {
     pub id: Option<i64>,
+    #[allow(unused)]
     pub user_id: i64,
     pub location: String,
     pub password: SecretString,
