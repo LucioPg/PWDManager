@@ -17,7 +17,14 @@ static COMMON_PASSWORDS: OnceLock<HashSet<String>> = OnceLock::new();
 
 /// Inizializza la blacklist delle password comuni
 /// Il file è embedded nel binary a compile-time usando include_str!
+/// È sicuro chiamare questa funzione più volte - se già inizializzata, non fa nulla.
 pub fn init_blacklist() -> std::io::Result<()> {
+    // Se già inizializzata, ritorna subito senza fare nulla
+    if COMMON_PASSWORDS.get().is_some() {
+        tracing::debug!("Blacklist already initialized, skipping");
+        return Ok(());
+    }
+
     tracing::info!("Initializing password blacklist from embedded content");
 
     // Crea l'HashSet delle password blacklistate dal contenuto embedded
@@ -27,9 +34,10 @@ pub fn init_blacklist() -> std::io::Result<()> {
         .collect();
 
     let count = set.len();
-    COMMON_PASSWORDS
-        .set(set)
-        .expect("Blacklist already initialized");
+
+    // set() ritorna Err se già inizializzata, ma abbiamo già controllato sopra
+    // Usiamo Ok per ignorare l'errore nel caso improbabile di race condition
+    let _ = COMMON_PASSWORDS.set(set);
     tracing::info!("Blacklist initialized successfully! ({} passwords)", count);
     Ok(())
 }
