@@ -260,7 +260,7 @@ mod tests {
         let user_id = create_test_user(&pool, "test_user", "test_password_123", None).await;
 
         // Salva la prima password hash
-        let first_hash = fetch_user_password(&pool, "test_user")
+        let _first_hash = fetch_user_password(&pool, "test_user")
             .await
             .expect("Failed to fetch first password");
 
