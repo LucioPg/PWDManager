@@ -358,24 +358,27 @@ async fn test_multiple_passwords_for_same_user() {
 async fn test_multiple_passwords_for_same_user_with_predefined_strength() {
     let pool = init_db().await.expect("Failed to initialize database");
 
-    let user_id = create_test_user(&pool, "testuser3", "MasterPass456!").await;
+    let user_id = create_test_user(&pool, "t", "t").await;
 
     // Crea più password per lo stesso utente
     let passwords = vec![
         (
             "https://site1.com-strong",
-            "Password1",
-            PasswordScore::new(70),
+            "ciaociao",
+            evaluate_password_strength(&SecretString::new("ciaociao!".into()), None),
         ),
         (
             "https://site2.com-medium",
-            "Password2",
-            PasswordScore::new(51),
+            "Password2!",
+            evaluate_password_strength(&SecretString::new("Password2!".into()), None),
         ),
         (
             "https://site3.com-weak",
             "VeryLongSecurePassword123!",
-            PasswordScore::new(10),
+            evaluate_password_strength(
+                &SecretString::new("VeryLongSecurePassword123!".into()),
+                None,
+            ),
         ),
     ];
 
@@ -386,7 +389,7 @@ async fn test_multiple_passwords_for_same_user_with_predefined_strength() {
             location.to_string(),
             SecretString::new(raw_pwd.to_string().into()),
             None,
-            Some(strength.to_owned()),
+            strength.score,
         )
         .await
         .expect("Failed to encrypt password");
@@ -404,8 +407,9 @@ async fn test_multiple_passwords_for_same_user_with_predefined_strength() {
         passwords.iter().enumerate()
     {
         let stored = &stored_passwords[i];
+        let expected_strength_score = expected_strength.score.map(|s| s.value()).unwrap_or(0);
         assert_eq!(stored.location, *expected_location);
-        assert_eq!(stored.score, expected_strength.clone());
+        assert_eq!(stored.score, expected_strength_score);
         let decrypted = decrypt_stored_password(&pool, stored)
             .await
             .expect("Failed to decrypt password");
