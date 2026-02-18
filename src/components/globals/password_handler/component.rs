@@ -54,7 +54,7 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
     let mut cancel_token = use_signal(|| Arc::new(CancellationToken::new()));
 
     // Callback triggered when password changes
-    let on_password_change = move |new_pwd: FormSecret| {
+    let mut on_password_change = move |new_pwd: FormSecret| {
         password.set(new_pwd.clone());
 
         // Reset evaluation state
@@ -77,6 +77,12 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
         let pwd_match = new_pwd.0.expose_secret() == re_pwd.0.expose_secret();
         let is_empty = new_pwd.0.expose_secret().is_empty();
 
+        tracing::debug!(
+            "PasswordHandler - Password changed: empty={}, match={}",
+            is_empty,
+            pwd_match
+        );
+
         if !is_empty && pwd_match {
             // Start debounce timer
             let mut strength_sig = strength.clone();
@@ -89,6 +95,7 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
                 sleep(Duration::from_millis(DEBOUNCE_MS)).await;
 
                 if token.is_cancelled() {
+                    tracing::debug!("PasswordHandler - Task cancelled after debounce");
                     return;
                 }
 
@@ -98,10 +105,18 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
                 evaluate_password_strength_tx(&new_pwd.0, (*token).clone(), tx).await;
 
                 if let Some(eval) = rx.recv().await {
+                    tracing::debug!(
+                        "PasswordHandler - Evaluation result: score={:?}, strength={:?}, reasons={:?}",
+                        eval.score,
+                        eval.strength(),
+                        eval.reasons
+                    );
                     strength_sig.set(eval.strength());
                     reasons_sig.set(eval.reasons);
                     score_sig.set(eval.score);
                     on_change.call(new_pwd);
+                } else {
+                    tracing::debug!("PasswordHandler - No evaluation received from channel");
                 }
 
                 evaluating_sig.set(false);
@@ -111,7 +126,26 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
         }
     };
 
-    // Callback triggered when repassword changes
+    // Callback triggered when repassword changes (only updates repassword, triggers evaluation if passwords match)
+    let on_repassword_change = move |new_pwd: FormSecret| {
+        repassword.set(new_pwd.clone());
+
+        // Check if passwords now match - if so, trigger evaluation
+        let pwd = password.read().clone();
+        let pwd_match = pwd.0.expose_secret() == new_pwd.0.expose_secret();
+        let is_empty = pwd.0.expose_secret().is_empty();
+
+        tracing::debug!(
+            "PasswordHandler - Repassword changed: empty={}, match={}",
+            is_empty,
+            pwd_match
+        );
+
+        if !is_empty && pwd_match {
+            // Passwords match, trigger evaluation by calling the main callback
+            on_password_change(pwd);
+        }
+    };
 
     // Cleanup on component unmount
     use_drop(move || {
@@ -144,7 +178,7 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
                 value: repassword,
                 required: props.password_required,
                 autocomplete: false,
-                on_change: on_password_change,
+                on_change: on_repassword_change,
                 show_visibility_toggle: true,
                 forbid_spaces: true,
             }
