@@ -30,6 +30,8 @@
 - [x] aggiungere uno spinner all'avvio dell'applicazione
 - [ ] aggiungere toggle per tema scuro in settings
 - [x] aggiungere toast per errori e informazioni
+- [ ] modificare table row perché la password non sia immediatamente visibile
+- [ ] modificare table row perché ci siano i pulsanti per copiare location e passwords
 
 ## Gestione password registrate
 
