@@ -1,5 +1,5 @@
 use crate::backend::db_backend::{
-    fetch_all_stored_passwords_for_user, fetch_user_data, init_db, save_or_update_user,
+    fetch_all_stored_passwords_for_user, fetch_user_data, save_or_update_user,
 };
 use crate::backend::password_types_helper::{
     DbSecretString, PasswordScore, PasswordStrength, StoredPassword, StoredRawPassword, UserAuth,
@@ -9,6 +9,7 @@ use crate::backend::password_utils::{
     decrypt_stored_password,
 };
 use crate::backend::strength_utils::evaluate_password_strength;
+use crate::backend::test_helpers::setup_test_db;
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;
 
@@ -37,7 +38,7 @@ async fn create_test_user(pool: &SqlitePool, base_username: &str, password: &str
 #[tokio::test]
 async fn test_encrypt_decrypt_password() {
     // Setup: inizializza il database
-    let pool = init_db().await.expect("Failed to initialize database");
+    let pool = setup_test_db().await;
 
     // Crea un utente di test
     let master_password = "MasterPass123!";
@@ -96,7 +97,7 @@ async fn test_encrypt_decrypt_password() {
 #[tokio::test]
 async fn test_encrypt_decrypt_password_rayon() {
     // Setup: inizializza il database
-    let pool = init_db().await.expect("Failed to initialize database");
+    let pool = setup_test_db().await;
 
     // Crea un utente di test
     let master_password = "MasterPass123!";
@@ -254,7 +255,7 @@ async fn test_password_strength_strong() {
 
 #[tokio::test]
 async fn test_decrypt_invalid_nonce() {
-    let pool = init_db().await.expect("Failed to initialize database");
+    let pool = setup_test_db().await;
 
     let user_id = create_test_user(&pool, "testuser2", "MasterPass123!").await;
 
@@ -291,7 +292,7 @@ async fn test_decrypt_invalid_nonce() {
 
 #[tokio::test]
 async fn test_decrypt_nonexistent_user() {
-    let pool = init_db().await.expect("Failed to initialize database");
+    let pool = setup_test_db().await;
 
     // Crea una stored password con un user_id inesistente
     let stored_password = StoredPassword::new(
@@ -311,7 +312,7 @@ async fn test_decrypt_nonexistent_user() {
 
 #[tokio::test]
 async fn test_multiple_passwords_for_same_user() {
-    let pool = init_db().await.expect("Failed to initialize database");
+    let pool = setup_test_db().await;
 
     let user_id = create_test_user(&pool, "testuser3", "MasterPass456!").await;
 
@@ -359,7 +360,7 @@ async fn test_multiple_passwords_for_same_user_with_predefined_strength() {
     // Initialize blacklist for accurate password evaluation
     let _ = crate::backend::strength_utils::init_blacklist();
 
-    let pool = init_db().await.expect("Failed to initialize database");
+    let pool = setup_test_db().await;
 
     let user_id = create_test_user(&pool, "t", "t").await;
 
@@ -422,7 +423,7 @@ async fn test_multiple_passwords_for_same_user_with_predefined_strength() {
 
 #[tokio::test]
 async fn test_encrypted_password_is_different_from_original() {
-    let pool = init_db().await.expect("Failed to initialize database");
+    let pool = setup_test_db().await;
 
     let user_id = create_test_user(&pool, "testuser4", "MasterPass789!").await;
 

@@ -606,10 +606,11 @@ pub async fn fetch_all_stored_passwords_for_user(
 mod tests {
     // Questo modulo può contenere test per gli helper functions stessi
     use super::*;
+    use crate::backend::test_helpers::setup_test_db;
 
     #[tokio::test]
     async fn test_get_user_auth() {
-        let pool = init_db().await.expect("Failed to initialize database");
+        let pool = setup_test_db().await;
         let mut error: Option<DBError> = None;
         let user_auth = match fetch_user_auth_from_id(&pool, 99).await {
             Ok(data) => {
