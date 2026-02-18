@@ -10,6 +10,7 @@ mod route_wrapper;
 pub mod spinner;
 pub mod stat_card;
 mod style;
+mod svgs;
 mod table;
 pub mod tabs;
 mod toast_hub;

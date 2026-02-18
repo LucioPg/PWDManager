@@ -59,10 +59,12 @@ pub fn BaseModal(
                 }
             }
 
-            // Contenuto del modal
-            div {
-                class: "modal-box {class}",
-                {children}
+            // Contenuto del modal - renderizza solo se aperto
+            if open() {
+                div {
+                    class: "modal-box {class}",
+                    {children}
+                }
             }
         }
     }

@@ -91,7 +91,10 @@ pub fn Dashboard() -> Element {
                     .collect(),
             })
     });
-
+    use_effect(move || {
+        let current = current_stored_raw_password.clone();
+        println!("{:?}", current());
+    });
     use_effect(move || {
         if let Some(e) = error.read().deref() {
             show_toast_error(format!("Error fetching user data: {}", e), toast.clone());
@@ -160,7 +163,7 @@ pub fn Dashboard() -> Element {
             open: stored_password_dialog_open,
             on_confirm: move |_| {stored_password_dialog_open.set(false);},
             on_cancel: move |_| {stored_password_dialog_open.set(false);},
-            stored_raw_password: current_stored_raw_password(),
+            stored_raw_password: current_stored_raw_password,
         }
     }
 }
