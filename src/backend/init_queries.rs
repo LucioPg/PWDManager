@@ -67,6 +67,7 @@ pub static QUERIES: &[&str] = &[
                 numbers BOOLEAN NOT NULL,
                 uppercase BOOLEAN NOT NULL,
                 lowercase BOOLEAN NOT NULL,
+                excluded_symbols TEXT,
                 FOREIGN KEY(settings_id) REFERENCES user_settings(id) ON DELETE CASCADE
                 CHECK (symbols <= length)
     )",
