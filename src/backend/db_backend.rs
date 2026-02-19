@@ -1,6 +1,7 @@
 ﻿#![allow(dead_code)]
 use crate::backend::init_queries::QUERIES;
 use crate::backend::password_types_helper::{StoredPassword, UserAuth};
+use crate::backend::settings_types::PasswordPreset;
 use crate::backend::utils::verify_password;
 use custom_errors::{AuthError, DBError};
 use dioxus::prelude::*;
@@ -264,6 +265,67 @@ pub async fn save_or_update_user(
             }
         }
     }
+}
+
+/// Crea i settings di default per un nuovo utente.
+///
+/// Usa una transazione per garantire atomicità tra i due INSERT.
+/// Se la transazione fallisce, viene automaticamente rollbackata.
+///
+/// # Parametri
+///
+/// * `pool` - Pool SQLite per la connessione al database
+/// * `user_id` - ID dell'utente per cui creare i settings
+/// * `preset` - Preset di default per la generazione password
+///
+/// # Valore Restituito
+///
+/// Return `Ok(())` se i settings vengono creati con successo
+///
+/// # Errori
+///
+/// - `DBError::new_general_error` - Errore nell'avviare o committare la transazione
+/// - `DBError::new_save_error` - Errore durante l'INSERT
+pub async fn create_user_settings(
+    pool: &SqlitePool,
+    user_id: i64,
+    preset: PasswordPreset,
+) -> Result<(), DBError> {
+    // Inizia transazione - verrà automaticamente rollbackata se droppata
+    let mut tx = pool.begin().await
+        .map_err(|e| DBError::new_general_error(format!("Failed to begin transaction: {}", e)))?;
+
+    // 1. Inserisci user_settings e ottieni l'id con RETURNING
+    let settings_id: i64 = sqlx::query_scalar::<_, i64>(
+        "INSERT INTO user_settings (user_id) VALUES (?) RETURNING id"
+    )
+        .bind(user_id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| DBError::new_save_error(format!("Failed to insert user_settings: {}", e)))?;
+
+    // 2. Inserisci passwords_generation_settings
+    let config = preset.to_config();
+    sqlx::query(
+        "INSERT INTO passwords_generation_settings
+         (settings_id, length, symbols, numbers, uppercase, lowercase, excluded_symbols)
+         VALUES (?, ?, ?, ?, ?, ?, NULL)"
+    )
+        .bind(settings_id)
+        .bind(config.length)
+        .bind(config.symbols)
+        .bind(config.numbers)
+        .bind(config.uppercase)
+        .bind(config.lowercase)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DBError::new_save_error(format!("Failed to insert gen_settings: {}", e)))?;
+
+    // Commit transazione
+    tx.commit().await
+        .map_err(|e| DBError::new_save_error(format!("Failed to commit transaction: {}", e)))?;
+
+    Ok(())
 }
 
 /// Cancella un utente dal database.
