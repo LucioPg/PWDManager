@@ -87,10 +87,12 @@ impl PasswordPreset {
 ///
 /// Usata per passare i parametri di configurazione senza
 /// dipendere dal database.
+///
+/// Nota: usa i64 per coerenza con il resto del codebase.
 #[derive(Debug, Clone, Copy)]
 pub struct PasswordGenConfig {
-    pub length: i32,
-    pub symbols: i32,
+    pub length: i64,
+    pub symbols: i64,
     pub numbers: bool,
     pub uppercase: bool,
     pub lowercase: bool,
@@ -110,14 +112,16 @@ pub struct UserSettings {
 /// Settings per la generazione password.
 ///
 /// Mappa la tabella `passwords_generation_settings` del database.
+///
+/// Nota: usa i64 per length e symbols per coerenza con il resto del codebase.
 #[derive(Debug, Clone, FromRow, SqliteTemplate)]
 #[table("passwords_generation_settings")]
 #[tp_upsert(by = "id")]
 pub struct PasswordsGenSettings {
     pub id: Option<i64>,
     pub settings_id: i64,
-    pub length: i32,
-    pub symbols: i32,
+    pub length: i64,
+    pub symbols: i64,
     pub numbers: bool,
     pub uppercase: bool,
     pub lowercase: bool,
@@ -137,7 +141,7 @@ git add src/backend/settings_types.rs
 git commit -m "feat: add settings_types.rs with PasswordPreset and DB structs
 
 - PasswordPreset enum with Medium/Strong/Epic/God variants
-- PasswordGenConfig for in-memory configuration
+- PasswordGenConfig for in-memory configuration (uses i64)
 - UserSettings and PasswordsGenSettings with sqlx-template derives
 
 Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
@@ -251,6 +255,8 @@ Replace lines 241-256 (`None =>` branch) with:
                 let hash_password = crate::backend::utils::encrypt(psw)
                     .map_err(|e| DBError::new_save_error(format!("Failed to encrypt: {}", e)))?;
 
+                // query_scalar returns Option<i64>, so we need to handle both
+                // the SQL error (via map_err) and the None case (via ok_or_else)
                 let user_id: i64 = sqlx::query_scalar(
                     "INSERT INTO users (username, password, avatar) VALUES (?, ?, ?) RETURNING id"
                 )
@@ -259,7 +265,8 @@ Replace lines 241-256 (`None =>` branch) with:
                 .bind(&avatar)
                 .fetch_one(pool)
                 .await
-                .map_err(|e| DBError::new_save_error(format!("Insert failed: {}", e)))?;
+                .map_err(|e| DBError::new_save_error(format!("Insert failed: {}", e)))?
+                .ok_or_else(|| DBError::new_save_error("No ID returned from INSERT".into()))?;
 
                 Ok(user_id)
             } else {
@@ -284,6 +291,7 @@ git add src/backend/db_backend.rs
 git commit -m "feat: save_or_update_user returns user_id instead of ()
 
 - Use RETURNING id for INSERT (SQLite 3.35+)
+- Handle Option<i64> from query_scalar with ok_or_else
 - Return existing user_id for UPDATE
 - Breaking change: callers must handle returned i64
 
@@ -301,7 +309,7 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 
 Add after line 3:
 ```rust
-use crate::backend::settings_types::{PasswordPreset, PasswordGenConfig, UserSettings, PasswordsGenSettings};
+use crate::backend::settings_types::{PasswordPreset, PasswordGenConfig};
 ```
 
 **Step 2: Add the function after save_or_update_user (around line 260)**
@@ -310,7 +318,7 @@ use crate::backend::settings_types::{PasswordPreset, PasswordGenConfig, UserSett
 /// Crea i settings di default per un nuovo utente.
 ///
 /// Usa una transazione per garantire atomicità tra i due INSERT.
-/// Se la transazione fallisce, nessun record viene creato.
+/// Se la transazione fallisce, viene automaticamente rollbackata.
 ///
 /// # Parametri
 ///
@@ -325,24 +333,26 @@ use crate::backend::settings_types::{PasswordPreset, PasswordGenConfig, UserSett
 /// # Errori
 ///
 /// - `DBError::new_general_error` - Errore nell'avviare o committare la transazione
-/// - `DBError::new_save_error` - Errore durante l'INSERT
+/// - `DBError::new_save_error` - Errore durante l'INSERT o nessun ID restituito
 pub async fn create_user_settings(
     pool: &SqlitePool,
     user_id: i64,
     preset: PasswordPreset,
 ) -> Result<(), DBError> {
-    // Inizia transazione
+    // Inizia transazione - verrà automaticamente rollbackata se droppata
     let mut tx = pool.begin().await
-        .map_err(|e| DBError::new_general_error(format!("Failed to start transaction: {}", e)))?;
+        .map_err(|e| DBError::new_general_error(format!("Failed to begin transaction: {}", e)))?;
 
     // 1. Inserisci user_settings e ottieni l'id con RETURNING
+    // query_scalar returns Option<i64>, handle both SQL error and None case
     let settings_id: i64 = sqlx::query_scalar(
         "INSERT INTO user_settings (user_id) VALUES (?) RETURNING id"
     )
     .bind(user_id)
     .fetch_one(&mut *tx)
     .await
-    .map_err(|e| DBError::new_save_error(format!("Failed to insert user_settings: {}", e)))?;
+    .map_err(|e| DBError::new_save_error(format!("Failed to insert user_settings: {}", e)))?
+    .ok_or_else(|| DBError::new_save_error("No settings ID returned from INSERT".into()))?;
 
     // 2. Inserisci passwords_generation_settings
     let config = preset.to_config();
@@ -363,7 +373,7 @@ pub async fn create_user_settings(
 
     // Commit transazione
     tx.commit().await
-        .map_err(|e| DBError::new_general_error(format!("Failed to commit transaction: {}", e)))?;
+        .map_err(|e| DBError::new_save_error(format!("Failed to commit transaction: {}", e)))?;
 
     Ok(())
 }
@@ -381,6 +391,7 @@ git add src/backend/db_backend.rs
 git commit -m "feat: add create_user_settings function with transaction
 
 - Uses RETURNING id to get generated user_settings.id
+- Handles Option<i64> from query_scalar with ok_or_else
 - Wraps both INSERTs in a transaction for atomicity
 - Creates passwords_generation_settings with preset config
 
@@ -500,7 +511,15 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 | 5 | Integrate in registration | `src/components/features/upsert_user.rs` |
 | 6 | Test and verify | - |
 
+## Key Corrections Applied
+
+| Issue | Correction |
+|-------|------------|
+| `query_scalar` returns `Option<T>` | Added `.ok_or_else()` to handle None case |
+| Type consistency | Changed `length` and `symbols` to `i64` |
+| Error handling | Added explicit `.map_err()` for all sqlx operations |
+
 **Total estimated changes:**
 - 1 new file
 - 3 modified files
-- ~150 lines of new code
+- ~160 lines of new code
