@@ -4,27 +4,71 @@
 
 **Goal:** Automate user settings creation during registration with preset-based password generation configuration.
 
-**Architecture:** Create `settings_types.rs` with `PasswordPreset` enum and DB structs. Modify `save_or_update_user` to return user_id. Add `create_user_settings` function with transaction. Integrate in registration flow.
+**Architecture:** Create `settings_types.rs` with `PasswordPreset` enum and DB structs. Modify `save_or_update_user` to
+return user_id. Add `create_user_settings` function with transaction. Integrate in registration flow.
 
 **Tech Stack:** Rust, Dioxus 0.7, sqlx, sqlx-template, SQLite
 
 ---
 
-## Task 0: Add UNIQUE constraint to user_settings table
+## Required Skills & Quality Assurance
+
+### Rust Skills da Consultare Durante l'Implementazione
+
+Durante l'esecuzione di questo piano, consulta le seguenti skill Rust per garantire codice idiomatico e corretto:
+
+| Skill                            | Quando Usarla                                                           | Task Rilevanti |
+|----------------------------------|-------------------------------------------------------------------------|----------------|
+| `rust-skills:m06-error-handling` | Gestione errori con `Result`, `?`, `map_err`, error handling idiomatico | Task 3, 4      |
+| `rust-skills:m07-concurrency`    | Operazioni async, transazioni database, `await`, spawn                  | Task 3, 4, 5   |
+| `rust-skills:m09-domain`         | Design dei tipi di dominio (enum, struct, invarianti)                   | Task 1         |
+| `rust-skills:m11-ecosystem`      | Integrazione con crate esterni (sqlx, sqlx-template)                    | Task 1, 3, 4   |
+
+### Quality Assurance con Agenti Esperti
+
+Dopo il completamento di Task 5, **OBBLIGATORIO** eseguire code review tramite gli agenti specializzati:
+
+1. **Backend Review** (Task 6a): Usa `backend-developer` agent per verificare:
+    - Correttezza delle transazioni SQL
+    - Gestione errori appropriata
+    - Pattern async/await corretti
+    - Security best practices (password handling)
+
+2. **Dioxus/Frontend Review** (Task 6b): Usa `dioxus-developer` agent per verificare:
+    - Correttezza dell'integrazione nel flusso Dioxus
+    - Uso appropriato di `spawn` e signal
+    - UX del flusso di registrazione
+    - Error handling lato UI
+
+**Comando per invocare gli agenti:**
+
+```
+Task tool con subagent_type: "backend-developer" per review backend
+Task tool con subagent_type: "dioxus-developer" per review frontend
+```
+
+---
+
+## Task 0: Add UNIQUE constraint to user_settings table [COMPLETED]
 
 **Files:**
+
 - Modify: `src/backend/init_queries.rs`
 
 **Step 1: Update user_settings table schema**
 
 Change line 58 from:
+
 ```sql
-user_id INTEGER NOT NULL,
+user_id
+INTEGER NOT NULL,
 ```
 
 To:
+
 ```sql
-user_id INTEGER NOT NULL UNIQUE,
+user_id
+INTEGER NOT NULL UNIQUE,
 ```
 
 This prevents duplicate settings records for the same user.
@@ -50,6 +94,7 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ## Task 1: Create settings_types.rs
 
 **Files:**
+
 - Create: `src/backend/settings_types.rs`
 
 **Step 1: Create the file with all types**
@@ -189,6 +234,7 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ## Task 2: Export settings_types from mod.rs
 
 **Files:**
+
 - Modify: `src/backend/mod.rs`
 
 **Step 1: Add the module and export**
@@ -218,11 +264,13 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ## Task 3: Modify save_or_update_user to return user_id
 
 **Files:**
+
 - Modify: `src/backend/db_backend.rs` (lines 198-260)
 
 **Step 1: Update function signature**
 
 Change line 198-204 from:
+
 ```rust
 pub async fn save_or_update_user(
     pool: &SqlitePool,
@@ -234,6 +282,7 @@ pub async fn save_or_update_user(
 ```
 
 To:
+
 ```rust
 pub async fn save_or_update_user(
     pool: &SqlitePool,
@@ -250,35 +299,35 @@ Change lines 211-238, replace the `Some(user_id)` branch with:
 
 ```rust
         Some(user_id) => {
-            let update = prepare_user_update(pool, user_id, username, password, avatar).await?;
+let update = prepare_user_update(pool, user_id, username, password, avatar).await ?;
 
-            if !update.has_updates() {
-                return Ok(user_id);
-            }
+if ! update.has_updates() {
+return Ok(user_id);
+}
 
-            let sql_fields = update.build_sql_fields();
-            let sql = format!("UPDATE users SET {} WHERE id = ?", sql_fields.join(", "));
+let sql_fields = update.build_sql_fields();
+let sql = format ! ("UPDATE users SET {} WHERE id = ?", sql_fields.join(", "));
 
-            let mut query = sqlx::query(&sql);
+let mut query = sqlx::query( & sql);
 
-            if let Some(username) = update.username {
-                query = query.bind(username);
-            }
-            if let Some(password) = update.password {
-                query = query.bind(password.expose_secret().to_string());
-            }
-            if let Some(avatar) = update.avatar {
-                query = query.bind(avatar);
-            }
-            query = query.bind(user_id);
+if let Some(username) = update.username {
+query = query.bind(username);
+}
+if let Some(password) = update.password {
+query = query.bind(password.expose_secret().to_string());
+}
+if let Some(avatar) = update.avatar {
+query = query.bind(avatar);
+}
+query = query.bind(user_id);
 
-            query
-                .execute(pool)
-                .await
-                .map_err(|e| DBError::new_save_error(format!("Update failed: {}", e)))?;
+query
+.execute(pool)
+.await
+.map_err(| e | DBError::new_save_error(format ! ("Update failed: {}", e))) ?;
 
-            Ok(user_id)
-        }
+Ok(user_id)
+}
 ```
 
 **Step 3: Update INSERT case to use RETURNING id**
@@ -287,29 +336,29 @@ Replace lines 241-256 (`None =>` branch) with:
 
 ```rust
         None => {
-            let psw = password.unwrap_or_default();
-            if !psw.expose_secret().trim().is_empty() {
-                let hash_password = crate::backend::utils::encrypt(psw)
-                    .map_err(|e| DBError::new_save_error(format!("Failed to encrypt: {}", e)))?;
+let psw = password.unwrap_or_default();
+if ! psw.expose_secret().trim().is_empty() {
+let hash_password = crate::backend::utils::encrypt(psw)
+.map_err( | e | DBError::new_save_error(format ! ("Failed to encrypt: {}", e))) ?;
 
-                // query_scalar returns Option<i64>, so we need to handle both
-                // the SQL error (via map_err) and the None case (via ok_or_else)
-                let user_id: i64 = sqlx::query_scalar(
-                    "INSERT INTO users (username, password, avatar) VALUES (?, ?, ?) RETURNING id"
-                )
-                .bind(&username)
-                .bind(&hash_password)
-                .bind(&avatar)
-                .fetch_one(pool)
-                .await
-                .map_err(|e| DBError::new_save_error(format!("Insert failed: {}", e)))?
-                .ok_or_else(|| DBError::new_save_error("No ID returned from INSERT".into()))?;
+// query_scalar returns Option<i64>, so we need to handle both
+// the SQL error (via map_err) and the None case (via ok_or_else)
+let user_id: i64 = sqlx::query_scalar(
+"INSERT INTO users (username, password, avatar) VALUES (?, ?, ?) RETURNING id"
+)
+.bind( & username)
+.bind( & hash_password)
+.bind(& avatar)
+.fetch_one(pool)
+.await
+.map_err( | e | DBError::new_save_error(format ! ("Insert failed: {}", e))) ?
+.ok_or_else( | | DBError::new_save_error("No ID returned from INSERT".into())) ?;
 
-                Ok(user_id)
-            } else {
-                Err(DBError::new_save_error("Password cannot be empty".into()))
-            }
-        }
+Ok(user_id)
+} else {
+Err(DBError::new_save_error("Password cannot be empty".into()))
+}
+}
 ```
 
 **Step 4: Remove the final `Ok(())`**
@@ -340,11 +389,13 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ## Task 4: Add create_user_settings function
 
 **Files:**
+
 - Modify: `src/backend/db_backend.rs`
 
 **Step 1: Add imports at the top of the file**
 
 Add after line 3:
+
 ```rust
 use crate::backend::settings_types::{PasswordPreset, PasswordGenConfig};
 ```
@@ -385,11 +436,11 @@ pub async fn create_user_settings(
     let settings_id: i64 = sqlx::query_scalar(
         "INSERT INTO user_settings (user_id) VALUES (?) RETURNING id"
     )
-    .bind(user_id)
-    .fetch_one(&mut *tx)
-    .await
-    .map_err(|e| DBError::new_save_error(format!("Failed to insert user_settings: {}", e)))?
-    .ok_or_else(|| DBError::new_save_error("No settings ID returned from INSERT".into()))?;
+        .bind(user_id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| DBError::new_save_error(format!("Failed to insert user_settings: {}", e)))?
+        .ok_or_else(|| DBError::new_save_error("No settings ID returned from INSERT".into()))?;
 
     // 2. Inserisci passwords_generation_settings
     let config = preset.to_config();
@@ -398,15 +449,15 @@ pub async fn create_user_settings(
          (settings_id, length, symbols, numbers, uppercase, lowercase, excluded_symbols)
          VALUES (?, ?, ?, ?, ?, ?, NULL)"
     )
-    .bind(settings_id)
-    .bind(config.length)
-    .bind(config.symbols)
-    .bind(config.numbers)
-    .bind(config.uppercase)
-    .bind(config.lowercase)
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| DBError::new_save_error(format!("Failed to insert gen_settings: {}", e)))?;
+        .bind(settings_id)
+        .bind(config.length)
+        .bind(config.symbols)
+        .bind(config.numbers)
+        .bind(config.uppercase)
+        .bind(config.lowercase)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DBError::new_save_error(format!("Failed to insert gen_settings: {}", e)))?;
 
     // Commit transazione
     tx.commit().await
@@ -440,11 +491,13 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 ## Task 5: Integrate settings creation in registration flow
 
 **Files:**
+
 - Modify: `src/components/features/upsert_user.rs`
 
 **Step 1: Add import for create_user_settings**
 
 Add at line 2, modify the existing import:
+
 ```rust
 use crate::backend::db_backend::{create_user_settings, delete_user, save_or_update_user};
 ```
@@ -452,6 +505,7 @@ use crate::backend::db_backend::{create_user_settings, delete_user, save_or_upda
 **Step 2: Add import for PasswordPreset**
 
 Add after line 11:
+
 ```rust
 use crate::backend::settings_types::PasswordPreset;
 ```
@@ -461,29 +515,29 @@ use crate::backend::settings_types::PasswordPreset;
 Replace lines 205-219 with:
 
 ```rust
-        spawn(async move {
-            match save_or_update_user(&pool, user_id, u, password_to_save, a).await {
-                Ok(saved_user_id) => {
-                    // Se è un nuovo utente, crea i settings di default
-                    if user_id.is_none() {
-                        if let Err(e) = create_user_settings(&pool, saved_user_id, PasswordPreset::God).await {
-                            tracing::warn!("Failed to create user settings for user {}: {}", saved_user_id, e);
-                            // Non blocchiamo la registrazione - l'utente può configurare i settings dopo
-                        }
-                    }
+        spawn( async move {
+match save_or_update_user( & pool, user_id, u, password_to_save, a).await {
+Ok(saved_user_id) => {
+// Se è un nuovo utente, crea i settings di default
+if user_id.is_none() {
+if let Err(e) = create_user_settings( &pool, saved_user_id, PasswordPreset::God).await {
+tracing::warn ! ("Failed to create user settings for user {}: {}", saved_user_id, e);
+// Non blocchiamo la registrazione - l'utente può configurare i settings dopo
+}
+}
 
-                    auth_state.logout();
-                    let message = if is_updating {
-                        "User Updated successfully!"
-                    } else {
-                        "User Registered successfully!"
-                    };
-                    schedule_toast_success(message.to_string(), toast);
-                    nav.push("/login");
-                }
-                Err(e) => error.set(Some(e.to_string())),
-            }
-        });
+auth_state.logout();
+let message = if is_updating {
+"User Updated successfully!"
+} else {
+"User Registered successfully!"
+};
+schedule_toast_success(message.to_string(), toast);
+nav.push("/login");
+}
+Err(e) => error.set(Some(e.to_string())),
+}
+});
 ```
 
 **Step 4: Verify compilation**
@@ -537,28 +591,147 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 
 ---
 
+## Task 7: Code Review - Backend Quality Assurance
+
+> **For Claude:** Usa `Task` tool con `subagent_type: "backend-developer"` per eseguire questa review.
+
+**File da Revisionare:**
+
+- `src/backend/settings_types.rs`
+- `src/backend/db_backend.rs` (funzioni `save_or_update_user` e `create_user_settings`)
+
+**Criteri di Verifica:**
+
+1. **Transazioni SQL**
+   - Verificare che la transazione in `create_user_settings` sia gestita correttamente
+   - Verificare rollback automatico in caso di errore
+   - Verificare uso corretto di `RETURNING id`
+
+2. **Error Handling**
+   - Verificare che tutti gli errori siano propagati correttamente
+   - Verificare uso di `map_err` per aggiungere contesto
+   - Verificare uso di `ok_or_else` per `Option<i64>`
+
+3. **Async/Await**
+   - Verificare che non ci siano deadlock potenziali
+   - Verificare uso corretto di `&mut *tx` per transazioni
+
+4. **Security**
+   - Verificare che le password siano sempre hashate
+   - Verificare che non ci siano SQL injection (uso di bind)
+
+**Step 1: Invoca l'agente backend-developer**
+
+Descrizione del prompt per l'agente:
+
+```
+Review the backend implementation in:
+- src/backend/settings_types.rs (domain types for user settings)
+- src/backend/db_backend.rs (functions save_or_update_user and create_user_settings)
+
+Focus on:
+1. Transaction correctness and rollback behavior
+2. Error handling patterns (map_err, ok_or_else)
+3. Async/await patterns and potential deadlocks
+4. Security (password hashing, SQL injection prevention)
+
+Check against Rust best practices from rust-skills:m06-error-handling and rust-skills:m07-concurrency.
+```
+
+**Step 2: Applica le correzioni suggerite**
+
+Se l'agente suggerisce modifiche, applicale e fai commit:
+
+```bash
+git add -A
+git commit -m "refactor: apply backend review suggestions
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
+```
+
+---
+
+## Task 8: Code Review - Dioxus/Frontend Quality Assurance
+
+> **For Claude:** Usa `Task` tool con `subagent_type: "dioxus-developer"` per eseguire questa review.
+
+**File da Revisionare:**
+
+- `src/components/features/upsert_user.rs`
+
+**Criteri di Verifica:**
+
+1. **Dioxus 0.7 Patterns**
+   - Verificare uso corretto di `spawn` per operazioni async
+   - Verificare gestione degli stati con Signal
+   - Verificare che non ci siano memory leak o race condition
+
+2. **UX del Flusso di Registrazione**
+   - Verificare feedback all'utente durante operazioni async
+   - Verificare gestione errori lato UI (toast, messaggi)
+   - Verificare redirect corretto dopo registrazione
+
+3. **Error Handling UI**
+   - Verificare che errori di settings creation non blocchino la registrazione
+   - Verificare logging appropriato con `tracing::warn`
+
+**Step 1: Invoca l'agente dioxus-developer**
+
+Descrizione del prompt per l'agente:
+
+```
+Review the Dioxus integration in src/components/features/upsert_user.rs
+
+Focus on:
+1. Dioxus 0.7 patterns - correct use of spawn, Signal handling
+2. UX during registration flow - async feedback, error display
+3. Error handling - settings creation failure should not block registration
+4. Memory safety - no potential leaks or race conditions
+
+The file implements user registration that:
+- Calls save_or_update_user (returns user_id)
+- Creates user settings with create_user_settings (non-blocking on failure)
+- Shows success toast and redirects to /login
+```
+
+**Step 2: Applica le correzioni suggerite**
+
+Se l'agente suggerisce modifiche, applicale e fai commit:
+
+```bash
+git add -A
+git commit -m "refactor: apply Dioxus review suggestions
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
+```
+
+---
+
 ## Summary
 
-| Task | Description | Files |
-|------|-------------|-------|
-| 0 | Add UNIQUE constraint | `src/backend/init_queries.rs` |
-| 1 | Create settings_types.rs | `src/backend/settings_types.rs` |
-| 2 | Export from mod.rs | `src/backend/mod.rs` |
-| 3 | Modify save_or_update_user | `src/backend/db_backend.rs` |
-| 4 | Add create_user_settings | `src/backend/db_backend.rs` |
-| 5 | Integrate in registration | `src/components/features/upsert_user.rs` |
-| 6 | Test and verify | - |
+| Task | Description                | Files                                    | Review Agent        |
+|------|----------------------------|------------------------------------------|---------------------|
+| 0    | Add UNIQUE constraint      | `src/backend/init_queries.rs`            | -                   |
+| 1    | Create settings_types.rs   | `src/backend/settings_types.rs`          | backend-developer   |
+| 2    | Export from mod.rs         | `src/backend/mod.rs`                     | -                   |
+| 3    | Modify save_or_update_user | `src/backend/db_backend.rs`              | backend-developer   |
+| 4    | Add create_user_settings   | `src/backend/db_backend.rs`              | backend-developer   |
+| 5    | Integrate in registration  | `src/components/features/upsert_user.rs` | dioxus-developer    |
+| 6    | Test and verify            | -                                        | -                   |
+| 7    | Backend Code Review        | `settings_types.rs`, `db_backend.rs`     | **backend-developer** |
+| 8    | Dioxus Code Review         | `upsert_user.rs`                         | **dioxus-developer** |
 
 ## Key Corrections Applied
 
-| Issue | Correction |
-|-------|------------|
-| `query_scalar` returns `Option<T>` | Added `.ok_or_else()` to handle None case |
-| Type consistency | Changed `length` and `symbols` to `i64` |
-| Error handling | Added explicit `.map_err()` for all sqlx operations |
-| Race condition prevention | Added `UNIQUE` constraint on `user_settings.user_id` |
+| Issue                              | Correction                                           |
+|------------------------------------|------------------------------------------------------|
+| `query_scalar` returns `Option<T>` | Added `.ok_or_else()` to handle None case            |
+| Type consistency                   | Changed `length` and `symbols` to `i64`              |
+| Error handling                     | Added explicit `.map_err()` for all sqlx operations  |
+| Race condition prevention          | Added `UNIQUE` constraint on `user_settings.user_id` |
 
 **Total estimated changes:**
+
 - 1 new file
 - 4 modified files
 - ~170 lines of new code
