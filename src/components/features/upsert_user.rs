@@ -41,7 +41,8 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     let mut error = use_signal(|| Option::<String>::None);
     #[allow(unused_mut)]
     let mut new_avatar = use_signal(|| None::<Vec<u8>>);
-    let is_user_deleted = use_signal::<bool>(|| false);
+    #[allow(unused_mut)]
+    let mut is_user_deleted = use_signal::<bool>(|| false);
     #[allow(unused_mut)]
     let mut is_picking = use_signal(|| false); // Traccia se il dialog è aperto
     let mut show_delete_modal = use_signal(|| false);
