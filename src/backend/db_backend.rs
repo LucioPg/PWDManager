@@ -201,7 +201,7 @@ pub async fn save_or_update_user(
     username: String,
     password: Option<SecretString>,
     avatar: Option<Vec<u8>>,
-) -> Result<(), DBError> {
+) -> Result<i64, DBError> {
     debug!("Attempting to save/update user credentials");
 
     // 1. Criptazione comune a entrambi i casi
@@ -212,7 +212,7 @@ pub async fn save_or_update_user(
             let update = prepare_user_update(pool, user_id, username, password, avatar).await?;
 
             if !update.has_updates() {
-                return Ok(());
+                return Ok(user_id);
             }
 
             let sql_fields = update.build_sql_fields();
@@ -236,6 +236,8 @@ pub async fn save_or_update_user(
                 .execute(pool)
                 .await
                 .map_err(|e| DBError::new_save_error(format!("Update failed: {}", e)))?;
+
+            Ok(user_id)
         }
         // --- CASO INSERT ---
         None => {
@@ -243,20 +245,25 @@ pub async fn save_or_update_user(
             if !psw.expose_secret().trim().is_empty() {
                 let hash_password = crate::backend::utils::encrypt(psw)
                     .map_err(|e| DBError::new_save_error(format!("Failed to encrypt: {}", e)))?;
-                sqlx::query("INSERT INTO users (username, password, avatar) VALUES (?, ?, ?)")
-                    .bind(username)
-                    .bind(hash_password)
-                    .bind(avatar)
-                    .execute(pool)
-                    .await
-                    .map_err(|e| DBError::new_save_error(format!("Insert failed: {}", e)))?;
+
+                // query_scalar with fetch_one returns Result<i64, Error>
+                // If INSERT fails, we get an error. RETURNING id guarantees a value if INSERT succeeds.
+                let user_id: i64 = sqlx::query_scalar::<_, i64>(
+                    "INSERT INTO users (username, password, avatar) VALUES (?, ?, ?) RETURNING id"
+                )
+                .bind(&username)
+                .bind(&hash_password)
+                .bind(&avatar)
+                .fetch_one(pool)
+                .await
+                .map_err(|e| DBError::new_save_error(format!("Insert failed: {}", e)))?;
+
+                Ok(user_id)
             } else {
-                return Err(DBError::new_save_error("Password cannot be empty".into()));
+                Err(DBError::new_save_error("Password cannot be empty".into()))
             }
         }
     }
-
-    Ok(())
 }
 
 /// Cancella un utente dal database.
