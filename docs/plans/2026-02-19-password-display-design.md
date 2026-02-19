@@ -44,7 +44,7 @@ src/components/globals/password_display/
 
 ### Dependencies
 
-- `secrecy::SecretString` - Secure password handling
+- `secrecy::{SecretString, ExposeSecret}` - Secure password handling
 - `dioxus::prelude::*` - Framework hooks and RSX
 - `crate::components::globals::svgs::{EyeIcon, EyeOffIcon}` - Toggle icons
 - `crate::components::globals::svgs::action_icons::*` - Clipboard icon (future)
@@ -70,7 +70,7 @@ pub struct PasswordDisplayProps {
     /// Callback quando si clicca sull'icona clipboard (TODO: implementare copia)
     /// Se None, il button clipboard viene mostrato ma disabilitato
     #[props(default)]
-    pub on_copy: Option<Callback<()>>,
+    pub on_copy: Option<EventHandler<()>>,
 }
 ```
 
@@ -164,11 +164,11 @@ Add to `assets/input_main.css`:
 }
 
 .pwd-display-action-btn:hover {
-    background-color: color-mix(in srgb, var(--fallback-bc, oklch(0.2 0 0)) 10%, transparent);
+    background-color: var(--primary-color-3);
 }
 
 .pwd-display-action-btn:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--fallback-pc, oklch(0.6 0.2 250)) 30%, transparent);
+    outline: 2px solid var(--focused-border-color);
     outline-offset: 2px;
 }
 
@@ -181,9 +181,9 @@ Add to `assets/input_main.css`:
 
 **Design Notes:**
 - No `@apply` or `@layer` - Tailwind v4 uses native CSS
-- `color-mix()` for opacity and color variations
-- CSS variables for theme colors (`--fallback-bc`, `--fallback-pc`)
+- Uses project's existing CSS variables (`--primary-color-3`, `--focused-border-color`)
 - All classes use `pwd-` prefix to avoid DaisyUI 5 conflicts
+- Compatible with dark/light theme system using CSS custom properties
 
 ## Integration with Existing Code
 
@@ -212,9 +212,10 @@ td { class: "px-4 py-3",
 }
 ```
 
-**Add import:**
+**Add imports:**
 ```rust
 use crate::components::globals::password_display::PasswordDisplay;
+use secrecy::ExposeSecret;  // Already imported, but ensure it's present
 ```
 
 ### Update `src/components/globals/table/mod.rs`
@@ -257,6 +258,30 @@ pub use password_display::PasswordDisplay;  // New export
 - [ ] Edit/Delete buttons still work
 - [ ] No console errors (F12)
 - [ ] Performance acceptable with 100+ rows
+
+## Design Review & Corrections
+
+This section documents issues found during Dioxus 0.7.3 code review and subsequent corrections made to the design.
+
+### Issues Identified & Fixed
+
+| Issue | Original | Corrected |
+|-------|----------|-----------|
+| ❌ **Wrong callback type** | `Option<Callback<()>>` | `Option<EventHandler<()>>` |
+| ❌ **Non-existent CSS variables** | `--fallback-bc`, `--fallback-pc` | `--primary-color-3`, `--focused-border-color` |
+| ❌ **Unsupported CSS function** | `color-mix(in srgb, ...)` | Direct CSS variable usage |
+| ⚠️ **Missing import documentation** | Not documented | Added `secrecy::ExposeSecret` to dependencies |
+
+### Verification ✅
+
+All corrections have been verified against:
+- Existing codebase patterns (`form_field.rs`, `table_row.rs`)
+- Project's CSS variable system (`input_main.css`)
+- Dioxus 0.7.3 syntax requirements
+
+The design is now ready for implementation.
+
+---
 
 ## Design Decisions
 
