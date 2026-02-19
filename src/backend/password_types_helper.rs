@@ -400,6 +400,14 @@ impl fmt::Display for PasswordScore {
     }
 }
 
+pub struct PasswordGeneratorConfig {
+    pub length: usize,
+    pub symbols: bool,
+    pub numbers: bool,
+    pub uppercase: bool,
+    pub lowercase: bool,
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

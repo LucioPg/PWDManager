@@ -21,6 +21,7 @@ sqlx-template = "0.2.1"
 futures = "0.3"
 rayon = "1.11.0"
 tokio-util = { version = "0.7.18", features = ["full"] }
+aegis-password-generator = "0.1.1"
 
 [dev-dependencies]
 tempfile = "3"

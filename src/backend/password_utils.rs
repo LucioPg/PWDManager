@@ -11,9 +11,11 @@ use crate::backend::db_backend::{
     fetch_all_stored_passwords_for_user, fetch_user_auth_from_id, save_or_update_stored_password,
 };
 use crate::backend::password_types_helper::{
-    DbSecretString, PasswordScore, StoredPassword, StoredRawPassword, UserAuth,
+    DbSecretString, PasswordGeneratorConfig, PasswordScore, StoredPassword, StoredRawPassword,
+    UserAuth,
 };
 use crate::backend::strength_utils::evaluate_password_strength;
+use aegis_password_generator::types::PasswordConfig;
 use aes_gcm::aead::{Aead, AeadCore, Nonce, OsRng};
 use aes_gcm::{Aes256Gcm, Key, KeyInit};
 use argon2::password_hash::Salt;
@@ -24,6 +26,11 @@ use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use tokio::task;
+
+pub fn generate_suggested_password(custom_config: PasswordGeneratorConfig) -> SecretString {
+    // let config;
+    SecretString::new("".into())
+}
 
 /// Estrae il sale da una password hash Argon2.
 ///
