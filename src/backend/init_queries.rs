@@ -53,4 +53,23 @@ pub static QUERIES: &[&str] = &[
                 nonce BLOB NOT NULL UNIQUE,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     )",
+    "CREATE TABLE IF NOT EXISTS user_settings (
+                id INTEGER PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                passwords_id INTEGER NOT NULL,
+                FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY(passwords_id) REFERENCES users(id) ON DELETE CASCADE,
+
+    )",
+    "CREATE TABLE IF NOT EXISTS passwords_generation_settings (
+                id INTEGER PRIMARY KEY,
+                settings_id INTEGER NOT NUL,
+                length INTEGER NOT NULL CHECK (0 <= length <= 100),
+                symbols INTEGER NOT NULL,
+                numbers BOLEAN NOT NULL,
+                uppercase BOLEAN NOT NULL,
+                lowercase BOLEAN NOT NULL,
+                FOREIGN KEY(settings_id) REFERENCES user_settings(id) ON DELETE CASCADE
+                CHECK (symbols <= length)
+    )",
 ];
