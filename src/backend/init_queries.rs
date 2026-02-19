@@ -7,6 +7,8 @@
 //!
 //! - **users**: Tabella utenti con username, password (hash Argon2), avatar
 //! - **passwords**: Tabella password criptate con AES-256-GCM, con foreign key verso users
+//! - **user_settings**: Tabella settings generali utente (relazione 1:1 con users)
+//! - **passwords_generation_settings**: Tabella settings per generazione password
 
 /// Query SQL di inizializzazione del database.
 ///
@@ -55,9 +57,8 @@ pub static QUERIES: &[&str] = &[
     )",
     "CREATE TABLE IF NOT EXISTS user_settings (
                 id INTEGER PRIMARY KEY,
-                user_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL UNIQUE,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
-
     )",
     "CREATE TABLE IF NOT EXISTS passwords_generation_settings (
                 id INTEGER PRIMARY KEY,

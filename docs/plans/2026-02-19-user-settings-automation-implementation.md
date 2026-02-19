@@ -10,6 +10,43 @@
 
 ---
 
+## Task 0: Add UNIQUE constraint to user_settings table
+
+**Files:**
+- Modify: `src/backend/init_queries.rs`
+
+**Step 1: Update user_settings table schema**
+
+Change line 58 from:
+```sql
+user_id INTEGER NOT NULL,
+```
+
+To:
+```sql
+user_id INTEGER NOT NULL UNIQUE,
+```
+
+This prevents duplicate settings records for the same user.
+
+**Step 2: Verify the change**
+
+Run: `cargo check`
+Expected: Success
+
+**Step 3: Commit**
+
+```bash
+git add src/backend/init_queries.rs
+git commit -m "feat: add UNIQUE constraint to user_settings.user_id
+
+Prevents duplicate settings records for the same user.
+
+Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
+```
+
+---
+
 ## Task 1: Create settings_types.rs
 
 **Files:**
@@ -504,6 +541,7 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 
 | Task | Description | Files |
 |------|-------------|-------|
+| 0 | Add UNIQUE constraint | `src/backend/init_queries.rs` |
 | 1 | Create settings_types.rs | `src/backend/settings_types.rs` |
 | 2 | Export from mod.rs | `src/backend/mod.rs` |
 | 3 | Modify save_or_update_user | `src/backend/db_backend.rs` |
@@ -518,8 +556,9 @@ Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>"
 | `query_scalar` returns `Option<T>` | Added `.ok_or_else()` to handle None case |
 | Type consistency | Changed `length` and `symbols` to `i64` |
 | Error handling | Added explicit `.map_err()` for all sqlx operations |
+| Race condition prevention | Added `UNIQUE` constraint on `user_settings.user_id` |
 
 **Total estimated changes:**
 - 1 new file
-- 3 modified files
-- ~160 lines of new code
+- 4 modified files
+- ~170 lines of new code
