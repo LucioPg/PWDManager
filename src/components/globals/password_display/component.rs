@@ -1,4 +1,4 @@
-use crate::components::globals::svgs::{EyeIcon, EyeOffIcon};
+use crate::components::globals::svgs::{ClipboardIcon, EyeIcon, EyeOffIcon};
 use crate::components::globals::form_field::FormSecret;
 use dioxus::prelude::*;
 use secrecy::ExposeSecret;
@@ -79,8 +79,8 @@ pub fn PasswordDisplay(
                     r#type: "button",
                     disabled: on_copy.is_none(),
                     aria_label: "Copia password",
-                    // TODO: Add clipboard icon and functionality
-                    span { class: "text-xs", "📋" }
+                    // TODO: Implement clipboard functionality
+                    ClipboardIcon { class: Some("text-current".to_string()) }
                 }
             }
         }
