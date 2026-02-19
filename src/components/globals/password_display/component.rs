@@ -29,8 +29,10 @@ pub fn PasswordDisplay(
     #[props(default)]
     on_copy: Option<EventHandler<()>>,
 ) -> Element {
-    // TODO: Implement component
+    /// Stato per la visibilità della password (false = nascosta/pallini)
+    let mut password_visible = use_signal(|| false);
+
     rsx! {
-        div { "PasswordDisplay placeholder" }
+        div { "PasswordDisplay placeholder - visible: {password_visible()}" }
     }
 }
