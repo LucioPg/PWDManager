@@ -58,3 +58,21 @@ pub fn DeleteIcon(
         }
     }
 }
+
+/// Icona clipboard/appunti - pulsante copia
+#[component]
+pub fn ClipboardIcon(
+    #[props(default = "18".to_string())] size: String,
+    #[props(default = "2".to_string())] stroke_width: String,
+    #[props(default)] class: Option<String>,
+) -> Element {
+    rsx! {
+        SvgIcon {
+            size: size,
+            stroke_width: stroke_width,
+            class: class,
+            rect { x: "8", y: "2", width: "8", height: "4", rx: "1", ry: "1" }
+            path { d: "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" }
+        }
+    }
+}
