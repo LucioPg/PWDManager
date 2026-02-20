@@ -451,7 +451,6 @@ impl std::ops::Deref for ExcludedSymbolSet {
 #[db("sqlite")]
 #[tp_upsert(by = "id")]
 #[tp_select_builder]
-
 pub struct PasswordGeneratorConfig {
     #[allow(unused)]
     pub id: i64,
