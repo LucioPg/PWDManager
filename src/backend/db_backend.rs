@@ -344,6 +344,102 @@ pub async fn create_user_settings(
     Ok(())
 }
 
+/// Registra un nuovo utente con i settings di default in modo atomico.
+///
+/// Questa funzione garantisce atomicità usando una **singola transazione DB**.
+/// Se qualsiasi operazione fallisce, il DB fa automaticamente rollback.
+///
+/// # Parametri
+///
+/// * `pool` - Pool SQLite per la connessione al database
+/// * `username` - Username del nuovo utente
+/// * `password` - Password (verrà criptata con Argon2)
+/// * `avatar` - Avatar opzionale come bytes
+/// * `preset` - Preset per i settings di generazione password
+///
+/// # Valore Restituito
+///
+/// Return `Ok(user_id)` se la registrazione ha successo
+///
+/// # Errori
+///
+/// - `DBError::new_registration_error` - Errore durante la registrazione
+/// - `DBError::new_transaction_error` - Errore nell'avviare o committare la transazione
+///
+/// # Atomicità
+///
+/// Il pattern RAII di SQLx garantisce che se la funzione ritorna errore o panicca,
+/// la transazione viene automaticamente rollbackata dal Drop del tipo Transaction.
+#[instrument(skip(pool, password, avatar))]
+pub async fn register_user_with_settings(
+    pool: &SqlitePool,
+    username: String,
+    password: Option<SecretString>,
+    avatar: Option<Vec<u8>>,
+    preset: PasswordPreset,
+) -> Result<i64, DBError> {
+    debug!("Attempting atomic user registration with single transaction");
+
+    // 1. Inizia transazione - RAII: verrà rollbackata automaticamente se droppata senza commit
+    let mut tx = pool.begin().await
+        .map_err(|e| DBError::new_transaction_error(format!("Failed to begin transaction: {}", e)))?;
+
+    // 2. Cripta la password
+    let psw = password.unwrap_or_default();
+    if psw.expose_secret().trim().is_empty() {
+        return Err(DBError::new_registration_error("Password cannot be empty".into()));
+    }
+
+    let hash_password = crate::backend::utils::encrypt(psw)
+        .map_err(|e| DBError::new_registration_error(format!("Failed to encrypt password: {}", e)))?;
+
+    // 3. Inserisci utente e ottieni l'id
+    let user_id: i64 = sqlx::query_scalar::<_, i64>(
+        "INSERT INTO users (username, password, avatar) VALUES (?, ?, ?) RETURNING id"
+    )
+    .bind(&username)
+    .bind(&hash_password)
+    .bind(&avatar)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| DBError::new_registration_error(format!("Failed to insert user: {}", e)))?;
+
+    debug!(user_id = user_id, "User created in transaction, now creating settings");
+
+    // 4. Inserisci user_settings e ottieni l'id
+    let settings_id: i64 = sqlx::query_scalar::<_, i64>(
+        "INSERT INTO user_settings (user_id) VALUES (?) RETURNING id"
+    )
+    .bind(user_id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| DBError::new_registration_error(format!("Failed to insert user_settings: {}", e)))?;
+
+    // 5. Inserisci passwords_generation_settings
+    let config = preset.to_config();
+    sqlx::query(
+        "INSERT INTO passwords_generation_settings
+         (settings_id, length, symbols, numbers, uppercase, lowercase, excluded_symbols)
+         VALUES (?, ?, ?, ?, ?, ?, NULL)"
+    )
+    .bind(settings_id)
+    .bind(config.length)
+    .bind(config.symbols)
+    .bind(config.numbers)
+    .bind(config.uppercase)
+    .bind(config.lowercase)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DBError::new_registration_error(format!("Failed to insert gen_settings: {}", e)))?;
+
+    // 6. Commit - solo se tutto è andato bene
+    tx.commit().await
+        .map_err(|e| DBError::new_transaction_error(format!("Failed to commit transaction: {}", e)))?;
+
+    debug!(user_id = user_id, "Atomic registration completed successfully");
+    Ok(user_id)
+}
+
 /// Cancella un utente dal database.
 ///
 /// La cancellazione elimina l'utente e tutte le password associate grazie

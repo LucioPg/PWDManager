@@ -38,6 +38,8 @@ pub enum DBError {
     DBTransactionError(String),
     #[error("Database user settings error: {0}")]
     DBSettingsError(String),
+    #[error("Database registration error: {0}")]
+    DBRegistrationError(String),
 }
 
 impl DBError {
@@ -106,6 +108,10 @@ impl DBError {
 
     pub fn new_settings_error(msg: String) -> Self {
         DBError::DBSettingsError(msg)
+    }
+
+    pub fn new_registration_error(msg: String) -> Self {
+        DBError::DBRegistrationError(msg)
     }
 }
 

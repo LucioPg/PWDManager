@@ -1,5 +1,5 @@
 use crate::auth::{AuthState, User};
-use crate::backend::db_backend::{create_user_settings, delete_user, save_or_update_user};
+use crate::backend::db_backend::{delete_user, register_user_with_settings, save_or_update_user};
 use crate::backend::ui_utils::pick_and_process_avatar;
 use crate::backend::utils::get_user_avatar_with_default;
 use crate::components::{
@@ -10,7 +10,6 @@ use crate::components::{
 use dioxus::prelude::*;
 use secrecy::ExposeSecret;
 use sqlx::SqlitePool;
-use tracing::warn;
 
 use crate::backend::settings_types::PasswordPreset;
 use tracing::instrument;
@@ -207,26 +206,35 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         });
 
         spawn(async move {
-            match save_or_update_user(&pool, user_id, u.clone(), password_to_save, a).await {
-                Ok(saved_user_id) => {
-                    // Se è un nuovo utente, crea i settings di default
-                    if user_id.is_none() {
-                        if let Err(e) = create_user_settings(&pool, saved_user_id, PasswordPreset::God).await {
-                            warn!("Failed to create user settings for user {}: {}", saved_user_id, e);
-                            // Non blocchiamo la registrazione - l'utente può configurare i settings dopo
-                        }
+            // Branch separato per registrazione vs update
+            if user_id.is_none() {
+                // REGISTRAZIONE: usa la funzione atomica
+                match register_user_with_settings(
+                    &pool,
+                    u.clone(),
+                    password_to_save,
+                    a,
+                    PasswordPreset::God,
+                )
+                .await
+                {
+                    Ok(_saved_user_id) => {
+                        auth_state.logout();
+                        schedule_toast_success("User Registered successfully!".to_string(), toast);
+                        nav.push("/login");
                     }
-
-                    auth_state.logout();
-                    let message = if is_updating {
-                        "User Updated successfully!"
-                    } else {
-                        "User Registered successfully!"
-                    };
-                    schedule_toast_success(message.to_string(), toast);
-                    nav.push("/login");
+                    Err(e) => error.set(Some(e.to_string())),
                 }
-                Err(e) => error.set(Some(e.to_string())),
+            } else {
+                // UPDATE: usa la funzione esistente
+                match save_or_update_user(&pool, user_id, u.clone(), password_to_save, a).await {
+                    Ok(_saved_user_id) => {
+                        auth_state.logout();
+                        schedule_toast_success("User Updated successfully!".to_string(), toast);
+                        nav.push("/login");
+                    }
+                    Err(e) => error.set(Some(e.to_string())),
+                }
             }
         });
     };
