@@ -10,7 +10,7 @@ use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqliteRo
 use sqlx::{Row, query};
 use std::str::FromStr;
 #[cfg(feature = "desktop")]
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, warn};
 
 /// Struct per rappresentare un aggiornamento utente con field opzionali
 #[derive(Debug, Clone)]
@@ -157,9 +157,19 @@ async fn prepare_user_update(
 
     if let Some(psw) = password {
         if !psw.expose_secret().trim().is_empty() {
-            // Prima recupera la vecchia password hash usando user_id e salvala in temp_old_password
-            if let Ok(user_auth) = fetch_user_auth_from_id(pool, user_id).await {
-                set_temp_password(pool, user_id, &user_auth.password.0).await?;
+            // Backup della vecchia password hash prima di sovrascriverla
+            match fetch_user_auth_from_id(pool, user_id).await {
+                Ok(user_auth) => {
+                    set_temp_password(pool, user_id, &user_auth.password.0).await?;
+                }
+                Err(e) => {
+                    // Non bloccare l'aggiornamento, ma logga il problema
+                    warn!(
+                        user_id = user_id,
+                        error = %e,
+                        "Failed to backup old password during user update - recovery may be unavailable"
+                    );
+                }
             }
 
             let hash_password = crate::backend::utils::encrypt(psw.clone())
