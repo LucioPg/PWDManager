@@ -4,7 +4,7 @@
 //! per il mapping con le tabelle del database.
 
 use sqlx::FromRow;
-use sqlx_template::SqliteTemplate;
+use sqlx_template::{SqliteTemplate, SqlxTemplate};
 
 /// Preset per la generazione password.
 ///
@@ -81,9 +81,11 @@ pub struct PasswordGenConfig {
 /// Settings generali utente.
 ///
 /// Mappa la tabella `user_settings` del database.
-#[derive(Debug, Clone, FromRow, SqliteTemplate)]
+#[derive(Debug, Clone, FromRow, SqlxTemplate)]
+#[db("sqlite")]
 #[table("user_settings")]
 #[tp_upsert(by = "id")]
+#[tp_select_builder]
 pub struct UserSettings {
     pub id: Option<i64>,
     pub user_id: i64,
