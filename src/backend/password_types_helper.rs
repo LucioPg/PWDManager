@@ -5,6 +5,7 @@
 
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::{Type, sqlite::Sqlite};
+use std::collections::HashSet;
 use std::fmt;
 
 use sqlx_template::SqlxTemplate;
@@ -400,12 +401,67 @@ impl fmt::Display for PasswordScore {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct ExcludedSymbolSet(HashSet<char>);
+
+impl Type<Sqlite> for ExcludedSymbolSet {
+    fn type_info() -> sqlx::sqlite::SqliteTypeInfo {
+        // Usiamo STRING per dati char in hashset
+        <String as Type<Sqlite>>::type_info()
+    }
+}
+
+impl<'q> sqlx::Encode<'q, Sqlite> for ExcludedSymbolSet {
+    fn encode_by_ref(
+        &self,
+        args: &mut Vec<sqlx::sqlite::SqliteArgumentValue<'q>>,
+    ) -> Result<sqlx::encode::IsNull, Box<dyn std::error::Error + Send + Sync>> {
+        let s: String = self.0.iter().collect();
+        <String as sqlx::Encode<'q, Sqlite>>::encode(s, args)
+    }
+}
+
+impl<'r> sqlx::Decode<'r, sqlx::Sqlite> for ExcludedSymbolSet {
+    fn decode(
+        value: sqlx::sqlite::SqliteValueRef<'r>,
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+        // Decodifichiamo come Vec<u8>
+        let excluded_symb_string = <String as sqlx::Decode<'r, Sqlite>>::decode(value)?;
+
+        // Convertiamo Vec in SecretBox<[u8]>
+        Ok(ExcludedSymbolSet::from(excluded_symb_string))
+    }
+}
+impl From<String> for ExcludedSymbolSet {
+    fn from(s: String) -> Self {
+        Self(s.chars().filter(|c| !c.is_alphanumeric()).collect())
+    }
+}
+
+impl std::ops::Deref for ExcludedSymbolSet {
+    type Target = HashSet<char>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[derive(sqlx::FromRow, Debug, Clone, Default, SqlxTemplate)]
+#[table("passwords_generation_settings")]
+#[db("sqlite")]
+#[tp_upsert(by = "id")]
+#[tp_select_builder]
+
 pub struct PasswordGeneratorConfig {
-    pub length: usize,
-    pub symbols: bool,
+    #[allow(unused)]
+    pub id: i64,
+    pub settings_id: i64,
+    pub length: i32,
+    pub symbols: i32,
     pub numbers: bool,
     pub uppercase: bool,
     pub lowercase: bool,
+    pub excluded_symbols: ExcludedSymbolSet,
 }
 
 #[cfg(test)]
