@@ -1,7 +1,7 @@
 ﻿#![allow(dead_code)]
 use crate::backend::init_queries::QUERIES;
 use crate::backend::password_types_helper::{StoredPassword, UserAuth};
-use crate::backend::settings_types::PasswordPreset;
+use crate::backend::settings_types::{PasswordPreset, UserSettings};
 use crate::backend::utils::verify_password;
 use custom_errors::{AuthError, DBError};
 use dioxus::prelude::*;
@@ -260,7 +260,7 @@ pub async fn save_or_update_user(
                 // query_scalar with fetch_one returns Result<i64, Error>
                 // If INSERT fails, we get an error. RETURNING id guarantees a value if INSERT succeeds.
                 let user_id: i64 = sqlx::query_scalar::<_, i64>(
-                    "INSERT INTO users (username, password, avatar) VALUES (?, ?, ?) RETURNING id"
+                    "INSERT INTO users (username, password, avatar) VALUES (?, ?, ?) RETURNING id",
                 )
                 .bind(&username)
                 .bind(&hash_password)
@@ -305,38 +305,41 @@ pub async fn create_user_settings(
     debug!("Creating default settings for user_id: {}", user_id);
 
     // Inizia transazione - verrà automaticamente rollbackata se droppata
-    let mut tx = pool.begin().await
-        .map_err(|e| DBError::new_transaction_error(format!("Failed to begin transaction: {}", e)))?;
+    let mut tx = pool.begin().await.map_err(|e| {
+        DBError::new_transaction_error(format!("Failed to begin transaction: {}", e))
+    })?;
 
     // 1. Inserisci user_settings e ottieni l'id con RETURNING
-    let settings_id: i64 = sqlx::query_scalar::<_, i64>(
-        "INSERT INTO user_settings (user_id) VALUES (?) RETURNING id"
-    )
-        .bind(user_id)
-        .fetch_one(&mut *tx)
-        .await
-        .map_err(|e| DBError::new_settings_error(format!("Failed to insert user_settings: {}", e)))?;
+    let settings_id: i64 =
+        sqlx::query_scalar::<_, i64>("INSERT INTO user_settings (user_id) VALUES (?) RETURNING id")
+            .bind(user_id)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| {
+                DBError::new_settings_error(format!("Failed to insert user_settings: {}", e))
+            })?;
 
     // 2. Inserisci passwords_generation_settings
     let config = preset.to_config();
     sqlx::query(
         "INSERT INTO passwords_generation_settings
          (settings_id, length, symbols, numbers, uppercase, lowercase, excluded_symbols)
-         VALUES (?, ?, ?, ?, ?, ?, NULL)"
+         VALUES (?, ?, ?, ?, ?, ?, NULL)",
     )
-        .bind(settings_id)
-        .bind(config.length)
-        .bind(config.symbols)
-        .bind(config.numbers)
-        .bind(config.uppercase)
-        .bind(config.lowercase)
-        .execute(&mut *tx)
-        .await
-        .map_err(|e| DBError::new_settings_error(format!("Failed to insert gen_settings: {}", e)))?;
+    .bind(settings_id)
+    .bind(config.length)
+    .bind(config.symbols)
+    .bind(config.numbers)
+    .bind(config.uppercase)
+    .bind(config.lowercase)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DBError::new_settings_error(format!("Failed to insert gen_settings: {}", e)))?;
 
     // Commit transazione
-    tx.commit().await
-        .map_err(|e| DBError::new_transaction_error(format!("Failed to commit transaction: {}", e)))?;
+    tx.commit().await.map_err(|e| {
+        DBError::new_transaction_error(format!("Failed to commit transaction: {}", e))
+    })?;
 
     Ok(())
 }
@@ -365,9 +368,7 @@ pub async fn delete_user(pool: &SqlitePool, id: i64) -> Result<(), DBError> {
         .bind(id)
         .execute(pool)
         .await
-        .map_err(|e| {
-            DBError::new_delete_error(format!("Failed to delete user: {}", e))
-        })?;
+        .map_err(|e| DBError::new_delete_error(format!("Failed to delete user: {}", e)))?;
 
     Ok(())
 }
@@ -424,9 +425,7 @@ pub async fn list_users(
         query("SELECT id, username, created_at, avatar FROM users ORDER BY id DESC LIMIT 10")
             .fetch_all(pool)
             .await
-            .map_err(|e| {
-                DBError::new_list_error(format!("Failed to list users: {}", e))
-            })?;
+            .map_err(|e| DBError::new_list_error(format!("Failed to list users: {}", e)))?;
     let users = rows.into_iter().map(|row| get_user_row(row)).collect();
 
     Ok(users)
@@ -522,12 +521,11 @@ pub async fn fetch_user_password(pool: &SqlitePool, username: &str) -> Result<St
 #[instrument(skip(pool))]
 pub async fn fetch_user_auth_from_id(pool: &SqlitePool, user_id: i64) -> Result<UserAuth, DBError> {
     debug!("Fetching user credentials in database");
-    let user_auth =
-        sqlx::query_as::<_, UserAuth>("SELECT id, password, created_at FROM users WHERE id = ?")
-            .bind(user_id) // SQLite preferisce i64 per gli ID
-            .fetch_optional(pool) // Rimosso & perché pool è già un riferimento o clonabile
-            .await
-            .map_err(|e| DBError::new_select_error(e.to_string()))?; // Cattura l'errore reale del DB
+    let user_auth = sqlx::query_as::<_, UserAuth>("SELECT id, password FROM users WHERE id = ?")
+        .bind(user_id) // SQLite preferisce i64 per gli ID
+        .fetch_optional(pool) // Rimosso & perché pool è già un riferimento o clonabile
+        .await
+        .map_err(|e| DBError::new_select_error(e.to_string()))?; // Cattura l'errore reale del DB
     // Ora gestisci il caso in cui la query ha avuto successo ma non ha trovato righe
     user_auth.ok_or_else(|| DBError::new_select_error("User not found".into()))
 }
@@ -684,11 +682,58 @@ pub async fn fetch_all_stored_passwords_for_user(
         .map_err(|e| DBError::new_list_error(format!("Failed to fetch passwords: {}", e)))
 }
 
+pub async fn fetch_user_settings(
+    pool: &SqlitePool,
+    user_id: i64,
+) -> Result<Option<UserSettings>, DBError> {
+    let user_settings = UserSettings::builder_select()
+        .user_id(&user_id)
+        .map_err(|e| DBError::new_list_error(format!("Builder error: {}", e)))?
+        .find_one(pool)
+        .await
+        .map_err(|e| DBError::new_list_error(format!("Failed to fetch user settings: {}", e)))?;
+
+    Ok(user_settings)
+}
+
+pub async fn fetch_all_user_settings(pool: &SqlitePool) -> Result<Vec<UserSettings>, DBError> {
+    let settings = UserSettings::builder_select()
+        .find_all(pool)
+        .await
+        .map_err(|e| {
+            DBError::new_list_error(format!("Failed to fetch all user settings: {}", e))
+        })?;
+
+    Ok(settings)
+}
+
 #[cfg(test)]
 mod tests {
     // Questo modulo può contenere test per gli helper functions stessi
     use super::*;
     use crate::backend::test_helpers::setup_test_db;
+
+    #[tokio::test]
+    async fn test_get_user_settings() {
+        let pool = setup_test_db().await;
+        let user_id: i64 = 1;
+        let settings = fetch_user_settings(&pool, user_id).await.unwrap();
+        println!("################ {:?}", settings);
+        assert!(settings.is_some());
+        let user_settings = settings.unwrap();
+        assert_eq!(user_settings.user_id, user_id);
+    }
+
+    #[tokio::test]
+    async fn test_get_all_user_settings() {
+        let pool = setup_test_db().await;
+        let user_id: i64 = 1;
+        let settings = fetch_all_user_settings(&pool).await.unwrap();
+        println!("################ {:?}", settings);
+        assert!(!settings.is_empty());
+        let user_settings = &settings[0];
+        assert_eq!(user_settings.user_id, user_id);
+    }
 
     #[tokio::test]
     async fn test_get_user_auth() {
