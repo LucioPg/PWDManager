@@ -1,3 +1,4 @@
+pub mod settings_types;
 pub mod db_backend;
 pub mod init_queries;
 pub(crate) mod password_types_helper;

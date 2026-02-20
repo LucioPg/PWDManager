@@ -1,6 +1,7 @@
 ﻿#![allow(dead_code)]
 use crate::backend::init_queries::QUERIES;
 use crate::backend::password_types_helper::{StoredPassword, UserAuth};
+use crate::backend::settings_types::PasswordPreset;
 use crate::backend::utils::verify_password;
 use custom_errors::{AuthError, DBError};
 use dioxus::prelude::*;
@@ -9,7 +10,7 @@ use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqliteRo
 use sqlx::{Row, query};
 use std::str::FromStr;
 #[cfg(feature = "desktop")]
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, warn};
 
 /// Struct per rappresentare un aggiornamento utente con field opzionali
 #[derive(Debug, Clone)]
@@ -156,9 +157,19 @@ async fn prepare_user_update(
 
     if let Some(psw) = password {
         if !psw.expose_secret().trim().is_empty() {
-            // Prima recupera la vecchia password hash usando user_id e salvala in temp_old_password
-            if let Ok(user_auth) = fetch_user_auth_from_id(pool, user_id).await {
-                set_temp_password(pool, user_id, &user_auth.password.0).await?;
+            // Backup della vecchia password hash prima di sovrascriverla
+            match fetch_user_auth_from_id(pool, user_id).await {
+                Ok(user_auth) => {
+                    set_temp_password(pool, user_id, &user_auth.password.0).await?;
+                }
+                Err(e) => {
+                    // Non bloccare l'aggiornamento, ma logga il problema
+                    warn!(
+                        user_id = user_id,
+                        error = %e,
+                        "Failed to backup old password during user update - recovery may be unavailable"
+                    );
+                }
             }
 
             let hash_password = crate::backend::utils::encrypt(psw.clone())
@@ -201,7 +212,7 @@ pub async fn save_or_update_user(
     username: String,
     password: Option<SecretString>,
     avatar: Option<Vec<u8>>,
-) -> Result<(), DBError> {
+) -> Result<i64, DBError> {
     debug!("Attempting to save/update user credentials");
 
     // 1. Criptazione comune a entrambi i casi
@@ -212,7 +223,7 @@ pub async fn save_or_update_user(
             let update = prepare_user_update(pool, user_id, username, password, avatar).await?;
 
             if !update.has_updates() {
-                return Ok(());
+                return Ok(user_id);
             }
 
             let sql_fields = update.build_sql_fields();
@@ -236,6 +247,8 @@ pub async fn save_or_update_user(
                 .execute(pool)
                 .await
                 .map_err(|e| DBError::new_save_error(format!("Update failed: {}", e)))?;
+
+            Ok(user_id)
         }
         // --- CASO INSERT ---
         None => {
@@ -243,18 +256,87 @@ pub async fn save_or_update_user(
             if !psw.expose_secret().trim().is_empty() {
                 let hash_password = crate::backend::utils::encrypt(psw)
                     .map_err(|e| DBError::new_save_error(format!("Failed to encrypt: {}", e)))?;
-                sqlx::query("INSERT INTO users (username, password, avatar) VALUES (?, ?, ?)")
-                    .bind(username)
-                    .bind(hash_password)
-                    .bind(avatar)
-                    .execute(pool)
-                    .await
-                    .map_err(|e| DBError::new_save_error(format!("Insert failed: {}", e)))?;
+
+                // query_scalar with fetch_one returns Result<i64, Error>
+                // If INSERT fails, we get an error. RETURNING id guarantees a value if INSERT succeeds.
+                let user_id: i64 = sqlx::query_scalar::<_, i64>(
+                    "INSERT INTO users (username, password, avatar) VALUES (?, ?, ?) RETURNING id"
+                )
+                .bind(&username)
+                .bind(&hash_password)
+                .bind(&avatar)
+                .fetch_one(pool)
+                .await
+                .map_err(|e| DBError::new_save_error(format!("Insert failed: {}", e)))?;
+
+                Ok(user_id)
             } else {
-                return Err(DBError::new_save_error("Password cannot be empty".into()));
+                Err(DBError::new_save_error("Password cannot be empty".into()))
             }
         }
     }
+}
+
+/// Crea i settings di default per un nuovo utente.
+///
+/// Usa una transazione per garantire atomicità tra i due INSERT.
+/// Se la transazione fallisce, viene automaticamente rollbackata.
+///
+/// # Parametri
+///
+/// * `pool` - Pool SQLite per la connessione al database
+/// * `user_id` - ID dell'utente per cui creare i settings
+/// * `preset` - Preset di default per la generazione password
+///
+/// # Valore Restituito
+///
+/// Return `Ok(())` se i settings vengono creati con successo
+///
+/// # Errori
+///
+/// - `DBError::new_transaction_error` - Errore nell'avviare o committare la transazione
+/// - `DBError::new_settings_error` - Errore durante l'INSERT dei settings
+#[instrument(skip(pool))]
+pub async fn create_user_settings(
+    pool: &SqlitePool,
+    user_id: i64,
+    preset: PasswordPreset,
+) -> Result<(), DBError> {
+    debug!("Creating default settings for user_id: {}", user_id);
+
+    // Inizia transazione - verrà automaticamente rollbackata se droppata
+    let mut tx = pool.begin().await
+        .map_err(|e| DBError::new_transaction_error(format!("Failed to begin transaction: {}", e)))?;
+
+    // 1. Inserisci user_settings e ottieni l'id con RETURNING
+    let settings_id: i64 = sqlx::query_scalar::<_, i64>(
+        "INSERT INTO user_settings (user_id) VALUES (?) RETURNING id"
+    )
+        .bind(user_id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| DBError::new_settings_error(format!("Failed to insert user_settings: {}", e)))?;
+
+    // 2. Inserisci passwords_generation_settings
+    let config = preset.to_config();
+    sqlx::query(
+        "INSERT INTO passwords_generation_settings
+         (settings_id, length, symbols, numbers, uppercase, lowercase, excluded_symbols)
+         VALUES (?, ?, ?, ?, ?, ?, NULL)"
+    )
+        .bind(settings_id)
+        .bind(config.length)
+        .bind(config.symbols)
+        .bind(config.numbers)
+        .bind(config.uppercase)
+        .bind(config.lowercase)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| DBError::new_settings_error(format!("Failed to insert gen_settings: {}", e)))?;
+
+    // Commit transazione
+    tx.commit().await
+        .map_err(|e| DBError::new_transaction_error(format!("Failed to commit transaction: {}", e)))?;
 
     Ok(())
 }
@@ -284,7 +366,7 @@ pub async fn delete_user(pool: &SqlitePool, id: i64) -> Result<(), DBError> {
         .execute(pool)
         .await
         .map_err(|e| {
-            DBError::new_delete_error(format!("Failed to save user credentials: {}", e))
+            DBError::new_delete_error(format!("Failed to delete user: {}", e))
         })?;
 
     Ok(())
@@ -343,7 +425,7 @@ pub async fn list_users(
             .fetch_all(pool)
             .await
             .map_err(|e| {
-                DBError::new_list_error(format!("Failed to save user credentials: {}", e))
+                DBError::new_list_error(format!("Failed to list users: {}", e))
             })?;
     let users = rows.into_iter().map(|row| get_user_row(row)).collect();
 
@@ -375,7 +457,7 @@ pub async fn list_users_no_avatar(
     let rows = query("SELECT id, username, created_at FROM users ORDER BY id DESC LIMIT 10")
         .fetch_all(pool)
         .await
-        .map_err(|e| DBError::new_list_error(format!("Failed to save user credentials: {}", e)))?;
+        .map_err(|e| DBError::new_list_error(format!("Failed to list users: {}", e)))?;
     let users = rows
         .into_iter()
         .map(|row| {

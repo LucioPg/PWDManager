@@ -1,5 +1,5 @@
 use crate::auth::{AuthState, User};
-use crate::backend::db_backend::{delete_user, save_or_update_user};
+use crate::backend::db_backend::{create_user_settings, delete_user, save_or_update_user};
 use crate::backend::ui_utils::pick_and_process_avatar;
 use crate::backend::utils::get_user_avatar_with_default;
 use crate::components::{
@@ -10,6 +10,9 @@ use crate::components::{
 use dioxus::prelude::*;
 use secrecy::ExposeSecret;
 use sqlx::SqlitePool;
+use tracing::warn;
+
+use crate::backend::settings_types::PasswordPreset;
 use tracing::instrument;
 
 // #[derive(Props, Clone, PartialEq, Debug, Default)]
@@ -38,7 +41,8 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     let mut error = use_signal(|| Option::<String>::None);
     #[allow(unused_mut)]
     let mut new_avatar = use_signal(|| None::<Vec<u8>>);
-    let is_user_deleted = use_signal::<bool>(|| false);
+    #[allow(unused_mut)]
+    let mut is_user_deleted = use_signal::<bool>(|| false);
     #[allow(unused_mut)]
     let mut is_picking = use_signal(|| false); // Traccia se il dialog è aperto
     let mut show_delete_modal = use_signal(|| false);
@@ -203,8 +207,16 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         });
 
         spawn(async move {
-            match save_or_update_user(&pool, user_id, u, password_to_save, a).await {
-                Ok(_) => {
+            match save_or_update_user(&pool, user_id, u.clone(), password_to_save, a).await {
+                Ok(saved_user_id) => {
+                    // Se è un nuovo utente, crea i settings di default
+                    if user_id.is_none() {
+                        if let Err(e) = create_user_settings(&pool, saved_user_id, PasswordPreset::God).await {
+                            warn!("Failed to create user settings for user {}: {}", saved_user_id, e);
+                            // Non blocchiamo la registrazione - l'utente può configurare i settings dopo
+                        }
+                    }
+
                     auth_state.logout();
                     let message = if is_updating {
                         "User Updated successfully!"
