@@ -34,6 +34,10 @@ pub enum DBError {
     DBSaveTempPasswordError(String),
     #[error("Cipher encrypt password error")]
     DBCipherEncryptionError(String),
+    #[error("Database transaction error: {0}")]
+    DBTransactionError(String),
+    #[error("Database user settings error: {0}")]
+    DBSettingsError(String),
 }
 
 impl DBError {
@@ -94,6 +98,14 @@ impl DBError {
 
     pub fn new_cipher_encryption_error(msg: String) -> Self {
         DBError::DBCipherEncryptionError(msg.into())
+    }
+
+    pub fn new_transaction_error(msg: String) -> Self {
+        DBError::DBTransactionError(msg)
+    }
+
+    pub fn new_settings_error(msg: String) -> Self {
+        DBError::DBSettingsError(msg)
     }
 }
 

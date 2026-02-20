@@ -284,16 +284,19 @@ pub async fn save_or_update_user(
 ///
 /// # Errori
 ///
-/// - `DBError::new_general_error` - Errore nell'avviare o committare la transazione
-/// - `DBError::new_save_error` - Errore durante l'INSERT
+/// - `DBError::new_transaction_error` - Errore nell'avviare o committare la transazione
+/// - `DBError::new_settings_error` - Errore durante l'INSERT dei settings
+#[instrument(skip(pool))]
 pub async fn create_user_settings(
     pool: &SqlitePool,
     user_id: i64,
     preset: PasswordPreset,
 ) -> Result<(), DBError> {
+    debug!("Creating default settings for user_id: {}", user_id);
+
     // Inizia transazione - verrà automaticamente rollbackata se droppata
     let mut tx = pool.begin().await
-        .map_err(|e| DBError::new_general_error(format!("Failed to begin transaction: {}", e)))?;
+        .map_err(|e| DBError::new_transaction_error(format!("Failed to begin transaction: {}", e)))?;
 
     // 1. Inserisci user_settings e ottieni l'id con RETURNING
     let settings_id: i64 = sqlx::query_scalar::<_, i64>(
@@ -302,7 +305,7 @@ pub async fn create_user_settings(
         .bind(user_id)
         .fetch_one(&mut *tx)
         .await
-        .map_err(|e| DBError::new_save_error(format!("Failed to insert user_settings: {}", e)))?;
+        .map_err(|e| DBError::new_settings_error(format!("Failed to insert user_settings: {}", e)))?;
 
     // 2. Inserisci passwords_generation_settings
     let config = preset.to_config();
@@ -319,11 +322,11 @@ pub async fn create_user_settings(
         .bind(config.lowercase)
         .execute(&mut *tx)
         .await
-        .map_err(|e| DBError::new_save_error(format!("Failed to insert gen_settings: {}", e)))?;
+        .map_err(|e| DBError::new_settings_error(format!("Failed to insert gen_settings: {}", e)))?;
 
     // Commit transazione
     tx.commit().await
-        .map_err(|e| DBError::new_save_error(format!("Failed to commit transaction: {}", e)))?;
+        .map_err(|e| DBError::new_transaction_error(format!("Failed to commit transaction: {}", e)))?;
 
     Ok(())
 }
@@ -353,7 +356,7 @@ pub async fn delete_user(pool: &SqlitePool, id: i64) -> Result<(), DBError> {
         .execute(pool)
         .await
         .map_err(|e| {
-            DBError::new_delete_error(format!("Failed to save user credentials: {}", e))
+            DBError::new_delete_error(format!("Failed to delete user: {}", e))
         })?;
 
     Ok(())
@@ -412,7 +415,7 @@ pub async fn list_users(
             .fetch_all(pool)
             .await
             .map_err(|e| {
-                DBError::new_list_error(format!("Failed to save user credentials: {}", e))
+                DBError::new_list_error(format!("Failed to list users: {}", e))
             })?;
     let users = rows.into_iter().map(|row| get_user_row(row)).collect();
 
@@ -444,7 +447,7 @@ pub async fn list_users_no_avatar(
     let rows = query("SELECT id, username, created_at FROM users ORDER BY id DESC LIMIT 10")
         .fetch_all(pool)
         .await
-        .map_err(|e| DBError::new_list_error(format!("Failed to save user credentials: {}", e)))?;
+        .map_err(|e| DBError::new_list_error(format!("Failed to list users: {}", e)))?;
     let users = rows
         .into_iter()
         .map(|row| {
