@@ -107,7 +107,10 @@ il pc
 - [x] Eliminare utente
 - [x] Modificare password
 - [x] Modificare nome utente
-- [x] Preferenze utente
+- [ ] Preferenze utente:
+    - [x] Creazione tabella settings
+    - [ ] Creazione di un form per la modifica delle preferenze utente per le password
+    - [x] Creazione trigger creazione di settings per ogni nuovo utente
 
 ## UI e UX
 
@@ -122,19 +125,21 @@ il pc
 - [x] aggiungere uno spinner all'avvio dell'applicazione
 - [ ] aggiungere toggle per tema scuro in settings
 - [x] aggiungere toast per errori e informazioni
-- [ ] modificare table row perché la password non sia immediatamente visibile
+- [x] modificare table row perché la password non sia immediatamente visibile
 - [ ] modificare table row perché ci siano i pulsanti per copiare location e passwords
+- [ ] decidere se offuscare e criptare anche location e note
 
 ## Gestione password registrate
 
 - [x] creare tabella password
-- [ ] creare form di inserimento password
-- [ ] creare form di modifica password e dati
+- [x] creare form di inserimento password
+- [x] creare form di modifica password e dati - manca link al pulsante del tablerow
 - [ ] creare dialog di eliminazione password
 - [ ] creare trigger async di ri-cryptaggio password nel caso un utente cambi la password. \[vedi sezione Stored
   Passwords migration]
 - [x] aggiungere un "diversificatore" per chiave AES prelevato dalla stringa di creazione dell'utente per evitare il
   KEY-REUSE.
+- [ ] creazione funzione di suggerimento di password efficaci sulla base delle preferenze utente.
 
 ## To be Threaeded
 
