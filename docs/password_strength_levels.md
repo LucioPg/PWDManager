@@ -105,7 +105,7 @@ VeryStrongPassword123!@#
 
 **Requisiti:**
 
-- 14-16+ caratteri
+- 17+ caratteri
 - Tutte e 4 le categorie
 - 2+ caratteri speciali
 - 12+ caratteri unici (alta entropia)
