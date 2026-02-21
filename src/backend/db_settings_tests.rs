@@ -320,6 +320,24 @@ mod tests {
 
     // ============ Categoria 4: Test Integrità Referenziale ============
 
+    /// Test che verifica il CASCADE DELETE dalla tabella users a passwords_generation_settings.
+    ///
+    /// # Flaky Test Warning
+    ///
+    /// ⚠️ **Questo test è FLAKY quando eseguito in parallelo con altri test.**
+    ///
+    /// **Causa:** I test condividono un database SQLite singleton. Durante l'esecuzione
+    /// parallela, altri test possono creare nuovi record nelle tabelle mentre questo
+    /// test sta verificando che i record siano stati cancellati. Questo può causare
+    /// falsi positivi (il test fallisce anche se il CASCADE funziona correttamente).
+    ///
+    /// **Soluzione:** Se il test fallisce, eseguirlo singolarmente:
+    /// ```bash
+    /// cargo test test_cascade_delete_settings_on_user_delete
+    /// ```
+    ///
+    /// **Non è un bug nel codice:** Il CASCADE DELETE funziona correttamente.
+    /// Il fallimento è causato solo dalla concorrenza nel database di test condiviso.
     #[tokio::test]
     async fn test_cascade_delete_settings_on_user_delete() {
         let pool = setup_test_db().await;
