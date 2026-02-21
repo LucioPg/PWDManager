@@ -1,6 +1,8 @@
 ﻿#![allow(dead_code)]
 use crate::backend::init_queries::QUERIES;
-use crate::backend::password_types_helper::{PasswordPreset, StoredPassword, UserAuth};
+use crate::backend::password_types_helper::{
+    PasswordGeneratorConfig, PasswordPreset, StoredPassword, UserAuth,
+};
 use crate::backend::settings_types::UserSettings;
 use crate::backend::utils::verify_password;
 use custom_errors::{AuthError, DBError};
@@ -817,11 +819,64 @@ pub async fn fetch_all_user_settings(pool: &SqlitePool) -> Result<Vec<UserSettin
     Ok(settings)
 }
 
+pub async fn fetch_user_passwords_generation_settings(
+    pool: &SqlitePool,
+    user_id: i64,
+) -> Result<PasswordGeneratorConfig, DBError> {
+    let row = sqlx::query_as::<_, PasswordGeneratorConfig>(
+        r#"SELECT
+                pgs.id,
+                pgs.settings_id,
+                pgs.length,
+                pgs.symbols,
+                pgs.numbers,
+                pgs.uppercase,
+                pgs.lowercase,
+                pgs.excluded_symbols
+FROM passwords_generation_settings pgs
+JOIN user_settings us ON pgs.settings_id = us.id
+WHERE us.user_id = ?
+                "#,
+    )
+    .bind(user_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| {
+        DBError::new_fetch_error(format!(
+            "Failed to fetch user password generation settings: {}",
+            e
+        ))
+    })?;
+
+    Ok(row)
+}
+
 #[cfg(test)]
 mod tests {
     // Questo modulo può contenere test per gli helper functions stessi
     use super::*;
-    use crate::backend::test_helpers::setup_test_db;
+    use crate::backend::test_helpers::{create_test_user, setup_test_db};
+
+    #[tokio::test]
+    async fn test_fetch_user_passwords_generation_settings() {
+        let pool = setup_test_db().await;
+        let (user_id, _) = create_test_user(&pool, "user_generation_set", "abc", None).await;
+        let settings = create_user_settings(&pool, user_id, PasswordPreset::God)
+            .await
+            .unwrap();
+        let passwords_generation_settings =
+            fetch_user_passwords_generation_settings(&pool, user_id)
+                .await
+                .unwrap();
+        println!(
+            "######## user generation settings :{:?}",
+            passwords_generation_settings
+        );
+        assert_eq!(
+            passwords_generation_settings,
+            PasswordPreset::God.to_config(passwords_generation_settings.id.unwrap())
+        );
+    }
 
     #[tokio::test]
     async fn test_get_user_auth() {

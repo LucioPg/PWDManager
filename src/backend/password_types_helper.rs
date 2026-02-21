@@ -452,7 +452,13 @@ impl Default for ExcludedSymbolSet {
     }
 }
 
-#[derive(sqlx::FromRow, Debug, Clone, Default, SqlxTemplate)]
+impl PartialEq for ExcludedSymbolSet {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+#[derive(sqlx::FromRow, Debug, Clone, Default, SqlxTemplate, PartialEq)]
 #[table("passwords_generation_settings")]
 #[db("sqlite")]
 #[tp_upsert(by = "id")]
@@ -495,7 +501,7 @@ impl PasswordPreset {
     pub fn to_config(&self, settings_id: i64) -> PasswordGeneratorConfig {
         match self {
             Self::Medium => PasswordGeneratorConfig {
-                id: None,
+                id: Some(settings_id),
                 settings_id,
                 length: 8,
                 symbols: 2,
@@ -505,7 +511,7 @@ impl PasswordPreset {
                 excluded_symbols: ExcludedSymbolSet::default(),
             },
             Self::Strong => PasswordGeneratorConfig {
-                id: None,
+                id: Some(settings_id),
                 settings_id,
                 length: 12,
                 symbols: 2,
@@ -515,7 +521,7 @@ impl PasswordPreset {
                 excluded_symbols: ExcludedSymbolSet::default(),
             },
             Self::Epic => PasswordGeneratorConfig {
-                id: None,
+                id: Some(settings_id),
                 settings_id,
                 length: 16,
                 symbols: 2,
@@ -525,7 +531,7 @@ impl PasswordPreset {
                 excluded_symbols: ExcludedSymbolSet::default(),
             },
             Self::God => PasswordGeneratorConfig {
-                id: None,
+                id: Some(settings_id),
                 settings_id,
                 length: 26,
                 symbols: 2,
@@ -536,21 +542,6 @@ impl PasswordPreset {
             },
         }
     }
-}
-
-/// Configurazione per la generazione password (in memoria).
-///
-/// Usata per passare i parametri di configurazione senza
-/// dipendere dal database.
-///
-/// Nota: usa i64 per coerenza con il resto del codebase.
-#[derive(Debug, Clone, Copy)]
-pub struct PasswordGenConfig {
-    pub length: i64,
-    pub symbols: i64,
-    pub numbers: bool,
-    pub uppercase: bool,
-    pub lowercase: bool,
 }
 
 #[cfg(test)]
