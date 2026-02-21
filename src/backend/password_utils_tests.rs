@@ -1,17 +1,20 @@
 use crate::backend::db_backend::{
-    fetch_all_stored_passwords_for_user, fetch_user_data, save_or_update_user,
+    create_user_settings, fetch_all_stored_passwords_for_user, fetch_user_data,
+    fetch_user_passwords_generation_settings, save_or_update_user,
 };
 use crate::backend::password_types_helper::{
-    DbSecretString, PasswordScore, PasswordStrength, StoredPassword, StoredRawPassword, UserAuth,
+    DbSecretString, PasswordPreset, PasswordScore, PasswordStrength, StoredPassword,
+    StoredRawPassword, UserAuth,
 };
 use crate::backend::password_utils::{
     create_cipher, create_stored_password_pipeline, create_stored_passwords,
-    decrypt_stored_password,
+    decrypt_stored_password, generate_suggested_password,
 };
 use crate::backend::strength_utils::evaluate_password_strength;
 use crate::backend::test_helpers::setup_test_db;
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;
+use std::time::Instant;
 
 /// Helper function per creare un utente di test e restituire l'ID
 /// Usa un timestamp per garantire username univoci tra i test
@@ -33,6 +36,46 @@ async fn create_test_user(pool: &SqlitePool, base_username: &str, password: &str
         .await
         .expect("Failed to fetch test user");
     user_id
+}
+
+#[tokio::test]
+async fn test_generate_password_from_preset() {
+    let pool = setup_test_db().await;
+    let user_id = create_test_user(&pool, "testuser", "MasterPass123!").await;
+    let setting_id = create_user_settings(&pool, user_id, PasswordPreset::God)
+        .await
+        .unwrap();
+    let mut pass_settings = fetch_user_passwords_generation_settings(&pool, user_id)
+        .await
+        .unwrap();
+    let presets: Vec<(PasswordPreset, PasswordStrength)> = vec![
+        (PasswordPreset::Epic, PasswordStrength::EPIC),
+        (PasswordPreset::Strong, PasswordStrength::STRONG),
+        (PasswordPreset::Medium, PasswordStrength::MEDIUM),
+    ];
+    let start = Instant::now();
+    let password = generate_suggested_password(pass_settings.clone());
+    let duration = start.elapsed();
+    println!(
+        "Generated password: {} in {}",
+        password.expose_secret(),
+        duration.as_secs()
+    );
+    let evaluated_password = evaluate_password_strength(&password, None);
+    assert_eq!(evaluated_password.strength(), PasswordStrength::GOD);
+    for preset in presets {
+        let start = Instant::now();
+        let password = generate_suggested_password(preset.0.to_config(setting_id));
+        let duration = start.elapsed();
+        println!(
+            "preset-{} Generated password: {} in {}",
+            preset.0,
+            password.expose_secret(),
+            duration.as_secs()
+        );
+        let evaluated_password = evaluate_password_strength(&password, None);
+        assert_eq!(evaluated_password.strength(), preset.1);
+    }
 }
 
 #[tokio::test]

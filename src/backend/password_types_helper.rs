@@ -2,13 +2,13 @@
 //!
 //! Fornisce wrapper per i tipi `secrecy` che li rendono compatibili con SQLx,
 //! oltre a struct per l'autenticazione utente e per le password salvate.
-
+pub use aegis_password_generator::types::PasswordConfig as AegisPasswordConfig;
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::{Type, sqlite::Sqlite};
+use sqlx_template::SqlxTemplate;
 use std::collections::HashSet;
 use std::fmt;
-
-use sqlx_template::SqlxTemplate;
+use std::fmt::{Display, Formatter};
 
 /// Wrapper per [`SecretString`] che lo rende compatibile con SQLx/SQLite.
 ///
@@ -523,7 +523,7 @@ impl PasswordPreset {
             Self::Epic => PasswordGeneratorConfig {
                 id: Some(settings_id),
                 settings_id,
-                length: 16,
+                length: 17,
                 symbols: 2,
                 numbers: true,
                 uppercase: true,
@@ -541,6 +541,23 @@ impl PasswordPreset {
                 excluded_symbols: ExcludedSymbolSet::default(),
             },
         }
+    }
+}
+
+impl Display for PasswordPreset {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl From<PasswordGeneratorConfig> for AegisPasswordConfig {
+    fn from(config: PasswordGeneratorConfig) -> Self {
+        AegisPasswordConfig::default()
+            .with_length(config.length as usize)
+            .with_symbols(config.symbols > 0) // Aegis accetta bool
+            .with_numbers(config.numbers)
+            .with_uppercase(config.uppercase)
+            .with_lowercase(config.lowercase)
     }
 }
 
