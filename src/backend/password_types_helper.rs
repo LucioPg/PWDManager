@@ -401,7 +401,7 @@ impl fmt::Display for PasswordScore {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct ExcludedSymbolSet(HashSet<char>);
 
 impl Type<Sqlite> for ExcludedSymbolSet {
@@ -446,6 +446,12 @@ impl std::ops::Deref for ExcludedSymbolSet {
     }
 }
 
+impl Default for ExcludedSymbolSet {
+    fn default() -> Self {
+        Self(HashSet::new())
+    }
+}
+
 #[derive(sqlx::FromRow, Debug, Clone, Default, SqlxTemplate)]
 #[table("passwords_generation_settings")]
 #[db("sqlite")]
@@ -453,7 +459,7 @@ impl std::ops::Deref for ExcludedSymbolSet {
 #[tp_select_builder]
 pub struct PasswordGeneratorConfig {
     #[allow(unused)]
-    pub id: i64,
+    pub id: Option<i64>,
     pub settings_id: i64,
     pub length: i32,
     pub symbols: i32,
@@ -486,35 +492,47 @@ impl PasswordPreset {
     /// | Strong | 12 | 2 | 81 |
     /// | Epic | 16 | 2 | 93 |
     /// | God | 26 | 2 | 98 |
-    pub fn to_config(&self) -> PasswordGenConfig {
+    pub fn to_config(&self, settings_id: i64) -> PasswordGeneratorConfig {
         match self {
-            Self::Medium => PasswordGenConfig {
+            Self::Medium => PasswordGeneratorConfig {
+                id: None,
+                settings_id,
                 length: 8,
                 symbols: 2,
                 numbers: true,
                 uppercase: true,
                 lowercase: true,
+                excluded_symbols: ExcludedSymbolSet::default(),
             },
-            Self::Strong => PasswordGenConfig {
+            Self::Strong => PasswordGeneratorConfig {
+                id: None,
+                settings_id,
                 length: 12,
                 symbols: 2,
                 numbers: true,
                 uppercase: true,
                 lowercase: true,
+                excluded_symbols: ExcludedSymbolSet::default(),
             },
-            Self::Epic => PasswordGenConfig {
+            Self::Epic => PasswordGeneratorConfig {
+                id: None,
+                settings_id,
                 length: 16,
                 symbols: 2,
                 numbers: true,
                 uppercase: true,
                 lowercase: true,
+                excluded_symbols: ExcludedSymbolSet::default(),
             },
-            Self::God => PasswordGenConfig {
+            Self::God => PasswordGeneratorConfig {
+                id: None,
+                settings_id,
                 length: 26,
                 symbols: 2,
                 numbers: true,
                 uppercase: true,
                 lowercase: true,
+                excluded_symbols: ExcludedSymbolSet::default(),
             },
         }
     }

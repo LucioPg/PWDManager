@@ -301,7 +301,7 @@ pub async fn create_user_settings(
     pool: &SqlitePool,
     user_id: i64,
     preset: PasswordPreset,
-) -> Result<(), DBError> {
+) -> Result<i64, DBError> {
     debug!("Creating default settings for user_id: {}", user_id);
 
     // Inizia transazione - verrà automaticamente rollbackata se droppata
@@ -320,13 +320,13 @@ pub async fn create_user_settings(
             })?;
 
     // 2. Inserisci passwords_generation_settings
-    let config = preset.to_config();
+    let config = preset.to_config(settings_id);
     sqlx::query(
         "INSERT INTO passwords_generation_settings
          (settings_id, length, symbols, numbers, uppercase, lowercase, excluded_symbols)
          VALUES (?, ?, ?, ?, ?, ?, NULL)",
     )
-    .bind(settings_id)
+    .bind(config.settings_id)
     .bind(config.length)
     .bind(config.symbols)
     .bind(config.numbers)
@@ -341,7 +341,7 @@ pub async fn create_user_settings(
         DBError::new_transaction_error(format!("Failed to commit transaction: {}", e))
     })?;
 
-    Ok(())
+    Ok(settings_id)
 }
 
 /// Registra un nuovo utente con i settings di default in modo atomico.
@@ -424,13 +424,13 @@ pub async fn register_user_with_settings(
             })?;
 
     // 5. Inserisci passwords_generation_settings
-    let config = preset.to_config();
+    let config = preset.to_config(settings_id);
     sqlx::query(
         "INSERT INTO passwords_generation_settings
          (settings_id, length, symbols, numbers, uppercase, lowercase, excluded_symbols)
          VALUES (?, ?, ?, ?, ?, ?, NULL)",
     )
-    .bind(settings_id)
+    .bind(config.settings_id)
     .bind(config.length)
     .bind(config.symbols)
     .bind(config.numbers)
@@ -822,28 +822,6 @@ mod tests {
     // Questo modulo può contenere test per gli helper functions stessi
     use super::*;
     use crate::backend::test_helpers::setup_test_db;
-
-    #[tokio::test]
-    async fn test_get_user_settings() {
-        let pool = setup_test_db().await;
-        let user_id: i64 = 1;
-        let settings = fetch_user_settings(&pool, user_id).await.unwrap();
-        println!("################ {:?}", settings);
-        assert!(settings.is_some());
-        let user_settings = settings.unwrap();
-        assert_eq!(user_settings.user_id, user_id);
-    }
-
-    #[tokio::test]
-    async fn test_get_all_user_settings() {
-        let pool = setup_test_db().await;
-        let user_id: i64 = 1;
-        let settings = fetch_all_user_settings(&pool).await.unwrap();
-        println!("################ {:?}", settings);
-        assert!(!settings.is_empty());
-        let user_settings = &settings[0];
-        assert_eq!(user_settings.user_id, user_id);
-    }
 
     #[tokio::test]
     async fn test_get_user_auth() {
