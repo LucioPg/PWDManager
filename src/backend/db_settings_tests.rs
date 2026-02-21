@@ -30,11 +30,33 @@ mod tests {
 
     use super::*;
 
+    // ============ Utils ==============
+    async fn get_user_settings_id(
+        pool: &sqlx::Pool<sqlx::Sqlite>,
+        user_id: i64,
+    ) -> Result<i64, Box<dyn std::error::Error>> {
+        let user_settings_row: Option<SqliteRow> =
+            query("SELECT id, user_id FROM user_settings WHERE user_id = ?")
+                .bind(user_id)
+                .fetch_optional(pool)
+                .await
+                .expect("Failed to query user_settings");
+
+        assert!(user_settings_row.is_some(), "user_settings should exist");
+        let row = user_settings_row.unwrap();
+        assert_eq!(row.get::<i64, _>("user_id"), user_id);
+
+        // Verifica che passwords_generation_settings sia stato creato con i valori corretti
+        let setting_id: i64 = row.try_get("id")?;
+        Ok(setting_id)
+    }
+
     // ============ Categoria 1: Test PasswordPreset::to_config() ============
 
     #[test]
     fn test_preset_medium_config_values() {
-        let config = PasswordPreset::Medium.to_config();
+        let dummy_settigs_id = 1;
+        let config = PasswordPreset::Medium.to_config(dummy_settigs_id);
 
         assert_eq!(config.length, 8, "Medium preset: length should be 8");
         assert_eq!(config.symbols, 2, "Medium preset: symbols should be 2");
@@ -45,7 +67,8 @@ mod tests {
 
     #[test]
     fn test_preset_strong_config_values() {
-        let config = PasswordPreset::Strong.to_config();
+        let dummy_settigs_id = 1;
+        let config = PasswordPreset::Strong.to_config(dummy_settigs_id);
 
         assert_eq!(config.length, 12, "Strong preset: length should be 12");
         assert_eq!(config.symbols, 2, "Strong preset: symbols should be 2");
@@ -56,7 +79,8 @@ mod tests {
 
     #[test]
     fn test_preset_epic_config_values() {
-        let config = PasswordPreset::Epic.to_config();
+        let dummy_settigs_id = 1;
+        let config = PasswordPreset::Epic.to_config(dummy_settigs_id);
 
         assert_eq!(config.length, 16, "Epic preset: length should be 16");
         assert_eq!(config.symbols, 2, "Epic preset: symbols should be 2");
@@ -67,7 +91,8 @@ mod tests {
 
     #[test]
     fn test_preset_god_config_values() {
-        let config = PasswordPreset::God.to_config();
+        let dummy_settigs_id = 1;
+        let config = PasswordPreset::God.to_config(dummy_settigs_id);
 
         assert_eq!(config.length, 26, "God preset: length should be 26");
         assert_eq!(config.symbols, 2, "God preset: symbols should be 2");
@@ -78,6 +103,7 @@ mod tests {
 
     #[test]
     fn test_all_presets_have_valid_symbols_ratio() {
+        let dummy_settigs_id = 1;
         // Verifica che symbols <= length per tutti i preset
         for preset in [
             PasswordPreset::Medium,
@@ -85,7 +111,7 @@ mod tests {
             PasswordPreset::Epic,
             PasswordPreset::God,
         ] {
-            let config = preset.to_config();
+            let config = preset.to_config(dummy_settigs_id);
             assert!(
                 config.symbols <= config.length,
                 "{:?}: symbols ({}) should be <= length ({})",
@@ -101,32 +127,25 @@ mod tests {
     #[tokio::test]
     async fn test_create_user_settings_medium_preset() {
         let pool = setup_test_db().await;
+        let thread_id = format!("{:?}", std::thread::current().id());
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let username = format!("test_user_medium_{}", timestamp);
+        let username = format!("test_user_medium_{}_{}", thread_id, timestamp);
 
         let (user_id, _) = create_test_user(&pool, &username, "password123", None).await;
 
         let result = create_user_settings(&pool, user_id, PasswordPreset::Medium).await;
 
         assert!(result.is_ok(), "create_user_settings should succeed");
-
-        // Verifica che user_settings sia stato creato
-        let user_settings_row: Option<SqliteRow> =
-            query("SELECT id, user_id FROM user_settings WHERE user_id = ?")
-                .bind(user_id)
-                .fetch_optional(&pool)
-                .await
-                .expect("Failed to query user_settings");
-
-        assert!(user_settings_row.is_some(), "user_settings should exist");
-        let row = user_settings_row.unwrap();
-        assert_eq!(row.get::<i64, _>("user_id"), user_id);
+        let settings_id = result.expect("Dovrebbe restituire l'ID dei settings");
+        let Ok(fetched_settings_id) = get_user_settings_id(&pool, user_id).await else {
+            panic!("get_user_settings_id should succeed")
+        };
 
         // Verifica che passwords_generation_settings sia stato creato con i valori corretti
-        let settings_id: i64 = row.get("id");
+        assert_eq!(settings_id, fetched_settings_id);
         let gen_settings_row: SqliteRow = query(
             "SELECT length, symbols, numbers, uppercase, lowercase, excluded_symbols
              FROM passwords_generation_settings WHERE settings_id = ?",
@@ -151,11 +170,12 @@ mod tests {
     #[tokio::test]
     async fn test_create_user_settings_strong_preset() {
         let pool = setup_test_db().await;
+        let thread_id = format!("{:?}", std::thread::current().id());
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let username = format!("test_user_strong_{}", timestamp);
+        let username = format!("test_user_strong_{}_{}", thread_id, timestamp);
 
         let (user_id, _) = create_test_user(&pool, &username, "password123", None).await;
 
@@ -182,11 +202,12 @@ mod tests {
     #[tokio::test]
     async fn test_create_user_settings_epic_preset() {
         let pool = setup_test_db().await;
+        let thread_id = format!("{:?}", std::thread::current().id());
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let username = format!("test_user_epic_{}", timestamp);
+        let username = format!("test_user_epic_{}_{}", thread_id, timestamp);
 
         let (user_id, _) = create_test_user(&pool, &username, "password123", None).await;
 
@@ -213,11 +234,12 @@ mod tests {
     #[tokio::test]
     async fn test_create_user_settings_god_preset() {
         let pool = setup_test_db().await;
+        let thread_id = format!("{:?}", std::thread::current().id());
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let username = format!("test_user_god_{}", timestamp);
+        let username = format!("test_user_god_{}_{}", thread_id, timestamp);
 
         let (user_id, _) = create_test_user(&pool, &username, "password123", None).await;
 
@@ -268,11 +290,12 @@ mod tests {
     #[tokio::test]
     async fn test_create_user_settings_duplicate_user() {
         let pool = setup_test_db().await;
+        let thread_id = format!("{:?}", std::thread::current().id());
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let username = format!("test_user_dup_{}", timestamp);
+        let username = format!("test_user_dup_{}_{}", thread_id, timestamp);
 
         let (user_id, _) = create_test_user(&pool, &username, "password123", None).await;
 
@@ -300,11 +323,12 @@ mod tests {
     #[tokio::test]
     async fn test_cascade_delete_settings_on_user_delete() {
         let pool = setup_test_db().await;
+        let thread_id = format!("{:?}", std::thread::current().id());
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let username = format!("test_user_cascade_{}", timestamp);
+        let username = format!("test_user_cascade_{}_{}", thread_id, timestamp);
 
         let (user_id, _) = create_test_user(&pool, &username, "password123", None).await;
 
@@ -361,11 +385,12 @@ mod tests {
     #[tokio::test]
     async fn test_one_to_one_relationship() {
         let pool = setup_test_db().await;
+        let thread_id = format!("{:?}", std::thread::current().id());
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let username = format!("test_user_relation_{}", timestamp);
+        let username = format!("test_user_relation_{}_{}", thread_id, timestamp);
 
         let (user_id, _) = create_test_user(&pool, &username, "password123", None).await;
 
