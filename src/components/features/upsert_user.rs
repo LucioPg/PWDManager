@@ -11,7 +11,7 @@ use dioxus::prelude::*;
 use secrecy::ExposeSecret;
 use sqlx::SqlitePool;
 
-use crate::backend::settings_types::PasswordPreset;
+use crate::backend::password_types_helper::PasswordPreset;
 use tracing::instrument;
 
 // #[derive(Props, Clone, PartialEq, Debug, Default)]
@@ -199,9 +199,9 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         // In modalità update: se password vuota o None → mantieni password attuale
         let password_to_save = pwd.and_then(|p| {
             if p.expose_secret().trim().is_empty() {
-                None  // Password vuota → non cambiare
+                None // Password vuota → non cambiare
             } else {
-                Some(p.0)  // Password presente → aggiorna
+                Some(p.0) // Password presente → aggiorna
             }
         });
 

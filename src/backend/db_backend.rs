@@ -1,7 +1,7 @@
 ﻿#![allow(dead_code)]
 use crate::backend::init_queries::QUERIES;
-use crate::backend::password_types_helper::{StoredPassword, UserAuth};
-use crate::backend::settings_types::{PasswordPreset, UserSettings};
+use crate::backend::password_types_helper::{PasswordPreset, StoredPassword, UserAuth};
+use crate::backend::settings_types::UserSettings;
 use crate::backend::utils::verify_password;
 use custom_errors::{AuthError, DBError};
 use dioxus::prelude::*;
@@ -381,21 +381,25 @@ pub async fn register_user_with_settings(
     debug!("Attempting atomic user registration with single transaction");
 
     // 1. Inizia transazione - RAII: verrà rollbackata automaticamente se droppata senza commit
-    let mut tx = pool.begin().await
-        .map_err(|e| DBError::new_transaction_error(format!("Failed to begin transaction: {}", e)))?;
+    let mut tx = pool.begin().await.map_err(|e| {
+        DBError::new_transaction_error(format!("Failed to begin transaction: {}", e))
+    })?;
 
     // 2. Cripta la password
     let psw = password.unwrap_or_default();
     if psw.expose_secret().trim().is_empty() {
-        return Err(DBError::new_registration_error("Password cannot be empty".into()));
+        return Err(DBError::new_registration_error(
+            "Password cannot be empty".into(),
+        ));
     }
 
-    let hash_password = crate::backend::utils::encrypt(psw)
-        .map_err(|e| DBError::new_registration_error(format!("Failed to encrypt password: {}", e)))?;
+    let hash_password = crate::backend::utils::encrypt(psw).map_err(|e| {
+        DBError::new_registration_error(format!("Failed to encrypt password: {}", e))
+    })?;
 
     // 3. Inserisci utente e ottieni l'id
     let user_id: i64 = sqlx::query_scalar::<_, i64>(
-        "INSERT INTO users (username, password, avatar) VALUES (?, ?, ?) RETURNING id"
+        "INSERT INTO users (username, password, avatar) VALUES (?, ?, ?) RETURNING id",
     )
     .bind(&username)
     .bind(&hash_password)
@@ -404,23 +408,27 @@ pub async fn register_user_with_settings(
     .await
     .map_err(|e| DBError::new_registration_error(format!("Failed to insert user: {}", e)))?;
 
-    debug!(user_id = user_id, "User created in transaction, now creating settings");
+    debug!(
+        user_id = user_id,
+        "User created in transaction, now creating settings"
+    );
 
     // 4. Inserisci user_settings e ottieni l'id
-    let settings_id: i64 = sqlx::query_scalar::<_, i64>(
-        "INSERT INTO user_settings (user_id) VALUES (?) RETURNING id"
-    )
-    .bind(user_id)
-    .fetch_one(&mut *tx)
-    .await
-    .map_err(|e| DBError::new_registration_error(format!("Failed to insert user_settings: {}", e)))?;
+    let settings_id: i64 =
+        sqlx::query_scalar::<_, i64>("INSERT INTO user_settings (user_id) VALUES (?) RETURNING id")
+            .bind(user_id)
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(|e| {
+                DBError::new_registration_error(format!("Failed to insert user_settings: {}", e))
+            })?;
 
     // 5. Inserisci passwords_generation_settings
     let config = preset.to_config();
     sqlx::query(
         "INSERT INTO passwords_generation_settings
          (settings_id, length, symbols, numbers, uppercase, lowercase, excluded_symbols)
-         VALUES (?, ?, ?, ?, ?, ?, NULL)"
+         VALUES (?, ?, ?, ?, ?, ?, NULL)",
     )
     .bind(settings_id)
     .bind(config.length)
@@ -430,13 +438,19 @@ pub async fn register_user_with_settings(
     .bind(config.lowercase)
     .execute(&mut *tx)
     .await
-    .map_err(|e| DBError::new_registration_error(format!("Failed to insert gen_settings: {}", e)))?;
+    .map_err(|e| {
+        DBError::new_registration_error(format!("Failed to insert gen_settings: {}", e))
+    })?;
 
     // 6. Commit - solo se tutto è andato bene
-    tx.commit().await
-        .map_err(|e| DBError::new_transaction_error(format!("Failed to commit transaction: {}", e)))?;
+    tx.commit().await.map_err(|e| {
+        DBError::new_transaction_error(format!("Failed to commit transaction: {}", e))
+    })?;
 
-    debug!(user_id = user_id, "Atomic registration completed successfully");
+    debug!(
+        user_id = user_id,
+        "Atomic registration completed successfully"
+    );
     Ok(user_id)
 }
 

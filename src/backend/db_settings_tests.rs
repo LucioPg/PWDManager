@@ -18,11 +18,11 @@
 #![allow(dead_code)]
 
 use crate::backend::db_backend::{create_user_settings, register_user_with_settings};
-use crate::backend::settings_types::PasswordPreset;
+use crate::backend::password_types_helper::PasswordPreset;
 use crate::backend::test_helpers::{create_test_user, setup_test_db};
 use secrecy::SecretString;
 use sqlx::sqlite::SqliteRow;
-use sqlx::{query, Row};
+use sqlx::{Row, query};
 use std::str::FromStr;
 
 #[cfg(test)]
@@ -114,13 +114,12 @@ mod tests {
         assert!(result.is_ok(), "create_user_settings should succeed");
 
         // Verifica che user_settings sia stato creato
-        let user_settings_row: Option<SqliteRow> = query(
-            "SELECT id, user_id FROM user_settings WHERE user_id = ?"
-        )
-        .bind(user_id)
-        .fetch_optional(&pool)
-        .await
-        .expect("Failed to query user_settings");
+        let user_settings_row: Option<SqliteRow> =
+            query("SELECT id, user_id FROM user_settings WHERE user_id = ?")
+                .bind(user_id)
+                .fetch_optional(&pool)
+                .await
+                .expect("Failed to query user_settings");
 
         assert!(user_settings_row.is_some(), "user_settings should exist");
         let row = user_settings_row.unwrap();
@@ -130,7 +129,7 @@ mod tests {
         let settings_id: i64 = row.get("id");
         let gen_settings_row: SqliteRow = query(
             "SELECT length, symbols, numbers, uppercase, lowercase, excluded_symbols
-             FROM passwords_generation_settings WHERE settings_id = ?"
+             FROM passwords_generation_settings WHERE settings_id = ?",
         )
         .bind(settings_id)
         .fetch_one(&pool)
@@ -142,7 +141,11 @@ mod tests {
         assert!(gen_settings_row.get::<bool, _>("numbers"));
         assert!(gen_settings_row.get::<bool, _>("uppercase"));
         assert!(gen_settings_row.get::<bool, _>("lowercase"));
-        assert!(gen_settings_row.get::<Option<String>, _>("excluded_symbols").is_none());
+        assert!(
+            gen_settings_row
+                .get::<Option<String>, _>("excluded_symbols")
+                .is_none()
+        );
     }
 
     #[tokio::test]
@@ -165,7 +168,7 @@ mod tests {
             "SELECT pgs.length, pgs.symbols, pgs.numbers, pgs.uppercase, pgs.lowercase
              FROM passwords_generation_settings pgs
              JOIN user_settings us ON pgs.settings_id = us.id
-             WHERE us.user_id = ?"
+             WHERE us.user_id = ?",
         )
         .bind(user_id)
         .fetch_one(&pool)
@@ -196,7 +199,7 @@ mod tests {
             "SELECT pgs.length, pgs.symbols, pgs.numbers, pgs.uppercase, pgs.lowercase
              FROM passwords_generation_settings pgs
              JOIN user_settings us ON pgs.settings_id = us.id
-             WHERE us.user_id = ?"
+             WHERE us.user_id = ?",
         )
         .bind(user_id)
         .fetch_one(&pool)
@@ -227,7 +230,7 @@ mod tests {
             "SELECT pgs.length, pgs.symbols, pgs.numbers, pgs.uppercase, pgs.lowercase
              FROM passwords_generation_settings pgs
              JOIN user_settings us ON pgs.settings_id = us.id
-             WHERE us.user_id = ?"
+             WHERE us.user_id = ?",
         )
         .bind(user_id)
         .fetch_one(&pool)
@@ -255,7 +258,8 @@ mod tests {
 
         let error_msg = result.unwrap_err().to_string();
         assert!(
-            error_msg.contains("Failed to insert user_settings") || error_msg.contains("FOREIGN KEY"),
+            error_msg.contains("Failed to insert user_settings")
+                || error_msg.contains("FOREIGN KEY"),
             "Error should mention foreign key or insert failure, got: {}",
             error_msg
         );
@@ -326,11 +330,12 @@ mod tests {
             .expect("Failed to delete user");
 
         // Verifica che i settings siano stati cancellati in cascade
-        let user_settings: Option<SqliteRow> = query("SELECT id FROM user_settings WHERE user_id = ?")
-            .bind(user_id)
-            .fetch_optional(&pool)
-            .await
-            .expect("Failed to query user_settings after delete");
+        let user_settings: Option<SqliteRow> =
+            query("SELECT id FROM user_settings WHERE user_id = ?")
+                .bind(user_id)
+                .fetch_optional(&pool)
+                .await
+                .expect("Failed to query user_settings after delete");
 
         assert!(
             user_settings.is_none(),
@@ -338,13 +343,12 @@ mod tests {
         );
 
         // Verifica che anche passwords_generation_settings sia stato cancellato
-        let gen_settings: Option<SqliteRow> = query(
-            "SELECT id FROM passwords_generation_settings WHERE settings_id = ?"
-        )
-        .bind(settings_id.unwrap())
-        .fetch_optional(&pool)
-        .await
-        .expect("Failed to query gen_settings after delete");
+        let gen_settings: Option<SqliteRow> =
+            query("SELECT id FROM passwords_generation_settings WHERE settings_id = ?")
+                .bind(settings_id.unwrap())
+                .fetch_optional(&pool)
+                .await
+                .expect("Failed to query gen_settings after delete");
 
         assert!(
             gen_settings.is_none(),
@@ -376,13 +380,16 @@ mod tests {
             .expect("Failed to count user_settings")
             .get("count");
 
-        assert_eq!(count, 1, "Should have exactly one user_settings record per user");
+        assert_eq!(
+            count, 1,
+            "Should have exactly one user_settings record per user"
+        );
 
         // Verifica che esista esattamente UN record in passwords_generation_settings
         let gen_count: i64 = query(
             "SELECT COUNT(*) as count FROM passwords_generation_settings pgs
              JOIN user_settings us ON pgs.settings_id = us.id
-             WHERE us.user_id = ?"
+             WHERE us.user_id = ?",
         )
         .bind(user_id)
         .fetch_one(&pool)
@@ -390,7 +397,10 @@ mod tests {
         .expect("Failed to count gen_settings")
         .get("count");
 
-        assert_eq!(gen_count, 1, "Should have exactly one passwords_generation_settings record per user");
+        assert_eq!(
+            gen_count, 1,
+            "Should have exactly one passwords_generation_settings record per user"
+        );
     }
 
     // ============ Categoria 6: Test Transaction Error (Pool Closed) ============
@@ -403,8 +413,7 @@ mod tests {
     #[tokio::test]
     async fn test_create_user_settings_handles_pool_errors_gracefully() {
         // Crea un pool temporaneo separato (non il singleton)
-        let db_path = std::env::var("CARGO_MANIFEST_DIR")
-            .unwrap_or_else(|_| ".".to_string());
+        let db_path = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
         let test_dir = std::path::PathBuf::from(db_path).join("test_dbs");
         if !test_dir.exists() {
             std::fs::create_dir_all(&test_dir).expect("Failed to create test_dbs");
@@ -513,8 +522,16 @@ mod tests {
             .await
             .expect("Failed to query users");
 
-        assert_eq!(users.len(), 1, "Should have exactly one user with this username");
-        assert_eq!(users[0].get::<i64, _>("id"), user_id_1, "Should be the first user");
+        assert_eq!(
+            users.len(),
+            1,
+            "Should have exactly one user with this username"
+        );
+        assert_eq!(
+            users[0].get::<i64, _>("id"),
+            user_id_1,
+            "Should be the first user"
+        );
     }
 
     /// Test che verifica l'atomicità della registrazione con password vuota.
@@ -547,7 +564,8 @@ mod tests {
 
         let error_msg = result.unwrap_err().to_string();
         assert!(
-            error_msg.contains("Password cannot be empty") || error_msg.contains("registration error"),
+            error_msg.contains("Password cannot be empty")
+                || error_msg.contains("registration error"),
             "Error should mention empty password, got: {}",
             error_msg
         );
@@ -611,13 +629,12 @@ mod tests {
         );
 
         // Verifica che i settings esistano
-        let settings_exist: Option<SqliteRow> = query(
-            "SELECT us.id FROM user_settings us WHERE us.user_id = ?"
-        )
-        .bind(user_id)
-        .fetch_optional(&pool)
-        .await
-        .expect("Failed to query settings");
+        let settings_exist: Option<SqliteRow> =
+            query("SELECT us.id FROM user_settings us WHERE us.user_id = ?")
+                .bind(user_id)
+                .fetch_optional(&pool)
+                .await
+                .expect("Failed to query settings");
 
         assert!(
             settings_exist.is_some(),
@@ -628,7 +645,7 @@ mod tests {
         let gen_settings: SqliteRow = query(
             "SELECT pgs.length, pgs.symbols FROM passwords_generation_settings pgs
              JOIN user_settings us ON pgs.settings_id = us.id
-             WHERE us.user_id = ?"
+             WHERE us.user_id = ?",
         )
         .bind(user_id)
         .fetch_one(&pool)
