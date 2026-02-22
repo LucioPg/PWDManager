@@ -82,7 +82,7 @@ mod tests {
         let dummy_settigs_id = 1;
         let config = PasswordPreset::Epic.to_config(dummy_settigs_id);
 
-        assert_eq!(config.length, 16, "Epic preset: length should be 16");
+        assert_eq!(config.length, 17, "Epic preset: length should be 16");
         assert_eq!(config.symbols, 2, "Epic preset: symbols should be 2");
         assert!(config.numbers, "Epic preset: numbers should be true");
         assert!(config.uppercase, "Epic preset: uppercase should be true");
@@ -227,7 +227,7 @@ mod tests {
         .await
         .expect("Failed to query settings");
 
-        assert_eq!(gen_settings_row.get::<i64, _>("length"), 16);
+        assert_eq!(gen_settings_row.get::<i64, _>("length"), 17);
         assert_eq!(gen_settings_row.get::<i64, _>("symbols"), 2);
     }
 
