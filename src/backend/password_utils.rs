@@ -11,8 +11,8 @@ use crate::backend::db_backend::{
     fetch_all_stored_passwords_for_user, fetch_user_auth_from_id, save_or_update_stored_password,
 };
 use crate::backend::password_types_helper::{
-    AegisPasswordConfig, DbSecretString, PasswordGeneratorConfig, PasswordScore, StoredPassword,
-    StoredRawPassword, UserAuth,
+    AegisPasswordConfig, DbSecretString, PasswordGeneratorConfig, PasswordPreset, PasswordScore,
+    StoredPassword, StoredRawPassword, UserAuth,
 };
 use crate::backend::strength_utils::evaluate_password_strength;
 use aes_gcm::aead::{Aead, AeadCore, Nonce, OsRng};
@@ -26,8 +26,11 @@ use sqlx::SqlitePool;
 use std::sync::Arc;
 use tokio::task;
 
-pub fn generate_suggested_password(custom_config: PasswordGeneratorConfig) -> SecretString {
-    let config_adapter: AegisPasswordConfig = custom_config.clone().into();
+pub fn generate_suggested_password(custom_config: Option<PasswordGeneratorConfig>) -> SecretString {
+    // Se non c'è config, usa il preset God come default
+    let config = custom_config.unwrap_or_else(|| PasswordPreset::God.to_config(0));
+
+    let config_adapter: AegisPasswordConfig = config.clone().into();
     let password: String = loop {
         if let Ok(pwd) = config_adapter.generate() {
             // 1. Conta i simboli
@@ -36,9 +39,9 @@ pub fn generate_suggested_password(custom_config: PasswordGeneratorConfig) -> Se
             // 2. Controlla se contiene simboli vietati
             let has_excluded = pwd
                 .chars()
-                .any(|c| custom_config.excluded_symbols.contains(&c));
+                .any(|c| config.excluded_symbols.contains(&c));
 
-            if sym_count == custom_config.symbols as usize && !has_excluded {
+            if sym_count == config.symbols as usize && !has_excluded {
                 break pwd;
             }
         }

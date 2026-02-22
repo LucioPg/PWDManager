@@ -54,7 +54,7 @@ async fn test_generate_password_from_preset() {
         (PasswordPreset::Medium, PasswordStrength::MEDIUM),
     ];
     let start = Instant::now();
-    let password = generate_suggested_password(pass_settings.clone());
+    let password = generate_suggested_password(Some(pass_settings.clone()));
     let duration = start.elapsed();
     println!(
         "Generated password: {} in {}",
@@ -65,7 +65,7 @@ async fn test_generate_password_from_preset() {
     assert_eq!(evaluated_password.strength(), PasswordStrength::GOD);
     for preset in presets {
         let start = Instant::now();
-        let password = generate_suggested_password(preset.0.to_config(setting_id));
+        let password = generate_suggested_password(Some(preset.0.to_config(setting_id)));
         let duration = start.elapsed();
         println!(
             "preset-{} Generated password: {} in {}",

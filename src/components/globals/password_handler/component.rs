@@ -1,9 +1,14 @@
+use crate::auth::AuthState;
+use crate::backend::db_backend::fetch_user_passwords_generation_settings;
 use crate::backend::password_types_helper::{PasswordScore, PasswordStrength};
+use crate::backend::password_utils::generate_suggested_password;
 use crate::backend::strength_utils::evaluate_password_strength_tx;
 use crate::components::globals::form_field::{FormSecret, InputType};
+use crate::components::globals::svgs::MagicWandIcon;
 use dioxus::core::Task;
 use dioxus::prelude::*;
 use secrecy::{ExposeSecret, SecretString};
+use sqlx::SqlitePool;
 use std::sync::Arc;
 use tokio::sync::mpsc;
 use tokio::time::{Duration, sleep};
@@ -26,6 +31,10 @@ pub struct PasswordHandlerProps {
 
 #[component]
 pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
+    // Context per AuthState e SqlitePool
+    let auth_state = use_context::<AuthState>();
+    let pool = use_context::<SqlitePool>();
+
     // Internal state - inizializza con valori iniziali se presenti (modalità edit)
     let initial_pwd = props
         .initial_password
@@ -155,6 +164,39 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
         cancel_token.read().cancel();
     });
 
+    // Callback per generare password suggerita
+    let auth_state_for_callback = auth_state.clone();
+    let on_suggest_password = use_callback(move |_| {
+        // Cloni dei signal per l'async block
+        let mut password_sig = password.clone();
+        let mut repassword_sig = repassword.clone();
+        let on_change = props.on_password_change.clone();
+        let pool = pool.clone();
+        let auth_state_inner = auth_state_for_callback.clone();
+
+        spawn(async move {
+            // Se l'utente è loggato, fetcha il config dal DB, altrimenti usa None (default God)
+            let config = if let Some(user) = auth_state_inner.get_user() {
+                fetch_user_passwords_generation_settings(&pool, user.id).await.ok()
+            } else {
+                None
+            };
+
+            // Genera la password suggerita (usa default God se config è None)
+            let suggested = generate_suggested_password(config);
+
+            // Aggiorna entrambi i campi
+            let form_secret = FormSecret(suggested);
+            password_sig.set(form_secret.clone());
+            repassword_sig.set(form_secret.clone());
+
+            // Notifica il parent della nuova password
+            on_change.call(form_secret);
+
+            tracing::debug!("PasswordHandler - Suggested password generated successfully");
+        });
+    });
+
     rsx! {
         div { class: "password-handler flex flex-col gap-3",
             // Password field
@@ -181,6 +223,22 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
                 on_change: on_repassword_change,
                 show_visibility_toggle: true,
                 forbid_spaces: true,
+            }
+
+            // Pulsante suggerimento password
+            div { class: "flex justify-end",
+                button {
+                    class: "btn btn-ghost btn-sm gap-2 tooltip",
+                    "data-tip": "suggest password",
+                    r#type: "button",
+                    onclick: on_suggest_password,
+                    MagicWandIcon {
+                        size: "16".to_string(),
+                        stroke_width: "2".to_string(),
+                        class: None,
+                    }
+                    span { class: "text-xs", "Suggest" }
+                }
             }
 
             // Strength analyzer
