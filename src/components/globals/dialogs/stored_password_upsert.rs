@@ -6,19 +6,23 @@ use crate::components::{
 };
 use dioxus::prelude::*;
 
+#[derive(Clone)]
+pub struct StoredPasswordUpsertDialogState {
+    pub is_open: Signal<bool>,
+    pub current_stored_raw_password: Signal<Option<StoredRawPassword>>,
+}
+
 #[component]
 pub fn StoredPasswordUpsertDialog(
-    /// Controlla la visibilità del modal
-    open: Signal<bool>,
     /// Callback quando l'utente conferma
     on_confirm: EventHandler<()>,
     /// Callback quando l'utente annulla
     #[props(default)]
     on_cancel: EventHandler<()>,
-    /// Password da modificare (None = nuova password)
-    stored_raw_password: Signal<Option<StoredRawPassword>>,
 ) -> Element {
-    let mut open_clone = open.clone();
+    #[allow(unused_mut)]
+    let mut stored_password_dialog_state = use_context::<StoredPasswordUpsertDialogState>();
+    let mut open_clone = stored_password_dialog_state.is_open.clone();
     let mut is_new = use_signal(|| false);
     let mut location_sig = use_signal(String::new);
     let mut notes_sig = use_signal(|| None::<String>);
@@ -26,8 +30,8 @@ pub fn StoredPasswordUpsertDialog(
 
     // use_effect per sincronizzare i campi quando il dialog si apre
     use_effect(move || {
-        if open() {
-            match stored_raw_password() {
+        if (stored_password_dialog_state.is_open)() {
+            match (stored_password_dialog_state.current_stored_raw_password)() {
                 Some(data) => {
                     location_sig.set(data.location.clone());
                     notes_sig.set(data.notes.clone());
@@ -43,15 +47,12 @@ pub fn StoredPasswordUpsertDialog(
     });
 
     // Leggi created_at direttamente dal signal per il titolo
-    let created_at = stored_raw_password()
+    let created_at = (stored_password_dialog_state.current_stored_raw_password)()
         .and_then(|p| p.created_at)
         .unwrap_or_default();
 
     let (title, alert_type) = if is_new() {
-        (
-            "New Stored Password".to_string(),
-            "alert-info".to_string(),
-        )
+        ("New Stored Password".to_string(), "alert-info".to_string())
     } else {
         (
             format!("Edit Stored Password: \"{}\"", location_sig()),
@@ -61,7 +62,7 @@ pub fn StoredPasswordUpsertDialog(
 
     rsx! {
         BaseModal {
-            open: open,
+            open: stored_password_dialog_state.is_open,
             on_close: move |_| {
                 on_cancel.call(());
                 open_clone.set(false);
@@ -109,8 +110,8 @@ pub fn StoredPasswordUpsertDialog(
                     },
                     password_required: true,
                     // Legge direttamente dal signal originale
-                    initial_password: stored_raw_password().map(|p| FormSecret(p.password)),
-                    initial_score: stored_raw_password().and_then(|p| p.score),
+                    initial_password: (stored_password_dialog_state.current_stored_raw_password)().map(|p| FormSecret(p.password)),
+                    initial_score: (stored_password_dialog_state.current_stored_raw_password)().and_then(|p| p.score),
                 }
                 FormField {
                     label: "Notes".to_string(),

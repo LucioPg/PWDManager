@@ -4,7 +4,8 @@ use crate::backend::password_types_helper::{
 use crate::backend::password_utils::get_stored_raw_passwords;
 use crate::components::globals::{StatCard, StatVariant};
 use crate::components::{
-    StoredPasswordUpsertDialog, StoredRawPasswordsTable, show_toast_error, use_toast,
+    StoredPasswordUpsertDialog, StoredPasswordUpsertDialogState, StoredRawPasswordsTable,
+    ToastHubState, show_toast_error, use_toast,
 };
 use custom_errors::DBError;
 use dioxus::prelude::*;
@@ -15,7 +16,12 @@ use std::ops::Deref;
 pub fn Dashboard() -> Element {
     let auth_state = use_context::<crate::auth::AuthState>();
     let username = auth_state.get_username();
-    let mut stored_password_dialog_open = use_signal(|| false);
+    let mut stored_password_dialog_state =
+        use_context_provider(|| StoredPasswordUpsertDialogState {
+            is_open: Signal::new(false),
+            current_stored_raw_password: Signal::new(None::<StoredRawPassword>),
+        });
+
     #[allow(unused_mut)]
     let mut current_stored_raw_password =
         use_context_provider(|| Signal::new(None::<StoredRawPassword>));
@@ -148,7 +154,10 @@ pub fn Dashboard() -> Element {
                         div { class: "card-no-border items-end",
                 button { class: "btn btn-success",
                     r#type: "button",
-                    onclick: move |_| {stored_password_dialog_open.set(true);},
+                    onclick: move |_| {
+                        current_stored_raw_password.set(None);
+                        stored_password_dialog_state.is_open.set(true);
+                    },
                     "New Password" }
             }
             div { class: "card card-lg",
@@ -160,10 +169,8 @@ pub fn Dashboard() -> Element {
 
         }
         StoredPasswordUpsertDialog {
-            open: stored_password_dialog_open,
-            on_confirm: move |_| {stored_password_dialog_open.set(false);},
-            on_cancel: move |_| {stored_password_dialog_open.set(false);},
-            stored_raw_password: current_stored_raw_password,
+            on_confirm: move |_| {(stored_password_dialog_state.is_open).set(false);},
+            on_cancel: move |_| {(stored_password_dialog_state.is_open).set(false);},
         }
     }
 }

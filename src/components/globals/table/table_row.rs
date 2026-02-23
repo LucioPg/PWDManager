@@ -24,6 +24,7 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
     let mut show_info_tooltip = use_signal(|| false);
     let password_id = props.stored_raw_password.id.unwrap_or(0);
     let store_raw_password_clone = props.stored_raw_password.clone();
+    // let mut stored_password_dialog_open = use_context
     // Get strength from score for StrengthAnalyzer
     let strength =
         PasswordScore::get_strength(props.stored_raw_password.score.map(|s| s.value() as i64));
