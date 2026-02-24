@@ -126,8 +126,8 @@ il pc
 - [ ] aggiungere toggle per tema scuro in settings
 - [x] aggiungere toast per errori e informazioni
 - [x] modificare table row perché la password non sia immediatamente visibile
-- [ ] modificare table row perché ci siano i pulsanti per copiare location e passwords
-- [ ] decidere se offuscare e criptare anche location e note
+- [ ] modificare table row perché ci siano i pulsanti per copiare location e passwords -- implementati manca backend
+- [x] decidere se offuscare e criptare anche location e note -- Fatto
 
 ## Gestione password registrate
 
@@ -139,7 +139,8 @@ il pc
   Passwords migration]
 - [x] aggiungere un "diversificatore" per chiave AES prelevato dalla stringa di creazione dell'utente per evitare il
   KEY-REUSE.
-- [ ] creazione funzione di suggerimento di password efficaci sulla base delle preferenze utente.
+- [x] creazione funzione di suggerimento di password efficaci sulla base delle preferenze utente. -- MANCA PARTE
+  FRONTEND
 - [ ] criptare anche location e note. Quindi usare lo stesso campo di visualizzazione per la password per la location,
   ma non per le note.
 
@@ -170,7 +171,7 @@ il pc
 
 #### Strength
 
-- [ ] Sostituire funzione di calcolo strength con strength_utils. --- Parzialmente fatto
+- [x] Sostituire funzione di calcolo strength con strength_utils.
 - [x] Creare meccanismo di spiegazione della valutazione della forza della password.
 
 #### Migration
