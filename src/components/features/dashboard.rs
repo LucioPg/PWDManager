@@ -22,10 +22,6 @@ pub fn Dashboard() -> Element {
             current_stored_raw_password: Signal::new(None::<StoredRawPassword>),
         });
 
-    #[allow(unused_mut)]
-    let mut current_stored_raw_password =
-        use_context_provider(|| Signal::new(None::<StoredRawPassword>));
-
     // DATA
     let pool = use_context::<SqlitePool>();
     let mut error = use_signal(|| <Option<DBError>>::None);
@@ -98,10 +94,6 @@ pub fn Dashboard() -> Element {
             })
     });
     use_effect(move || {
-        let current = current_stored_raw_password.clone();
-        println!("{:?}", current());
-    });
-    use_effect(move || {
         if let Some(e) = error.read().deref() {
             show_toast_error(format!("Error fetching user data: {}", e), toast.clone());
         }
@@ -155,7 +147,7 @@ pub fn Dashboard() -> Element {
                 button { class: "btn btn-success",
                     r#type: "button",
                     onclick: move |_| {
-                        current_stored_raw_password.set(None);
+                        stored_password_dialog_state.current_stored_raw_password.set(None);
                         stored_password_dialog_state.is_open.set(true);
                     },
                     "New Password" }

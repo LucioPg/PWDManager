@@ -1,10 +1,10 @@
 use crate::backend::password_types_helper::{PasswordScore, StoredRawPassword};
+use crate::components::StoredPasswordUpsertDialogState;
 use crate::components::globals::form_field::FormSecret;
 use crate::components::globals::password_display::PasswordDisplay;
 use crate::components::globals::password_handler::StrengthAnalyzer;
 use crate::components::globals::svgs::{BurgerIcon, DeleteIcon, EditIcon};
 use dioxus::prelude::*;
-use secrecy::ExposeSecret;
 
 /// Props for the StoredRawPasswordRow component
 #[derive(Props, Clone, PartialEq)]
@@ -24,15 +24,13 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
     let mut show_info_tooltip = use_signal(|| false);
     let password_id = props.stored_raw_password.id.unwrap_or(0);
     let store_raw_password_clone = props.stored_raw_password.clone();
-    // let mut stored_password_dialog_open = use_context
+    let mut stored_password_dialog_state = use_context::<StoredPasswordUpsertDialogState>();
     // Get strength from score for StrengthAnalyzer
     let strength =
-        PasswordScore::get_strength(props.stored_raw_password.score.map(|s| s.value() as i64));
-    let mut current = use_context::<Signal<Option<StoredRawPassword>>>();
+        PasswordScore::get_strength(store_raw_password_clone.score.map(|s| s.value() as i64));
     rsx! {
         tr {
             key: "{password_id}",
-            onclick: move |_| current.set(Some(store_raw_password_clone.clone())),
             class: "stored-password-row hover:bg-base-200/50 transition-colors",
 
             // Column 1: Location (with ellipsis)
@@ -45,7 +43,7 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
             // Column 2: Password (visualizzazione sicura con toggle)
             td { class: "px-4 py-3",
                 PasswordDisplay {
-                    password: FormSecret(props.stored_raw_password.password.clone()),
+                    password: FormSecret(store_raw_password_clone.password.clone()),
                     max_width: "200px".to_string(),
                 }
             }
@@ -56,7 +54,7 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                     strength: strength,
                     reasons: vec![], // No reasons tooltip in table view
                     is_evaluating: false,
-                    score: props.stored_raw_password.score,
+                    score: store_raw_password_clone.score,
                     show_bar: false,
                 }
             }
@@ -83,7 +81,7 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                         div { class: "pwd-row-tooltip absolute right-0 top-full mt-2 z-10",
                             div { class: "dropdown-content mockup-code bg-base-200 shadow-lg rounded-lg p-3 min-w-[200px] max-w-[280px]",
                                 // Notes section
-                                if let Some(notes) = &props.stored_raw_password.notes {
+                                if let Some(notes) = &store_raw_password_clone.notes {
                                     if !notes.is_empty() {
                                         div { class: "mb-3",
                                             h4 { class: "font-bold text-xs mb-1 text-gray-600", "Notes" }
@@ -93,7 +91,7 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                                 }
 
                                 // Created at section
-                                if let Some(created_at) = &props.stored_raw_password.created_at {
+                                if let Some(created_at) = &store_raw_password_clone.created_at {
                                     div {
                                         h4 { class: "font-bold text-xs mb-1 text-gray-600", "Created" }
                                         p { class: "text-xs text-gray-700", "{created_at}" }
@@ -101,8 +99,8 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                                 }
 
                                 // Show placeholder if no info available
-                                if props.stored_raw_password.notes.as_ref().is_none_or(|n| n.is_empty())
-                                    && props.stored_raw_password.created_at.is_none() {
+                                if store_raw_password_clone.notes.as_ref().is_none_or(|n| n.is_empty())
+                                    && store_raw_password_clone.created_at.is_none() {
                                     p { class: "text-xs text-gray-500 italic", "No additional info" }
                                 }
                             }
@@ -116,9 +114,10 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                 button {
                     class: "pwd-row-action-btn pwd-edit-btn",
                     r#type: "button",
-                    onclick: {
-                        let password = props.stored_raw_password.clone();
-                        move |_| props.on_edit.call(password.clone())
+                    onclick: move |evt| {
+                        evt.stop_propagation();
+                        stored_password_dialog_state.current_stored_raw_password.set(Some(store_raw_password_clone.clone()));
+                        stored_password_dialog_state.is_open.set(true);
                     },
                     // Gear icon
                     EditIcon {}
