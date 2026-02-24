@@ -248,16 +248,31 @@ impl StoredPassword {
         }
     }
 }
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct StoredRawPassword {
     pub id: Option<i64>,
     #[allow(unused)]
     pub user_id: i64,
-    pub location: String,
+    pub location: SecretString,
     pub password: SecretString,
-    pub notes: Option<String>,
+    pub notes: Option<SecretString>,
     pub score: Option<PasswordScore>,
     pub created_at: Option<String>,
+}
+
+// Implementare Debug manualmente per NON esporre i segreti
+impl std::fmt::Debug for StoredRawPassword {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StoredRawPassword")
+            .field("id", &self.id)
+            .field("user_id", &self.user_id)
+            .field("location", &"***SECRET***")
+            .field("password", &"***SECRET***")
+            .field("notes", &self.notes.as_ref().map(|_| "***SECRET***"))
+            .field("score", &self.score)
+            .field("created_at", &self.created_at)
+            .finish()
+    }
 }
 
 impl StoredRawPassword {
@@ -265,7 +280,7 @@ impl StoredRawPassword {
         StoredRawPassword {
             id: None,
             user_id: 0,
-            location: "".to_string(),
+            location: SecretString::new("".into()),
             password: "".to_string().into(),
             notes: None,
             score: None,
@@ -277,9 +292,9 @@ impl StoredRawPassword {
         &self,
     ) -> (
         i64,
-        String,
         SecretString,
-        Option<String>,
+        SecretString,
+        Option<SecretString>,
         Option<PasswordScore>,
     ) {
         (
@@ -295,7 +310,10 @@ impl StoredRawPassword {
 impl PartialEq for StoredRawPassword {
     fn eq(&self, other: &Self) -> bool {
         match (&self.id, &other.id) {
-            (Some(id1), Some(id2)) => id1 == id2 && self.location == other.location,
+            (Some(id1), Some(id2)) => {
+                id1 == id2
+                    && self.location.expose_secret() == other.location.expose_secret()
+            }
             (None, None) => true,
             _ => false,
         }
