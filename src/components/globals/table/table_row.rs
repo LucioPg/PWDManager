@@ -83,7 +83,7 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
 
                         div { class: "pwd-row-tooltip absolute right-0 top-full mt-2 z-10",
                             SecretNotesTooltip {
-                                notes: store_raw_password_clone.notes.clone(),
+                                notes: store_raw_password_clone.notes.as_ref().map(|n| n.expose_secret().to_string()),
                                 created_at: store_raw_password_clone.created_at.clone(),
                             }
                         }
