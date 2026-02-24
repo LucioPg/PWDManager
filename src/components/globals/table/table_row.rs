@@ -2,6 +2,7 @@ use crate::backend::password_types_helper::{PasswordScore, StoredRawPassword};
 use crate::components::StoredPasswordUpsertDialogState;
 use crate::components::globals::form_field::FormSecret;
 use crate::components::globals::secret_display::SecretDisplay;
+use crate::components::globals::secret_notes_tooltip::SecretNotesTooltip;
 use crate::components::globals::password_handler::StrengthAnalyzer;
 use crate::components::globals::svgs::{BurgerIcon, DeleteIcon, EditIcon};
 use dioxus::prelude::*;
@@ -81,30 +82,9 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                         }
 
                         div { class: "pwd-row-tooltip absolute right-0 top-full mt-2 z-10",
-                            div { class: "dropdown-content mockup-code bg-base-200 shadow-lg rounded-lg p-3 min-w-[200px] max-w-[280px]",
-                                // Notes section
-                                if let Some(notes) = &store_raw_password_clone.notes {
-                                    if !notes.expose_secret().is_empty() {
-                                        div { class: "mb-3",
-                                            h4 { class: "font-bold text-xs mb-1 text-gray-600", "Notes" }
-                                            p { class: "text-xs text-gray-700 break-words", "{notes.expose_secret()}" }
-                                        }
-                                    }
-                                }
-
-                                // Created at section
-                                if let Some(created_at) = &store_raw_password_clone.created_at {
-                                    div {
-                                        h4 { class: "font-bold text-xs mb-1 text-gray-600", "Created" }
-                                        p { class: "text-xs text-gray-700", "{created_at}" }
-                                    }
-                                }
-
-                                // Show placeholder if no info available
-                                if store_raw_password_clone.notes.as_ref().is_none_or(|n| n.expose_secret().is_empty())
-                                    && store_raw_password_clone.created_at.is_none() {
-                                    p { class: "text-xs text-gray-500 italic", "No additional info" }
-                                }
+                            SecretNotesTooltip {
+                                notes: store_raw_password_clone.notes.clone(),
+                                created_at: store_raw_password_clone.created_at.clone(),
                             }
                         }
                     }
