@@ -5,6 +5,7 @@ use crate::components::{
     PasswordHandler,
 };
 use dioxus::prelude::*;
+use secrecy::ExposeSecret;
 
 #[derive(Clone)]
 pub struct StoredPasswordUpsertDialogState {
@@ -33,8 +34,8 @@ pub fn StoredPasswordUpsertDialog(
         if (stored_password_dialog_state.is_open)() {
             match (stored_password_dialog_state.current_stored_raw_password)() {
                 Some(data) => {
-                    location_sig.set(data.location.clone());
-                    notes_sig.set(data.notes.clone());
+                    location_sig.set(data.location.expose_secret().to_string());
+                    notes_sig.set(data.notes.as_ref().map(|n| n.expose_secret().to_string()));
                     is_new.set(false);
                 }
                 None => {
