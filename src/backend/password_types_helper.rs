@@ -164,7 +164,7 @@ pub struct UserAuth {
     pub password: DbSecretString,
 }
 
-#[derive(sqlx::FromRow, Debug, SqlxTemplate)]
+#[derive(sqlx::FromRow, Debug, Clone, SqlxTemplate)]
 #[table("passwords")]
 #[db("sqlite")]
 #[tp_upsert(by = "id")]
@@ -178,60 +178,73 @@ pub struct UserAuth {
 ///
 /// * `id` - ID opzionale (None per INSERT, Some per UPDATE)
 /// * `user_id` - ID dell'utente proprietario della password
-/// * `location` - Luogo/nome dove è salvata la password (es. "Google", "Netflix")
+/// * `location` - Luogo criptato con AES-256-GCM (salvato come BLOB)
+/// * `location_nonce` - Nonce per la criptazione location (12 byte, UNIQUE)
 /// * `password` - Password criptata con AES-256-GCM (salvata come BLOB)
-/// * `notes` - Note opzionali sulla password
-/// * `score` - Forze della password (WEAK/MEDIUM/STRONG/EPIC/GOD)
+/// * `password_nonce` - Nonce per la criptazione password (12 byte, UNIQUE)
+/// * `notes` - Note opzionali criptate (salvate come BLOB)
+/// * `notes_nonce` - Nonce per notes (12 byte, opzionale se notes è None)
+/// * `score` - Punteggio della password (0-100)
 /// * `created_at` - Data di creazione opzionale
-/// * `nonce` - Nonce usato per la criptazione AES (12 byte, deve essere UNIQUE)
 pub struct StoredPassword {
-    pub id: Option<i64>,            // INTEGER PRIMARY KEY,
-    pub user_id: i64,               // INTEGER NOT NULL,
-    pub location: String,           // TEXT NOT NULL,
-    pub password: DbSecretVec,      // TEXT NOT NULL,
-    pub notes: Option<String>,      //,
-    pub score: PasswordScore,       // integer NOT NULL ,
-    pub created_at: Option<String>, // TEXT DEFAULT (datetime('now')),
-    pub nonce: Vec<u8>,             // BLOB NOT NULL UNIQUE,
+    pub id: Option<i64>,
+    pub user_id: i64,
+    pub location: DbSecretVec,
+    pub location_nonce: Vec<u8>,
+    pub password: DbSecretVec,
+    pub password_nonce: Vec<u8>,
+    pub notes: Option<DbSecretVec>,
+    pub notes_nonce: Option<Vec<u8>>,
+    pub score: PasswordScore,
+    pub created_at: Option<String>,
 }
 
 impl StoredPassword {
-    /// Crea una nuova struct [`StoredPassword`] convertendo la password in [`DbSecretVec`].
+    /// Crea una nuova struct [`StoredPassword`] convertendo i campi in [`DbSecretVec`].
     ///
     /// # Parametri
     ///
     /// * `id` - ID opzionale (None per nuove password)
     /// * `user_id` - ID dell'utente proprietario
-    /// * `location` - Luogo dove è salvata la password
+    /// * `location` - Location criptata come bytes
+    /// * `location_nonce` - Nonce per location (12 byte)
     /// * `password` - Password criptata come bytes
-    /// * `notes` - Note opzionali
-    /// * `score` - Forze della password
+    /// * `notes` - Note opzionali criptate
+    /// * `notes_nonce` - Nonce per notes (12 byte, opzionale)
+    /// * `score` - Punteggio della password
     /// * `created_at` - Data di creazione opzionale
-    /// * `nonce` - Nonce usato per la criptazione AES
+    /// * `password_nonce` - Nonce per password (12 byte)
     ///
     /// # Valore Restituito
     ///
-    /// Return `StoredPassword` con la password avvolta in `DbSecretVec`
+    /// Return `StoredPassword` con i campi avvolti in `DbSecretVec`
     pub fn new(
         id: Option<i64>,
         user_id: i64,
-        location: String,
+        location: SecretBox<[u8]>,
+        location_nonce: Vec<u8>,
         password: SecretBox<[u8]>,
-        notes: Option<String>,
+        notes: Option<SecretBox<[u8]>>,
+        notes_nonce: Option<Vec<u8>>,
         score: PasswordScore,
         created_at: Option<String>,
-        nonce: Vec<u8>,
+        password_nonce: Vec<u8>,
     ) -> Self {
+        let location: DbSecretVec = location.into();
         let password: DbSecretVec = password.into();
+        let notes: Option<DbSecretVec> = notes.map(|n| n.into());
+
         StoredPassword {
             id,
             user_id,
             location,
+            location_nonce,
             password,
+            password_nonce,
             notes,
+            notes_nonce,
             score,
             created_at,
-            nonce,
         }
     }
 }

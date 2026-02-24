@@ -737,9 +737,9 @@ pub async fn save_or_update_stored_password(
 ) -> Result<(), DBError> {
     debug!("Attempting to save/update user password");
 
-    // Validazione comune
+    // Validazione comune (location e password sono bytes criptati)
     if stored_password.password.expose_secret().is_empty()
-        || stored_password.location.trim().is_empty()
+        || stored_password.location.expose_secret().is_empty()
     {
         return Err(DBError::new_password_save_error(
             "Password and location cannot be empty".into(),

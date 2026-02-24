@@ -28,12 +28,14 @@
 /// 2. **passwords**:
 ///    - `id`: INTEGER PRIMARY KEY (auto-increment)
 ///    - `user_id`: INTEGER NOT NULL (rif. all'utente)
-///    - `location`: TEXT NOT NULL (luogo/nome del servizio, es. "Google", "Netflix")
+///    - `location`: BLOB NOT NULL (luogo/nome del servizio criptato AES-256-GCM)
+///    - `location_nonce`: BLOB NOT NULL UNIQUE (nonce per location, 12 byte)
 ///    - `password`: BLOB NOT NULL (password criptata AES-256-GCM)
-///    - `notes`: TEXT (note opzionali)
-///    - `strength`: TEXT NOT NULL CHECK (forza password: weak/medium/strong)
+///    - `password_nonce`: BLOB NOT NULL UNIQUE (nonce per password, 12 byte)
+///    - `notes`: BLOB (note opzionali criptate)
+///    - `notes_nonce`: BLOB UNIQUE (nonce per notes, 12 byte, opzionale)
+///    - `score`: INTEGER NOT NULL CHECK (0 <= score <= 100) (punteggio password 0-100)
 ///    - `created_at`: TEXT DEFAULT (datetime('now')) (timestamp creazione)
-///    - `nonce`: BLOB NOT NULL UNIQUE (nonce AES-256-GCM a 12 byte, deve essere unico)
 ///    - `FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE` (cancella password se utente cancellato)
 pub static QUERIES: &[&str] = &[
     "CREATE TABLE IF NOT EXISTS users (
@@ -47,12 +49,14 @@ pub static QUERIES: &[&str] = &[
     "CREATE TABLE IF NOT EXISTS passwords (
                 id INTEGER PRIMARY KEY,
                 user_id INTEGER NOT NULL,
-                location TEXT NOT NULL,
+                location BLOB NOT NULL,
+                location_nonce BLOB NOT NULL UNIQUE,
                 password BLOB NOT NULL,
-                notes TEXT,
+                password_nonce BLOB NOT NULL UNIQUE,
+                notes BLOB,
+                notes_nonce BLOB UNIQUE,
                 score INTEGER NOT NULL CHECK (0 <= score <= 100),
                 created_at TEXT DEFAULT (datetime('now')),
-                nonce BLOB NOT NULL UNIQUE,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     )",
     "CREATE TABLE IF NOT EXISTS user_settings (

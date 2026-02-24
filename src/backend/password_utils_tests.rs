@@ -115,15 +115,36 @@ async fn test_encrypt_decrypt_password() {
     );
     let stored_password = &stored_passwords[0];
 
-    // Verifica che i metadati siano corretti
-    assert_eq!(stored_password.location, location);
-    assert_eq!(stored_password.notes, notes);
-    assert_eq!(stored_password.user_id, user_id);
-    assert!(
-        !stored_password.nonce.is_empty(),
-        "Nonce should not be empty"
+    // Verifica che location sia crittografato (non plain text)
+    let location_bytes: &[u8] = stored_password.location.expose_secret().as_ref();
+    let location_plain: &[u8] = location.as_bytes();
+    assert_ne!(
+        location_bytes, location_plain,
+        "Location should be encrypted"
     );
-    assert_eq!(stored_password.nonce.len(), 12, "Nonce should be 12 bytes");
+
+    // Verifica che notes siano crittografate (non plain text)
+    if let Some(notes_enc) = &stored_password.notes {
+        let notes_bytes: &[u8] = notes_enc.expose_secret().as_ref();
+        let notes_plain: &[u8] = notes.as_ref().unwrap().as_bytes();
+        assert_ne!(
+            notes_bytes, notes_plain,
+            "Notes should be encrypted"
+        );
+    }
+
+    assert_eq!(stored_password.user_id, user_id);
+
+    // Verifica i nonce (password_nonce e location_nonce devono essere 12 byte)
+    assert!(
+        !stored_password.password_nonce.is_empty(),
+        "Password nonce should not be empty"
+    );
+    assert_eq!(stored_password.password_nonce.len(), 12, "Password nonce should be 12 bytes");
+    assert_eq!(stored_password.location_nonce.len(), 12, "Location nonce should be 12 bytes");
+    if let Some(nn) = &stored_password.notes_nonce {
+        assert_eq!(nn.len(), 12, "Notes nonce should be 12 bytes");
+    }
 
     // Test 3: Decifra la password
     let decrypted_password = decrypt_stored_password(&pool, stored_password)
@@ -228,15 +249,33 @@ async fn test_encrypt_decrypt_password_rayon() {
     );
     let stored_password = &stored_passwords[0];
 
-    // Verifica che i metadati siano corretti
-    assert_eq!(stored_password.location, location);
-    assert_eq!(stored_password.notes, notes);
-    assert_eq!(stored_password.user_id, user_id);
-    assert!(
-        !stored_password.nonce.is_empty(),
-        "Nonce should not be empty"
+    // Verifica che location sia crittografato (non plain text)
+    let location_bytes: &[u8] = stored_password.location.expose_secret().as_ref();
+    let location_plain: &[u8] = location.as_bytes();
+    assert_ne!(
+        location_bytes, location_plain,
+        "Location should be encrypted"
     );
-    assert_eq!(stored_password.nonce.len(), 12, "Nonce should be 12 bytes");
+
+    // Verifica che notes siano crittografate
+    if let Some(notes_enc) = &stored_password.notes {
+        let notes_bytes: &[u8] = notes_enc.expose_secret().as_ref();
+        let notes_plain: &[u8] = notes.as_ref().unwrap().as_bytes();
+        assert_ne!(
+            notes_bytes, notes_plain,
+            "Notes should be encrypted"
+        );
+    }
+
+    assert_eq!(stored_password.user_id, user_id);
+
+    // Verifica i nonce
+    assert!(
+        !stored_password.password_nonce.is_empty(),
+        "Password nonce should not be empty"
+    );
+    assert_eq!(stored_password.password_nonce.len(), 12, "Password nonce should be 12 bytes");
+    assert_eq!(stored_password.location_nonce.len(), 12, "Location nonce should be 12 bytes");
 
     // Test 3: Decifra la password
     let decrypted_password = decrypt_stored_password(&pool, stored_password)
@@ -321,7 +360,7 @@ async fn test_decrypt_invalid_nonce() {
     let mut stored_password = stored_passwords.pop().unwrap();
 
     // Corrompi il nonce (lunghezza errata)
-    stored_password.nonce = vec![1, 2, 3]; // Solo 3 byte invece di 12
+    stored_password.password_nonce = vec![1, 2, 3]; // Solo 3 byte invece di 12
 
     let result = decrypt_stored_password(&pool, &stored_password).await;
     assert!(result.is_err(), "Should fail with invalid nonce length");
@@ -341,12 +380,14 @@ async fn test_decrypt_nonexistent_user() {
     let stored_password = StoredPassword::new(
         None,
         99999, // User ID inesistente
-        "https://fake.com".to_string(),
-        SecretBox::new(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].into()),
-        None,
+        SecretBox::new(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].into()), // encrypted location
+        vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], // location_nonce
+        SecretBox::new(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].into()), // password
+        None, // notes
+        None, // notes_nonce
         PasswordScore::new(38),
         None,
-        vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+        vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], // password_nonce
     );
 
     let result = decrypt_stored_password(&pool, &stored_password).await;
@@ -387,9 +428,9 @@ async fn test_multiple_passwords_for_same_user() {
     assert_eq!(stored_passwords.len(), 3, "Should have 3 stored passwords");
 
     // Verifica che ogni password possa essere decifrata correttamente
-    for (i, (expected_location, expected_password)) in passwords.iter().enumerate() {
+    // Nota: location è crittografato, quindi non confrontiamo direttamente
+    for (i, (_expected_location, expected_password)) in passwords.iter().enumerate() {
         let stored = &stored_passwords[i];
-        assert_eq!(stored.location, *expected_location);
 
         let decrypted = decrypt_stored_password(&pool, stored)
             .await
@@ -450,13 +491,13 @@ async fn test_multiple_passwords_for_same_user_with_predefined_strength() {
     assert_eq!(stored_passwords.len(), 3, "Should have 3 stored passwords");
 
     // Verifica che ogni password possa essere decifrata correttamente
-    for (i, (expected_location, expected_password, expected_strength)) in
+    // Nota: location è crittografato, quindi non confrontiamo direttamente
+    for (i, (_expected_location, expected_password, expected_strength)) in
         passwords.iter().enumerate()
     {
         let stored = &stored_passwords[i];
         let expected_strength_score = expected_strength.score.map(|s| s.value()).unwrap_or(0);
-        assert_eq!(stored.location, *expected_location);
-        assert_eq!(stored.score, expected_strength_score);
+        assert_eq!(stored.score.value(), expected_strength_score);
         let decrypted = decrypt_stored_password(&pool, stored)
             .await
             .expect("Failed to decrypt password");
@@ -501,4 +542,87 @@ async fn test_encrypted_password_is_different_from_original() {
         .await
         .expect("Failed to decrypt password");
     assert_eq!(decrypted, raw_password);
+}
+
+#[tokio::test]
+async fn test_location_and_notes_are_encrypted() {
+    let pool = setup_test_db().await;
+    let user_id = create_test_user(&pool, "testuser_enc", "MasterPass123!").await;
+
+    let raw_password = SecretString::new("MySecurePassword456".into());
+    let location = "https://secret-location.com".to_string();
+    let notes = Some("Confidential notes".to_string());
+
+    create_stored_password_pipeline(
+        &pool,
+        user_id,
+        location.clone(),
+        raw_password.clone(),
+        notes.clone(),
+        None,
+    )
+    .await
+    .expect("Failed to encrypt data");
+
+    let stored_passwords = fetch_all_stored_passwords_for_user(&pool, user_id)
+        .await
+        .expect("Failed to fetch stored passwords");
+
+    let stored = &stored_passwords[0];
+
+    // Verify location is NOT plaintext
+    let location_bytes: &[u8] = stored.location.expose_secret().as_ref();
+    let location_plain: &[u8] = location.as_bytes();
+    assert_ne!(
+        location_bytes, location_plain,
+        "Location should be encrypted"
+    );
+
+    // Verify notes are NOT plaintext
+    if let Some(notes_enc) = &stored.notes {
+        let notes_bytes: &[u8] = notes_enc.expose_secret().as_ref();
+        let notes_plain: &[u8] = notes.as_ref().unwrap().as_bytes();
+        assert_ne!(
+            notes_bytes, notes_plain,
+            "Notes should be encrypted"
+        );
+    }
+
+    // Verify nonces are 12 bytes
+    assert_eq!(stored.location_nonce.len(), 12);
+    assert_eq!(stored.password_nonce.len(), 12);
+    if let Some(nn) = &stored.notes_nonce {
+        assert_eq!(nn.len(), 12);
+    }
+}
+
+#[tokio::test]
+async fn test_decrypt_location_and_notes_roundtrip() {
+    let pool = setup_test_db().await;
+    let user_id = create_test_user(&pool, "testuser_rt", "MasterPass123!").await;
+
+    let raw_password = SecretString::new("MyPassword".into());
+    let location = "MySecretService".to_string();
+    let notes = Some("My secret notes".to_string());
+
+    create_stored_password_pipeline(
+        &pool,
+        user_id,
+        location.clone(),
+        raw_password.clone(),
+        notes.clone(),
+        None,
+    )
+    .await
+    .expect("Failed to encrypt");
+
+    // Usa get_stored_raw_passwords che recupera correttamente l'UserAuth dal DB
+    let decrypted = crate::backend::password_utils::get_stored_raw_passwords(&pool, user_id)
+        .await
+        .expect("Failed to decrypt");
+
+    assert_eq!(decrypted.len(), 1);
+    assert_eq!(decrypted[0].location, location);
+    assert_eq!(decrypted[0].notes, notes);
+    assert_eq!(decrypted[0].password.expose_secret(), raw_password.expose_secret());
 }

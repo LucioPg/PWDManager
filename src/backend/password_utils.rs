@@ -99,6 +99,67 @@ fn get_nonce_from_vec(nonce_vec: &Vec<u8>) -> Result<Nonce<Aes256Gcm>, DBError> 
     Ok(*Nonce::<Aes256Gcm>::from_slice(&nonce_vec))
 }
 
+/// Cripta una stringa con AES-256-GCM.
+///
+/// # Parametri
+/// * `plaintext` - La stringa in chiaro da criptare
+/// * `cipher` - Il cipher AES-256-GCM inizializzato
+///
+/// # Valore Restituito
+/// Tupla (encrypted_bytes, nonce)
+fn encrypt_string(
+    plaintext: &str,
+    cipher: &Aes256Gcm,
+) -> Result<(SecretBox<[u8]>, Nonce<Aes256Gcm>), DBError> {
+    let nonce = create_nonce();
+    let encrypted = cipher
+        .encrypt(&nonce, plaintext.as_bytes())
+        .map_err(|e| DBError::new_cipher_encryption_error(e.to_string()))?;
+    Ok((SecretBox::new(encrypted.into()), nonce))
+}
+
+/// Cripta una stringa opzionale con AES-256-GCM.
+fn encrypt_optional_string(
+    plaintext: Option<&str>,
+    cipher: &Aes256Gcm,
+) -> Result<(Option<SecretBox<[u8]>>, Option<Nonce<Aes256Gcm>>), DBError> {
+    match plaintext {
+        Some(text) => {
+            let (encrypted, nonce) = encrypt_string(text, cipher)?;
+            Ok((Some(encrypted), Some(nonce)))
+        }
+        None => Ok((None, None)),
+    }
+}
+
+/// Decripta bytes in una stringa UTF-8.
+fn decrypt_to_string(
+    encrypted: &[u8],
+    nonce: &Nonce<Aes256Gcm>,
+    cipher: &Aes256Gcm,
+) -> Result<String, DBError> {
+    let plaintext_bytes = cipher
+        .decrypt(nonce, encrypted)
+        .map_err(|e| DBError::new_password_conversion_error(e.to_string()))?;
+    String::from_utf8(plaintext_bytes)
+        .map_err(|e| DBError::new_password_conversion_error(e.to_string()))
+}
+
+/// Decripta bytes opzionali in una stringa opzionale.
+fn decrypt_optional_to_string(
+    encrypted: Option<&[u8]>,
+    nonce: Option<&Nonce<Aes256Gcm>>,
+    cipher: &Aes256Gcm,
+) -> Result<Option<String>, DBError> {
+    match (encrypted, nonce) {
+        (Some(enc), Some(n)) => {
+            let decrypted = decrypt_to_string(enc, n, cipher)?;
+            Ok(Some(decrypted))
+        }
+        _ => Ok(None),
+    }
+}
+
 /// Crea un cipher AES-256-GCM usando la password utente come KDF.
 ///
 /// La chiave AES viene derivata usando Argon2 con:
@@ -162,10 +223,9 @@ fn create_password_with_cipher_sync(
 /// Esegue tutte le operazioni necessarie per salvare una password:
 /// 1. Recupera le credenziali utente (password hash + created_at)
 /// 2. Estrae il sale dalla password utente
-/// 3. Genera un nuovo nonce per AES-GCM
-/// 4. Cripta la nuova password con AES-256-GCM
-/// 5. Calcola la forze della password
-/// 6. Salva la password criptata nel database
+/// 3. Cripta location, password e notes con AES-256-GCM (nonce separati)
+/// 4. Calcola la forza della password
+/// 5. Salva i dati criptati nel database
 ///
 /// # Parametri
 ///
@@ -174,6 +234,7 @@ fn create_password_with_cipher_sync(
 /// * `location` - Luogo/nome dove è salvata la password
 /// * `raw_password` - Password in chiaro da criptare
 /// * `notes` - Note opzionali
+/// * `score` - Punteggio opzionale della password
 ///
 /// # Valore Restituito
 ///
@@ -182,7 +243,7 @@ fn create_password_with_cipher_sync(
 /// # Errori
 ///
 /// - `DBError::new_password_save_error` - Errore in qualsiasi fase della pipeline
-pub async fn create_stored_password_pipeline(
+pub async fn create_stored_data_pipeline(
     pool: &SqlitePool,
     user_id: i64,
     location: String,
@@ -193,41 +254,74 @@ pub async fn create_stored_password_pipeline(
     // 1. Recupero credenziali e setup crittografico
     let user_auth = fetch_user_auth_from_id(pool, user_id).await?;
     let salt = get_salt(&user_auth.password);
-    let nonce = create_nonce();
     let cipher = create_cipher(&salt, &user_auth)?;
 
-    // 2. Criptazione (eseguita una sola volta, fuori dai branch logici)
-    let encrypted_password = create_password_with_cipher(&raw_password, &nonce, &cipher)
+    // 2. Cripta location
+    let (encrypted_location, location_nonce) = encrypt_string(&location, &cipher)?;
+
+    // 3. Cripta password
+    let password_nonce = create_nonce();
+    let encrypted_password = create_password_with_cipher(&raw_password, &password_nonce, &cipher)
         .await
         .map_err(|_| DBError::new_password_save_error("Errore durante la criptazione".into()))?;
 
-    // 3. Determinazione del punteggio (Uso di unwrap_or_else per calcolo lazy)
+    // 4. Cripta notes
+    let (encrypted_notes, notes_nonce) = encrypt_optional_string(notes.as_deref(), &cipher)?;
+
+    // 5. Determinazione del punteggio
     let password_score = score.unwrap_or_else(|| {
         evaluate_password_strength(&raw_password, None)
             .score
             .unwrap_or(PasswordScore::new(0))
     });
 
-    // 4. Creazione della struct
+    // 6. Creazione della struct
     let stored_password = StoredPassword::new(
         None,
         user_id,
-        location,
+        encrypted_location,
+        location_nonce.to_vec(),
         encrypted_password,
-        notes,
+        encrypted_notes,
+        notes_nonce.map(|n| n.to_vec()),
         password_score,
         None,
-        nonce.to_vec(),
+        password_nonce.to_vec(),
     );
 
-    // 5. Persistenza
+    // 7. Persistenza
     save_or_update_stored_password(pool, stored_password).await?;
 
     Ok(())
 }
 
-pub async fn create_stored_passwords(
-    cipher: Aes256Gcm, // Assumendo che Aes256Gcm sia Send + Sync
+/// Deprecated: Use `create_stored_data_pipeline` instead
+pub async fn create_stored_password_pipeline(
+    pool: &SqlitePool,
+    user_id: i64,
+    location: String,
+    raw_password: SecretString,
+    notes: Option<String>,
+    score: Option<PasswordScore>,
+) -> Result<(), DBError> {
+    create_stored_data_pipeline(pool, user_id, location, raw_password, notes, score).await
+}
+
+/// Crea record StoredPassword criptando location, password e notes in parallelo.
+///
+/// Utilizza Rayon per parallelizzare la crittografia di batch di password.
+///
+/// # Parametri
+///
+/// * `cipher` - Cipher AES-256-GCM inizializzato
+/// * `user_auth` - Credenziali utente
+/// * `stored_raw_passwords` - Vettore di password in chiaro da criptare
+///
+/// # Valore Restituito
+///
+/// Return `Vec<StoredPassword>` con tutti i campi criptati
+pub async fn create_stored_data_records(
+    cipher: Aes256Gcm,
     user_auth: UserAuth,
     stored_raw_passwords: Vec<StoredRawPassword>,
 ) -> Result<Vec<StoredPassword>, DBError> {
@@ -235,22 +329,31 @@ pub async fn create_stored_passwords(
         return Ok(Vec::new());
     }
 
-    // Avvolgiamo cipher e user_auth in Arc per passarli ai thread di Rayon
     let cipher = Arc::new(cipher);
     let user_auth = Arc::new(user_auth);
 
-    // Spostiamo il calcolo pesante su un thread pool dedicato alla CPU
     task::spawn_blocking(move || {
         stored_raw_passwords
             .into_par_iter()
             .map(|srp| {
-                let nonce = create_nonce();
+                // Cripta location
+                let (encrypted_location, location_nonce) =
+                    encrypt_string(&srp.location, &cipher)?;
 
-                // Usiamo il cipher condiviso
-                let encryption = create_password_with_cipher_sync(&srp.password, &nonce, &cipher)
-                    .map_err(|_| {
+                // Cripta password
+                let password_nonce = create_nonce();
+                let encrypted_password = create_password_with_cipher_sync(
+                    &srp.password, &password_nonce, &cipher
+                ).map_err(|_| {
                     DBError::new_cipher_encryption_error("Cipher error".to_string())
                 })?;
+
+                // Cripta notes
+                let (encrypted_notes, notes_nonce) = encrypt_optional_string(
+                    srp.notes.as_deref(), &cipher
+                )?;
+
+                // Calcola score
                 let score_evaluation: PasswordScore = srp.score.unwrap_or_else(|| {
                     evaluate_password_strength(&srp.password, None)
                         .score
@@ -260,18 +363,29 @@ pub async fn create_stored_passwords(
                 Ok(StoredPassword::new(
                     srp.id,
                     user_auth.id,
-                    srp.location,
-                    encryption, // Assunto che encryption sia il tipo corretto
-                    srp.notes,
+                    encrypted_location,
+                    location_nonce.to_vec(),
+                    encrypted_password,
+                    encrypted_notes,
+                    notes_nonce.map(|n| n.to_vec()),
                     score_evaluation,
                     None,
-                    nonce.to_vec(),
+                    password_nonce.to_vec(),
                 ))
             })
-            .collect::<Result<Vec<StoredPassword>, DBError>>() // Trasforma Vec<Result> in Result<Vec>
+            .collect::<Result<Vec<StoredPassword>, DBError>>()
     })
     .await
     .map_err(|e| DBError::new_password_save_error(format!("Join error: {}", e)))?
+}
+
+/// Deprecated: Use `create_stored_data_records` instead
+pub async fn create_stored_passwords(
+    cipher: Aes256Gcm,
+    user_auth: UserAuth,
+    stored_raw_passwords: Vec<StoredRawPassword>,
+) -> Result<Vec<StoredPassword>, DBError> {
+    create_stored_data_records(cipher, user_auth, stored_raw_passwords).await
 }
 
 pub async fn get_stored_raw_passwords(
@@ -280,7 +394,7 @@ pub async fn get_stored_raw_passwords(
 ) -> Result<Vec<StoredRawPassword>, DBError> {
     let stored_passwords: Vec<StoredPassword> =
         fetch_all_stored_passwords_for_user(pool, user_id).await?;
-    let stored_raw_passwords = decrypt_bulk_stored_passwords(
+    let stored_raw_passwords = decrypt_bulk_stored_data(
         fetch_user_auth_from_id(pool, user_id).await?,
         stored_passwords,
     )
@@ -288,29 +402,66 @@ pub async fn get_stored_raw_passwords(
     Ok(stored_raw_passwords)
 }
 
-pub async fn decrypt_bulk_stored_passwords(
+/// Decripta in parallelo un batch di StoredPassword.
+///
+/// Decripta location, password e notes utilizzando i rispettivi nonce.
+/// Utilizza Rayon per parallelizzare la decrittografia.
+///
+/// # Parametri
+///
+/// * `user_auth` - Credenziali utente per derivare il cipher
+/// * `stored_passwords` - Vettore di password criptate
+///
+/// # Valore Restituito
+///
+/// Return `Vec<StoredRawPassword>` con tutti i campi in chiaro
+pub async fn decrypt_bulk_stored_data(
     user_auth: UserAuth,
     stored_passwords: Vec<StoredPassword>,
 ) -> Result<Vec<StoredRawPassword>, DBError> {
-    //new_password_conversion_error
     let salt = get_salt(&user_auth.password);
     let cipher = create_cipher(&salt, &user_auth)?;
+    let cipher = Arc::new(cipher);
+
     task::spawn_blocking(move || {
         stored_passwords
             .into_par_iter()
             .map(|sp| {
-                let nonce = get_nonce_from_vec(&sp.nonce)?;
-                let plaintext_bytes = cipher
-                    .decrypt(&nonce, sp.password.expose_secret().as_ref())
+                // Decripta location
+                let location_nonce = get_nonce_from_vec(&sp.location_nonce)?;
+                let location = decrypt_to_string(
+                    sp.location.expose_secret().as_ref(),
+                    &location_nonce,
+                    &cipher,
+                )?;
+
+                // Decripta password
+                let password_nonce = get_nonce_from_vec(&sp.password_nonce)?;
+                let password_bytes = cipher
+                    .decrypt(&password_nonce, sp.password.expose_secret().as_ref())
                     .map_err(|e| DBError::new_password_conversion_error(e.to_string()))?;
-                let plaintext = String::from_utf8(plaintext_bytes)
+                let password = String::from_utf8(password_bytes)
                     .map_err(|e| DBError::new_password_conversion_error(e.to_string()))?;
+
+                // Decripta notes
+                let notes = match (&sp.notes, &sp.notes_nonce) {
+                    (Some(enc_notes), Some(nn)) => {
+                        let notes_nonce = get_nonce_from_vec(nn)?;
+                        decrypt_optional_to_string(
+                            Some(enc_notes.expose_secret().as_ref()),
+                            Some(&notes_nonce),
+                            &cipher,
+                        )?
+                    }
+                    _ => None,
+                };
+
                 Ok(StoredRawPassword {
                     id: sp.id,
                     user_id: user_auth.id,
-                    location: sp.location,
-                    password: SecretString::new(plaintext.into()),
-                    notes: sp.notes,
+                    location,
+                    password: SecretString::new(password.into()),
+                    notes,
                     score: Some(sp.score),
                     created_at: sp.created_at,
                 })
@@ -319,6 +470,14 @@ pub async fn decrypt_bulk_stored_passwords(
     })
     .await
     .map_err(|e| DBError::new_password_conversion_error(format!("Join error: {}", e)))?
+}
+
+/// Deprecated: Use `decrypt_bulk_stored_data` instead
+pub async fn decrypt_bulk_stored_passwords(
+    user_auth: UserAuth,
+    stored_passwords: Vec<StoredPassword>,
+) -> Result<Vec<StoredRawPassword>, DBError> {
+    decrypt_bulk_stored_data(user_auth, stored_passwords).await
 }
 
 /// Decripta una password salvata nel database.
@@ -341,10 +500,9 @@ pub async fn decrypt_stored_password(
     pool: &SqlitePool,
     stored_password: &StoredPassword,
 ) -> Result<String, DBError> {
-    //new_password_conversion_error
     let user_auth: UserAuth = fetch_user_auth_from_id(&pool, stored_password.user_id).await?;
     let salt = get_salt(&user_auth.password);
-    let nonce = get_nonce_from_vec(&stored_password.nonce)?;
+    let nonce = get_nonce_from_vec(&stored_password.password_nonce)?;
     let cipher = create_cipher(&salt, &user_auth)?;
     let plaintext_bytes = cipher
         .decrypt(&nonce, stored_password.password.expose_secret().as_ref())
