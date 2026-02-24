@@ -5,6 +5,7 @@ use crate::components::globals::password_display::PasswordDisplay;
 use crate::components::globals::password_handler::StrengthAnalyzer;
 use crate::components::globals::svgs::{BurgerIcon, DeleteIcon, EditIcon};
 use dioxus::prelude::*;
+use secrecy::ExposeSecret;
 
 /// Props for the StoredRawPasswordRow component
 #[derive(Props, Clone, PartialEq)]
@@ -33,10 +34,11 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
             key: "{password_id}",
             class: "stored-password-row hover:bg-base-200/50 transition-colors",
 
-            // Column 1: Location (with ellipsis)
+            // Column 1: Location (visualizzazione sicura con toggle)
             td { class: "px-4 py-3",
-                div { class: "truncate max-w-[150px]", title: "{props.stored_raw_password.location}",
-                    "{props.stored_raw_password.location}"
+                PasswordDisplay {
+                    password: FormSecret(props.stored_raw_password.location.clone()),
+                    max_width: "150px".to_string(),
                 }
             }
 
@@ -82,10 +84,10 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                             div { class: "dropdown-content mockup-code bg-base-200 shadow-lg rounded-lg p-3 min-w-[200px] max-w-[280px]",
                                 // Notes section
                                 if let Some(notes) = &store_raw_password_clone.notes {
-                                    if !notes.is_empty() {
+                                    if !notes.expose_secret().is_empty() {
                                         div { class: "mb-3",
                                             h4 { class: "font-bold text-xs mb-1 text-gray-600", "Notes" }
-                                            p { class: "text-xs text-gray-700 break-words", "{notes}" }
+                                            p { class: "text-xs text-gray-700 break-words", "{notes.expose_secret()}" }
                                         }
                                     }
                                 }
@@ -99,7 +101,7 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                                 }
 
                                 // Show placeholder if no info available
-                                if store_raw_password_clone.notes.as_ref().is_none_or(|n| n.is_empty())
+                                if store_raw_password_clone.notes.as_ref().is_none_or(|n| n.expose_secret().is_empty())
                                     && store_raw_password_clone.created_at.is_none() {
                                     p { class: "text-xs text-gray-500 italic", "No additional info" }
                                 }
