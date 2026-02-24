@@ -459,9 +459,9 @@ pub async fn decrypt_bulk_stored_data(
                 Ok(StoredRawPassword {
                     id: sp.id,
                     user_id: user_auth.id,
-                    location,
+                    location: SecretString::new(location.into()),
                     password: SecretString::new(password.into()),
-                    notes,
+                    notes: notes.map(|n| SecretString::new(n.into())),
                     score: Some(sp.score),
                     created_at: sp.created_at,
                 })
