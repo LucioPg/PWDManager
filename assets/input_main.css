@@ -1219,16 +1219,16 @@ button[class*="btn-"] {
 }
 
 /* ============================================================
-   Password Display Component
+   Secret Display Component
    ============================================================ */
-.password-display-wrapper {
+.secret-display-wrapper {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     width: fit-content;
 }
 
-.pwd-password-display {
+.pwd-secret-display {
     background-color: transparent;
     border: none;
     outline: none;

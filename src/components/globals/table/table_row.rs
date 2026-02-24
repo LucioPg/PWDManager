@@ -1,7 +1,7 @@
 use crate::backend::password_types_helper::{PasswordScore, StoredRawPassword};
 use crate::components::StoredPasswordUpsertDialogState;
 use crate::components::globals::form_field::FormSecret;
-use crate::components::globals::password_display::PasswordDisplay;
+use crate::components::globals::secret_display::SecretDisplay;
 use crate::components::globals::password_handler::StrengthAnalyzer;
 use crate::components::globals::svgs::{BurgerIcon, DeleteIcon, EditIcon};
 use dioxus::prelude::*;
@@ -36,16 +36,16 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
 
             // Column 1: Location (visualizzazione sicura con toggle)
             td { class: "px-4 py-3",
-                PasswordDisplay {
-                    password: FormSecret(props.stored_raw_password.location.clone()),
+                SecretDisplay {
+                    secret: FormSecret(props.stored_raw_password.location.clone()),
                     max_width: "150px".to_string(),
                 }
             }
 
             // Column 2: Password (visualizzazione sicura con toggle)
             td { class: "px-4 py-3",
-                PasswordDisplay {
-                    password: FormSecret(store_raw_password_clone.password.clone()),
+                SecretDisplay {
+                    secret: FormSecret(store_raw_password_clone.password.clone()),
                     max_width: "200px".to_string(),
                 }
             }
