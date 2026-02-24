@@ -141,7 +141,7 @@ il pc
   KEY-REUSE.
 - [x] creazione funzione di suggerimento di password efficaci sulla base delle preferenze utente. -- MANCA PARTE
   FRONTEND
-- [ ] criptare anche location e note. Quindi usare lo stesso campo di visualizzazione per la password per la location,
+- [x] criptare anche location e note. Quindi usare lo stesso campo di visualizzazione per la password per la location,
   ma non per le note.
 
 ## To be Threaded
