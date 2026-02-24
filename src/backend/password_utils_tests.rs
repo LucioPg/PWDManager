@@ -127,10 +127,7 @@ async fn test_encrypt_decrypt_password() {
     if let Some(notes_enc) = &stored_password.notes {
         let notes_bytes: &[u8] = notes_enc.expose_secret().as_ref();
         let notes_plain: &[u8] = notes.as_ref().unwrap().as_bytes();
-        assert_ne!(
-            notes_bytes, notes_plain,
-            "Notes should be encrypted"
-        );
+        assert_ne!(notes_bytes, notes_plain, "Notes should be encrypted");
     }
 
     assert_eq!(stored_password.user_id, user_id);
@@ -140,8 +137,16 @@ async fn test_encrypt_decrypt_password() {
         !stored_password.password_nonce.is_empty(),
         "Password nonce should not be empty"
     );
-    assert_eq!(stored_password.password_nonce.len(), 12, "Password nonce should be 12 bytes");
-    assert_eq!(stored_password.location_nonce.len(), 12, "Location nonce should be 12 bytes");
+    assert_eq!(
+        stored_password.password_nonce.len(),
+        12,
+        "Password nonce should be 12 bytes"
+    );
+    assert_eq!(
+        stored_password.location_nonce.len(),
+        12,
+        "Location nonce should be 12 bytes"
+    );
     if let Some(nn) = &stored_password.notes_nonce {
         assert_eq!(nn.len(), 12, "Notes nonce should be 12 bytes");
     }
@@ -261,10 +266,7 @@ async fn test_encrypt_decrypt_password_rayon() {
     if let Some(notes_enc) = &stored_password.notes {
         let notes_bytes: &[u8] = notes_enc.expose_secret().as_ref();
         let notes_plain: &[u8] = notes.as_ref().unwrap().as_bytes();
-        assert_ne!(
-            notes_bytes, notes_plain,
-            "Notes should be encrypted"
-        );
+        assert_ne!(notes_bytes, notes_plain, "Notes should be encrypted");
     }
 
     assert_eq!(stored_password.user_id, user_id);
@@ -274,8 +276,16 @@ async fn test_encrypt_decrypt_password_rayon() {
         !stored_password.password_nonce.is_empty(),
         "Password nonce should not be empty"
     );
-    assert_eq!(stored_password.password_nonce.len(), 12, "Password nonce should be 12 bytes");
-    assert_eq!(stored_password.location_nonce.len(), 12, "Location nonce should be 12 bytes");
+    assert_eq!(
+        stored_password.password_nonce.len(),
+        12,
+        "Password nonce should be 12 bytes"
+    );
+    assert_eq!(
+        stored_password.location_nonce.len(),
+        12,
+        "Location nonce should be 12 bytes"
+    );
 
     // Test 3: Decifra la password
     let decrypted_password = decrypt_stored_password(&pool, stored_password)
@@ -383,8 +393,8 @@ async fn test_decrypt_nonexistent_user() {
         SecretBox::new(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].into()), // encrypted location
         vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], // location_nonce
         SecretBox::new(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].into()), // password
-        None, // notes
-        None, // notes_nonce
+        None,  // notes
+        None,  // notes_nonce
         PasswordScore::new(38),
         None,
         vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], // password_nonce
@@ -476,7 +486,7 @@ async fn test_multiple_passwords_for_same_user_with_predefined_strength() {
             user_id,
             location.to_string(),
             SecretString::new(raw_pwd.to_string().into()),
-            None,
+            Some("Ciao io sono una nota".to_string()),
             strength.score,
         )
         .await
@@ -582,10 +592,7 @@ async fn test_location_and_notes_are_encrypted() {
     if let Some(notes_enc) = &stored.notes {
         let notes_bytes: &[u8] = notes_enc.expose_secret().as_ref();
         let notes_plain: &[u8] = notes.as_ref().unwrap().as_bytes();
-        assert_ne!(
-            notes_bytes, notes_plain,
-            "Notes should be encrypted"
-        );
+        assert_ne!(notes_bytes, notes_plain, "Notes should be encrypted");
     }
 
     // Verify nonces are 12 bytes
@@ -629,7 +636,13 @@ async fn test_decrypt_location_and_notes_roundtrip() {
             assert_eq!(dec_notes.expose_secret(), exp_notes);
         }
         (None, None) => {}
-        _ => panic!("Notes mismatch: expected {:?}, got {:?}", notes, decrypted[0].notes),
+        _ => panic!(
+            "Notes mismatch: expected {:?}, got {:?}",
+            notes, decrypted[0].notes
+        ),
     }
-    assert_eq!(decrypted[0].password.expose_secret(), raw_password.expose_secret());
+    assert_eq!(
+        decrypted[0].password.expose_secret(),
+        raw_password.expose_secret()
+    );
 }
