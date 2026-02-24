@@ -202,9 +202,9 @@ async fn test_encrypt_decrypt_password_rayon() {
         let stored_password_raw = StoredRawPassword {
             id: None,
             user_id,
-            location: locat.to_string(),
+            location: SecretString::new(locat.to_string().into()),
             password: rp,
-            notes: Some("test rayon".to_string()),
+            notes: Some(SecretString::new("test rayon".into())),
             score: password_evaluation.score,
             created_at: None,
         };
@@ -622,7 +622,14 @@ async fn test_decrypt_location_and_notes_roundtrip() {
         .expect("Failed to decrypt");
 
     assert_eq!(decrypted.len(), 1);
-    assert_eq!(decrypted[0].location, location);
-    assert_eq!(decrypted[0].notes, notes);
+    assert_eq!(decrypted[0].location.expose_secret(), location);
+    // Confronta notes: Option<SecretString> vs Option<String>
+    match (&decrypted[0].notes, &notes) {
+        (Some(dec_notes), Some(exp_notes)) => {
+            assert_eq!(dec_notes.expose_secret(), exp_notes);
+        }
+        (None, None) => {}
+        _ => panic!("Notes mismatch: expected {:?}, got {:?}", notes, decrypted[0].notes),
+    }
     assert_eq!(decrypted[0].password.expose_secret(), raw_password.expose_secret());
 }
