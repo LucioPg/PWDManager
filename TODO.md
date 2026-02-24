@@ -140,8 +140,10 @@ il pc
 - [x] aggiungere un "diversificatore" per chiave AES prelevato dalla stringa di creazione dell'utente per evitare il
   KEY-REUSE.
 - [ ] creazione funzione di suggerimento di password efficaci sulla base delle preferenze utente.
+- [ ] criptare anche location e note. Quindi usare lo stesso campo di visualizzazione per la password per la location,
+  ma non per le note.
 
-## To be Threaeded
+## To be Threaded
 
 - [x] scaled_avatar
 - [x] funzione di crypt e salvataggio password
