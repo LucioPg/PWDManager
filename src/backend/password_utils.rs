@@ -338,7 +338,7 @@ pub async fn create_stored_data_records(
             .map(|srp| {
                 // Cripta location
                 let (encrypted_location, location_nonce) =
-                    encrypt_string(&srp.location, &cipher)?;
+                    encrypt_string(srp.location.expose_secret(), &cipher)?;
 
                 // Cripta password
                 let password_nonce = create_nonce();
@@ -349,8 +349,9 @@ pub async fn create_stored_data_records(
                 })?;
 
                 // Cripta notes
+                let notes_str = srp.notes.as_ref().map(|n| n.expose_secret().to_string());
                 let (encrypted_notes, notes_nonce) = encrypt_optional_string(
-                    srp.notes.as_deref(), &cipher
+                    notes_str.as_deref(), &cipher
                 )?;
 
                 // Calcola score
