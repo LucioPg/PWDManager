@@ -755,17 +755,42 @@ pub use evaluator::{
 
 ### Checklist Implementazione
 
-- [ ] Creare directory `pwd-strength/`
-- [ ] Configurare `Cargo.toml` con features
-- [ ] Implementare `blacklist_loader.rs` con variabile d'ambiente
-- [ ] Estrarre sezioni in `sections/` directory
-- [ ] Estrarre `evaluate_password_strength` in `evaluator.rs`
-- [ ] Aggiornare `PWDManager/Cargo.toml` con dipendenza
-- [ ] Copiare file `10k-most-common.txt` in `PWDManager/assets/`
-- [ ] Aggiornare `strength_utils.rs` per usare la libreria
-- [ ] Rimuovere vecchio `strength_utils.rs` (o fare da re-export)
-- [ ] Eseguire `cargo test`
-- [ ] Commit: `feat: extract pwd-strength library`
+- [x] Creare directory `pwd-strength/`
+- [x] Configurare `Cargo.toml` con features
+- [x] Implementare `blacklist.rs` con variabile d'ambiente
+- [x] Estrarre sezioni in `sections/` directory
+- [x] Estrarre `evaluate_password_strength` in `evaluator.rs`
+- [x] Aggiornare `PWDManager/Cargo.toml` con dipendenza
+- [x] File `10k-most-common.txt` già presente in `PWDManager/assets/`
+- [x] Aggiornare imports per usare la libreria (via re-export in `mod.rs`)
+- [x] Rimuovere vecchio `strength_utils.rs`
+- [x] Eseguire `cargo test` - 83 test passano (31 pwd-strength + 2 pwd-types + 50 PWDManager)
+- [x] Commit: `feat: extract pwd-strength library`
+
+**Completato:** 2026-02-26
+
+### Modifiche rispetto al piano originale
+
+| Aspetto | Piano Originale | Implementazione Effettiva |
+|---------|-----------------|---------------------------|
+| Nome modulo blacklist | `blacklist_loader.rs` | `blacklist.rs` (più semplice) |
+| Directory tests | `tests/` separata | Test inline nei moduli `#[cfg(test)]` |
+| Storage blacklist | `OnceLock<HashSet>` | `RwLock<Option<HashSet>>` per testabilità |
+| Feature `blacklist` | Feature flag dedicato | Rimosso (sempre attivo) |
+| Error types | `error.rs` separato | `BlacklistError` in `blacklist.rs` |
+| tokio-util features | `features = ["sync"]` | Nessuna feature (CancellationToken è default) |
+
+### Problemi incontrati e soluzioni
+
+1. **OnceLock immutabile**: Non è possibile resettare `OnceLock` tra test. Soluzione: cambiato da `OnceLock<HashSet>` a `RwLock<Option<HashSet>>` con funzione `reset_blacklist_for_testing()` per i test.
+
+2. **Rust 2024 unsafe**: In Rust 2024 edition, `std::env::set_var` e `remove_var` richiedono blocchi `unsafe`. Soluzione: creati helper `set_env`/`remove_env` con unsafe blocks.
+
+3. **tokio-util sync feature**: La feature `sync` non esiste in tokio-util. Soluzione: rimosso `features = ["sync"]` perché `CancellationToken` è disponibile di default.
+
+4. **Test interference**: Test che modificano la variabile d'ambiente interferiscono tra loro. Soluzione: aggiunto `#[serial]` (da serial_test) a tutti i test che usano env var.
+
+5. **Doctest unsafe**: I doctest con blocchi unsafe non compilano correttamente. Soluzione: cambiato da `#[doc(no_run)]` a `#[doc(ignore)]`.
 
 ---
 

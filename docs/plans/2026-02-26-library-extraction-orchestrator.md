@@ -30,7 +30,7 @@ Ogni step è atomico e reversibile.
 |------|----------------|----------------|-------------------------------------------------|------------|
 | 0    | Prerequisiti   | ✅ COMPLETATO   | -                                               | 2026-02-26 |
 | 1    | `pwd-types`    | ✅ COMPLETATO   | `docs/plans/2026-02-26-extract-pwd-types.md`    | 2026-02-26 |
-| 2    | `pwd-strength` | ⏳ NON INIZIATO | `docs/plans/2026-02-26-extract-pwd-strength.md` | -          |
+| 2    | `pwd-strength` | ✅ COMPLETATO   | `docs/plans/2026-02-26-extract-pwd-strength.md` | 2026-02-26 |
 | 3    | `pwd-crypto`   | ⏳ NON INIZIATO | `docs/plans/2026-02-26-extract-pwd-crypto.md`   | -          |
 | F    | Finalizzazione | ⏳ NON INIZIATO | -                                               | -          |
 
@@ -332,7 +332,12 @@ cargo tree --depth 1
 
 | Aspetto | Riscontrato | Azione |
 |---------|-------------|--------|
-| -       | -           | -      |
+| OnceLock in tests | Non è possibile resettare OnceLock tra test | Cambiato da OnceLock a RwLock<Option<T>> per permettere reset nei test |
+| Rust 2024 unsafe | `set_var`/`remove_var` richiedono blocchi unsafe | Aggiunti helper `set_env`/`remove_env` con unsafe blocks |
+| serial_test | Test che modificano env var interferiscono tra loro | Aggiunto `#[serial]` a tutti i test che usano env var |
+| tokio-util features | La feature `sync` non esiste in tokio-util | Rimossa feature inesistente, CancellationToken è disponibile di default |
+| Doctest unsafe | Doctest con unsafe non compilano correttamente | Cambiato da `no_run` a `ignore` per doctest con unsafe |
+| Return type change | `init_blacklist` ora restituisce `usize` invece di `()` | Aggiornato main.rs per usare `if let Err()` invece di `unwrap_or_else` |
 
 ### Dopo Step 3 (pwd-crypto)
 
@@ -465,6 +470,7 @@ PWD_BLACKLIST_PATH=./assets/10k-most-common.txt
 | 2026-02-26 | 1.2      | Creato piano dettagliato per Step 1 (pwd-types)                     |
 | 2026-02-26 | 1.3      | Completato Step 1 (pwd-types), aggiornate lezioni apprese           |
 | 2026-02-26 | 1.4      | Fix chrono dependency per pwd-types, aggiornate lezioni apprese     |
+| 2026-02-26 | 1.5      | Completato Step 2 (pwd-strength), 31 test, aggiornate lezioni apprese |
 
 ---
 
