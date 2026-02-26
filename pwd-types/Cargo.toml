@@ -10,7 +10,7 @@ default = ["secrecy"]
 secrecy = ["dep:secrecy"]
 
 # Database support - abilita tipi per SQLx
-sqlx = ["dep:sqlx", "dep:sqlx-template", "dep:futures", "secrecy"]
+sqlx = ["dep:sqlx", "dep:sqlx-template", "dep:futures", "dep:chrono", "secrecy"]
 
 # Password generation support (richiede sqlx per SqlxTemplate)
 generator = ["dep:aegis-password-generator", "sqlx"]
@@ -23,9 +23,10 @@ dioxus = ["dep:dioxus", "secrecy"]
 secrecy = { version = "0.10", optional = true }
 
 # SQLx support (optional)
-sqlx = { version = "0.8", features = ["sqlite", "macros"], optional = true }
+sqlx = { version = "0.8", features = ["sqlite", "macros", "chrono"], optional = true }
 sqlx-template = { version = "0.2", optional = true }
 futures = { version = "0.3", optional = true }
+chrono = { version = "0.4", optional = true }
 
 # Password generation (optional)
 aegis-password-generator = { version = "0.1", optional = true }
