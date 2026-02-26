@@ -326,6 +326,7 @@ cargo tree --depth 1
 | AegisPasswordConfig | Era re-exportato ma non esposto nel lib.rs | Aggiunto all'export pubblico del modulo generator |
 | Doctest sqlx-template | I doctest generati falliscono senza chrono | Ignorati per ora (non bloccanti per il progetto principale) |
 | Workspace members | Necessario aggiungere prima di verificare compilazione | Anticipato Task 5 all'inizio del Task 2 |
+| **chrono per DateTime** | `DateTime<Utc>` in stored.rs richiede crate chrono + feature sqlx/chrono | Aggiunto `chrono` come dipendenza opzionale e feature `chrono` a sqlx |
 
 ### Dopo Step 2 (pwd-strength)
 
@@ -463,6 +464,7 @@ PWD_BLACKLIST_PATH=./assets/10k-most-common.txt
 | 2026-02-26 | 1.1      | Aggiunto workflow documenti living e aggiornamento reference doc    |
 | 2026-02-26 | 1.2      | Creato piano dettagliato per Step 1 (pwd-types)                     |
 | 2026-02-26 | 1.3      | Completato Step 1 (pwd-types), aggiornate lezioni apprese           |
+| 2026-02-26 | 1.4      | Fix chrono dependency per pwd-types, aggiornate lezioni apprese     |
 
 ---
 
