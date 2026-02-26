@@ -18,7 +18,7 @@
 #![allow(dead_code)]
 
 use crate::backend::db_backend::{create_user_settings, register_user_with_settings};
-use crate::backend::password_types_helper::PasswordPreset;
+use pwd_types::PasswordPreset;
 use crate::backend::test_helpers::{create_test_user, setup_test_db};
 use secrecy::SecretString;
 use sqlx::sqlite::SqliteRow;

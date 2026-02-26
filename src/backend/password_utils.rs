@@ -10,7 +10,7 @@
 use crate::backend::db_backend::{
     fetch_all_stored_passwords_for_user, fetch_user_auth_from_id, save_or_update_stored_password,
 };
-use crate::backend::password_types_helper::{
+use pwd_types::{
     AegisPasswordConfig, DbSecretString, PasswordGeneratorConfig, PasswordPreset, PasswordScore,
     StoredPassword, StoredRawPassword, UserAuth,
 };

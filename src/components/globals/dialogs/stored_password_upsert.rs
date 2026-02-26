@@ -1,5 +1,5 @@
 use super::base_modal::{BaseModal, ModalVariant};
-use crate::backend::password_types_helper::StoredRawPassword;
+use pwd_types::StoredRawPassword;
 use crate::components::{
     ActionButton, ButtonSize, ButtonType, ButtonVariant, FormField, FormSecret, InputType,
     PasswordHandler,

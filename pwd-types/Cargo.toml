@@ -1,0 +1,34 @@
+[package]
+name = "pwd-types"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = ["secrecy"]
+
+# Core features
+secrecy = ["dep:secrecy"]
+
+# Database support - abilita tipi per SQLx
+sqlx = ["dep:sqlx", "dep:sqlx-template", "dep:futures", "secrecy"]
+
+# Password generation support (richiede sqlx per SqlxTemplate)
+generator = ["dep:aegis-password-generator", "sqlx"]
+
+# Dioxus form support
+dioxus = ["dep:dioxus", "secrecy"]
+
+[dependencies]
+# Core
+secrecy = { version = "0.10", optional = true }
+
+# SQLx support (optional)
+sqlx = { version = "0.8", features = ["sqlite", "macros"], optional = true }
+sqlx-template = { version = "0.2", optional = true }
+futures = { version = "0.3", optional = true }
+
+# Password generation (optional)
+aegis-password-generator = { version = "0.1", optional = true }
+
+# Dioxus support (optional)
+dioxus = { version = "0.7", optional = true }

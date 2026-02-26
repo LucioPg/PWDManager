@@ -1,6 +1,6 @@
 use crate::auth::AuthState;
 use crate::backend::db_backend::fetch_user_passwords_generation_settings;
-use crate::backend::password_types_helper::{PasswordScore, PasswordStrength};
+use pwd_types::{PasswordScore, PasswordStrength};
 use crate::backend::password_utils::generate_suggested_password;
 use crate::backend::strength_utils::evaluate_password_strength_tx;
 use crate::components::globals::form_field::{FormSecret, InputType};

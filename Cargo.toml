@@ -7,6 +7,7 @@ edition = "2024"
 image = { version = "0.25.9", features = ["png"] }
 gui-launcher = {path = "gui_launcher" }
 custom_errors = {path = "custom_errors"}
+pwd-types = { path = "pwd-types", features = ["sqlx", "generator"] }
 tracing = "0.1.44"
 dioxus = { version = "0.7.3", features = ["desktop", "router"] }
 sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite", "macros"] }
@@ -34,7 +35,7 @@ winres = "0.1"
 #name = "guilauncher"
 #path = "gui_launcher/src/lib.rs"
 [workspace]
-members = ["gui_launcher", ".", "custom_errors"]
+members = ["gui_launcher", ".", "custom_errors", "pwd-types"]
 
 [features]
 default = ["desktop"]

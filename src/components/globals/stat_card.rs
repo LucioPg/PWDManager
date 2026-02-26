@@ -1,4 +1,4 @@
-use crate::backend::password_types_helper::PasswordStrength;
+use pwd_types::PasswordStrength;
 use dioxus::prelude::*;
 
 /// Variante di colore per la statistica

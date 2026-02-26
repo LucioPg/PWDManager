@@ -1,4 +1,4 @@
-use crate::backend::password_types_helper::StoredRawPassword;
+use pwd_types::StoredRawPassword;
 use crate::components::{Spinner, SpinnerSize, StoredRawPasswordRow};
 
 use dioxus::prelude::*;

@@ -1,6 +1,6 @@
 ﻿#![allow(dead_code)]
 use crate::backend::init_queries::QUERIES;
-use crate::backend::password_types_helper::{
+use pwd_types::{
     PasswordGeneratorConfig, PasswordPreset, StoredPassword, UserAuth,
 };
 use crate::backend::settings_types::UserSettings;

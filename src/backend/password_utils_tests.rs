@@ -2,7 +2,7 @@ use crate::backend::db_backend::{
     create_user_settings, fetch_all_stored_passwords_for_user, fetch_user_data,
     fetch_user_passwords_generation_settings, save_or_update_user,
 };
-use crate::backend::password_types_helper::{
+use pwd_types::{
     DbSecretString, PasswordPreset, PasswordScore, PasswordStrength, StoredPassword,
     StoredRawPassword, UserAuth,
 };

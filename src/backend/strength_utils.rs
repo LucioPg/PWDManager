@@ -1,4 +1,4 @@
-use crate::backend::password_types_helper::{PasswordEvaluation, PasswordScore};
+use pwd_types::{PasswordEvaluation, PasswordScore};
 use dioxus::prelude::*;
 use secrecy::{ExposeSecret, SecretString};
 use std::collections::HashSet;
@@ -276,7 +276,7 @@ pub fn evaluate_password_strength(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::backend::password_types_helper::PasswordStrength;
+    use pwd_types::PasswordStrength;
     use secrecy::SecretString;
 
     #[test]

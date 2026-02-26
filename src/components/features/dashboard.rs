@@ -1,4 +1,4 @@
-use crate::backend::password_types_helper::{
+use pwd_types::{
     PasswordScore, PasswordStats, PasswordStrength, StoredRawPassword,
 };
 use crate::backend::password_utils::get_stored_raw_passwords;

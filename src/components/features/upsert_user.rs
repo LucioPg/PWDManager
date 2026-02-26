@@ -11,7 +11,7 @@ use dioxus::prelude::*;
 use secrecy::ExposeSecret;
 use sqlx::SqlitePool;
 
-use crate::backend::password_types_helper::PasswordPreset;
+use pwd_types::PasswordPreset;
 use tracing::instrument;
 
 // #[derive(Props, Clone, PartialEq, Debug, Default)]

@@ -1,4 +1,4 @@
-use crate::backend::password_types_helper::{PasswordScore, StoredRawPassword};
+use pwd_types::{PasswordScore, StoredRawPassword};
 use crate::components::StoredPasswordUpsertDialogState;
 use crate::components::globals::form_field::FormSecret;
 use crate::components::globals::secret_display::SecretDisplay;
