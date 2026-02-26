@@ -14,7 +14,7 @@ use pwd_types::{
     AegisPasswordConfig, DbSecretString, PasswordGeneratorConfig, PasswordPreset, PasswordScore,
     StoredPassword, StoredRawPassword, UserAuth,
 };
-use crate::backend::strength_utils::evaluate_password_strength;
+use crate::backend::evaluate_password_strength;
 use aes_gcm::aead::{Aead, AeadCore, Nonce, OsRng};
 use aes_gcm::{Aes256Gcm, Key, KeyInit};
 use argon2::password_hash::Salt;

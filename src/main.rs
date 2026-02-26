@@ -5,7 +5,7 @@ mod components;
 
 use crate::auth::User;
 use crate::backend::db_backend::list_users_no_avatar;
-use crate::backend::strength_utils::init_blacklist;
+use crate::backend::init_blacklist;
 use crate::components::{
     AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, ProgressChn,
     RouteWrapper, Settings, Spinner, SpinnerSize, Style, ToastContainer, ToastHubState, UpsertUser,
@@ -60,11 +60,11 @@ fn App() -> Element {
     });
     use_effect(move || {
         // Inizializza la blacklist usando il sistema asset di Dioxus
-        init_blacklist().unwrap_or_else(|e| {
+        if let Err(e) = init_blacklist() {
             let error = format!("Caricamento BLACKLIST Fallito: {}", e.to_string());
 
             show_toast_error(error, toast_state);
-        });
+        }
     });
 
     use_effect(move || {

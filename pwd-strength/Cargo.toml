@@ -1,0 +1,30 @@
+[package]
+name = "pwd-strength"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = ["async"]
+
+# Async support (incluso di default)
+async = ["dep:tokio", "dep:tokio-util"]
+
+# Tracing support
+tracing = ["dep:tracing"]
+
+[dependencies]
+pwd-types = { path = "../pwd-types", features = ["secrecy"] }
+thiserror = "2.0"
+secrecy = "0.10"
+
+# Async (optional)
+tokio = { version = "1", features = ["sync", "time", "rt"], optional = true }
+tokio-util = { version = "0.7", optional = true }
+
+# Logging (optional)
+tracing = { version = "0.1", optional = true }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["test-util", "macros", "sync", "time", "rt"] }
+tempfile = "3"
+serial_test = "3"  # Per evitare interferenze tra test con OnceLock globale

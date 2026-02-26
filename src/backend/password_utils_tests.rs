@@ -10,7 +10,7 @@ use crate::backend::password_utils::{
     create_cipher, create_stored_password_pipeline, create_stored_passwords,
     decrypt_stored_password, generate_suggested_password,
 };
-use crate::backend::strength_utils::evaluate_password_strength;
+use crate::backend::evaluate_password_strength;
 use crate::backend::test_helpers::setup_test_db;
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;
@@ -452,7 +452,7 @@ async fn test_multiple_passwords_for_same_user() {
 #[tokio::test]
 async fn test_multiple_passwords_for_same_user_with_predefined_strength() {
     // Initialize blacklist for accurate password evaluation
-    let _ = crate::backend::strength_utils::init_blacklist();
+    let _ = crate::backend::init_blacklist();
 
     let pool = setup_test_db().await;
 
