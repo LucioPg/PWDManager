@@ -1,0 +1,43 @@
+[package]
+name = "pwd-crypto"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = ["hash"]
+
+# Argon2 password hashing
+hash = ["dep:argon2", "dep:secrecy"]
+
+# AES-256-GCM encryption (richiede pwd-types per create_cipher)
+cipher = ["dep:aes-gcm", "dep:secrecy", "pwd-types"]
+
+# pwd-types integration (abilita create_cipher)
+pwd-types = ["dep:pwd-types"]
+
+# Full crypto suite
+full = ["hash", "cipher"]
+
+# Base64 utilities
+base64 = ["dep:base64"]
+
+[dependencies]
+# Core
+thiserror = "2.0"
+secrecy = { version = "0.10", optional = true }
+
+# Password hashing (optional)
+argon2 = { version = "0.5", features = ["std", "zeroize"], optional = true }
+
+# Encryption (optional)
+aes-gcm = { version = "0.10", features = ["zeroize"], optional = true }
+
+# Encoding (optional)
+base64 = { version = "0.22", optional = true }
+
+# For create_cipher (optional, requires pwd-types with sqlx)
+pwd-types = { path = "../pwd-types", features = ["sqlx"], optional = true }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["test-util", "macros"] }
+# Nota: serial_test non serve qui (nessun test modifica env vars)

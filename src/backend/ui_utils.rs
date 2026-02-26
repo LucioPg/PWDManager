@@ -5,7 +5,7 @@
 //! - Gestire i segnali Dioxus per loading/stato/errore
 //! - Elaborare e scalare le immagini selezionate
 
-use crate::backend::utils::scale_avatar;
+use crate::backend::avatar_utils::scale_avatar;
 use dioxus::prelude::*; // o i tuoi import specifici
 use rfd::FileDialog;
 use std::fs;

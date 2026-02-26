@@ -1,7 +1,7 @@
 use crate::auth::{AuthState, User};
 use crate::backend::db_backend::{delete_user, register_user_with_settings, save_or_update_user};
 use crate::backend::ui_utils::pick_and_process_avatar;
-use crate::backend::utils::get_user_avatar_with_default;
+use crate::backend::avatar_utils::get_user_avatar_with_default;
 use crate::components::{
     ActionButton, AvatarSelector, AvatarSize, ButtonSize, ButtonType, ButtonVariant, FormField,
     FormSecret, InputType, PasswordHandler, UserDeletionDialog, schedule_toast_success,

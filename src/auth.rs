@@ -1,4 +1,4 @@
-use crate::backend::utils::get_user_avatar_with_default;
+use crate::backend::avatar_utils::get_user_avatar_with_default;
 use dioxus::prelude::*;
 
 #[derive(Clone, PartialEq, Debug)]

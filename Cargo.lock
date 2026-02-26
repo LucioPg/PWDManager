@@ -16,6 +16,7 @@ dependencies = [
  "futures",
  "gui-launcher",
  "image",
+ "pwd-crypto",
  "pwd-strength",
  "pwd-types",
  "rayon",
@@ -3874,6 +3875,19 @@ checksum = "52717f9a02b6965224f95ca2a81e2e0c5c43baacd28ca057577988930b6c3d5b"
 dependencies = [
  "quote",
  "syn 2.0.114",
+]
+
+[[package]]
+name = "pwd-crypto"
+version = "0.1.0"
+dependencies = [
+ "aes-gcm",
+ "argon2",
+ "base64",
+ "pwd-types",
+ "secrecy",
+ "thiserror 2.0.18",
+ "tokio",
 ]
 
 [[package]]

@@ -5,6 +5,7 @@ pub(crate) mod password_types_helper;
 pub(crate) mod password_utils;
 pub mod ui_utils;
 pub mod utils;
+pub mod avatar_utils;
 
 #[cfg(test)]
 mod password_utils_tests;
@@ -22,4 +23,15 @@ mod db_settings_tests;
 pub use pwd_strength::{
     init_blacklist, is_blacklisted, evaluate_password_strength,
     evaluate_password_strength_tx,
+};
+
+// Re-export pwd-crypto for backward compatibility
+pub use pwd_crypto::{
+    CryptoError,
+    encrypt, verify_password, generate_salt,
+    create_nonce, nonce_from_vec,
+    encrypt_string, encrypt_optional_string,
+    decrypt_to_string, decrypt_optional_to_string,
+    create_cipher,
+    base64_encode,
 };
