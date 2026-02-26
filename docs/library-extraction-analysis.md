@@ -827,8 +827,8 @@ default = ["hash"]
 # Argon2 password hashing
 hash = ["dep:argon2", "dep:secrecy"]
 
-# AES-256-GCM encryption
-cipher = ["dep:aes-gcm", "dep:secrecy"]
+# AES-256-GCM encryption (richiede pwd-types per create_cipher)
+cipher = ["dep:aes-gcm", "dep:secrecy", "dep:pwd-types"]
 
 # Full crypto suite
 full = ["hash", "cipher"]
@@ -855,6 +855,7 @@ pwd-types = { path = "../pwd-types", features = ["sqlx"], optional = true }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["test-util", "macros"] }
+# Nota: serial_test non serve (nessun test modifica env vars)
 ```
 
 ### API Pubblica
@@ -964,18 +965,20 @@ fn image_to_vec(img: &DynamicImage) -> Result<Vec<u8>, GeneralError> {
 
 ### Checklist Implementazione
 
-- [ ] Creare `src/backend/avatar_utils.rs` nel progetto padre
-- [ ] Spostare funzioni avatar da `utils.rs` a `avatar_utils.rs`
-- [ ] Aggiornare `mod.rs` per includere `avatar_utils`
-- [ ] Creare directory `pwd-crypto/`
-- [ ] Configurare `Cargo.toml` con features
-- [ ] Implementare `hash.rs` con funzioni Argon2
-- [ ] Implementare `cipher.rs` con funzioni AES-GCM
-- [ ] Implementare `error.rs` con `CryptoError`
-- [ ] Aggiornare `password_utils.rs` per usare la libreria
-- [ ] Aggiornare `utils.rs` per usare la libreria (o rimuovere)
-- [ ] Eseguire `cargo test`
-- [ ] Commit: `feat: extract pwd-crypto library`
+- [x] Creare `src/backend/avatar_utils.rs` nel progetto padre
+- [x] Spostare funzioni avatar da `utils.rs` a `avatar_utils.rs`
+- [x] Aggiornare `mod.rs` per includere `avatar_utils`
+- [x] Creare directory `pwd-crypto/`
+- [x] Configurare `Cargo.toml` con features
+- [x] Implementare `hash.rs` con funzioni Argon2
+- [x] Implementare `cipher.rs` con funzioni AES-GCM
+- [x] Implementare `error.rs` con `CryptoError`
+- [x] Implementare `nonce.rs` con funzioni nonce
+- [x] Implementare `encoding.rs` con funzioni base64
+- [x] Aggiornare `password_utils.rs` per usare la libreria
+- [x] Aggiornare `utils.rs` per rimuovere funzioni estratte
+- [x] Eseguire `cargo test` - 109 test passano
+- [x] Commit: `feat: extract pwd-crypto library` (df92170)
 
 ---
 
@@ -1115,7 +1118,7 @@ PWD_BLACKLIST_PATH=./assets/10k-most-common.txt
 | Feature   | Descrizione                          | Dipendenze                      |
 |-----------|--------------------------------------|---------------------------------|
 | `hash`    | Argon2 hashing (default)             | `argon2`, `secrecy`             |
-| `cipher`  | AES-256-GCM encryption               | `aes-gcm`, `secrecy`            |
+| `cipher`  | AES-256-GCM encryption (+ pwd-types) | `aes-gcm`, `secrecy`, `pwd-types` |
 | `base64`  | Base64 utilities                     | `base64`                        |
 | `full`    | Tutto incluso                        | `hash`, `cipher`                |
 

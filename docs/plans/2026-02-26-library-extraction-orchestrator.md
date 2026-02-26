@@ -31,7 +31,7 @@ Ogni step è atomico e reversibile.
 | 0    | Prerequisiti   | ✅ COMPLETATO   | -                                               | 2026-02-26 |
 | 1    | `pwd-types`    | ✅ COMPLETATO   | `docs/plans/2026-02-26-extract-pwd-types.md`    | 2026-02-26 |
 | 2    | `pwd-strength` | ✅ COMPLETATO   | `docs/plans/2026-02-26-extract-pwd-strength.md` | 2026-02-26 |
-| 3    | `pwd-crypto`   | ⏳ NON INIZIATO | `docs/plans/2026-02-26-extract-pwd-crypto.md`   | -          |
+| 3    | `pwd-crypto`   | ✅ COMPLETATO  | `docs/plans/2026-02-26-extract-pwd-crypto.md`   | 2026-02-26 |
 | F    | Finalizzazione | ⏳ NON INIZIATO | -                                               | -          |
 
 **Legenda stati:**
@@ -88,9 +88,9 @@ git status
 
 **Criterio di successo:**
 
-- [ ] `cargo test --workspace` passa al 100%
-- [ ] `cargo check --workspace` completa senza errori
-- [ ] `git status` mostra workspace pulito (o modifiche documentate)
+- [x] `cargo test --workspace` passa al 100%
+- [x] `cargo check --workspace` completa senza errori
+- [x] `git status` mostra workspace pulito (o modifiche documentate)
 
 ### Task 0.2: Branch di Lavoro
 
@@ -102,15 +102,15 @@ git checkout -b feat/extract-libs-31
 
 **Criterio di successo:**
 
-- [ ] Branch `feat/extract-libs-31` creato e attivo
+- [x] Branch `feat/extract-libs-31` creato e attivo
 
 ### Task 0.3: Checkpoint
 
 **Prima di procedere a Step 1, aggiornare questo documento:**
 
-- [ ] Cambiare stato Step 0 da ⏳ a ✅
-- [ ] Aggiungere data completamento
-- [ ] Documentare eventuali anomalie riscontrate
+- [x] Cambiare stato Step 0 da ⏳ a ✅
+- [x] Aggiungere data completamento
+- [x] Documentare eventuali anomalie riscontrate
 
 ---
 
@@ -126,9 +126,9 @@ git checkout -b feat/extract-libs-31
 
 ### Prerequisiti per avviare Step 1
 
-- [ ] Step 0 completato ✅
-- [ ] Branch `feat/extract-libs-31` attivo
-- [ ] Piano dedicato creato e approvato
+- [x] Step 0 completato ✅
+- [x] Branch `feat/extract-libs-31` attivo
+- [x] Piano dedicato creato e approvato
 
 ### Cosa deve contenere il piano dedicato
 
@@ -144,10 +144,10 @@ Il piano `docs/plans/2026-02-26-extract-pwd-types.md` deve coprire:
 
 ### Output atteso dal piano
 
-- [ ] Crate `pwd-types` funzionante
-- [ ] Feature flags: `secrecy`, `sqlx`, `generator`, `dioxus`
-- [ ] Tutti i test passano
-- [ ] Commit: `feat: extract pwd-types library`
+- [x] Crate `pwd-types` funzionante
+- [x] Feature flags: `secrecy`, `sqlx`, `generator`, `dioxus`
+- [x] Tutti i test passano
+- [x] Commit: `feat: extract pwd-types library`
 
 ### Checkpoint post-Step 1
 
@@ -178,9 +178,9 @@ Il piano `docs/plans/2026-02-26-extract-pwd-types.md` deve coprire:
 
 ### Prerequisiti per avviare Step 2
 
-- [ ] Step 1 completato ✅
-- [ ] `cargo test --workspace` passa al 100%
-- [ ] Piano dedicato creato e approvato
+- [x] Step 1 completato ✅
+- [x] `cargo test --workspace` passa al 100%
+- [x] Piano dedicato creato e approvato
 
 ### Cosa deve contenere il piano dedicato
 
@@ -194,11 +194,11 @@ Il piano `docs/plans/2026-02-26-extract-pwd-types.md` deve coprire:
 
 ### Output atteso dal piano
 
-- [ ] Crate `pwd-strength` funzionante
-- [ ] Feature flags: `async`, `tracing`
-- [ ] Blacklist caricabile da file esterno
-- [ ] Tutti i test passano
-- [ ] Commit: `feat: extract pwd-strength library`
+- [x] Crate `pwd-strength` funzionante
+- [x] Feature flags: `async`, `tracing`
+- [x] Blacklist caricabile da file esterno
+- [x] Tutti i test passano
+- [x] Commit: `feat: extract pwd-strength library`
 
 ### Checkpoint post-Step 2
 
@@ -222,16 +222,16 @@ Il piano `docs/plans/2026-02-26-extract-pwd-types.md` deve coprire:
 
 **Dipendenze:** `pwd-types` (Step 1)
 
-**Stato:** ⏳ NON INIZIATO
+**Stato:** ✅ COMPLETATO (2026-02-26)
 
-**Piano dedicato:** `docs/plans/2026-02-26-extract-pwd-crypto.md` (da creare)
+**Piano dedicato:** `docs/plans/2026-02-26-extract-pwd-crypto.md`
 
 ### Prerequisiti per avviare Step 3
 
-- [ ] Step 1 completato ✅
-- [ ] Step 2 completato ✅ (opzionale ma consigliato)
-- [ ] `cargo test --workspace` passa al 100%
-- [ ] Piano dedicato creato e approvato
+- [x] Step 1 completato ✅
+- [x] Step 2 completato ✅
+- [x] `cargo test --workspace` passa
+- [x] Piano dedicato creato e approvato
 
 ### Pre-refactoring richiesto
 
@@ -253,11 +253,11 @@ Prima di estrarre `pwd-crypto`, è necessario:
 
 ### Output atteso dal piano
 
-- [ ] Refactoring avatar completato
-- [ ] Crate `pwd-crypto` funzionante
-- [ ] Feature flags: `hash`, `cipher`, `full`, `base64`
-- [ ] Tutti i test passano
-- [ ] Commit: `feat: extract pwd-crypto library`
+- [x] Refactoring avatar completato
+- [x] Crate `pwd-crypto` funzionante
+- [x] Feature flags: `hash`, `cipher`, `full`, `base64`, `pwd-types`
+- [x] Tutti i test passano
+- [x] Commit: `feat: extract pwd-crypto library`
 
 ### Checkpoint post-Step 3
 
@@ -343,7 +343,11 @@ cargo tree --depth 1
 
 | Aspetto | Riscontrato | Azione |
 |---------|-------------|--------|
-| -       | -           | -      |
+| TDD workflow | Scrivere test prima dell'implementazione rende il codice più robusto | Seguito approccio TDD con `todo!()` per tutte le funzioni |
+| Feature flags cfg warning | `#[cfg(feature = "pwd-types")]` genera warning se feature non dichiarata | Aggiunto `pwd-types` come feature esplicita in Cargo.toml |
+| Error adaptation | Funzioni pwd-crypto ritornano CryptoError, non DBError | Creato helper `crypto_error_to_db_error` per mantenere backward compatibility |
+| Avatar separation | Funzioni avatar usano image/base64, non crittografia | Spostate in `avatar_utils.rs`, rimaste nel progetto padre |
+| nonce_from_vec signature | Richiede `&[u8]` non `&Vec<u8>` | Aggiornato wrapper per convertire da Vec |
 
 ---
 
@@ -447,7 +451,7 @@ Assicurarsi che il crate che usa il tipo abbia la feature abilitata nel `Cargo.t
 | Feature  | Descrizione              |
 |----------|--------------------------|
 | `hash`   | Argon2 hashing (default) |
-| `cipher` | AES-256-GCM              |
+| `cipher` | AES-256-GCM (+ pwd-types per create_cipher) |
 | `full`   | Tutto incluso            |
 | `base64` | Base64 utilities         |
 
