@@ -32,7 +32,7 @@ Ogni step è atomico e reversibile.
 | 1    | `pwd-types`    | ✅ COMPLETATO   | `docs/plans/2026-02-26-extract-pwd-types.md`    | 2026-02-26 |
 | 2    | `pwd-strength` | ✅ COMPLETATO   | `docs/plans/2026-02-26-extract-pwd-strength.md` | 2026-02-26 |
 | 3    | `pwd-crypto`   | ✅ COMPLETATO   | `docs/plans/2026-02-26-extract-pwd-crypto.md`   | 2026-02-26 |
-| 4    | `pwd-dioxus`   | ⏳ NON INIZIATO | `docs/plans/2026-02-27-extract-pwd-dioxus.md`   | -          |
+| 4    | `pwd-dioxus`   | ✅ COMPLETATO  | `docs/plans/2026-02-27-extract-pwd-dioxus.md`   | 2026-02-27 |
 | F    | Finalizzazione | ✅ COMPLETATO   | -                                               | 2026-02-27 |
 
 **Legenda stati:**
@@ -317,9 +317,9 @@ cargo check --workspace         # Compila con warnings non bloccanti
 
 **Dipendenze:** `pwd-types` (PasswordScore, PasswordStrength, PasswordChangeResult)
 
-**Stato:** ⏳ NON INIZIATO
+**Stato:** ✅ COMPLETATO (2026-02-27)
 
-**Piano dedicato:** `docs/plans/2026-02-27-extract-pwd-dioxus.md` (da creare)
+**Piano dedicato:** `docs/plans/2026-02-27-extract-pwd-dioxus.md`
 
 **Architettura:** `docs/plans/2026-02-27-pwd-dioxus-architecture.md`
 
@@ -328,9 +328,9 @@ cargo check --workspace         # Compila con warnings non bloccanti
 - [x] Step F completato ✅
 - [x] `PasswordChangeResult` aggiunto a pwd-types ✅
 - [x] Architettura atomica definita ✅
-- [ ] Piano dedicato creato e approvato
+- [x] Piano dedicato creato e approvato ✅
 
-### Moduli da Estrarre
+### Moduli Estratti
 
 | Modulo | Componenti | Dipendenze |
 |--------|------------|------------|
@@ -341,24 +341,14 @@ cargo check --workspace         # Compila con warnings non bloccanti
 | `secret` | SecretDisplay | form, icons |
 | `password` | StrengthAnalyzer, PasswordHandler | form, spinner, icons, pwd-types |
 
-### Cosa deve contenere il piano dedicato
+### Output completato
 
-1. Creazione struttura crate `pwd-dioxus/`
-2. Estrazione moduli in ordine (icons → spinner → modal → form → secret → password)
-3. Disaccoppiamento PasswordHandler da DB (callback props)
-4. Estrazione CSS in `assets/components.css`
-5. Configurazione feature flags atomiche
-6. Test di verifica
-7. Commit
-
-### Output atteso dal piano
-
-- [ ] Crate `pwd-dioxus` funzionante
-- [ ] Feature flags atomiche (icons, spinner, modal, form, handler)
-- [ ] PasswordHandler disaccoppiato da DB
-- [ ] CSS estratto e documentato
-- [ ] Tutti i test passano
-- [ ] Commit: `feat: extract pwd-dioxus library`
+- [x] Crate `pwd-dioxus` funzionante
+- [x] Feature flags atomiche (icons, spinner, modal, form, handler)
+- [x] PasswordHandler disaccoppiato da DB (callback props)
+- [x] CSS estratto in `assets/components.css`
+- [x] Tutti i test passano (35 totali)
+- [x] Commit: `feat: extract pwd-dioxus library with atomic modules`
 
 ---
 
@@ -420,6 +410,16 @@ cargo check --workspace         # Compila con warnings non bloccanti
 | Tipo callback | PasswordHandler deve restituire score + strength + reasons | Creato `PasswordChangeResult` in pwd-types |
 | Feature gating | SecretString richiede feature secrecy | Modulo `change_result` gated con `#[cfg(feature = "secrecy")]` |
 | Metodo helper | Conversione da PasswordEvaluation | Aggiunto `from_evaluation()` per comodità |
+
+### Dopo Step 4 (pwd-dioxus)
+
+| Aspetto | Riscontrato | Azione |
+|---------|-------------|--------|
+| dioxus default-features | `default-features = false` rimuove macro essenziali (`#[component]`, `rsx!`) | Rimosso `default-features = false` per pwd-dioxus |
+| tokio-util features | Feature `sync` non esiste in tokio-util | Rimossa feature inesistente, CancellationToken disponibile di default |
+| Type mismatch FormSecret | Due tipi `FormSecret` (locale vs pwd-dioxus) causano errori | Re-export da pwd-dioxus in form_field.rs per backward compatibility |
+| Re-exports necessari | Consumer importano `crate::components::FormSecret` | Aggiunto re-export in lib.rs: `pub use form::{FormSecret, ...}` |
+| Wrapper backward-compat | PasswordHandler padre usa callback DB, figlio disaccoppiato | Wrapper converte `PasswordChangeResult` → `FormSecret` per API esistente |
 
 ---
 
