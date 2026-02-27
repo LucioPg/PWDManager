@@ -5,6 +5,7 @@
 //! - Statistiche password
 //! - Wrapper secrecy per SQLx
 //! - Configurazione generazione password
+//! - Risultato cambio password per callback UI
 
 // Core types (sempre disponibili)
 mod score;
@@ -16,6 +17,12 @@ pub use stats::PasswordStats;
 // Optional: secrecy support
 #[cfg(feature = "secrecy")]
 pub use secrecy::{SecretBox, SecretString};
+
+// Optional: Password change result (richiede secrecy)
+#[cfg(feature = "secrecy")]
+mod change_result;
+#[cfg(feature = "secrecy")]
+pub use change_result::PasswordChangeResult;
 
 // Optional: SQLx database types
 #[cfg(feature = "sqlx")]
