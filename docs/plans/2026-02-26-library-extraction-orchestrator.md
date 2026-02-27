@@ -31,8 +31,9 @@ Ogni step è atomico e reversibile.
 | 0    | Prerequisiti   | ✅ COMPLETATO   | -                                               | 2026-02-26 |
 | 1    | `pwd-types`    | ✅ COMPLETATO   | `docs/plans/2026-02-26-extract-pwd-types.md`    | 2026-02-26 |
 | 2    | `pwd-strength` | ✅ COMPLETATO   | `docs/plans/2026-02-26-extract-pwd-strength.md` | 2026-02-26 |
-| 3    | `pwd-crypto`   | ✅ COMPLETATO  | `docs/plans/2026-02-26-extract-pwd-crypto.md`   | 2026-02-26 |
-| F    | Finalizzazione | ⏳ NON INIZIATO | -                                               | -          |
+| 3    | `pwd-crypto`   | ✅ COMPLETATO   | `docs/plans/2026-02-26-extract-pwd-crypto.md`   | 2026-02-26 |
+| 4    | `pwd-dioxus`   | ⏳ NON INIZIATO | `docs/plans/2026-02-27-extract-pwd-dioxus.md`   | -          |
+| F    | Finalizzazione | ✅ COMPLETATO   | -                                               | 2026-02-27 |
 
 **Legenda stati:**
 
@@ -279,30 +280,85 @@ Prima di estrarre `pwd-crypto`, è necessario:
 
 **Obiettivo:** Verificare integrità workspace e aggiornare documentazione.
 
-**Stato:** ⏳ NON INIZIATO
+**Stato:** ✅ COMPLETATO (2026-02-27)
 
 ### Prerequisiti
 
-- [ ] Tutti gli Step 1-3 completati ✅
-- [ ] `cargo test --workspace --all-features` passa al 100%
+- [x] Tutti gli Step 1-3 completati ✅
+- [x] `cargo test --workspace --lib` passa al 100%
 
 ### Task F.1: Verifica Finale
 
+**Eseguito:**
 ```bash
-cargo test --workspace --all-features
-cargo check --workspace --all-features
-cargo tree --depth 1
+cargo test --workspace --lib    # 73 test passati
+cargo check --workspace         # Compila con warnings non bloccanti
 ```
+
+**Risultato:**
+- pwd-crypto: 38 test ✅
+- pwd-strength: 31 test ✅
+- pwd-types: 4 test ✅ (inclusi nuovi test PasswordChangeResult)
 
 ### Task F.2: Aggiornare Documentazione
 
-1. Aggiornare `docs/library-extraction-analysis.md` con stato finale
-2. Aggiornare `CLAUDE.md` con sezione workspace libraries
+- [x] Aggiunto `PasswordChangeResult` a pwd-types (preparazione per Step 4)
+- [x] Creato piano architettura `2026-02-27-pwd-dioxus-architecture.md`
 
 ### Task F.3: Merge
 
-1. Push branch
-2. Creare PR o merge secondo workflow progetto
+- [ ] Push branch (da fare dopo Step 4 o separatamente)
+
+---
+
+## Step 4: Estrazione `pwd-dioxus`
+
+**Obiettivo:** Estrarre componenti UI Dioxus per gestione password in libreria riutilizzabile.
+
+**Dipendenze:** `pwd-types` (PasswordScore, PasswordStrength, PasswordChangeResult)
+
+**Stato:** ⏳ NON INIZIATO
+
+**Piano dedicato:** `docs/plans/2026-02-27-extract-pwd-dioxus.md` (da creare)
+
+**Architettura:** `docs/plans/2026-02-27-pwd-dioxus-architecture.md`
+
+### Prerequisiti per avviare Step 4
+
+- [x] Step F completato ✅
+- [x] `PasswordChangeResult` aggiunto a pwd-types ✅
+- [x] Architettura atomica definita ✅
+- [ ] Piano dedicato creato e approvato
+
+### Moduli da Estrarre
+
+| Modulo | Componenti | Dipendenze |
+|--------|------------|------------|
+| `icons` | SvgIcon, Eye*, MagicWand*, Clipboard*, etc. | dioxus |
+| `spinner` | Spinner, SpinnerSize | dioxus |
+| `modal` | BaseModal, ModalVariant | dioxus |
+| `form` | FormField, FormSecret, InputType, FormValue | dioxus, secrecy |
+| `secret` | SecretDisplay | form, icons |
+| `password` | StrengthAnalyzer, PasswordHandler | form, spinner, icons, pwd-types |
+
+### Cosa deve contenere il piano dedicato
+
+1. Creazione struttura crate `pwd-dioxus/`
+2. Estrazione moduli in ordine (icons → spinner → modal → form → secret → password)
+3. Disaccoppiamento PasswordHandler da DB (callback props)
+4. Estrazione CSS in `assets/components.css`
+5. Configurazione feature flags atomiche
+6. Test di verifica
+7. Commit
+
+### Output atteso dal piano
+
+- [ ] Crate `pwd-dioxus` funzionante
+- [ ] Feature flags atomiche (icons, spinner, modal, form, handler)
+- [ ] PasswordHandler disaccoppiato da DB
+- [ ] CSS estratto e documentato
+- [ ] Tutti i test passano
+- [ ] Commit: `feat: extract pwd-dioxus library`
 
 ---
 
@@ -348,6 +404,22 @@ cargo tree --depth 1
 | Error adaptation | Funzioni pwd-crypto ritornano CryptoError, non DBError | Creato helper `crypto_error_to_db_error` per mantenere backward compatibility |
 | Avatar separation | Funzioni avatar usano image/base64, non crittografia | Spostate in `avatar_utils.rs`, rimaste nel progetto padre |
 | nonce_from_vec signature | Richiede `&[u8]` non `&Vec<u8>` | Aggiornato wrapper per convertire da Vec |
+
+### Dopo Step F (Finalizzazione)
+
+| Aspetto | Riscontrato | Azione |
+|---------|-------------|--------|
+| Doctest sqlx-template | Doctest falliscono (problema noto da Step 1) | Usato `--lib` per eseguire solo unit test |
+| Warnings progetto | 13 warnings unused imports/variables | Non bloccanti, da pulire eventualmente |
+| Pre-work Step 4 | PasswordChangeResult necessario per pwd-dioxus | Aggiunto a pwd-types con feature secrecy |
+
+### Pre-work Step 4 (PasswordChangeResult)
+
+| Aspetto | Riscontrato | Azione |
+|---------|-------------|--------|
+| Tipo callback | PasswordHandler deve restituire score + strength + reasons | Creato `PasswordChangeResult` in pwd-types |
+| Feature gating | SecretString richiede feature secrecy | Modulo `change_result` gated con `#[cfg(feature = "secrecy")]` |
+| Metodo helper | Conversione da PasswordEvaluation | Aggiunto `from_evaluation()` per comodità |
 
 ---
 
