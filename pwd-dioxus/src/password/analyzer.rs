@@ -1,7 +1,6 @@
+use crate::spinner::{Spinner, SpinnerSize};
 use dioxus::prelude::*;
-
 use pwd_types::{PasswordScore, PasswordStrength};
-use crate::components::globals::spinner::{Spinner, SpinnerSize};
 
 #[derive(Props, Clone, PartialEq)]
 pub struct StrengthAnalyzerProps {

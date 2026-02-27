@@ -1,5 +1,5 @@
-use crate::components::globals::svgs::{ClipboardIcon, EyeIcon, EyeOffIcon};
-use crate::components::globals::form_field::FormSecret;
+use crate::form::FormSecret;
+use crate::icons::{ClipboardIcon, EyeIcon, EyeOffIcon};
 use dioxus::prelude::*;
 use secrecy::ExposeSecret;
 

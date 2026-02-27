@@ -1,0 +1,247 @@
+/* ============================================================
+   PWD-DIOXUS COMPONENTS CSS
+
+   Questo file contiene tutte le classi CSS per i componenti
+   della libreria pwd-dioxus.
+
+   Per integrare nel progetto consumer:
+   1. Se il progetto ha già queste classi in input_main.css, non serve includere questo file
+   2. Per nuovi progetti, includere nel Tailwind build:
+      @import "pwd-dioxus/assets/components.css";
+   ============================================================ */
+
+/* ============================================================
+   LOADING STATES - SPINNER
+   ============================================================ */
+.spinner-sm {
+    @apply w-6 h-6;
+    --spinner-size: 24px;
+    --spinner-inner: 18px;
+}
+
+.spinner-md {
+    @apply w-10 h-10;
+    --spinner-size: 40px;
+    --spinner-inner: 30px;
+}
+
+.spinner-lg {
+    @apply w-14 h-14;
+    --spinner-size: 56px;
+    --spinner-inner: 42px;
+}
+
+.spinner-xl {
+    @apply w-20 h-20;
+    --spinner-size: 80px;
+    --spinner-inner: 60px;
+}
+
+.spinner-4xl {
+    @apply w-50 h-50;
+    --spinner-size: 200px;
+    --spinner-inner: 150px;
+}
+
+.spinner {
+    position: relative;
+    height: var(--spinner-size);
+    width: var(--spinner-size);
+    box-sizing: border-box;
+    background: conic-gradient(
+        from 90deg at 50% 50%,
+        rgba(39, 174, 96, 0) 0deg,
+        rgba(31, 144, 255, 0) 0.04deg,
+        currentColor 360deg
+    );
+    border-radius: 50%;
+    animation: 1s rotate infinite linear;
+}
+
+.spinner::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    height: var(--spinner-inner);
+    width: var(--spinner-inner);
+    background: var(--primary-color, #fff);
+    border-radius: 50%;
+}
+
+.spinner::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    height: calc((var(--spinner-size) - var(--spinner-inner)) / 2);
+    width: calc((var(--spinner-size) - var(--spinner-inner)) / 2);
+    background: currentColor;
+    border-radius: 50%;
+}
+
+/* Spinner color variants */
+.spinner-success.spinner {
+    @apply text-success-500;
+}
+
+.spinner-error.spinner {
+    @apply text-error-500;
+}
+
+/* ============================================================
+   PASSWORD INPUT WITH VISIBILITY TOGGLE
+   ============================================================ */
+.password-input-wrapper {
+    @apply relative flex items-center;
+}
+
+.password-input-with-toggle {
+    @apply pr-12;
+}
+
+.password-visibility-toggle {
+    @apply absolute right-3 p-1 rounded;
+    @apply text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100;
+    @apply transition-colors duration-150;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-neutral-500;
+    @apply flex items-center justify-center;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+/* Hide native browser password reveal button (Edge/IE) */
+input[type="password"]::-ms-reveal,
+input[type="text"]::-ms-reveal {
+    display: none;
+}
+
+/* Hide native browser password reveal button (WebKit/Chrome) */
+input[type="password"]::-webkit-credentials-auto-fill-button,
+input[type="password"]::-webkit-caps-lock-indicator {
+    visibility: hidden;
+}
+
+/* ============================================================
+   PASSWORD HANDLER - STRENGTH ANALYZER
+   ============================================================ */
+@layer components {
+    .strength-analyzer {
+        min-height: 24px;
+    }
+
+    .strength-info-btn {
+        width: 20px;
+        height: 20px;
+        min-width: 20px;
+        font-size: 0.75rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: theme('colors.base-300');
+        color: theme('colors.base-content');
+        border: none;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .strength-info-btn:hover {
+        transform: scale(1.2);
+        box-shadow: 0 0 12px 3px rgba(59, 130, 246, 0.6);
+    }
+
+    .strength-reasons-tooltip {
+        animation: fadeIn 0.2s ease-out;
+    }
+
+    .strength-reasons-tooltip h4 {
+        color: #1f2937;
+    }
+
+    .strength-reasons-tooltip li {
+        color: #374151;
+    }
+
+    .strength-bar-container {
+        width: 100%;
+        padding: 4px 0;
+    }
+
+    .strength-bar {
+        width: 100%;
+        height: 8px;
+        border-radius: 4px;
+        background: linear-gradient(
+            to right,
+            #ef4444 0%,
+            #f97316 15%,
+            #eab308 30%,
+            #22c55e 50%,
+            #3b82f6 70%,
+            #8b5cf6 95%,
+            #a855f7 100%
+        );
+        position: relative;
+    }
+
+    .strength-cursor {
+        position: absolute;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 16px;
+        height: 16px;
+        background-color: white;
+        border: 2px solid #374151;
+        border-radius: 50%;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        transition: left 0.3s ease-out;
+    }
+}
+
+/* ============================================================
+   SECRET DISPLAY COMPONENT
+   ============================================================ */
+.secret-display-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: fit-content;
+}
+
+.pwd-secret-display {
+    background-color: transparent;
+    border: none;
+    outline: none;
+    font-size: 1rem;
+    cursor: text;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pwd-display-action-btn {
+    padding: 0.25rem;
+    border-radius: 0.25rem;
+    transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    color: inherit;
+}
+
+.pwd-display-action-btn:hover {
+    background-color: var(--primary-color-3);
+}
+
+.pwd-display-action-btn:focus-visible {
+    outline: 2px solid var(--focused-border-color);
+    outline-offset: 2px;
+}
+
+.pwd-display-action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}

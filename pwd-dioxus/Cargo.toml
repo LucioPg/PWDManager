@@ -1,0 +1,32 @@
+[package]
+name = "pwd-dioxus"
+version = "0.1.0"
+edition = "2024"
+description = "Reusable Dioxus components for password handling"
+
+[dependencies]
+dioxus = { version = "0.7", optional = true }
+secrecy = { version = "0.10", optional = true }
+pwd-types = { path = "../pwd-types", features = ["secrecy"], optional = true }
+tokio = { version = "1", features = ["sync", "time"], optional = true }
+tokio-util = { version = "0.7", optional = true }
+
+[features]
+default = []
+
+# === ATOMICI ===
+icons = ["dep:dioxus"]
+icons-visibility = ["dep:dioxus"]
+icons-action = ["dep:dioxus"]
+icons-alert = ["dep:dioxus"]
+spinner = ["dep:dioxus"]
+modal = ["dep:dioxus"]
+
+# === COMPOSITI ===
+form = ["icons-visibility", "dep:secrecy", "dep:dioxus"]
+secret-display = ["form", "icons-visibility", "icons-action"]
+analyzer = ["spinner", "dep:pwd-types"]
+handler = ["form", "analyzer", "icons-action", "dep:secrecy", "dep:tokio", "dep:tokio-util"]
+
+# === CONVENIENCE ===
+full = ["icons", "spinner", "modal", "handler"]

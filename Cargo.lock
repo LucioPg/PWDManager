@@ -17,6 +17,7 @@ dependencies = [
  "gui-launcher",
  "image",
  "pwd-crypto",
+ "pwd-dioxus",
  "pwd-strength",
  "pwd-types",
  "rayon",
@@ -3888,6 +3889,17 @@ dependencies = [
  "secrecy",
  "thiserror 2.0.18",
  "tokio",
+]
+
+[[package]]
+name = "pwd-dioxus"
+version = "0.1.0"
+dependencies = [
+ "dioxus",
+ "pwd-types",
+ "secrecy",
+ "tokio",
+ "tokio-util",
 ]
 
 [[package]]

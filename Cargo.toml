@@ -10,6 +10,7 @@ custom_errors = {path = "custom_errors"}
 pwd-types = { path = "pwd-types", features = ["sqlx", "generator"] }
 pwd-strength = { path = "pwd-strength", features = ["async", "tracing"] }
 pwd-crypto = { path = "pwd-crypto", features = ["full", "base64", "pwd-types"] }
+pwd-dioxus = { path = "pwd-dioxus", features = ["handler", "secret-display"] }
 tracing = "0.1.44"
 dioxus = { version = "0.7.3", features = ["desktop", "router"] }
 sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite", "macros"] }
@@ -37,7 +38,7 @@ winres = "0.1"
 #name = "guilauncher"
 #path = "gui_launcher/src/lib.rs"
 [workspace]
-members = ["gui_launcher", ".", "custom_errors", "pwd-types", "pwd-strength", "pwd-crypto"]
+members = ["gui_launcher", ".", "custom_errors", "pwd-types", "pwd-strength", "pwd-crypto", "pwd-dioxus"]
 
 [features]
 default = ["desktop"]
