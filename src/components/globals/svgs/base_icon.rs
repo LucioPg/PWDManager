@@ -14,12 +14,21 @@ pub struct SvgIconProps {
     /// Classe CSS aggiuntiva
     #[props(default)]
     pub class: Option<String>,
+    /// Colore di riempimento per icone filled (default: "none")
+    #[props(default = "none".to_string())]
+    pub fill: String,
+    /// Colore del tratto (default: "currentColor" per ereditare dal testo)
+    #[props(default = "currentColor".to_string())]
+    pub stroke: String,
 }
 
 /// Componente SVG generico riutilizzabile
 ///
 /// Fornisce attributi SVG standardizzati con possibilità di
-/// personalizzare dimensioni, spessore tratto e classe CSS.
+/// personalizzare dimensioni, spessore tratto, colore fill e stroke.
+///
+/// Per icone stroke-based (default): non specificare fill, usa stroke
+/// Per icone filled: specifica fill, può omettere stroke
 #[component]
 pub fn SvgIcon(props: SvgIconProps) -> Element {
     let class_str = props.class.unwrap_or_default();
@@ -30,8 +39,8 @@ pub fn SvgIcon(props: SvgIconProps) -> Element {
             width: "{props.size}",
             height: "{props.size}",
             view_box: "0 0 24 24",
-            fill: "none",
-            stroke: "currentColor",
+            fill: "{props.fill}",
+            stroke: "{props.stroke}",
             stroke_width: "{props.stroke_width}",
             stroke_linecap: "round",
             stroke_linejoin: "round",
