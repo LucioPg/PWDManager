@@ -475,7 +475,8 @@ PWD_BLACKLIST_PATH=./assets/10k-most-common.txt
 | 2026-02-26 | 1.3      | Completato Step 1 (pwd-types), aggiornate lezioni apprese           |
 | 2026-02-26 | 1.4      | Fix chrono dependency per pwd-types, aggiornate lezioni apprese     |
 | 2026-02-26 | 1.5      | Completato Step 2 (pwd-strength), 31 test, aggiornate lezioni apprese |
+| 2026-02-26 | 1.6      | Completato Step 3 (pwd-crypto), 109 test, aggiornate lezioni apprese |
 
 ---
 
-**Prossima azione:** Creare piano dedicato per Step 2 (pwd-strength) e procedere con l'estrazione.
+**Prossima azione:** Eseguire Step F (Finalizzazione) - verifica finale workspace e merge.

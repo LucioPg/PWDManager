@@ -380,10 +380,12 @@ members = [
 
 Prima di iniziare l'estrazione:
 
-- [ ] Verificare che tutti i test passino: `cargo test`
-- [ ] Verificare build release: `cargo build --release`
-- [ ] Commit stato attuale: `git commit -m "chore: pre-extraction checkpoint"`
-- [ ] Creare branch per estrazione: `git checkout -b feat/extract-libs`
+- [x] Verificare che tutti i test passino: `cargo test`
+- [x] Verificare build release: `cargo build --release`
+- [x] Commit stato attuale: `git commit -m "chore: pre-extraction checkpoint"`
+- [x] Creare branch per estrazione: `git checkout -b feat/extract-libs-31`
+
+**Tutti i prerequisiti completati.**
 
 ---
 
@@ -980,6 +982,27 @@ fn image_to_vec(img: &DynamicImage) -> Result<Vec<u8>, GeneralError> {
 - [x] Eseguire `cargo test` - 109 test passano
 - [x] Commit: `feat: extract pwd-crypto library` (df92170)
 
+**Completato:** 2026-02-26
+
+### Modifiche rispetto al piano originale
+
+| Aspetto | Piano Originale | Implementazione Effettiva |
+|---------|-----------------|---------------------------|
+| Feature `pwd-types` | Opzionale in `cipher` feature | Aggiunta come feature esplicita per evitare cfg warnings |
+| Error handling | `CryptoError` diretto | Helper `crypto_error_to_db_error` per backward compatibility |
+| nonce.rs | Separato in file dedicato | Integrato in `cipher.rs` per semplicità |
+| encoding.rs | Feature `base64` separata | Integrato in `hash.rs` (base64 usato solo per hash) |
+
+### Problemi incontrati e soluzioni
+
+1. **Feature flag cfg warning**: `#[cfg(feature = "pwd-types")]` genera warning se la feature non è dichiarata in `[features]`. Soluzione: aggiunto `pwd-types = []` come feature esplicita.
+
+2. **Error type adaptation**: Le funzioni pwd-crypto ritornano `CryptoError`, ma il progetto padre usa `DBError`. Soluzione: creato helper `crypto_error_to_db_error` in `password_utils.rs`.
+
+3. **nonce_from_vec signature**: La funzione richiede `&[u8]` non `&Vec<u8>`. Soluzione: aggiornato wrapper per convertire da Vec.
+
+4. **Avatar separation**: Le funzioni avatar usano `image` e `base64`, non crittografia. Soluzione: spostate in `avatar_utils.rs`, rimaste nel progetto padre.
+
 ---
 
 ## Step 4: `pwd-dioxus` - Dettaglio Implementazione (Opzionale)
@@ -1121,6 +1144,45 @@ PWD_BLACKLIST_PATH=./assets/10k-most-common.txt
 | `cipher`  | AES-256-GCM encryption (+ pwd-types) | `aes-gcm`, `secrecy`, `pwd-types` |
 | `base64`  | Base64 utilities                     | `base64`                        |
 | `full`    | Tutto incluso                        | `hash`, `cipher`                |
+
+---
+
+## ✅ Stato Finale - Estrazione Completata
+
+**Data completamento:** 2026-02-26
+
+### Riepilogo
+
+Tutte le 3 librerie sono state estratte con successo:
+
+| Libreria | Test | Feature Flags | Stato |
+|----------|------|---------------|-------|
+| `pwd-types` | 2 | `secrecy`, `sqlx`, `generator`, `dioxus` | ✅ Completato |
+| `pwd-strength` | 31 | `async`, `tracing` | ✅ Completato |
+| `pwd-crypto` | 38 | `hash`, `cipher`, `full`, `base64`, `pwd-types` | ✅ Completato |
+
+**Totale test workspace:** 121 (50 PWDManager + 38 pwd-crypto + 31 pwd-strength + 2 pwd-types)
+
+### Dipendenze Finali
+
+```
+pwd-types (tipi base, zero dipendenze esterne)
+    ↓
+├── pwd-strength (dipende da pwd-types)
+└── pwd-crypto (dipende da pwd-types)
+```
+
+### Lezioni Principali Apprese
+
+1. **Feature flags condizionali**: Usare `#[cfg_attr(feature = "...", derive(...))]` per derive che richiedono dipendenze opzionali
+2. **Testabilità**: `OnceLock` non è resettabile nei test - preferire `RwLock<Option<T>>` per strutture globali mutabili
+3. **Rust 2024 unsafe**: Le operazioni su env vars richiedono blocchi `unsafe` espliciti
+4. **TDD approach**: Scrivere test prima dell'implementazione migliora la qualità del codice
+
+### Problemi Noti (Non Bloccanti)
+
+- **Doctest**: Alcuni doctest generati da sqlx-template falliscono per mancanza di dipendenze. Ignorati (non influenzano il progetto principale).
+- **Warnings unused imports**: ~16 warning per import non utilizzati dopo la migrazione. Da pulire in futuro.
 
 ---
 
