@@ -1,6 +1,3 @@
-use pwd_types::{
-    PasswordScore, PasswordStats, PasswordStrength, StoredRawPassword,
-};
 use crate::backend::password_utils::get_stored_raw_passwords;
 use crate::components::globals::{StatCard, StatVariant};
 use crate::components::{
@@ -9,6 +6,7 @@ use crate::components::{
 };
 use custom_errors::DBError;
 use dioxus::prelude::*;
+use pwd_types::{PasswordScore, PasswordStats, PasswordStrength, StoredRawPassword};
 use sqlx::SqlitePool;
 use std::ops::Deref;
 
@@ -161,8 +159,11 @@ pub fn Dashboard() -> Element {
 
         }
         StoredPasswordUpsertDialog {
-            on_confirm: move |_| {(stored_password_dialog_state.is_open).set(false);},
-            on_cancel: move |_| {(stored_password_dialog_state.is_open).set(false);},
+            // on_confirm: move |_| {(stored_password_dialog_state.is_open).set(false);},
+            // on_cancel: move |_| {(stored_password_dialog_state.is_open).set(false);},
+            on_confirm: move |_| {}, // gestito internamente al componente
+            on_cancel: move |_| {},  // gestito internamente al componente
+
         }
     }
 }
