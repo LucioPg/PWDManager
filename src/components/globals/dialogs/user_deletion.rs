@@ -49,20 +49,20 @@ pub fn UserDeletionDialog(
             }
 
             // Titolo
-            h3 { class: "font-bold text-lg mb-2", "Elimina Account" }
+            h3 { class: "font-bold text-lg mb-2", "Delete Account" }
 
             // Messaggio di conferma
             p {
                 class: "py-4",
-                "Sei sicuro di voler eliminare l'account di "
+                "Are you sure you want to delete your account "
                 strong { "{username}" }
-                "? Questa azione non può essere annullata."
+                "? This action cannot be undone."
             }
 
             p {
                 class: "text-error-600 py-2",
-                strong { "Attenzione: " }
-                "Tutti i tuoi dati verranno eliminati permanentemente."
+                strong { "Attention: " }
+                "Your data will be permanently deleted. This action cannot be undone."
             }
 
             // Action buttons
@@ -70,7 +70,7 @@ pub fn UserDeletionDialog(
                 class: "modal-action",
 
                 ActionButton {
-                    text: "Annulla".to_string(),
+                    text: "Abort".to_string(),
                     variant: ButtonVariant::Secondary,
                     button_type: ButtonType::Button,
                     size: ButtonSize::Normal,
@@ -81,7 +81,7 @@ pub fn UserDeletionDialog(
                 }
 
                 ActionButton {
-                    text: "Elimina Account".to_string(),
+                    text: "Delete Account".to_string(),
                     variant: ButtonVariant::Ghost,
                     button_type: ButtonType::Button,
                     size: ButtonSize::Normal,
