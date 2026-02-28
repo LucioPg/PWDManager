@@ -821,6 +821,7 @@ dependencies = [
 [[package]]
 name = "custom_errors"
 version = "0.1.0"
+source = "git+https://github.com/LucioPg/custom_errors#676877a34b7eaa9ba1ad50e902655cd7b5a8554c"
 dependencies = [
  "thiserror 2.0.18",
 ]
@@ -3881,6 +3882,7 @@ dependencies = [
 [[package]]
 name = "pwd-crypto"
 version = "0.1.0"
+source = "git+https://github.com/LucioPg/pwd-crypto#ce097530dd64a77ad6612c81960d0c8a03d436e3"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -3888,12 +3890,12 @@ dependencies = [
  "pwd-types",
  "secrecy",
  "thiserror 2.0.18",
- "tokio",
 ]
 
 [[package]]
 name = "pwd-dioxus"
 version = "0.1.0"
+source = "git+https://github.com/LucioPg/pwd-dioxus#8e5b7b5c9f04dc90a58fd88e7e463df2f9d1e93e"
 dependencies = [
  "dioxus",
  "pwd-types",
@@ -3905,11 +3907,10 @@ dependencies = [
 [[package]]
 name = "pwd-strength"
 version = "0.1.0"
+source = "git+https://github.com/LucioPg/pwd-strength#a62b9d83224d2e02c81c0d83a574a91980cd1058"
 dependencies = [
  "pwd-types",
  "secrecy",
- "serial_test",
- "tempfile",
  "thiserror 2.0.18",
  "tokio",
  "tokio-util",
@@ -3919,6 +3920,7 @@ dependencies = [
 [[package]]
 name = "pwd-types"
 version = "0.1.0"
+source = "git+https://github.com/LucioPg/pwd-types#5b8dac2f74f232c9349678f82fb5d4ebd95d90ca"
 dependencies = [
  "aegis-password-generator",
  "chrono",
@@ -4387,15 +4389,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "scc"
-version = "2.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46e6f046b7fef48e2660c57ed794263155d713de679057f2d0c169bfc6e756cc"
-dependencies = [
- "sdd",
-]
-
-[[package]]
 name = "schannel"
 version = "0.1.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4415,12 +4408,6 @@ name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
-
-[[package]]
-name = "sdd"
-version = "3.0.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "490dcfcbfef26be6800d11870ff2df8774fa6e86d047e3e8c8a76b25655e41ca"
 
 [[package]]
 name = "secrecy"
@@ -4571,32 +4558,6 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
-]
-
-[[package]]
-name = "serial_test"
-version = "3.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "911bd979bf1070a3f3aa7b691a3b3e9968f339ceeec89e08c280a8a22207a32f"
-dependencies = [
- "futures-executor",
- "futures-util",
- "log",
- "once_cell",
- "parking_lot",
- "scc",
- "serial_test_derive",
-]
-
-[[package]]
-name = "serial_test_derive"
-version = "3.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a7d91949b85b0d2fb687445e448b40d322b6b3e4af6b44a29b21d9a5f33e6d9"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.114",
 ]
 
 [[package]]

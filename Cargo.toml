@@ -5,12 +5,16 @@ edition = "2024"
 
 [dependencies]
 image = { version = "0.25.9", features = ["png"] }
-gui-launcher = {path = "gui_launcher" }
-custom_errors = {path = "custom_errors"}
-pwd-types = { path = "pwd-types", features = ["sqlx", "generator"] }
-pwd-strength = { path = "pwd-strength", features = ["async", "tracing"] }
-pwd-crypto = { path = "pwd-crypto", features = ["full", "base64", "pwd-types"] }
-pwd-dioxus = { path = "pwd-dioxus", features = ["handler", "secret-display", "modal", "icons-visibility", "icons-action", "icons-alert"] }
+gui-launcher = { path = "gui_launcher" }
+
+# Librerie pubblicate su GitHub
+custom_errors = { git = "https://github.com/LucioPg/custom_errors" }
+pwd-types = { git = "https://github.com/LucioPg/pwd-types", features = ["sqlx", "generator"] }
+pwd-strength = { git = "https://github.com/LucioPg/pwd-strength", features = ["async", "tracing"] }
+pwd-crypto = { git = "https://github.com/LucioPg/pwd-crypto", features = ["full", "base64", "pwd-types"] }
+pwd-dioxus = { git = "https://github.com/LucioPg/pwd-dioxus", features = ["handler", "secret-display", "modal", "icons-visibility", "icons-action", "icons-alert"] }
+
+# Dipendenze esterne
 tracing = "0.1.44"
 dioxus = { version = "0.7.3", features = ["desktop", "router"] }
 sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite", "macros"] }
@@ -33,12 +37,8 @@ tempfile = "3"
 [target.'cfg(windows)'.build-dependencies]
 winres = "0.1"
 
-
-#[lib]
-#name = "guilauncher"
-#path = "gui_launcher/src/lib.rs"
 [workspace]
-members = ["gui_launcher", ".", "custom_errors", "pwd-types", "pwd-strength", "pwd-crypto", "pwd-dioxus"]
+members = ["gui_launcher", "."]
 
 [features]
 default = ["desktop"]
