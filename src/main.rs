@@ -5,7 +5,7 @@ mod components;
 
 use crate::auth::User;
 use crate::backend::db_backend::list_users_no_avatar;
-use crate::backend::init_blacklist;
+use crate::backend::init_blacklist_from_path;
 use crate::components::{
     AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, ProgressChn,
     RouteWrapper, Settings, Spinner, SpinnerSize, Style, ToastContainer, ToastHubState, UpsertUser,
@@ -25,6 +25,10 @@ use gui_launcher::launch_desktop;
 // #[cfg(debug_assertions)]
 // // static MAIN_CSS: &str = include_str!("../assets/main.css");
 // static MAIN_CSS: Asset = asset!("../assets/main.css");
+
+// Blacklist asset - incluso nel bundle via manganis (senza hash suffix)
+#[used]
+static BLACKLIST_ASSET: Asset = asset!("assets/blacklist.txt", AssetOptions::builder().with_hash_suffix(false));
 
 #[component]
 fn App() -> Element {
@@ -59,8 +63,11 @@ fn App() -> Element {
         }
     });
     use_effect(move || {
-        // Inizializza la blacklist usando il sistema asset di Dioxus
-        if let Err(e) = init_blacklist() {
+        // Inizializza la blacklist usando il path risolto dall'asset system
+        // Rimuovi lo slash iniziale che manganis aggiunge al path
+        let blacklist_path = BLACKLIST_ASSET.to_string();
+        let blacklist_path = blacklist_path.trim_start_matches('/');
+        if let Err(e) = init_blacklist_from_path(blacklist_path) {
             let error = format!("Caricamento BLACKLIST Fallito: {}", e.to_string());
 
             show_toast_error(error, toast_state);
