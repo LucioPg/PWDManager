@@ -61,3 +61,14 @@ pub use secrecy::SecretString;
 
 #[cfg(feature = "cipher")]
 pub use secrecy::SecretBox;
+
+// Re-export tipi esterni usati nelle API pubbliche
+// I consumer possono usarli senza aggiungere dipendenze esplicite
+#[cfg(feature = "hash")]
+pub use argon2::password_hash::SaltString;
+
+#[cfg(feature = "cipher")]
+pub use aes_gcm::Aes256Gcm;
+
+#[cfg(feature = "cipher")]
+pub use aes_gcm::aead::Nonce;

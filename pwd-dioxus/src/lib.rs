@@ -31,3 +31,11 @@ pub use password::StrengthAnalyzer;
 
 #[cfg(feature = "handler")]
 pub use password::{PasswordHandler, EvaluationResult};
+
+// Re-export tipi pwd-types usati nelle API pubbliche
+// I consumer possono usarli senza aggiungere pwd-types alle dipendenze
+#[cfg(any(feature = "analyzer", feature = "handler"))]
+pub use pwd_types::{PasswordScore, PasswordStrength};
+
+#[cfg(feature = "handler")]
+pub use pwd_types::PasswordChangeResult;

@@ -15,9 +15,6 @@ sqlx = ["dep:sqlx", "dep:sqlx-template", "dep:futures", "dep:chrono", "secrecy"]
 # Password generation support (richiede sqlx per SqlxTemplate)
 generator = ["dep:aegis-password-generator", "sqlx"]
 
-# Dioxus form support
-dioxus = ["dep:dioxus", "secrecy"]
-
 [dependencies]
 # Core
 secrecy = { version = "0.10", optional = true }
@@ -30,6 +27,3 @@ chrono = { version = "0.4", optional = true }
 
 # Password generation (optional)
 aegis-password-generator = { version = "0.1", optional = true }
-
-# Dioxus support (optional)
-dioxus = { version = "0.7", optional = true }

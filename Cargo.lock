@@ -3922,7 +3922,6 @@ version = "0.1.0"
 dependencies = [
  "aegis-password-generator",
  "chrono",
- "dioxus",
  "futures",
  "secrecy",
  "sqlx",
