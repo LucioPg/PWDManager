@@ -10,7 +10,7 @@ custom_errors = {path = "custom_errors"}
 pwd-types = { path = "pwd-types", features = ["sqlx", "generator"] }
 pwd-strength = { path = "pwd-strength", features = ["async", "tracing"] }
 pwd-crypto = { path = "pwd-crypto", features = ["full", "base64", "pwd-types"] }
-pwd-dioxus = { path = "pwd-dioxus", features = ["handler", "secret-display", "icons-visibility", "icons-action", "icons-alert"] }
+pwd-dioxus = { path = "pwd-dioxus", features = ["handler", "secret-display", "modal", "icons-visibility", "icons-action", "icons-alert"] }
 tracing = "0.1.44"
 dioxus = { version = "0.7.3", features = ["desktop", "router"] }
 sqlx = { version = "0.8.6", features = ["runtime-tokio", "sqlite", "macros"] }
