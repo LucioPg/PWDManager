@@ -133,7 +133,8 @@ il pc
 
 - [x] creare tabella password
 - [x] creare form di inserimento password
-- [x] creare form di modifica password e dati - manca link al pulsante del tablerow
+- [x] creare form di modifica password e dati
+- [ ] creare hook per salvataggio password nel database ( upsert )
 - [ ] creare dialog di eliminazione password
 - [ ] creare trigger async di ri-cryptaggio password nel caso un utente cambi la password. \[vedi sezione Stored
   Passwords migration]
