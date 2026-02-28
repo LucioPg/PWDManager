@@ -1,3 +1,4 @@
+use crate::backend::db_backend::delete_stored_password;
 use crate::backend::password_utils::get_stored_raw_passwords;
 use crate::components::globals::{StatCard, StatVariant};
 use crate::components::{
@@ -27,6 +28,7 @@ pub fn Dashboard() -> Element {
         });
     // DATA
     let pool = use_context::<SqlitePool>();
+    let pool_clone = pool.clone();
     let mut error = use_signal(|| <Option<DBError>>::None);
     let user_id_option = auth_state.user.cloned().map(|u| u.id);
     let toast = use_toast();
@@ -98,15 +100,42 @@ pub fn Dashboard() -> Element {
     });
 
     // deletion modal
-    let on_confirm_delete = move |_| {
-        let Some(password_id) = (deletion_password_dialog_state.password_id)() else {
-            error.set(Some(DBError::new_general_error(
-                "A Stored Password id is required".to_string(),
-            )));
-            return; // Esci dalla closure se l'ID manca
-        };
-        println!("Deleting password with id: {}", password_id);
-        deletion_password_dialog_state.password_id.set(None);
+    let on_confirm_delete = {
+        // Cattura tutto quello che serve (già clonato)
+        let pool = pool_clone.clone();
+        let stored_raw_passwords_data = stored_raw_passwords_data.clone();
+        let mut deletion_password_dialog_state = deletion_password_dialog_state.clone();
+        let mut error = error.clone();
+
+        move |_| {
+            // Clona PER OGNI invocazione (rende la closure FnMut)
+            let pool = pool.clone();
+            let mut resource = stored_raw_passwords_data.clone();
+            let mut delete_state = deletion_password_dialog_state.clone();
+            let mut error_signal = error.clone();
+
+            let Some(password_id) = (delete_state.password_id)() else {
+                error_signal.set(Some(DBError::new_general_error(
+                    "A Stored Password id is required".to_string(),
+                )));
+                return;
+            };
+
+            spawn(async move {
+                let result = delete_stored_password(&pool, password_id).await;
+                match result {
+                    Ok(_) => {
+                        resource.restart();
+                        delete_state.is_open.set(false);
+                    }
+                    Err(e) => {
+                        error_signal.set(Some(e));
+                    }
+                }
+            });
+
+            deletion_password_dialog_state.password_id.set(None);
+        }
     };
     let cancel_delete = move |_| {};
 

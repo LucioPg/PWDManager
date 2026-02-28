@@ -891,6 +891,23 @@ pub async fn upsert_stored_passwords_batch(
     Ok(())
 }
 
+#[instrument(fields(password_id = id))]
+pub async fn delete_stored_password(pool: &SqlitePool, id: i64) -> Result<(), DBError> {
+    debug!(
+        user_id = id,
+        "Attempting to delete stored password from database"
+    );
+    let _ = query("DELETE FROM passwords WHERE id = ?")
+        .bind(id)
+        .execute(pool)
+        .await
+        .map_err(|e| {
+            DBError::new_password_delete_error(format!("Failed to delete password: {}", e))
+        })?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     // Questo modulo può contenere test per gli helper functions stessi
