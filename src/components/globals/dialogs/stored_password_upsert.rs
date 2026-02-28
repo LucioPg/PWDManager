@@ -122,7 +122,7 @@ pub fn StoredPasswordUpsertDialog(
                 create_stored_data_pipeline_bulk(&pool_clone, user_id, stored_raw_passwords).await;
             match result {
                 Ok(_) => {
-                    // on_confirm.call(());
+                    on_confirm.call(());
                     open_clone.set(false);
                 }
                 Err(e) => {

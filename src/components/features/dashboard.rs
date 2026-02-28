@@ -161,7 +161,7 @@ pub fn Dashboard() -> Element {
         StoredPasswordUpsertDialog {
             // on_confirm: move |_| {(stored_password_dialog_state.is_open).set(false);},
             // on_cancel: move |_| {(stored_password_dialog_state.is_open).set(false);},
-            on_confirm: move |_| {}, // gestito internamente al componente
+            on_confirm: move |_| {stored_raw_passwords_data.clone().restart()},
             on_cancel: move |_| {},  // gestito internamente al componente
 
         }
