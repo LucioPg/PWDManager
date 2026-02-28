@@ -2,16 +2,16 @@ use crate::backend::db_backend::{
     create_user_settings, fetch_all_stored_passwords_for_user, fetch_user_data,
     fetch_user_passwords_generation_settings, save_or_update_user,
 };
+use crate::backend::evaluate_password_strength;
+use crate::backend::password_utils::{
+    create_cipher, create_stored_data_pipeline_bulk, create_stored_data_records,
+    decrypt_stored_password, generate_suggested_password,
+};
+use crate::backend::test_helpers::setup_test_db;
 use pwd_types::{
     DbSecretString, PasswordPreset, PasswordScore, PasswordStrength, StoredPassword,
     StoredRawPassword, UserAuth,
 };
-use crate::backend::password_utils::{
-    create_cipher, create_stored_password_pipeline, create_stored_passwords,
-    decrypt_stored_password, generate_suggested_password,
-};
-use crate::backend::evaluate_password_strength;
-use crate::backend::test_helpers::setup_test_db;
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;
 use std::time::Instant;
@@ -90,18 +90,20 @@ async fn test_encrypt_decrypt_password() {
     // Test 1: Cifra una password
     let raw_password = SecretString::new("MySecurePassword456".into());
     let location = "https://example.com".to_string();
-    let notes = Some("Test password".to_string());
-
-    create_stored_password_pipeline(
-        &pool,
+    let notes = Some(SecretString::new("Test password".into()));
+    let stored_raw_password = StoredRawPassword {
+        id: None,
         user_id,
-        location.clone(),
-        raw_password.clone(),
-        notes.clone(),
-        None,
-    )
-    .await
-    .expect("Failed to encrypt password");
+        location: SecretString::new(location.to_string().into()),
+        password: raw_password.clone(),
+        notes: notes.clone(),
+        score: None,
+        created_at: None,
+    };
+    let stored_raw_passwords = vec![stored_raw_password];
+    create_stored_data_pipeline_bulk(&pool, user_id, stored_raw_passwords)
+        .await
+        .expect("Failed to encrypt password");
 
     // Test 2: Recupera la password cifrata
     let stored_passwords = fetch_all_stored_passwords_for_user(&pool, user_id)
@@ -126,7 +128,7 @@ async fn test_encrypt_decrypt_password() {
     // Verifica che notes siano crittografate (non plain text)
     if let Some(notes_enc) = &stored_password.notes {
         let notes_bytes: &[u8] = notes_enc.expose_secret().as_ref();
-        let notes_plain: &[u8] = notes.as_ref().unwrap().as_bytes();
+        let notes_plain: &[u8] = notes.as_ref().unwrap().expose_secret().as_bytes();
         assert_ne!(notes_bytes, notes_plain, "Notes should be encrypted");
     }
 
@@ -216,7 +218,8 @@ async fn test_encrypt_decrypt_password_rayon() {
         stored_raw_passwords.push(stored_password_raw)
     }
 
-    let result = create_stored_passwords(cipher.unwrap(), user_auth, stored_raw_passwords).await;
+    let result =
+        create_stored_data_records(cipher.unwrap(), user_auth, stored_raw_passwords.clone()).await;
     match result {
         Ok(sp) => {
             assert_eq!(
@@ -229,18 +232,10 @@ async fn test_encrypt_decrypt_password_rayon() {
             }
         }
         Err(e) => panic!("Failed to create stored passwords: {:?}", e),
-    }
-
-    create_stored_password_pipeline(
-        &pool,
-        user_id,
-        location.clone(),
-        raw_password.clone(),
-        notes.clone(),
-        None,
-    )
-    .await
-    .expect("Failed to encrypt password");
+    };
+    create_stored_data_pipeline_bulk(&pool, user_id, stored_raw_passwords)
+        .await
+        .expect("Failed to encrypt password");
 
     // Test 2: Recupera la password cifrata
     let stored_passwords = fetch_all_stored_passwords_for_user(&pool, user_id)
@@ -353,16 +348,19 @@ async fn test_decrypt_invalid_nonce() {
 
     // Crea una password valida
     let raw_password = SecretString::new("TestPassword".into());
-    create_stored_password_pipeline(
-        &pool,
+    let stored_raw_password = StoredRawPassword {
+        id: None,
         user_id,
-        "https://test.com".to_string(),
-        raw_password,
-        None,
-        None,
-    )
-    .await
-    .expect("Failed to encrypt password");
+        location: SecretString::new("https://test.com".to_string().into()),
+        password: raw_password,
+        notes: None,
+        score: None,
+        created_at: None,
+    };
+    let stored_raw_passwords = vec![stored_raw_password];
+    create_stored_data_pipeline_bulk(&pool, user_id, stored_raw_passwords)
+        .await
+        .expect("Failed to encrypt password");
 
     let mut stored_passwords = fetch_all_stored_passwords_for_user(&pool, user_id)
         .await
@@ -416,20 +414,22 @@ async fn test_multiple_passwords_for_same_user() {
         ("https://site2.com", "Password2"),
         ("https://site3.com", "VeryLongSecurePassword123!"),
     ];
-
+    let mut stored_raw_passwords: Vec<StoredRawPassword> = vec![];
     for (location, raw_pwd) in &passwords {
-        create_stored_password_pipeline(
-            &pool,
+        let stored_raw_password = StoredRawPassword {
+            id: None,
             user_id,
-            location.to_string(),
-            SecretString::new(raw_pwd.to_string().into()),
-            None,
-            None,
-        )
+            location: SecretString::new(location.to_string().into()),
+            password: SecretString::new(raw_pwd.to_string().into()),
+            notes: None,
+            score: None,
+            created_at: None,
+        };
+        stored_raw_passwords.push(stored_raw_password);
+    }
+    create_stored_data_pipeline_bulk(&pool, user_id, stored_raw_passwords)
         .await
         .expect("Failed to encrypt password");
-    }
-
     // Recupera tutte le password
     let stored_passwords = fetch_all_stored_passwords_for_user(&pool, user_id)
         .await
@@ -479,19 +479,22 @@ async fn test_multiple_passwords_for_same_user_with_predefined_strength() {
             ),
         ),
     ];
-
+    let mut stored_raw_passwords: Vec<StoredRawPassword> = vec![];
     for (location, raw_pwd, strength) in &passwords {
-        create_stored_password_pipeline(
-            &pool,
+        let stored_raw_password = StoredRawPassword {
+            id: None,
             user_id,
-            location.to_string(),
-            SecretString::new(raw_pwd.to_string().into()),
-            Some("Ciao io sono una nota".to_string()),
-            strength.score,
-        )
+            location: SecretString::new(location.to_string().into()),
+            password: SecretString::new(raw_pwd.to_string().into()),
+            notes: Some(SecretString::new("Ciao io sono una nota".into())),
+            score: strength.score,
+            created_at: None,
+        };
+        stored_raw_passwords.push(stored_raw_password);
+    }
+    create_stored_data_pipeline_bulk(&pool, user_id, stored_raw_passwords)
         .await
         .expect("Failed to encrypt password");
-    }
 
     // Recupera tutte le password
     let stored_passwords = fetch_all_stored_passwords_for_user(&pool, user_id)
@@ -522,16 +525,19 @@ async fn test_encrypted_password_is_different_from_original() {
     let user_id = create_test_user(&pool, "testuser4", "MasterPass789!").await;
 
     let raw_password = "MyPassword123";
-    create_stored_password_pipeline(
-        &pool,
+    let stored_raw_password = StoredRawPassword {
+        id: None,
         user_id,
-        "https://encrypted.com".to_string(),
-        SecretString::new(raw_password.into()),
-        None,
-        None,
-    )
-    .await
-    .expect("Failed to encrypt password");
+        location: SecretString::new("https://encrypted.com".to_string().into()),
+        password: SecretString::new(raw_password.into()),
+        notes: None,
+        score: None,
+        created_at: None,
+    };
+    let stored_raw_passwords = vec![stored_raw_password];
+    create_stored_data_pipeline_bulk(&pool, user_id, stored_raw_passwords)
+        .await
+        .expect("Failed to encrypt password");
 
     let stored_passwords = fetch_all_stored_passwords_for_user(&pool, user_id)
         .await
@@ -562,17 +568,19 @@ async fn test_location_and_notes_are_encrypted() {
     let raw_password = SecretString::new("MySecurePassword456".into());
     let location = "https://secret-location.com".to_string();
     let notes = Some("Confidential notes".to_string());
-
-    create_stored_password_pipeline(
-        &pool,
+    let stored_raw_password = StoredRawPassword {
+        id: None,
         user_id,
-        location.clone(),
-        raw_password.clone(),
-        notes.clone(),
-        None,
-    )
-    .await
-    .expect("Failed to encrypt data");
+        location: SecretString::new(location.clone().into()),
+        password: raw_password.clone(),
+        notes: Some(SecretString::new(notes.clone().unwrap().into())),
+        score: None,
+        created_at: None,
+    };
+    let stored_raw_passwords = vec![stored_raw_password];
+    create_stored_data_pipeline_bulk(&pool, user_id, stored_raw_passwords)
+        .await
+        .expect("Failed to encrypt data");
 
     let stored_passwords = fetch_all_stored_passwords_for_user(&pool, user_id)
         .await
@@ -610,18 +618,20 @@ async fn test_decrypt_location_and_notes_roundtrip() {
 
     let raw_password = SecretString::new("MyPassword".into());
     let location = "MySecretService".to_string();
-    let notes = Some("My secret notes".to_string());
-
-    create_stored_password_pipeline(
-        &pool,
+    let notes = Some(SecretString::new("My secret notes".into()));
+    let stored_raw_password = StoredRawPassword {
+        id: None,
         user_id,
-        location.clone(),
-        raw_password.clone(),
-        notes.clone(),
-        None,
-    )
-    .await
-    .expect("Failed to encrypt");
+        location: SecretString::new(location.clone().into()),
+        password: raw_password.clone(),
+        notes: notes.clone(),
+        score: None,
+        created_at: None,
+    };
+    let stored_raw_passwords = vec![stored_raw_password];
+    create_stored_data_pipeline_bulk(&pool, user_id, stored_raw_passwords)
+        .await
+        .expect("Failed to encrypt data");
 
     // Usa get_stored_raw_passwords che recupera correttamente l'UserAuth dal DB
     let decrypted = crate::backend::password_utils::get_stored_raw_passwords(&pool, user_id)
@@ -633,7 +643,7 @@ async fn test_decrypt_location_and_notes_roundtrip() {
     // Confronta notes: Option<SecretString> vs Option<String>
     match (&decrypted[0].notes, &notes) {
         (Some(dec_notes), Some(exp_notes)) => {
-            assert_eq!(dec_notes.expose_secret(), exp_notes);
+            assert_eq!(dec_notes.expose_secret(), exp_notes.expose_secret());
         }
         (None, None) => {}
         _ => panic!(

@@ -9,24 +9,24 @@
 
 use crate::backend::db_backend::{
     fetch_all_stored_passwords_for_user, fetch_user_auth_from_id, save_or_update_stored_password,
+    upsert_stored_passwords_batch,
+};
+use crate::backend::evaluate_password_strength;
+use aes_gcm::aead::{Aead, Nonce, OsRng};
+use aes_gcm::{Aes256Gcm, KeyInit};
+use argon2::password_hash::{PasswordHash, Salt};
+use custom_errors::DBError;
+use pwd_crypto::{
+    create_cipher as crypto_create_cipher, create_nonce,
+    decrypt_optional_to_string as crypto_decrypt_optional_to_string,
+    decrypt_to_string as crypto_decrypt_to_string,
+    encrypt_optional_string as crypto_encrypt_optional_string,
+    encrypt_string as crypto_encrypt_string, nonce_from_vec,
 };
 use pwd_types::{
     AegisPasswordConfig, DbSecretString, PasswordGeneratorConfig, PasswordPreset, PasswordScore,
     StoredPassword, StoredRawPassword, UserAuth,
 };
-use crate::backend::evaluate_password_strength;
-use pwd_crypto::{
-    create_cipher as crypto_create_cipher,
-    create_nonce, nonce_from_vec,
-    encrypt_string as crypto_encrypt_string,
-    encrypt_optional_string as crypto_encrypt_optional_string,
-    decrypt_to_string as crypto_decrypt_to_string,
-    decrypt_optional_to_string as crypto_decrypt_optional_to_string,
-};
-use aes_gcm::aead::{Aead, Nonce, OsRng};
-use aes_gcm::{Aes256Gcm, KeyInit};
-use argon2::password_hash::{Salt, PasswordHash};
-use custom_errors::DBError;
 use rayon::prelude::*;
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;
@@ -44,9 +44,7 @@ pub fn generate_suggested_password(custom_config: Option<PasswordGeneratorConfig
             let sym_count = pwd.chars().filter(|c| !c.is_alphanumeric()).count();
 
             // 2. Controlla se contiene simboli vietati
-            let has_excluded = pwd
-                .chars()
-                .any(|c| config.excluded_symbols.contains(&c));
+            let has_excluded = pwd.chars().any(|c| config.excluded_symbols.contains(&c));
 
             if sym_count == config.symbols as usize && !has_excluded {
                 break pwd;
@@ -144,6 +142,25 @@ fn create_password_with_cipher_sync(
     Ok(SecretBox::new(cipher_vec.into()))
 }
 
+/// Pipeline completa per salvare le passwords nel database in bulk/batch.
+pub async fn create_stored_data_pipeline_bulk(
+    pool: &SqlitePool,
+    user_id: i64,
+    stored_raw_passwords: Vec<StoredRawPassword>,
+) -> Result<(), DBError> {
+    // 1. Recupero credenziali e setup crittografico
+    let user_auth = fetch_user_auth_from_id(pool, user_id).await?;
+    let salt = get_salt(&user_auth.password);
+    let cipher = create_cipher(&salt, &user_auth)?;
+    // 2. Creazione StoredPassword
+    let stored_passwords =
+        create_stored_data_records(cipher, user_auth, stored_raw_passwords).await?;
+    // 3. Salvataggio in batch
+    upsert_stored_passwords_batch(&pool, stored_passwords).await?;
+
+    Ok(())
+}
+
 /// Pipeline completa per salvare una nuova password nel database.
 pub async fn create_stored_data_pipeline(
     pool: &SqlitePool,
@@ -232,17 +249,16 @@ pub async fn create_stored_data_records(
 
                 // Cripta password
                 let password_nonce = create_nonce();
-                let encrypted_password = create_password_with_cipher_sync(
-                    &srp.password, &password_nonce, &cipher
-                ).map_err(|_| {
-                    DBError::new_cipher_encryption_error("Cipher error".to_string())
-                })?;
+                let encrypted_password =
+                    create_password_with_cipher_sync(&srp.password, &password_nonce, &cipher)
+                        .map_err(|_| {
+                            DBError::new_cipher_encryption_error("Cipher error".to_string())
+                        })?;
 
                 // Cripta notes
                 let notes_str = srp.notes.as_ref().map(|n| n.expose_secret().to_string());
-                let (encrypted_notes, notes_nonce) = encrypt_optional_string(
-                    notes_str.as_deref(), &cipher
-                )?;
+                let (encrypted_notes, notes_nonce) =
+                    encrypt_optional_string(notes_str.as_deref(), &cipher)?;
 
                 // Calcola score
                 let score_evaluation: PasswordScore = srp.score.unwrap_or_else(|| {
