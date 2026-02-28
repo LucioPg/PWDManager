@@ -134,8 +134,8 @@ il pc
 - [x] creare tabella password
 - [x] creare form di inserimento password
 - [x] creare form di modifica password e dati
-- [ ] creare hook per salvataggio password nel database ( upsert )
-- [ ] creare dialog di eliminazione password
+- [x] creare hook per salvataggio password nel database ( upsert )
+- [x] creare dialog di eliminazione password
 - [ ] creare trigger async di ri-cryptaggio password nel caso un utente cambi la password. \[vedi sezione Stored
   Passwords migration]
 - [x] aggiungere un "diversificatore" per chiave AES prelevato dalla stringa di creazione dell'utente per evitare il
@@ -179,4 +179,4 @@ il pc
 
 - [ ] Creare funzione di fetch per temp_old_password.
 - [ ] Creare meccanismo di lavoro parallelo con rayon e tokio spawn_blocking. parzialmente fatto
-- [ ] Creare funzione di aggregazione delle query per salvare in batch.
+- [x] Creare funzione di aggregazione delle query per salvare in batch.
