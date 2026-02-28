@@ -1,11 +1,13 @@
-use pwd_types::{PasswordScore, StoredRawPassword};
-use crate::components::StoredPasswordUpsertDialogState;
+use crate::components::features::dashboard::{
+    DeleteStoredPasswordDialogState, StoredPasswordUpsertDialogState,
+};
 use crate::components::globals::form_field::FormSecret;
+use crate::components::globals::password_handler::StrengthAnalyzer;
 use crate::components::globals::secret_display::SecretDisplay;
 use crate::components::globals::secret_notes_tooltip::SecretNotesTooltip;
-use crate::components::globals::password_handler::StrengthAnalyzer;
 use crate::components::globals::svgs::{BurgerIcon, DeleteIcon, EditIcon};
 use dioxus::prelude::*;
+use pwd_types::{PasswordScore, StoredRawPassword};
 use secrecy::ExposeSecret;
 
 /// Props for the StoredRawPasswordRow component
@@ -27,6 +29,7 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
     let password_id = props.stored_raw_password.id.unwrap_or(0);
     let store_raw_password_clone = props.stored_raw_password.clone();
     let mut stored_password_dialog_state = use_context::<StoredPasswordUpsertDialogState>();
+    let mut deletion_password_dialog_state = use_context::<DeleteStoredPasswordDialogState>();
     // Get strength from score for StrengthAnalyzer
     let strength =
         PasswordScore::get_strength(store_raw_password_clone.score.map(|s| s.value() as i64));
@@ -111,7 +114,12 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                 button {
                     class: "pwd-row-action-btn pwd-delete-btn",
                     r#type: "button",
-                    onclick: move |_| props.on_delete.call(password_id),
+                    onclick: move |_| {
+                        deletion_password_dialog_state.is_open.set(true);
+                        deletion_password_dialog_state.password_id.set(Some(password_id));
+                        println!("[modal] Deleting password with id: {}", password_id);
+                        props.on_delete.call(password_id)
+                    },
                     // Trash icon (outline)
                     DeleteIcon {}
                 }

@@ -1,8 +1,8 @@
 use crate::backend::password_utils::get_stored_raw_passwords;
 use crate::components::globals::{StatCard, StatVariant};
 use crate::components::{
-    StoredPasswordUpsertDialog, StoredPasswordUpsertDialogState, StoredRawPasswordsTable,
-    ToastHubState, show_toast_error, use_toast,
+    StoredPasswordDeletionDialog, StoredPasswordUpsertDialog, StoredRawPasswordsTable,
+    show_toast_error, use_toast,
 };
 use custom_errors::DBError;
 use dioxus::prelude::*;
@@ -19,7 +19,12 @@ pub fn Dashboard() -> Element {
             is_open: Signal::new(false),
             current_stored_raw_password: Signal::new(None::<StoredRawPassword>),
         });
-
+    #[allow(unused_mut)]
+    let mut deletion_password_dialog_state =
+        use_context_provider(|| DeleteStoredPasswordDialogState {
+            is_open: Signal::new(false),
+            password_id: Signal::new(Option::<i64>::None),
+        });
     // DATA
     let pool = use_context::<SqlitePool>();
     let mut error = use_signal(|| <Option<DBError>>::None);
@@ -91,6 +96,20 @@ pub fn Dashboard() -> Element {
                     .collect(),
             })
     });
+
+    // deletion modal
+    let on_confirm_delete = move |_| {
+        let Some(password_id) = (deletion_password_dialog_state.password_id)() else {
+            error.set(Some(DBError::new_general_error(
+                "A Stored Password id is required".to_string(),
+            )));
+            return; // Esci dalla closure se l'ID manca
+        };
+        println!("Deleting password with id: {}", password_id);
+        deletion_password_dialog_state.password_id.set(None);
+    };
+    let cancel_delete = move |_| {};
+
     use_effect(move || {
         if let Some(e) = error.read().deref() {
             show_toast_error(format!("Error fetching user data: {}", e), toast.clone());
@@ -165,5 +184,22 @@ pub fn Dashboard() -> Element {
             on_cancel: move |_| {},  // gestito internamente al componente
 
         }
+        StoredPasswordDeletionDialog {
+            open: deletion_password_dialog_state.is_open.clone(),
+            on_confirm: on_confirm_delete,
+            on_cancel: cancel_delete
+        }
     }
+}
+
+#[derive(Clone)]
+pub struct StoredPasswordUpsertDialogState {
+    pub is_open: Signal<bool>,
+    pub current_stored_raw_password: Signal<Option<StoredRawPassword>>,
+}
+
+#[derive(Clone)]
+pub struct DeleteStoredPasswordDialogState {
+    pub is_open: Signal<bool>,
+    pub password_id: Signal<Option<i64>>,
 }
