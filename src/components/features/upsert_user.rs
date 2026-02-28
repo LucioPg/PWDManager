@@ -1,7 +1,7 @@
 use crate::auth::{AuthState, User};
+use crate::backend::avatar_utils::get_user_avatar_with_default;
 use crate::backend::db_backend::{delete_user, register_user_with_settings, save_or_update_user};
 use crate::backend::ui_utils::pick_and_process_avatar;
-use crate::backend::avatar_utils::get_user_avatar_with_default;
 use crate::components::{
     ActionButton, AvatarSelector, AvatarSize, ButtonSize, ButtonType, ButtonVariant, FormField,
     FormSecret, InputType, PasswordHandler, UserDeletionDialog, schedule_toast_success,
@@ -11,7 +11,7 @@ use dioxus::prelude::*;
 use secrecy::ExposeSecret;
 use sqlx::SqlitePool;
 
-use pwd_types::PasswordPreset;
+use pwd_types::{PasswordChangeResult, PasswordPreset};
 use tracing::instrument;
 
 // #[derive(Props, Clone, PartialEq, Debug, Default)]
@@ -55,7 +55,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
             .unwrap_or_default()
     });
     #[allow(unused_mut)]
-    let mut evaluated_password = use_signal(|| Option::<FormSecret>::None);
+    let mut evaluated_password = use_signal(|| Option::<PasswordChangeResult>::None);
     let mut avatar = use_signal(|| {
         user_to_edit
             .as_ref()
@@ -175,17 +175,17 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     };
     let on_submit = move |_| {
         // In modalità update, evaluated_password può essere None (password non cambiata)
-        let pwd = evaluated_password.read().clone();
+        let pwd_result = evaluated_password.read().clone();
 
         // Per la registrazione, la password deve essere validata
-        if !is_updating && pwd.is_none() {
+        if !is_updating && pwd_result.is_none() {
             error.set(Some("Please complete password validation".to_string()));
             return;
         }
 
         // Per la registrazione, la password non può essere vuota
-        if let Some(ref p) = pwd {
-            if !is_updating && p.expose_secret().trim().is_empty() {
+        if let Some(ref result) = pwd_result {
+            if !is_updating && result.password.expose_secret().trim().is_empty() {
                 error.set(Some("Password is required for registration".to_string()));
                 return;
             }
@@ -197,11 +197,11 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         let mut auth_state = auth_state_submit_clone.clone();
 
         // In modalità update: se password vuota o None → mantieni password attuale
-        let password_to_save = pwd.and_then(|p| {
-            if p.expose_secret().trim().is_empty() {
+        let password_to_save = pwd_result.and_then(|result| {
+            if result.password.expose_secret().trim().is_empty() {
                 None // Password vuota → non cambiare
             } else {
-                Some(p.0) // Password presente → aggiorna
+                Some(result.password) // Password presente → aggiorna
             }
         });
 

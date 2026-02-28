@@ -1,11 +1,11 @@
 use super::base_modal::{BaseModal, ModalVariant};
-use pwd_types::StoredRawPassword;
 use crate::components::{
     ActionButton, ButtonSize, ButtonType, ButtonVariant, FormField, FormSecret, InputType,
-    PasswordHandler,
+    PasswordHandler, show_toast_error, use_toast,
 };
 use dioxus::prelude::*;
-use secrecy::ExposeSecret;
+use pwd_types::{PasswordChangeResult, StoredRawPassword};
+use secrecy::{ExposeSecret, SecretString};
 
 #[derive(Clone)]
 pub struct StoredPasswordUpsertDialogState {
@@ -21,13 +21,20 @@ pub fn StoredPasswordUpsertDialog(
     #[props(default)]
     on_cancel: EventHandler<()>,
 ) -> Element {
+    let toast = use_toast();
+    let mut error = use_signal(|| Option::<String>::None);
+    let user_state = use_context::<crate::auth::AuthState>();
+    let user = user_state.get_user();
+    if user.is_none() {
+        error.set(Some("User not logged in".to_string()));
+    }
     #[allow(unused_mut)]
     let mut stored_password_dialog_state = use_context::<StoredPasswordUpsertDialogState>();
     let mut open_clone = stored_password_dialog_state.is_open.clone();
     let mut is_new = use_signal(|| false);
     let mut location_sig = use_signal(String::new);
     let mut notes_sig = use_signal(|| None::<String>);
-    let mut evaluated_password = use_signal(|| Option::<FormSecret>::None);
+    let mut evaluated_password = use_signal(|| Option::<PasswordChangeResult>::None);
 
     // use_effect per sincronizzare i campi quando il dialog si apre
     use_effect(move || {
@@ -46,7 +53,14 @@ pub fn StoredPasswordUpsertDialog(
             }
         }
     });
-
+    use_effect(move || {
+        let mut this_error = error.clone();
+        let toast = toast.clone();
+        if let Some(msg) = this_error() {
+            show_toast_error(format!("Error saving user: {}", msg), toast);
+            this_error.set(None);
+        }
+    });
     // Leggi created_at direttamente dal signal per il titolo
     let created_at = (stored_password_dialog_state.current_stored_raw_password)()
         .and_then(|p| p.created_at)
@@ -59,6 +73,45 @@ pub fn StoredPasswordUpsertDialog(
             format!("Edit Stored Password: \"{}\"", location_sig()),
             "alert-warning".to_string(),
         )
+    };
+
+    let on_submit = move |_| {
+        if user.is_none() {
+            error.set(Some("User not logged in".to_string()));
+            return;
+        }
+        let current = stored_password_dialog_state
+            .current_stored_raw_password
+            .clone();
+        let user_id = user.clone().unwrap().id;
+        let stored_password_id = match current() {
+            Some(data) => data.id,
+            None => None,
+        };
+        let location = location_sig.clone();
+        let note = notes_sig.clone();
+        let evaluated_password_reader = evaluated_password.read().clone();
+        let (password_to_be_saved, score) = if let Some(ref result) = evaluated_password_reader {
+            (result.password.clone(), result.score)
+        } else {
+            error.set(Some("Password cannot be empty".to_string()));
+            return;
+        };
+        println!(
+            "Location: {}\nNote: {}\nPassword: {}",
+            location(),
+            note().unwrap_or("".to_string()),
+            password_to_be_saved.expose_secret().to_string()
+        );
+        let stored_raw_password = StoredRawPassword {
+            id: stored_password_id,
+            user_id,
+            location: SecretString::new(location().into()),
+            notes: note().map(|n| SecretString::new(n.into())),
+            password: password_to_be_saved,
+            created_at: None,
+            score,
+        };
     };
 
     rsx! {
@@ -89,7 +142,7 @@ pub fn StoredPasswordUpsertDialog(
                 p { class: "text-center", "{created_at}" }
             }
 
-            form { class: "flex flex-col gap-3",
+            form { onsubmit: on_submit, class: "flex flex-col gap-3",
                 FormField {
                     label: "Location".to_string(),
                     input_type: InputType::Text,
@@ -123,9 +176,7 @@ pub fn StoredPasswordUpsertDialog(
                     required: false,
                     alphanumeric_only: false,
                 }
-            }
-
-            // Action buttons
+                            // Action buttons
             div {
                 class: "modal-action",
 
@@ -143,15 +194,17 @@ pub fn StoredPasswordUpsertDialog(
                 ActionButton {
                     text: "Save".to_string(),
                     variant: ButtonVariant::Ghost,
-                    button_type: ButtonType::Button,
+                    button_type: ButtonType::Submit,
                     size: ButtonSize::Normal,
                     additional_class: "text-success-600 hover:bg-success-50".to_string(),
                     on_click: move |_| {
-                        on_confirm.call(());
-                        open_clone.set(false);
+                        // definito dal on_submit
                     },
                 }
             }
+            }
+
+
         }
     }
 }

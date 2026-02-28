@@ -18,8 +18,8 @@ use tokio_util::sync::CancellationToken;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct PasswordHandlerProps {
-    /// Callback quando la password cambia (solo FormSecret per backward compat)
-    pub on_password_change: Callback<FormSecret>,
+    /// Callback quando la password cambia, include password, score, strength e reasons
+    pub on_password_change: Callback<PasswordChangeResult>,
     #[props(default = true)]
     pub password_required: bool,
     pub initial_password: Option<FormSecret>,
@@ -81,9 +81,9 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
         });
     });
 
-    // Callback per cambiamento password (converte PasswordChangeResult → FormSecret)
+    // Callback per cambiamento password - passa l'intero risultato al consumer
     let on_change = use_callback(move |result: PasswordChangeResult| {
-        props.on_password_change.call(FormSecret(result.password));
+        props.on_password_change.call(result);
     });
 
     rsx! {
