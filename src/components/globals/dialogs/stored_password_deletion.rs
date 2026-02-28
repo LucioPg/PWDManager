@@ -64,18 +64,6 @@ pub fn StoredPasswordDeletionDialog(
             // Action buttons
             div {
                 class: "modal-action",
-
-                ActionButton {
-                    text: "Abort".to_string(),
-                    variant: ButtonVariant::Secondary,
-                    button_type: ButtonType::Button,
-                    size: ButtonSize::Normal,
-                    on_click: move |_| {
-                        on_cancel.call(());
-                        open_clone.set(false);
-                    },
-                }
-
                 ActionButton {
                     text: "Delete".to_string(),
                     variant: ButtonVariant::Ghost,
@@ -87,6 +75,18 @@ pub fn StoredPasswordDeletionDialog(
                         open_clone.set(false);
                     },
                 }
+                ActionButton {
+                    text: "Abort".to_string(),
+                    variant: ButtonVariant::Secondary,
+                    button_type: ButtonType::Button,
+                    size: ButtonSize::Normal,
+                    on_click: move |_| {
+                        on_cancel.call(());
+                        open_clone.set(false);
+                    },
+                }
+
+
             }
         }
     }
