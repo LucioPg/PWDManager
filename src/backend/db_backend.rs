@@ -1,12 +1,10 @@
 ﻿#![allow(dead_code)]
 use crate::backend::init_queries::QUERIES;
-use pwd_types::{
-    PasswordGeneratorConfig, PasswordPreset, StoredPassword, UserAuth,
-};
 use crate::backend::settings_types::UserSettings;
 use crate::backend::utils::verify_password;
 use custom_errors::{AuthError, DBError};
 use dioxus::prelude::*;
+use pwd_types::{PasswordGeneratorConfig, PasswordPreset, StoredPassword, UserAuth};
 use secrecy::{ExposeSecret, SecretString};
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqliteRow};
 use sqlx::{Row, query};
@@ -849,6 +847,48 @@ WHERE us.user_id = ?
     })?;
 
     Ok(row)
+}
+
+/// Upsert batch di StoredPassword usando una transazione.
+/// Se un record fallisce, tutta la transazione viene rollbackata.
+#[instrument(skip(pool, passwords))]
+pub async fn upsert_stored_passwords_batch(
+    pool: &SqlitePool,
+    passwords: Vec<StoredPassword>,
+) -> Result<(), DBError> {
+    if passwords.is_empty() {
+        return Ok(());
+    }
+
+    debug!("Batch upserting {} passwords", passwords.len());
+
+    // Inizia transazione - RAII: rollback automatico se droppata senza commit
+    let mut tx = pool.begin().await.map_err(|e| {
+        DBError::new_transaction_error(format!("Failed to begin transaction: {}", e))
+    })?;
+
+    for stored_password in &passwords {
+        // Validazione
+        if stored_password.password.expose_secret().is_empty()
+            || stored_password.location.expose_secret().is_empty()
+        {
+            return Err(DBError::new_password_save_error(
+                "Password and location cannot be empty".into(),
+            ));
+        }
+
+        // Upsert singolo dentro la transazione
+        StoredPassword::upsert_by_id(stored_password, &mut *tx)
+            .await
+            .map_err(|e| DBError::new_password_save_error(format!("Upsert failed: {}", e)))?;
+    }
+
+    // Commit - solo se tutto è andato bene
+    tx.commit().await.map_err(|e| {
+        DBError::new_transaction_error(format!("Failed to commit transaction: {}", e))
+    })?;
+
+    Ok(())
 }
 
 #[cfg(test)]
