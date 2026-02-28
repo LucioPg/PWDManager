@@ -162,6 +162,7 @@ pub async fn create_stored_data_pipeline_bulk(
 }
 
 /// Pipeline completa per salvare una nuova password nel database.
+#[deprecated]
 pub async fn create_stored_data_pipeline(
     pool: &SqlitePool,
     user_id: i64,
@@ -215,6 +216,7 @@ pub async fn create_stored_data_pipeline(
 }
 
 /// Deprecated: Use `create_stored_data_pipeline` instead
+#[deprecated]
 pub async fn create_stored_password_pipeline(
     pool: &SqlitePool,
     user_id: i64,

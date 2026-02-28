@@ -1,4 +1,5 @@
 use super::base_modal::{BaseModal, ModalVariant};
+use crate::backend::password_utils::create_stored_data_pipeline_bulk;
 use crate::components::{
     ActionButton, ButtonSize, ButtonType, ButtonVariant, FormField, FormSecret, InputType,
     PasswordHandler, show_toast_error, use_toast,
@@ -6,6 +7,7 @@ use crate::components::{
 use dioxus::prelude::*;
 use pwd_types::{PasswordChangeResult, StoredRawPassword};
 use secrecy::{ExposeSecret, SecretString};
+use sqlx::SqlitePool;
 
 #[derive(Clone)]
 pub struct StoredPasswordUpsertDialogState {
@@ -21,6 +23,7 @@ pub fn StoredPasswordUpsertDialog(
     #[props(default)]
     on_cancel: EventHandler<()>,
 ) -> Element {
+    let pool = use_context::<SqlitePool>();
     let toast = use_toast();
     let mut error = use_signal(|| Option::<String>::None);
     let user_state = use_context::<crate::auth::AuthState>();
@@ -112,6 +115,22 @@ pub fn StoredPasswordUpsertDialog(
             created_at: None,
             score,
         };
+        let stored_raw_passwords = vec![stored_raw_password];
+        let pool_clone = pool.clone();
+        spawn(async move {
+            let result =
+                create_stored_data_pipeline_bulk(&pool_clone, user_id, stored_raw_passwords).await;
+            match result {
+                Ok(_) => {
+                    // on_confirm.call(());
+                    open_clone.set(false);
+                }
+                Err(e) => {
+                    error.set(Some(e.to_string()));
+                }
+            }
+        });
+        // let result = create_stored_data_pipeline_bulk(&pool, user_id, stored_raw_passwords).await;
     };
 
     rsx! {
