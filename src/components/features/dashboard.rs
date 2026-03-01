@@ -148,9 +148,12 @@ pub fn Dashboard() -> Element {
 
     rsx! {
         div { class: "content-container animate-fade-in",
-            div { class: "mb-8",
-                h1 { class: "text-h2", "Welcome, {username}!" }
-                p { class: "text-body mt-2", "Manage your passwords and secure your digital life" }
+            div { class: "mb-8 flex justify-between items-start",
+                div {
+                    h1 { class: "text-h2", "Welcome, {username}!" }
+                    p { class: "text-body mt-2", "Manage your passwords and secure your digital life" }
+                }
+                DashboardMenu {}
             }
             div { class: "stats-grid",
                 StatCard {
@@ -190,8 +193,7 @@ pub fn Dashboard() -> Element {
                     on_click: move |_| current_filter.clone().set(Some(PasswordStrength::WEAK))
                 }
             }
-                        div { class: "card-no-border items-end gap-2",
-                DashboardMenu {}
+                        div { class: "card-no-border items-end",
                 button { class: "btn btn-success",
                     r#type: "button",
                     onclick: move |_| {

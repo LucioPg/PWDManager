@@ -10,10 +10,10 @@ pub fn DashboardMenu() -> Element {
             div {
                 tabindex: "0",
                 role: "button",
-                class: "btn btn-ghost btn-sm btn-circle",
+                class: "btn btn-ghost btn-sm btn-circle flex items-center justify-center",
                 "aria-label": "Menu azioni",
                 // Three dots icon (centered)
-                span { class: "text-lg font-bold tracking-tighter", "..." }
+                span { class: "text-lg font-bold leading-none", "..." }
             }
 
             // Dropdown content
