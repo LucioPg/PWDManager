@@ -130,8 +130,12 @@ il pc
 - [x] decidere se offuscare e criptare anche location e note -- Fatto
 - [x] lo sfondo scala male: allungando la finestra la scritta del logo viene tagliata, mentre il sotto testo rimane al
   centro sovrapponendosi alla scritta del logo.
-
-## Gestione password registrate
+- [ ] dashboard aggiungere pulsante per cancellare tutte le password salvate -- nel caso ci fosse errore di decrypting
+  irreversibile
+- [ ] dashboard aggiungere pulsante di export in vari formati (csv, json, xml)
+- [ ] dashboard aggiungere pulsante di import da vari formati (csv, json, xml)
+-
+- ## Gestione password registrate
 
 - [x] creare tabella password
 - [x] creare form di inserimento password
@@ -182,3 +186,7 @@ il pc
 - [ ] Creare funzione di fetch per temp_old_password.
 - [ ] Creare meccanismo di lavoro parallelo con rayon e tokio spawn_blocking. parzialmente fatto
 - [x] Creare funzione di aggregazione delle query per salvare in batch.
+
+#### Import/Export
+
+- [ ] Creare funzione di import/export in vari formati (csv, json, xml)
