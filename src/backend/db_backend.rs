@@ -18,6 +18,8 @@ pub struct UserUpdate {
     pub username: Option<String>,
     pub password: Option<SecretString>,
     pub avatar: Option<Vec<u8>>,
+    /// Vecchia password hash da salvare in temp_old_password per recovery
+    pub temp_old_password: Option<String>,
 }
 
 impl UserUpdate {
@@ -37,6 +39,9 @@ impl UserUpdate {
         }
         if self.avatar.is_some() {
             fields.push("avatar = ?");
+        }
+        if self.temp_old_password.is_some() {
+            fields.push("temp_old_password = ?");
         }
         fields
     }
@@ -85,41 +90,6 @@ pub async fn init_db() -> Result<SqlitePool, DBError> {
     Ok(pool)
 }
 
-/// Salva temporaneamente la vecchia password dell'utente prima di un aggiornamento.
-///
-/// Questa funzione viene utilizzata internamente da `prepare_user_update` per
-/// preservare la password corrente prima di applicare un aggiornamento.
-/// Il valore viene salvato nel campo `temp_old_password` della tabella users.
-///
-/// # Parametri
-///
-/// * `pool` - Pool SQLite per la connessione al database
-/// * `user_id` - ID dell'utente di cui salvare la password temporanea
-/// * `password` - Password corrente da salvare temporaneamente
-///
-/// # Valore Restituito
-///
-/// Return `Ok(())` se il salvataggio ha successo
-///
-/// # Errori
-///
-/// - `DBError::new_save_temp_password_error` - Errore durante il salvataggio
-async fn set_temp_password(
-    pool: &SqlitePool,
-    user_id: i64,
-    password: &SecretString,
-) -> Result<(), DBError> {
-    query("UPDATE users SET temp_old_password = ? WHERE id = ?")
-        .bind(password.expose_secret())
-        .bind(user_id)
-        .execute(pool)
-        .await
-        .map_err(|e| {
-            DBError::new_save_temp_password_error(format!("Failed to save temp password: {}", e))
-        })?;
-    Ok(())
-}
-
 /// Prepara l'aggiornamento utente recuperando la vecchia password se necessario.
 ///
 /// Questa funzione gestisce la logica di preparazione per l'aggiornamento utente:
@@ -153,6 +123,7 @@ async fn prepare_user_update(
         username: Some(username),
         password: None,
         avatar,
+        temp_old_password: None,
     };
 
     if let Some(psw) = password {
@@ -160,7 +131,9 @@ async fn prepare_user_update(
             // Backup della vecchia password hash prima di sovrascriverla
             match fetch_user_auth_from_id(pool, user_id).await {
                 Ok(user_auth) => {
-                    set_temp_password(pool, user_id, &user_auth.password.0).await?;
+                    // Salva la vecchia password nella struct per includerla nell'UPDATE
+                    // password.0 è SecretBox<str>, convertiamo in String
+                    update.temp_old_password = Some(user_auth.password.0.expose_secret().to_string());
                 }
                 Err(e) => {
                     // Non bloccare l'aggiornamento, ma logga il problema
@@ -240,6 +213,9 @@ pub async fn save_or_update_user(
             }
             if let Some(avatar) = update.avatar {
                 query = query.bind(avatar);
+            }
+            if let Some(temp_old_password) = update.temp_old_password {
+                query = query.bind(temp_old_password);
             }
             query = query.bind(user_id);
 
