@@ -1,4 +1,5 @@
 pub mod dashboard;
+mod dashboard_menu;
 mod landing;
 pub mod login;
 pub mod logout;
@@ -7,6 +8,7 @@ pub mod settings;
 pub mod upsert_user;
 
 pub use dashboard::*;
+pub use dashboard_menu::*;
 pub use landing::*;
 pub use login::*;
 pub use logout::*;

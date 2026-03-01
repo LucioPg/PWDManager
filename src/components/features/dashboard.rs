@@ -1,5 +1,6 @@
 use crate::backend::db_backend::delete_stored_password;
 use crate::backend::password_utils::get_stored_raw_passwords;
+use crate::components::features::DashboardMenu;
 use crate::components::globals::{StatCard, StatVariant};
 use crate::components::{
     StoredPasswordDeletionDialog, StoredPasswordUpsertDialog, StoredRawPasswordsTable,
@@ -147,9 +148,12 @@ pub fn Dashboard() -> Element {
 
     rsx! {
         div { class: "content-container animate-fade-in",
-            div { class: "mb-8",
-                h1 { class: "text-h2", "Welcome, {username}!" }
-                p { class: "text-body mt-2", "Manage your passwords and secure your digital life" }
+            div { class: "mb-8 flex justify-between items-start",
+                div {
+                    h1 { class: "text-h2", "Welcome, {username}!" }
+                    p { class: "text-body mt-2", "Manage your passwords and secure your digital life" }
+                }
+                DashboardMenu {}
             }
             div { class: "stats-grid",
                 StatCard {
