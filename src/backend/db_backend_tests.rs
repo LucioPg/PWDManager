@@ -1,5 +1,7 @@
 #![allow(dead_code)]
-use crate::backend::db_backend::{fetch_user_data, fetch_user_password, save_or_update_user};
+use crate::backend::db_backend::{
+    fetch_user_data, fetch_user_password, fetch_user_temp_old_password, save_or_update_user,
+};
 use crate::backend::test_helpers::{create_test_user, setup_test_db};
 use secrecy::SecretString;
 use sqlx::sqlite::SqliteRow;
@@ -94,14 +96,7 @@ mod tests {
 
         let empty_password = SecretString::new("".into()); // Password vuota
 
-        let result = save_or_update_user(
-            &pool,
-            None,
-            username,
-            Some(empty_password),
-            None,
-        )
-        .await;
+        let result = save_or_update_user(&pool, None, username, Some(empty_password), None).await;
 
         assert!(result.is_err(), "Empty password should return error");
         if let Err(e) = result {
@@ -153,7 +148,8 @@ mod tests {
     async fn test_update_password_only() {
         let pool = setup_test_db().await;
 
-        let (user_id, username) = create_test_user(&pool, "test_user", "test_password_123", None).await;
+        let (user_id, username) =
+            create_test_user(&pool, "test_user", "test_password_123", None).await;
 
         // Recupera la vecchia password per comparazione
         let old_password_hash = fetch_user_password(&pool, &username)
@@ -175,12 +171,15 @@ mod tests {
         assert!(result.is_ok(), "UPDATE password should succeed");
 
         // Verifica che temp_old_password sia stato salvato
-        let temp_password_row: Option<SqliteRow> =
-            query("SELECT temp_old_password FROM users WHERE id = ?")
-                .bind(user_id)
-                .fetch_optional(&pool)
-                .await
-                .expect("Failed to query temp_old_password");
+        // let temp_password_row: Option<SqliteRow> =
+        //     query("SELECT temp_old_password FROM users WHERE id = ?")
+        //         .bind(user_id)
+        //         .fetch_optional(&pool)
+        //         .await
+        //         .expect("Failed to query temp_old_password");
+        let temp_password_row = fetch_user_temp_old_password(&pool, user_id)
+            .await
+            .expect("Failed to fetch temp_old_password");
 
         assert!(
             temp_password_row.is_some(),
@@ -188,7 +187,8 @@ mod tests {
         );
         let temp_password = temp_password_row.unwrap();
         assert_eq!(
-            temp_password.get::<String, _>("temp_old_password"),
+            // temp_password.get::<String, _>("temp_old_password"),
+            temp_password,
             old_password_hash,
             "temp_old_password should contain old password hash"
         );
@@ -198,7 +198,8 @@ mod tests {
     async fn test_update_avatar_only() {
         let pool = setup_test_db().await;
 
-        let (user_id, username) = create_test_user(&pool, "test_user", "test_password_123", None).await;
+        let (user_id, username) =
+            create_test_user(&pool, "test_user", "test_password_123", None).await;
         let new_avatar = vec![9u8, 8u8, 7u8, 6u8];
 
         // Aggiorna solo avatar
@@ -206,7 +207,7 @@ mod tests {
             &pool,
             Some(user_id),
             username,
-            None,                    // password = None
+            None, // password = None
             Some(new_avatar.clone()),
         )
         .await;
@@ -225,7 +226,8 @@ mod tests {
     async fn test_update_all_fields() {
         let pool = setup_test_db().await;
 
-        let (user_id, _username) = create_test_user(&pool, "test_user", "test_password_123", None).await;
+        let (user_id, _username) =
+            create_test_user(&pool, "test_user", "test_password_123", None).await;
 
         // Genera nuovo username univoco
         let timestamp = std::time::SystemTime::now()
@@ -261,7 +263,8 @@ mod tests {
     async fn test_temp_password_saved_on_update() {
         let pool = setup_test_db().await;
 
-        let (user_id, username) = create_test_user(&pool, "test_user", "test_password_123", None).await;
+        let (user_id, username) =
+            create_test_user(&pool, "test_user", "test_password_123", None).await;
 
         // Recupera la password originale (hash)
         let old_password_hash = fetch_user_password(&pool, &username)
@@ -270,14 +273,7 @@ mod tests {
 
         // Aggiorna la password
         let new_password = SecretString::new("completely_new_pass".into());
-        let _ = save_or_update_user(
-            &pool,
-            Some(user_id),
-            username,
-            Some(new_password),
-            None,
-        )
-        .await;
+        let _ = save_or_update_user(&pool, Some(user_id), username, Some(new_password), None).await;
 
         // Verifica che temp_old_password contenga la vecchia password
         let temp_password_row: SqliteRow =
@@ -298,7 +294,8 @@ mod tests {
     async fn test_temp_password_overwritten_on_multiple_updates() {
         let pool = setup_test_db().await;
 
-        let (user_id, username) = create_test_user(&pool, "test_user", "test_password_123", None).await;
+        let (user_id, username) =
+            create_test_user(&pool, "test_user", "test_password_123", None).await;
 
         // Salva la prima password hash
         let _first_hash = fetch_user_password(&pool, &username)
@@ -401,6 +398,9 @@ mod tests {
 
         // Verifica che l'utente sia nel database
         let user = fetch_user_data(&pool, &username).await;
-        assert!(user.is_ok(), "User should exist with special characters in username");
+        assert!(
+            user.is_ok(),
+            "User should exist with special characters in username"
+        );
     }
 }

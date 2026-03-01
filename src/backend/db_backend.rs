@@ -908,6 +908,20 @@ pub async fn delete_stored_password(pool: &SqlitePool, id: i64) -> Result<(), DB
     Ok(())
 }
 
+pub(crate) async fn fetch_user_temp_old_password(
+    pool: &SqlitePool,
+    user_id: i64,
+) -> Result<Option<String>, DBError> {
+    let row = query("SELECT temp_old_password FROM users WHERE id = ?")
+        .bind(user_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| {
+            DBError::new_fetch_error(format!("Failed to fetch temp_old_password: {}", e))
+        })?;
+    Ok(row.map(|row| row.get::<String, _>("temp_old_password")))
+}
+
 #[cfg(test)]
 mod tests {
     // Questo modulo può contenere test per gli helper functions stessi
