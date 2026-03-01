@@ -31,7 +31,7 @@ pub use secret_notes_tooltip::SecretNotesTooltip;
 pub use spinner::*;
 pub use stat_card::*;
 pub use style::*;
+pub use svgs::*;
 pub use table::*;
 pub use tabs::*;
-pub use svgs::*;
 pub use toast_hub::*;
