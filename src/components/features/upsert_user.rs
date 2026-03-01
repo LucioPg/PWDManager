@@ -4,8 +4,8 @@ use crate::backend::db_backend::{delete_user, register_user_with_settings, save_
 use crate::backend::ui_utils::pick_and_process_avatar;
 use crate::components::{
     ActionButton, AvatarSelector, AvatarSize, ButtonSize, ButtonType, ButtonVariant, FormField,
-    InputType, MigrationWarningDialog, PasswordHandler, UserDeletionDialog,
-    schedule_toast_success, show_toast_error, show_toast_success, use_toast,
+    InputType, MigrationWarningDialog, PasswordHandler, UserDeletionDialog, schedule_toast_success,
+    show_toast_error, show_toast_success, use_toast,
 };
 use dioxus::prelude::*;
 use secrecy::ExposeSecret;
@@ -215,7 +215,8 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
             } else {
                 // UPDATE: usa la funzione esistente
                 match save_or_update_user(&pool, user_id, u.clone(), password_to_save, a).await {
-                    Ok(_saved_user_id) => {
+                    Ok(result) => {
+                        println!("User updated successfully: {:?}", result);
                         auth_state.logout();
                         schedule_toast_success("User Updated successfully!".to_string(), toast);
                         nav.push("/login");

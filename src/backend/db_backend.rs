@@ -22,6 +22,12 @@ pub struct UserUpdate {
     pub temp_old_password: Option<String>,
 }
 
+#[derive(Debug, Clone)]
+pub struct SaveUserResult {
+    pub user_id: i64,
+    pub temp_old_password: Option<String>,
+}
+
 impl UserUpdate {
     /// Verifica se c'è almeno un campo da aggiornare
     pub fn has_updates(&self) -> bool {
@@ -133,7 +139,8 @@ async fn prepare_user_update(
                 Ok(user_auth) => {
                     // Salva la vecchia password nella struct per includerla nell'UPDATE
                     // password.0 è SecretBox<str>, convertiamo in String
-                    update.temp_old_password = Some(user_auth.password.0.expose_secret().to_string());
+                    update.temp_old_password =
+                        Some(user_auth.password.0.expose_secret().to_string());
                 }
                 Err(e) => {
                     // Non bloccare l'aggiornamento, ma logga il problema
@@ -185,7 +192,7 @@ pub async fn save_or_update_user(
     username: String,
     password: Option<SecretString>,
     avatar: Option<Vec<u8>>,
-) -> Result<i64, DBError> {
+) -> Result<SaveUserResult, DBError> {
     debug!("Attempting to save/update user credentials");
 
     // 1. Criptazione comune a entrambi i casi
@@ -194,9 +201,12 @@ pub async fn save_or_update_user(
         // --- CASO UPDATE ---
         Some(user_id) => {
             let update = prepare_user_update(pool, user_id, username, password, avatar).await?;
-
+            let result = SaveUserResult {
+                user_id,
+                temp_old_password: update.temp_old_password.clone(),
+            };
             if !update.has_updates() {
-                return Ok(user_id);
+                return Ok(result);
             }
 
             let sql_fields = update.build_sql_fields();
@@ -224,7 +234,7 @@ pub async fn save_or_update_user(
                 .await
                 .map_err(|e| DBError::new_save_error(format!("Update failed: {}", e)))?;
 
-            Ok(user_id)
+            Ok(result)
         }
         // --- CASO INSERT ---
         None => {
@@ -244,8 +254,11 @@ pub async fn save_or_update_user(
                 .fetch_one(pool)
                 .await
                 .map_err(|e| DBError::new_save_error(format!("Insert failed: {}", e)))?;
-
-                Ok(user_id)
+                let result = SaveUserResult {
+                    user_id,
+                    temp_old_password: None,
+                };
+                Ok(result)
             } else {
                 Err(DBError::new_save_error("Password cannot be empty".into()))
             }
