@@ -8,19 +8,29 @@ pub fn RouteWrapper() -> Element {
     let route = use_route::<Route>();
 
     // Determiniamo se siamo nella landing page
-    // (Assumendo che Route::Landing sia la tua home)
     let is_landing = matches!(route, Route::LandingPage {});
 
     let logo_data: String = format!("data:image/png;base64,{}", base64_encode(LOGO_BYTES));
     // Se è landing, opacità 100%, altrimenti 30%
     let bg_opacity = if is_landing { "1.0" } else { "0.3" };
+    // Classe per visibilità sottotesto (opacity + pointer-events per evitare shuttering)
+    let slogan_visibility = if is_landing { "pwd-slogan-visible" } else { "pwd-slogan-hidden" };
 
     rsx! {
         div { class: "relative min-h-screen w-full",
-            // Layer dello sfondo fisso
-            div {
-                class: "fixed inset-0 -z-10  bg-cover bg-center  transition-opacity duration-500",
-                style: "background-image: url('{logo_data}'); opacity: {bg_opacity}"
+            // Container fisso per logo + sottotesto (mantengono relazione posizionale)
+            div { class: "pwd-bg-container",
+                // Logo con proporzioni corrette (object-contain invece di bg-cover)
+                img {
+                    class: "pwd-bg-logo",
+                    src: "{logo_data}",
+                    style: "opacity: {bg_opacity}",
+                    alt: "PWDManager Logo",
+                }
+                // Sottotesto - visibilità condizionata senza shuttering
+                div { class: "pwd-slogan-wrapper {slogan_visibility}",
+                    p { class: "pwd-slogan-text", "One for rule them all!" }
+                }
             }
 
             // Contenuto dell'app (le pagine vere e proprie)
