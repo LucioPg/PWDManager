@@ -393,3 +393,5 @@ pub async fn decrypt_stored_password(
         .map_err(|e| DBError::new_password_conversion_error(e.to_string()))?;
     Ok(plaintext)
 }
+
+pub async fn stored_password_migration_pipeline() {}
