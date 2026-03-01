@@ -128,7 +128,7 @@ il pc
 - [x] modificare table row perché la password non sia immediatamente visibile
 - [ ] modificare table row perché ci siano i pulsanti per copiare location e passwords -- implementati manca backend
 - [x] decidere se offuscare e criptare anche location e note -- Fatto
-- [ ] lo sfondo scala male: allungando la finestra la scritta del logo viene tagliata, mentre il sotto testo rimane al
+- [x] lo sfondo scala male: allungando la finestra la scritta del logo viene tagliata, mentre il sotto testo rimane al
   centro sovrapponendosi alla scritta del logo.
 
 ## Gestione password registrate
