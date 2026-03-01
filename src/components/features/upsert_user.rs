@@ -4,8 +4,8 @@ use crate::backend::db_backend::{delete_user, register_user_with_settings, save_
 use crate::backend::ui_utils::pick_and_process_avatar;
 use crate::components::{
     ActionButton, AvatarSelector, AvatarSize, ButtonSize, ButtonType, ButtonVariant, FormField,
-    FormSecret, InputType, PasswordHandler, UserDeletionDialog, schedule_toast_success,
-    show_toast_error, show_toast_success, use_toast,
+    InputType, MigrationWarningDialog, PasswordHandler, UserDeletionDialog,
+    schedule_toast_success, show_toast_error, show_toast_success, use_toast,
 };
 use dioxus::prelude::*;
 use secrecy::ExposeSecret;
@@ -45,6 +45,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     #[allow(unused_mut)]
     let mut is_picking = use_signal(|| false); // Traccia se il dialog è aperto
     let mut show_delete_modal = use_signal(|| false);
+    let mut show_warning_modal = use_signal(|| false);
 
     // Inizializzazione dati utente (Semplificata con unwrap_or_default)
     #[allow(unused_mut)]
@@ -135,6 +136,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
             error_clone,
         ));
     };
+
     // Apre il modal di conferma
     let on_delete_click = move |_| {
         show_delete_modal.set(true);
@@ -168,29 +170,14 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
             None => println!("No user to delete"),
         }
     };
-
     // Chiude il modal senza cancellare
     let cancel_delete = move |_| {
         show_delete_modal.set(false);
     };
-    let on_submit = move |_| {
-        // In modalità update, evaluated_password può essere None (password non cambiata)
+
+    // Closure che esegue il submit effettivo (riutilizzabile)
+    let execute_submit = move || {
         let pwd_result = evaluated_password.read().clone();
-
-        // Per la registrazione, la password deve essere validata
-        if !is_updating && pwd_result.is_none() {
-            error.set(Some("Please complete password validation".to_string()));
-            return;
-        }
-
-        // Per la registrazione, la password non può essere vuota
-        if let Some(ref result) = pwd_result {
-            if !is_updating && result.password.expose_secret().trim().is_empty() {
-                error.set(Some("Password is required for registration".to_string()));
-                return;
-            }
-        }
-
         let u = username.read().clone();
         let a = new_avatar.read().clone();
         let pool = pool_clone_on_submit.clone();
@@ -237,6 +224,54 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                 }
             }
         });
+    };
+
+    // Handler per conferma del warning - procede con il submit
+    let mut confirm_change_password = {
+        let mut execute_submit = execute_submit.clone();
+        move |_: ()| {
+            show_warning_modal.set(false);
+            execute_submit();
+        }
+    };
+
+    // Handler per annullamento del warning
+    let cancel_migration = move |_: ()| {
+        show_warning_modal.set(false);
+    };
+
+    let on_submit = move |_| {
+        // In modalità update, evaluated_password può essere None (password non cambiata)
+        let pwd_result = evaluated_password.read().clone();
+
+        // Per la registrazione, la password deve essere validata
+        if !is_updating && pwd_result.is_none() {
+            error.set(Some("Please complete password validation".to_string()));
+            return;
+        }
+
+        // Per la registrazione, la password non può essere vuota
+        if let Some(ref result) = pwd_result {
+            if !is_updating && result.password.expose_secret().trim().is_empty() {
+                error.set(Some("Password is required for registration".to_string()));
+                return;
+            }
+        }
+
+        // Determina se c'è una password nuova (non vuota) da salvare
+        let has_new_password = pwd_result
+            .as_ref()
+            .map(|r| !r.password.expose_secret().trim().is_empty())
+            .unwrap_or(false);
+
+        // In modalità update con password compilata: mostra warning prima di procedere
+        if is_updating && has_new_password {
+            show_warning_modal.set(true);
+            return; // Non procedere con il submit, aspetta conferma utente
+        }
+
+        // Altrimenti procedi normalmente
+        execute_submit();
     };
 
     rsx! {
@@ -315,6 +350,11 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
             on_confirm: move |_| confirm_delete_user(),
             on_cancel: cancel_delete,
             username: username.read().clone(),
+        }
+        MigrationWarningDialog {
+            open: show_warning_modal,
+            on_confirm: confirm_change_password,
+            on_cancel: cancel_migration,
         }
     }
 }
