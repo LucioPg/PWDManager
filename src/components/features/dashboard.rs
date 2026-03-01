@@ -1,5 +1,6 @@
 use crate::backend::db_backend::delete_stored_password;
 use crate::backend::password_utils::get_stored_raw_passwords;
+use crate::components::features::DashboardMenu;
 use crate::components::globals::{StatCard, StatVariant};
 use crate::components::{
     StoredPasswordDeletionDialog, StoredPasswordUpsertDialog, StoredRawPasswordsTable,
@@ -189,7 +190,8 @@ pub fn Dashboard() -> Element {
                     on_click: move |_| current_filter.clone().set(Some(PasswordStrength::WEAK))
                 }
             }
-                        div { class: "card-no-border items-end",
+                        div { class: "card-no-border items-end gap-2",
+                DashboardMenu {}
                 button { class: "btn btn-success",
                     r#type: "button",
                     onclick: move |_| {
