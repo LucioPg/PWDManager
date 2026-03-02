@@ -4,8 +4,8 @@ use crate::backend::db_backend::{delete_user, register_user_with_settings, save_
 use crate::backend::ui_utils::pick_and_process_avatar;
 use crate::components::{
     ActionButton, AvatarSelector, AvatarSize, ButtonSize, ButtonType, ButtonVariant, FormField,
-    InputType, MigrationWarningDialog, PasswordHandler, UserDeletionDialog, schedule_toast_success,
-    show_toast_error, show_toast_success, use_toast,
+    InputType, MigrationProgressDialog, MigrationWarningDialog, PasswordHandler,
+    UserDeletionDialog, schedule_toast_success, show_toast_error, show_toast_success, use_toast,
 };
 use dioxus::prelude::*;
 use secrecy::ExposeSecret;
@@ -30,9 +30,13 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     #[allow(unused_mut)]
     let mut auth_state_delete_clone = auth_state.clone();
     #[allow(unused_mut)]
-    let mut auth_state_logout_clone = auth_state.clone();
+    let mut auth_state_logout_clone = auth_state.clone(); // Per use_effect migrazione
+    #[allow(unused_mut)]
+    let mut auth_state_delete_logout_clone = auth_state.clone(); // Per confirm_delete_user
     #[allow(unused_mut)]
     let mut auth_state_submit_clone = auth_state.clone();
+    #[allow(unused_mut)]
+    let mut auth_state_normal_submit_clone = auth_state.clone();
 
     // --- Stato ---
     #[allow(unused_mut)]
@@ -46,6 +50,10 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     let mut is_picking = use_signal(|| false); // Traccia se il dialog è aperto
     let mut show_delete_modal = use_signal(|| false);
     let mut show_warning_modal = use_signal(|| false);
+    let mut show_migration_progress_modal = use_signal(|| false);
+    let mut migration_completed = use_signal(|| false);
+    let mut migration_failed = use_signal(|| false);
+    let mut submit_completed = use_signal(|| false); // Per il caso senza migrazione
 
     // Inizializzazione dati utente (Semplificata con unwrap_or_default)
     #[allow(unused_mut)]
@@ -115,6 +123,26 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         }
     });
 
+    // Gestione completamento migrazione password
+    use_effect(move || {
+        let mut show_progress = show_migration_progress_modal.clone();
+        let mut auth_state = auth_state_logout_clone.clone();
+        if migration_completed() {
+            show_progress.set(false);
+            auth_state.logout();
+            nav.push("/login");
+        }
+    });
+
+    // Gestione completamento submit normale (senza migrazione)
+    use_effect(move || {
+        let mut auth_state = auth_state_normal_submit_clone.clone();
+        if submit_completed() {
+            auth_state.logout();
+            nav.push("/login");
+        }
+    });
+
     // --- Handlers ---
     let pick_image = move |_| {
         // Controllo doppio: previene click se già caricando o picking
@@ -148,7 +176,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         let pool_for_delete = pool.clone();
         let user = auth_state.get_user();
         let mut error = error.clone();
-        let mut auth_state_logout_clone = auth_state_logout_clone.clone();
+        let mut auth_state_logout = auth_state_delete_logout_clone.clone();
         let mut show_modal = show_delete_modal.clone();
 
         match user {
@@ -157,7 +185,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                     match delete_user(&pool_for_delete, user.id).await {
                         Ok(()) => {
                             is_user_deleted.set(true);
-                            auth_state_logout_clone.logout();
+                            auth_state_logout.logout();
                             show_modal.set(false);
                         }
                         Err(e) => {
@@ -176,12 +204,13 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     };
 
     // Closure che esegue il submit effettivo (riutilizzabile)
-    let execute_submit = move || {
+    // NOTA: Non fa logout né naviga - devono essere gestiti dal chiamante
+    // Accetta un segnale opzionale da impostare quando il salvataggio ha successo
+    let execute_submit = move |completion_signal: Option<Signal<bool>>| {
         let pwd_result = evaluated_password.read().clone();
         let u = username.read().clone();
         let a = new_avatar.read().clone();
         let pool = pool_clone_on_submit.clone();
-        let mut auth_state = auth_state_submit_clone.clone();
 
         // In modalità update: se password vuota o None → mantieni password attuale
         let password_to_save = pwd_result.and_then(|result| {
@@ -194,7 +223,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
 
         spawn(async move {
             // Branch separato per registrazione vs update
-            if user_id.is_none() {
+            let success = if user_id.is_none() {
                 // REGISTRAZIONE: usa la funzione atomica
                 match register_user_with_settings(
                     &pool,
@@ -206,33 +235,51 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                 .await
                 {
                     Ok(_saved_user_id) => {
-                        auth_state.logout();
                         schedule_toast_success("User Registered successfully!".to_string(), toast);
-                        nav.push("/login");
+                        true
                     }
-                    Err(e) => error.set(Some(e.to_string())),
+                    Err(e) => {
+                        error.set(Some(e.to_string()));
+                        false
+                    }
                 }
             } else {
                 // UPDATE: usa la funzione esistente
                 match save_or_update_user(&pool, user_id, u.clone(), password_to_save, a).await {
                     Ok(result) => {
                         println!("User updated successfully: {:?}", result);
-                        auth_state.logout();
                         schedule_toast_success("User Updated successfully!".to_string(), toast);
-                        nav.push("/login");
+                        true
                     }
-                    Err(e) => error.set(Some(e.to_string())),
+                    Err(e) => {
+                        error.set(Some(e.to_string()));
+                        false
+                    }
+                }
+            };
+
+            // Se il salvataggio ha successo e c'è un segnale di completamento, impostalo
+            if success {
+                if let Some(mut signal) = completion_signal {
+                    signal.set(true);
                 }
             }
         });
     };
 
-    // Handler per conferma del warning - procede con il submit
+    // Callback per navigare verso login dopo completamento (usato da entrambi i casi)
+    let navigate_to_login = move || {
+        nav.push("/login");
+    };
+
+    // Handler per conferma del warning - procede con il submit (con migrazione password)
     let mut confirm_change_password = {
         let mut execute_submit = execute_submit.clone();
         move |_: ()| {
             show_warning_modal.set(false);
-            execute_submit();
+            execute_submit(None); // Nessun segnale - il completamento è gestito dal modale
+            migration_completed.set(false); // Reset prima di aprire
+            show_migration_progress_modal.set(true);
         }
     };
 
@@ -271,8 +318,8 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
             return; // Non procedere con il submit, aspetta conferma utente
         }
 
-        // Altrimenti procedi normalmente
-        execute_submit();
+        // Altrimenti procedi normalmente (senza migrazione password)
+        execute_submit(Some(submit_completed));
     };
 
     rsx! {
@@ -356,6 +403,13 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
             open: show_warning_modal,
             on_confirm: confirm_change_password,
             on_cancel: cancel_migration,
+        }
+
+        MigrationProgressDialog {
+            open: show_migration_progress_modal,
+            on_completed: migration_completed,
+            on_failed: migration_failed,
+            on_cancel: move |_| {}
         }
     }
 }
