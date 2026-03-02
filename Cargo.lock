@@ -3894,8 +3894,8 @@ dependencies = [
 
 [[package]]
 name = "pwd-dioxus"
-version = "0.2.0"
-source = "git+https://github.com/LucioPg/pwd-dioxus#93b4228fde9ff0a206317bcce5da42226ddc3838"
+version = "0.2.4"
+source = "git+https://github.com/LucioPg/pwd-dioxus?tag=v0.2.4#8ec695265d81ea1068b2c5d2106435330dd98f61"
 dependencies = [
  "dioxus",
  "pwd-types",

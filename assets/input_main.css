@@ -7,58 +7,14 @@
 
 @plugin "daisyui";
 
+/* Scansiona i file sorgente del progetto principale */
 @source "../src/**/*.rs";
 
-/* ============================================================
-   EXTERNAL LIBRARIES - Classi usate da pwd-dioxus e altre librerie git
-   Tailwind non scansiona le dipendenze git, quindi le classi devono
-   essere elencate esplicitamente qui.
-   ============================================================ */
-/* pwd-dioxus Spinner - colori */
-.spinner-info {
-    color: var(--color-blue-500);
-}
+/* Scansiona il file generato con le classi Tailwind usate da pwd-dioxus */
+@source "./pwd-dioxus-classes.rs";
 
-.spinner-success {
-    color: var(--color-green-500);
-}
-
-.spinner-error {
-    color: var(--color-red-500);
-}
-
-.spinner-primary {
-    color: var(--color-blue-600);
-}
-
-/* Classi text per spinner (quando serve solo il colore) */
-.text-info-500 {
-    color: var(--color-blue-500);
-}
-
-.text-success-500 {
-    color: var(--color-green-500);
-}
-
-.text-error-500 {
-    color: var(--color-red-500);
-}
-
-.text-blue-500 {
-    color: var(--color-blue-500);
-}
-
-.text-blue-600 {
-    color: var(--color-blue-600);
-}
-
-.text-green-500 {
-    color: var(--color-green-500);
-}
-
-.text-red-500 {
-    color: var(--color-red-500);
-}
+/* Importa il CSS custom di pwd-dioxus (spinner, toast, strength analyzer, ecc.) */
+@import "./pwd-dioxus-components.css";
 
 /* ============================================================
    CSS VARIABLES
