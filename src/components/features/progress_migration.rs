@@ -96,6 +96,10 @@ pub fn ProgressMigrationChn(
                     }
                 }
                 _ => {
+                    // Se almeno user_id c'è, prova a fare rollback della password
+                    if let Some(uid) = user_id {
+                        let _ = restore_old_password(&pool, uid).await;
+                    }
                     show_toast_error(
                         "Migration failed: missing user data".to_string(),
                         toast,

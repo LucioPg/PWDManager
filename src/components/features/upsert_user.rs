@@ -53,6 +53,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     #[allow(unused_mut)]
     let mut migration_failed = use_signal(|| false);
     let submit_completed = use_signal(|| false); // Per il caso senza migrazione
+    let mut save_completed_for_migration = use_signal(|| false); // Per sincronizzare modale migrazione
 
     // Inizializzazione dati utente (Semplificata con unwrap_or_default)
     #[allow(unused_mut)]
@@ -133,6 +134,19 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
             show_progress.set(false);
             auth_state.logout();
             nav.push("/login");
+        }
+    });
+
+    // Apertura modale migrazione dopo salvataggio completato
+    use_effect(move || {
+        let mut show_progress = show_migration_progress_modal.clone();
+        let mut save_signal = save_completed_for_migration.clone();
+        if save_signal() {
+            // Reset del signal per permettere future migrazioni
+            save_signal.set(false);
+            migration_completed.set(false);
+            // Apri il modale - ora il context è popolato con old_password
+            show_progress.set(true);
         }
     });
 
@@ -279,9 +293,9 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         let mut execute_submit = execute_submit.clone();
         move |_: ()| {
             show_warning_modal.set(false);
-            execute_submit(None); // Nessun segnale - il completamento è gestito dal modale
-            migration_completed.set(false); // Reset prima di aprire
-            show_migration_progress_modal.set(true);
+            // Passa il signal - il modale si aprirà quando il salvataggio completa
+            // e il context sarà popolato con old_password
+            execute_submit(Some(save_completed_for_migration));
         }
     };
 
