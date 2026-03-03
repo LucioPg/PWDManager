@@ -34,8 +34,6 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     #[allow(unused_mut)]
     let mut auth_state_delete_logout_clone = auth_state.clone(); // Per confirm_delete_user
     #[allow(unused_mut)]
-    let mut auth_state_submit_clone = auth_state.clone();
-    #[allow(unused_mut)]
     let mut auth_state_normal_submit_clone = auth_state.clone();
 
     // --- Stato ---
@@ -52,8 +50,9 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     let mut show_warning_modal = use_signal(|| false);
     let mut show_migration_progress_modal = use_signal(|| false);
     let mut migration_completed = use_signal(|| false);
+    #[allow(unused_mut)]
     let mut migration_failed = use_signal(|| false);
-    let mut submit_completed = use_signal(|| false); // Per il caso senza migrazione
+    let submit_completed = use_signal(|| false); // Per il caso senza migrazione
 
     // Inizializzazione dati utente (Semplificata con unwrap_or_default)
     #[allow(unused_mut)]
@@ -75,7 +74,8 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     // --- Derivazione Proprietà (Configurazione UI) ---
     let is_updating = user_to_edit.is_some();
     let user_id = user_to_edit.as_ref().map(|u| u.id.clone());
-
+    let migration_data_context =
+        use_context_provider(|| Signal::new(MigrationData::new(user_id, None)));
     let (header, paragraph, class_container, submit_btn_text, password_required) = if is_updating {
         (
             "Account Settings",
@@ -127,7 +127,9 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     use_effect(move || {
         let mut show_progress = show_migration_progress_modal.clone();
         let mut auth_state = auth_state_logout_clone.clone();
+        let mut migration_data = migration_data_context.clone();
         if migration_completed() {
+            migration_data.write().old_password = None;
             show_progress.set(false);
             auth_state.logout();
             nav.push("/login");
@@ -211,7 +213,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         let u = username.read().clone();
         let a = new_avatar.read().clone();
         let pool = pool_clone_on_submit.clone();
-
+        let mut migration_data = migration_data_context.clone();
         // In modalità update: se password vuota o None → mantieni password attuale
         let password_to_save = pwd_result.and_then(|result| {
             if result.password.expose_secret().trim().is_empty() {
@@ -220,7 +222,6 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                 Some(result.password) // Password presente → aggiorna
             }
         });
-
         spawn(async move {
             // Branch separato per registrazione vs update
             let success = if user_id.is_none() {
@@ -249,6 +250,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                     Ok(result) => {
                         println!("User updated successfully: {:?}", result);
                         schedule_toast_success("User Updated successfully!".to_string(), toast);
+                        (migration_data.write()).old_password = result.temp_old_password.clone();
                         true
                     }
                     Err(e) => {
@@ -336,7 +338,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                     shadow: true,
                     show_border: true,
                     loading: is_loading,
-                    is_picking: is_picking,  // ← Passa il signal per disabilitare il bottone
+                    is_picking, // ← Passa il signal per disabilitare il bottone
                 }
 
                 form { onsubmit: on_submit, class: "flex flex-col gap-3 w-full",
@@ -352,7 +354,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                         on_password_change: move |pwd| {
                             evaluated_password.set(Some(pwd));
                         },
-                        password_required: password_required,
+                        password_required,
                     }
                     // ActionButtons {
                     //     primary_text: "{submit_btn_text}",
@@ -376,16 +378,17 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                             button_type: ButtonType::Button,
                             size: ButtonSize::Normal,
                             on_click: on_delete_click,
-                            additional_class: "text-error-600 hover:bg-error-50 hover:text-error-700"
+                            additional_class: "text-error-600 hover:bg-error-50 hover:text-error-700",
                         }
-                    }
-                    else {
+                    } else {
                         ActionButton {
                             text: "Login",
                             variant: ButtonVariant::Secondary,
                             button_type: ButtonType::Button,
                             size: ButtonSize::Normal,
-                            on_click: move |_| { nav.push("/login"); },
+                            on_click: move |_| {
+                                nav.push("/login");
+                            },
                         }
                     }
                 }
@@ -409,7 +412,22 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
             open: show_migration_progress_modal,
             on_completed: migration_completed,
             on_failed: migration_failed,
-            on_cancel: move |_| {}
+            on_cancel: move |_| {},
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Debug, Default)]
+pub struct MigrationData {
+    pub user_id: Option<i64>,
+    pub old_password: Option<String>,
+}
+
+impl MigrationData {
+    pub fn new(user_id: Option<i64>, old_password: Option<String>) -> Self {
+        Self {
+            user_id,
+            old_password,
         }
     }
 }

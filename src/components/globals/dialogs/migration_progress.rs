@@ -1,6 +1,6 @@
 use super::base_modal::ModalVariant;
-use crate::components::globals::WarningIcon;
 use crate::components::ProgressChn;
+use crate::components::globals::WarningIcon;
 use dioxus::prelude::*;
 
 #[component]
@@ -18,40 +18,27 @@ pub fn MigrationProgressDialog(
     #[props(default)] on_cancel: EventHandler<()>,
 ) -> Element {
     rsx! {
-        crate::components::globals::dialogs::BaseModal {
-            open: open,
-            on_close: move |_| {
-                // Non chiudere il modale cliccando fuori - l'utente deve aspettare
-            },
-            variant: ModalVariant::Middle,
+        crate::components::globals::dialogs::BaseModal { open, on_close: move |_| {}, variant: ModalVariant::Middle,
 
             // Icona di warning
-            div {
-                class: "alert alert-warning mb-4 flex items-center justify-center mx-10",
-                WarningIcon {
-                    class: Some("w-6 h-6".to_string()),
-                }
+            div { class: "alert alert-warning mb-4 flex items-center justify-center mx-10",
+                WarningIcon { class: Some("w-6 h-6".to_string()) }
             }
 
             // Titolo
             h3 { class: "font-bold text-lg mb-2", "Password Migration" }
 
             // Messaggio di conferma
-            p {
-                class: "py-4",
+            p { class: "py-4",
                 "The system is updating your data. Please wait until the process is completed."
             }
 
-            p {
-                class: "text-warning-600 py-2",
+            p { class: "text-warning-600 py-2",
                 strong { "Attention: " }
                 "Do not close the app or shut down the computer until the process is completed "
                 "or you will lose access to your data!"
             }
-            ProgressChn {
-                on_completed,
-                on_failed
-            }
+            ProgressChn { on_completed, on_failed }
         }
     }
 }
