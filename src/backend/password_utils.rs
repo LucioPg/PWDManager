@@ -361,6 +361,67 @@ pub async fn stored_passwords_migration_pipeline(
     Ok(())
 }
 
+/// Pipeline di migrazione password con feedback di progresso.
+/// Invia aggiornamenti tramite il canale mpsc fornito.
+pub async fn stored_passwords_migration_pipeline_with_progress(
+    pool: &SqlitePool,
+    user_id: i64,
+    old_password: String,
+    progress_tx: Option<Arc<ProgressSender>>,
+) -> Result<(), DBError> {
+    // Invia stato iniziale
+    if let Some(tx) = &progress_tx {
+        let _ = tx.send(ProgressMessage::new(MigrationStage::Decrypting, 0, 0)).await;
+    }
+
+    // 1. Fetch tutte le password salvate
+    let data = fetch_all_stored_passwords_for_user(pool, user_id).await?;
+    let total = data.len();
+
+    // 2. Prepara UserAuth con vecchia password
+    let old_password = SecretString::new(old_password.into());
+    let user_auth = UserAuth {
+        id: user_id,
+        password: old_password.into(),
+    };
+
+    // 3. Decrypt con progress tracking
+    let decrypted_data = decrypt_bulk_stored_data(user_auth, data, progress_tx.clone()).await?;
+
+    // Invia cambio stage
+    if let Some(tx) = &progress_tx {
+        let _ = tx.send(ProgressMessage::new(MigrationStage::Encrypting, 0, total)).await;
+    }
+
+    // 4. Recupera cipher con NUOVA password (dal DB aggiornato)
+    let new_user_auth = fetch_user_auth_from_id(pool, user_id).await?;
+    let salt = get_salt(&new_user_auth.password);
+    let cipher = create_cipher(&salt, &new_user_auth)?;
+
+    // 5. Encrypt con progress tracking
+    let encrypted_data =
+        create_stored_data_records(cipher, new_user_auth, decrypted_data, progress_tx.clone())
+            .await?;
+
+    // Invia finalizzazione
+    if let Some(tx) = &progress_tx {
+        let _ = tx.send(ProgressMessage::new(MigrationStage::Finalizing, 0, 0)).await;
+    }
+
+    // 6. Salvataggio in batch
+    upsert_stored_passwords_batch(pool, encrypted_data).await?;
+
+    // 7. Rimuovi temp_old_password
+    remove_temp_old_password(pool, user_id).await?;
+
+    // Invia completamento
+    if let Some(tx) = &progress_tx {
+        let _ = tx.send(ProgressMessage::new(MigrationStage::Completed, 100, 100)).await;
+    }
+
+    Ok(())
+}
+
 // async fn create_password_with_cipher(
 //     new_password: &SecretString,
 //     nonce: &Nonce<Aes256Gcm>,
