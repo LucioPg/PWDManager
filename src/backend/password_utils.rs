@@ -12,6 +12,8 @@ use crate::backend::db_backend::{
     upsert_stored_passwords_batch,
 };
 use crate::backend::evaluate_password_strength;
+use crate::backend::migration_types::{MigrationStage, ProgressMessage, ProgressSender};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use aes_gcm::aead::{Aead, Nonce, OsRng};
 use aes_gcm::{Aes256Gcm, KeyInit};
 use argon2::password_hash::{PasswordHash, Salt};
@@ -220,6 +222,7 @@ pub async fn get_stored_raw_passwords(
     let stored_raw_passwords = decrypt_bulk_stored_data(
         fetch_user_auth_from_id(pool, user_id).await?,
         stored_passwords,
+        None,  // Nessun progress tracking
     )
     .await?;
     Ok(stored_raw_passwords)
@@ -229,10 +232,18 @@ pub async fn get_stored_raw_passwords(
 pub async fn decrypt_bulk_stored_data(
     user_auth: UserAuth,
     stored_passwords: Vec<StoredPassword>,
+    progress_tx: Option<Arc<ProgressSender>>,
 ) -> Result<Vec<StoredRawPassword>, DBError> {
+    if stored_passwords.is_empty() {
+        return Ok(Vec::new());
+    }
+
     let salt = get_salt(&user_auth.password);
     let cipher = create_cipher(&salt, &user_auth)?;
     let cipher = Arc::new(cipher);
+    let total = stored_passwords.len();
+    let completed = Arc::new(AtomicUsize::new(0));
+    let progress_tx_clone = progress_tx.clone();
 
     task::spawn_blocking(move || {
         stored_passwords
@@ -267,6 +278,16 @@ pub async fn decrypt_bulk_stored_data(
                     _ => None,
                 };
 
+                // Aggiorna progress
+                if let Some(tx) = &progress_tx_clone {
+                    let current = completed.fetch_add(1, Ordering::SeqCst) + 1;
+                    let _ = tx.blocking_send(ProgressMessage::new(
+                        MigrationStage::Decrypting,
+                        current,
+                        total,
+                    ));
+                }
+
                 Ok(StoredRawPassword {
                     uuid: Uuid::new_v4(),
                     id: sp.id,
@@ -289,7 +310,7 @@ pub async fn decrypt_bulk_stored_passwords(
     user_auth: UserAuth,
     stored_passwords: Vec<StoredPassword>,
 ) -> Result<Vec<StoredRawPassword>, DBError> {
-    decrypt_bulk_stored_data(user_auth, stored_passwords).await
+    decrypt_bulk_stored_data(user_auth, stored_passwords, None).await
 }
 
 /// Decripta una password salvata nel database.
@@ -320,7 +341,7 @@ pub async fn stored_passwords_migration_pipeline(
         id: user_id,
         password: old_password.into(),
     };
-    let decrypted_data = decrypt_bulk_stored_data(user_auth, data).await?;
+    let decrypted_data = decrypt_bulk_stored_data(user_auth, data, None).await?;
     let _ = create_stored_data_pipeline_bulk(pool, user_id, decrypted_data).await?;
     let _ = remove_temp_old_password(pool, user_id).await?;
     Ok(())
