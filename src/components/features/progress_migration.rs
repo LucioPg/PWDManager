@@ -1,6 +1,7 @@
 use crate::components::MigrationData;
 use dioxus::prelude::*;
 use rayon::prelude::*;
+use sqlx::SqlitePool;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::mpsc;
@@ -17,6 +18,7 @@ pub fn ProgressChn(
     let mut progress = use_signal(|| 0);
     let mut running = use_signal(|| false);
     let context = use_context::<Signal<MigrationData>>();
+    let pool = use_context::<SqlitePool>();
 
     rsx! {
         div {
