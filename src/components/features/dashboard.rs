@@ -15,6 +15,7 @@ use std::ops::Deref;
 #[component]
 pub fn Dashboard() -> Element {
     let auth_state = use_context::<crate::auth::AuthState>();
+    let on_need_restart = use_signal(|| false);
     let username = auth_state.get_username();
     let mut stored_password_dialog_state =
         use_context_provider(|| StoredPasswordUpsertDialogState {
@@ -157,6 +158,15 @@ pub fn Dashboard() -> Element {
         }
     });
 
+    use_effect(move || {
+        let mut need_restart = on_need_restart.clone();
+        let mut resource = stored_raw_passwords_data.clone();
+        if need_restart() {
+            resource.restart();
+            need_restart.set(false);
+        }
+    });
+
     rsx! {
         div { class: "content-container animate-fade-in",
             div { class: "mb-8 flex justify-between items-start",
@@ -164,7 +174,7 @@ pub fn Dashboard() -> Element {
                     h1 { class: "text-h2", "Welcome, {username}!" }
                     p { class: "text-body mt-2", "Manage your passwords and secure your digital life" }
                 }
-                DashboardMenu {}
+                DashboardMenu { on_need_restart: on_need_restart.clone() }
             }
             div { class: "stats-grid",
                 StatCard {
@@ -216,15 +226,11 @@ pub fn Dashboard() -> Element {
                 }
             }
             {
-                // Leggiamo il memo in modo reattivo - Dioxus traccia questa lettura
                 let table_data = filtered_stored_raw_passwords();
                 let count = table_data.as_ref().map(|p| p.len()).unwrap_or(0);
                 rsx! {
                     div { class: "card card-lg",
-                        StoredRawPasswordsTable {
-                            key: "{count}",
-                            data: table_data,
-                        }
+                        StoredRawPasswordsTable { key: "{count}", data: table_data }
                     }
                 }
             }
@@ -232,10 +238,7 @@ pub fn Dashboard() -> Element {
 
         }
         // on_cancel gestito internamente al componente
-        StoredPasswordUpsertDialog {
-            on_confirm: on_confirm_upsert,
-            on_cancel: move |_| {},
-        }
+        StoredPasswordUpsertDialog { on_confirm: on_confirm_upsert, on_cancel: move |_| {} }
         StoredPasswordDeletionDialog {
             open: deletion_password_dialog_state.is_open.clone(),
             on_confirm: on_confirm_delete,

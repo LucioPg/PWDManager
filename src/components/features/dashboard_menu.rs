@@ -1,9 +1,46 @@
+use crate::backend::db_backend::delete_all_user_stored_passwords;
 use dioxus::prelude::*;
+use pwd_dioxus::{show_toast_error, use_toast};
+use sqlx::SqlitePool;
 
 /// Dashboard menu component with import/export actions and delete all option.
 /// Provides a dropdown menu with nested submenus for file operations.
 #[component]
-pub fn DashboardMenu() -> Element {
+pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
+    let auth_state = use_context::<crate::auth::AuthState>();
+    let pool = use_context::<SqlitePool>();
+    let user = auth_state.get_user();
+    let toast = use_toast();
+    let mut error = use_signal(|| Option::<String>::None);
+
+    let on_delete_all = move |_| {
+        let user_clone = user.clone();
+        if let Some(user) = user_clone {
+            let pool_clone = pool.clone();
+            spawn(async move {
+                match delete_all_user_stored_passwords(&pool_clone, user.id).await {
+                    Ok(()) => {
+                        tracing::info!("All user passwords deleted successfully");
+                        println!("All user passwords deleted successfully");
+                        on_need_restart.set(true);
+                    }
+                    Err(e) => {
+                        error.set(Some(e.to_string()));
+                    }
+                }
+            });
+        };
+    };
+
+    use_effect(move || {
+        let mut this_error = error.clone();
+        let toast = toast.clone();
+        if let Some(msg) = this_error() {
+            show_toast_error(format!("Error saving user: {}", msg), toast);
+            this_error.set(None);
+        }
+    });
+
     rsx! {
         div { class: "dropdown dropdown-end",
             // Trigger button with three dots
@@ -30,7 +67,6 @@ pub fn DashboardMenu() -> Element {
                                 button {
                                     r#type: "button",
                                     onclick: move |_| {
-                                        // TODO: Implement JSON import
                                         tracing::info!("Import JSON clicked");
                                     },
                                     "JSON"
@@ -40,7 +76,6 @@ pub fn DashboardMenu() -> Element {
                                 button {
                                     r#type: "button",
                                     onclick: move |_| {
-                                        // TODO: Implement CSV import
                                         tracing::info!("Import CSV clicked");
                                     },
                                     "CSV"
@@ -50,7 +85,6 @@ pub fn DashboardMenu() -> Element {
                                 button {
                                     r#type: "button",
                                     onclick: move |_| {
-                                        // TODO: Implement XML import
                                         tracing::info!("Import XML clicked");
                                     },
                                     "XML"
@@ -69,7 +103,6 @@ pub fn DashboardMenu() -> Element {
                                 button {
                                     r#type: "button",
                                     onclick: move |_| {
-                                        // TODO: Implement JSON export
                                         tracing::info!("Export JSON clicked");
                                     },
                                     "JSON"
@@ -79,7 +112,6 @@ pub fn DashboardMenu() -> Element {
                                 button {
                                     r#type: "button",
                                     onclick: move |_| {
-                                        // TODO: Implement CSV export
                                         tracing::info!("Export CSV clicked");
                                     },
                                     "CSV"
@@ -89,7 +121,6 @@ pub fn DashboardMenu() -> Element {
                                 button {
                                     r#type: "button",
                                     onclick: move |_| {
-                                        // TODO: Implement XML export
                                         tracing::info!("Export XML clicked");
                                     },
                                     "XML"
@@ -109,10 +140,7 @@ pub fn DashboardMenu() -> Element {
                     button {
                         r#type: "button",
                         class: "text-error hover:bg-error hover:text-error-content",
-                        onclick: move |_| {
-                            // TODO: Implement delete all with confirmation dialog
-                            tracing::info!("Delete all clicked");
-                        },
+                        onclick: on_delete_all,
                         "Delete All"
                     }
                 }
