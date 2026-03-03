@@ -1,5 +1,5 @@
 use super::base_modal::ModalVariant;
-use crate::components::ProgressChn;
+use crate::components::ProgressMigrationChn;
 use crate::components::globals::WarningIcon;
 use dioxus::prelude::*;
 
@@ -38,7 +38,7 @@ pub fn MigrationProgressDialog(
                 "Do not close the app or shut down the computer until the process is completed "
                 "or you will lose access to your data!"
             }
-            ProgressChn { on_completed, on_failed }
+            ProgressMigrationChn { on_completed, on_failed }
         }
     }
 }

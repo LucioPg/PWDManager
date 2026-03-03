@@ -8,7 +8,7 @@ use tokio::sync::mpsc;
 
 #[allow(non_snake_case)]
 #[component]
-pub fn ProgressChn(
+pub fn ProgressMigrationChn(
     /// Callback quando l'utente conferma la cancellazione
     on_completed: Signal<bool>,
 

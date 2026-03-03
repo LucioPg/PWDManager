@@ -3,7 +3,7 @@ mod dashboard_menu;
 mod landing;
 pub mod login;
 pub mod logout;
-mod progress_chn;
+mod progress_migration;
 pub mod settings;
 pub mod upsert_user;
 
@@ -12,6 +12,6 @@ pub use dashboard_menu::*;
 pub use landing::*;
 pub use login::*;
 pub use logout::*;
-pub use progress_chn::*;
+pub use progress_migration::*;
 pub use settings::*;
 pub use upsert_user::*;
