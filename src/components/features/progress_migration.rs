@@ -1,62 +1,130 @@
-use crate::components::MigrationData;
+use crate::backend::db_backend::restore_old_password;
+use crate::backend::migration_types::{MigrationStage, ProgressMessage};
+use crate::backend::password_utils::stored_passwords_migration_pipeline_with_progress;
+use crate::components::{MigrationData, show_toast_error, use_toast};
 use dioxus::prelude::*;
-use rayon::prelude::*;
 use sqlx::SqlitePool;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::mpsc;
+
+/// Formatta il messaggio dello stage per la UI.
+fn format_stage_message(stage: &MigrationStage) -> String {
+    match stage {
+        MigrationStage::Idle => "Preparing migration...".to_string(),
+        MigrationStage::Decrypting => "Decrypting passwords...".to_string(),
+        MigrationStage::Encrypting => "Encrypting with new password...".to_string(),
+        MigrationStage::Finalizing => "Finalizing...".to_string(),
+        MigrationStage::Completed => "Migration completed!".to_string(),
+        MigrationStage::Failed => "Migration failed".to_string(),
+    }
+}
 
 #[allow(non_snake_case)]
 #[component]
 pub fn ProgressMigrationChn(
-    /// Callback quando l'utente conferma la cancellazione
+    /// Callback quando la migrazione è completata con successo
     on_completed: Signal<bool>,
 
-    /// Callback quando l'utente annulla
+    /// Callback quando la migrazione fallisce
     on_failed: Signal<bool>,
 ) -> Element {
-    let mut progress = use_signal(|| 0);
-    let mut running = use_signal(|| false);
+    let mut stage = use_signal(|| MigrationStage::Idle);
+    let mut progress = use_signal(|| 0usize);
+    let mut status_message = use_signal(|| String::new());
+    let mut migration_started = use_signal(|| false);  // Flag per evitare doppi avvii
     let context = use_context::<Signal<MigrationData>>();
     let pool = use_context::<SqlitePool>();
+    let toast = use_toast();
+
+    // Avvia migrazione automaticamente al mount del componente
+    use_effect(move || {
+        // Evita doppio avvio della migrazione
+        if migration_started() {
+            return;
+        }
+        migration_started.set(true);
+
+        let context = context.clone();
+        let pool = pool.clone();
+        let mut on_completed = on_completed.clone();
+        let mut on_failed = on_failed.clone();
+        let toast = toast.clone();
+
+        let (tx, mut rx) = mpsc::channel::<ProgressMessage>(100);
+
+        // Task per ricevere progress updates
+        spawn(async move {
+            while let Some(msg) = rx.recv().await {
+                stage.set(msg.stage.clone());
+                progress.set(msg.percentage());
+                status_message.set(format_stage_message(&msg.stage));
+
+                if msg.stage == MigrationStage::Completed {
+                    on_completed.set(true);
+                }
+            }
+        });
+
+        // Task per eseguire la migrazione
+        spawn(async move {
+            let user_id = context.read().user_id;
+            let old_password = context.read().old_password.clone();
+
+            match (user_id, old_password) {
+                (Some(uid), Some(pwd)) => {
+                    let result = stored_passwords_migration_pipeline_with_progress(
+                        &pool,
+                        uid,
+                        pwd,
+                        Some(Arc::new(tx)),
+                    )
+                    .await;
+
+                    if let Err(e) = result {
+                        // Mostra toast errore
+                        show_toast_error(
+                            format!("Migration failed: {}", e),
+                            toast,
+                        );
+
+                        // Rollback password
+                        let _ = restore_old_password(&pool, uid).await;
+
+                        // Imposta stato fallito
+                        stage.set(MigrationStage::Failed);
+                        on_failed.set(true);
+                    }
+                }
+                _ => {
+                    show_toast_error(
+                        "Migration failed: missing user data".to_string(),
+                        toast,
+                    );
+                    stage.set(MigrationStage::Failed);
+                    on_failed.set(true);
+                }
+            }
+        });
+    });
 
     rsx! {
-        div {
-            button {
-                class: "btn btn-primary",
-                disabled: running(),
-                onclick: move |_| {
-                    running.set(true);
-                    let mut on_completed = on_completed.clone();
-                    let context = context.clone();
-                    println!("context: {:?}", context());
-                    let (tx, mut rx) = mpsc::channel(100);
-                    spawn(async move {
-                        while let Some(val) = rx.recv().await {
-                            progress.set(val);
-                        }
-                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                        running.set(false);
-                        on_completed.set(true);
-                    });
-                    tokio::task::spawn_blocking(move || {
-                        let total_items = 10000;
-                        let items = vec![0; total_items];
-                        let completed = Arc::new(AtomicUsize::new(0));
-                        items
-                            .into_par_iter()
-                            .for_each(|_| {
-                                std::thread::sleep(std::time::Duration::from_millis(10));
-                                let current = completed.fetch_add(1, Ordering::SeqCst) + 1;
-                                let percentage = (current * 100) / total_items;
-                                let _ = tx.blocking_send(percentage as usize);
-                            });
-                    });
-                },
-                "Avvia Elaborazione Rayon"
+        div { class: "flex flex-col gap-4 w-full",
+            // Messaggio stato
+            p { class: "text-center font-medium text-base-content",
+                "{status_message}"
             }
-            p { "Progresso: {progress}%" }
-            progress { value: "{progress}", max: "100" }
+
+            // Progress bar DaisyUI
+            progress {
+                class: "progress progress-primary w-full",
+                value: "{progress}",
+                max: "100",
+            }
+
+            // Percentuale
+            p { class: "text-center text-sm opacity-70",
+                "{progress}%"
+            }
         }
     }
 }
