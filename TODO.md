@@ -126,14 +126,14 @@ il pc
 - [ ] aggiungere toggle per tema scuro in settings
 - [x] aggiungere toast per errori e informazioni
 - [x] modificare table row perché la password non sia immediatamente visibile
-- [ ] modificare table row perché ci siano i pulsanti per copiare location e passwords -- implementati manca backend
+- [x] modificare table row perché ci siano i pulsanti per copiare location e passwords
 - [x] decidere se offuscare e criptare anche location e note -- Fatto
 - [x] lo sfondo scala male: allungando la finestra la scritta del logo viene tagliata, mentre il sotto testo rimane al
   centro sovrapponendosi alla scritta del logo.
 - [ ] dashboard aggiungere pulsante per cancellare tutte le password salvate -- nel caso ci fosse errore di decrypting
-  irreversibile
-- [ ] dashboard aggiungere pulsante di export in vari formati (csv, json, xml)
-- [ ] dashboard aggiungere pulsante di import da vari formati (csv, json, xml)
+  irreversibile -- implementati manca backend
+- [ ] dashboard aggiungere pulsante di export in vari formati (csv, json, xml)  -- implementati manca backend
+- [ ] dashboard aggiungere pulsante di import da vari formati (csv, json, xml)   -- implementati manca backend
 -
 - ## Gestione password registrate
 
