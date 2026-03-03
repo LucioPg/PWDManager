@@ -879,6 +879,27 @@ pub async fn remove_temp_old_password(pool: &SqlitePool, user_id: i64) -> Result
     Ok(())
 }
 
+/// Ripristina la vecchia password dalla colonna temp_old_password.
+/// Utilizzato quando la migrazione fallisce per ripristinare lo stato precedente.
+pub async fn restore_old_password(pool: &SqlitePool, user_id: i64) -> Result<(), DBError> {
+    query(
+        r#"
+        UPDATE users
+        SET password = temp_old_password,
+            temp_old_password = NULL
+        WHERE id = ?
+        "#,
+    )
+    .bind(user_id)
+    .execute(pool)
+    .await
+    .map_err(|e| {
+        DBError::new_fetch_error(format!("Failed to restore old password: {}", e))
+    })?;
+
+    Ok(())
+}
+
 // /// Salva o aggiorna una password nel database usando sqlx-template.
 // ///
 // /// Utilizza il metodo generato `upsert_by_id` che gestisce sia INSERT che UPDATE:
