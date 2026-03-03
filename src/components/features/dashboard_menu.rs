@@ -1,4 +1,5 @@
 use crate::backend::db_backend::delete_all_user_stored_passwords;
+use crate::components::AllStoredPasswordDeletionDialog;
 use dioxus::prelude::*;
 use pwd_dioxus::{show_toast_error, use_toast};
 use sqlx::SqlitePool;
@@ -12,7 +13,7 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
     let user = auth_state.get_user();
     let toast = use_toast();
     let mut error = use_signal(|| Option::<String>::None);
-
+    let mut warning_open = use_signal(|| false);
     let on_delete_all = move |_| {
         let user_clone = user.clone();
         if let Some(user) = user_clone {
@@ -30,6 +31,11 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
                 }
             });
         };
+    };
+
+    let on_warning_open = move |_| {
+        let mut warning_open = warning_open.clone();
+        warning_open.set(true);
     };
 
     use_effect(move || {
@@ -140,11 +146,19 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
                     button {
                         r#type: "button",
                         class: "text-error hover:bg-error hover:text-error-content",
-                        onclick: on_delete_all,
+                        onclick: on_warning_open,
                         "Delete All"
                     }
                 }
             }
+        }
+        AllStoredPasswordDeletionDialog {
+            open: warning_open,
+            on_confirm: on_delete_all,
+            on_cancel: move |_| {
+                let mut warning_open = warning_open.clone();
+                warning_open.set(false);
+            },
         }
     }
 }
