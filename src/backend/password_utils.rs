@@ -146,7 +146,7 @@ pub async fn create_stored_data_pipeline_bulk(
     let cipher = create_cipher(&salt, &user_auth)?;
     // 2. Creazione StoredPassword
     let stored_passwords =
-        create_stored_data_records(cipher, user_auth, stored_raw_passwords).await?;
+        create_stored_data_records(cipher, user_auth, stored_raw_passwords, None).await?;  // None = no progress
     // 3. Salvataggio in batch
     upsert_stored_passwords_batch(&pool, stored_passwords).await?;
 
@@ -158,6 +158,7 @@ pub async fn create_stored_data_records(
     cipher: Aes256Gcm,
     user_auth: UserAuth,
     stored_raw_passwords: Vec<StoredRawPassword>,
+    progress_tx: Option<Arc<ProgressSender>>,
 ) -> Result<Vec<StoredPassword>, DBError> {
     if stored_raw_passwords.is_empty() {
         return Ok(Vec::new());
@@ -165,6 +166,9 @@ pub async fn create_stored_data_records(
 
     let cipher = Arc::new(cipher);
     let user_auth = Arc::new(user_auth);
+    let total = stored_raw_passwords.len();
+    let completed = Arc::new(AtomicUsize::new(0));
+    let progress_tx_clone = progress_tx.clone();
 
     task::spawn_blocking(move || {
         stored_raw_passwords
@@ -193,6 +197,16 @@ pub async fn create_stored_data_records(
                         .score
                         .unwrap_or(PasswordScore::new(0))
                 });
+
+                // Aggiorna progress
+                if let Some(tx) = &progress_tx_clone {
+                    let current = completed.fetch_add(1, Ordering::SeqCst) + 1;
+                    let _ = tx.blocking_send(ProgressMessage::new(
+                        MigrationStage::Encrypting,
+                        current,
+                        total,
+                    ));
+                }
 
                 Ok(StoredPassword::new(
                     srp.id,
