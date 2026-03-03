@@ -8,7 +8,7 @@
 #![allow(dead_code)]
 
 use crate::backend::db_backend::{
-    fetch_all_stored_passwords_for_user, fetch_user_auth_from_id, save_or_update_stored_password,
+    fetch_all_stored_passwords_for_user, fetch_user_auth_from_id, remove_temp_old_password,
     upsert_stored_passwords_batch,
 };
 use crate::backend::evaluate_password_strength;
@@ -27,12 +27,12 @@ use pwd_types::{
     AegisPasswordConfig, DbSecretString, PasswordGeneratorConfig, PasswordPreset, PasswordScore,
     StoredPassword, StoredRawPassword, UserAuth,
 };
-use uuid::Uuid;
 use rayon::prelude::*;
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use tokio::task;
+use uuid::Uuid;
 
 pub fn generate_suggested_password(custom_config: Option<PasswordGeneratorConfig>) -> SecretString {
     // Se non c'è config, usa il preset God come default
@@ -121,17 +121,6 @@ pub fn create_cipher(salt: &Salt<'_>, user_auth: &UserAuth) -> Result<Aes256Gcm,
     crypto_create_cipher(salt, user_auth).map_err(crypto_error_to_db_error)
 }
 
-async fn create_password_with_cipher(
-    new_password: &SecretString,
-    nonce: &Nonce<Aes256Gcm>,
-    cipher: &Aes256Gcm,
-) -> Result<SecretBox<[u8]>, DBError> {
-    let cipher_vec = cipher
-        .encrypt(nonce, new_password.expose_secret().as_bytes())
-        .map_err(|e| DBError::new_cipher_encryption_error(e.to_string()))?;
-    Ok(SecretBox::new(cipher_vec.into()))
-}
-
 fn create_password_with_cipher_sync(
     new_password: &SecretString,
     nonce: &Nonce<Aes256Gcm>,
@@ -160,73 +149,6 @@ pub async fn create_stored_data_pipeline_bulk(
     upsert_stored_passwords_batch(&pool, stored_passwords).await?;
 
     Ok(())
-}
-
-/// Pipeline completa per salvare una nuova password nel database.
-#[deprecated]
-pub async fn create_stored_data_pipeline(
-    pool: &SqlitePool,
-    user_id: i64,
-    location: String,
-    raw_password: SecretString,
-    notes: Option<String>,
-    score: Option<PasswordScore>,
-) -> Result<(), DBError> {
-    // 1. Recupero credenziali e setup crittografico
-    let user_auth = fetch_user_auth_from_id(pool, user_id).await?;
-    let salt = get_salt(&user_auth.password);
-    let cipher = create_cipher(&salt, &user_auth)?;
-
-    // 2. Cripta location
-    let (encrypted_location, location_nonce) = encrypt_string(&location, &cipher)?;
-
-    // 3. Cripta password
-    let password_nonce = create_nonce();
-    let encrypted_password = create_password_with_cipher(&raw_password, &password_nonce, &cipher)
-        .await
-        .map_err(|_| DBError::new_password_save_error("Errore durante la criptazione".into()))?;
-
-    // 4. Cripta notes
-    let (encrypted_notes, notes_nonce) = encrypt_optional_string(notes.as_deref(), &cipher)?;
-
-    // 5. Determinazione del punteggio
-    let password_score = score.unwrap_or_else(|| {
-        evaluate_password_strength(&raw_password, None)
-            .score
-            .unwrap_or(PasswordScore::new(0))
-    });
-
-    // 6. Creazione della struct
-    let stored_password = StoredPassword::new(
-        None,
-        user_id,
-        encrypted_location,
-        location_nonce.to_vec(),
-        encrypted_password,
-        encrypted_notes,
-        notes_nonce.map(|n| n.to_vec()),
-        password_score,
-        None,
-        password_nonce.to_vec(),
-    );
-
-    // 7. Persistenza
-    save_or_update_stored_password(pool, stored_password).await?;
-
-    Ok(())
-}
-
-/// Deprecated: Use `create_stored_data_pipeline` instead
-#[deprecated]
-pub async fn create_stored_password_pipeline(
-    pool: &SqlitePool,
-    user_id: i64,
-    location: String,
-    raw_password: SecretString,
-    notes: Option<String>,
-    score: Option<PasswordScore>,
-) -> Result<(), DBError> {
-    create_stored_data_pipeline(pool, user_id, location, raw_password, notes, score).await
 }
 
 /// Crea record StoredPassword criptando location, password e notes in parallelo.
@@ -287,15 +209,6 @@ pub async fn create_stored_data_records(
     })
     .await
     .map_err(|e| DBError::new_password_save_error(format!("Join error: {}", e)))?
-}
-
-/// Deprecated: Use `create_stored_data_records` instead
-pub async fn create_stored_passwords(
-    cipher: Aes256Gcm,
-    user_auth: UserAuth,
-    stored_raw_passwords: Vec<StoredRawPassword>,
-) -> Result<Vec<StoredPassword>, DBError> {
-    create_stored_data_records(cipher, user_auth, stored_raw_passwords).await
 }
 
 pub async fn get_stored_raw_passwords(
@@ -396,4 +309,84 @@ pub async fn decrypt_stored_password(
     Ok(plaintext)
 }
 
-pub async fn stored_password_migration_pipeline() {}
+pub async fn stored_passwords_migration_pipeline(
+    pool: &SqlitePool,
+    user_id: i64,
+    old_password: String,
+) -> Result<(), DBError> {
+    let data = fetch_all_stored_passwords_for_user(pool, user_id).await?;
+    let old_password = SecretString::new(old_password.into());
+    let user_auth: UserAuth = UserAuth {
+        id: user_id,
+        password: old_password.into(),
+    };
+    let decrypted_data = decrypt_bulk_stored_data(user_auth, data).await?;
+    let _ = create_stored_data_pipeline_bulk(pool, user_id, decrypted_data).await?;
+    let _ = remove_temp_old_password(pool, user_id).await?;
+    Ok(())
+}
+
+// async fn create_password_with_cipher(
+//     new_password: &SecretString,
+//     nonce: &Nonce<Aes256Gcm>,
+//     cipher: &Aes256Gcm,
+// ) -> Result<SecretBox<[u8]>, DBError> {
+//     let cipher_vec = cipher
+//         .encrypt(nonce, new_password.expose_secret().as_bytes())
+//         .map_err(|e| DBError::new_cipher_encryption_error(e.to_string()))?;
+//     Ok(SecretBox::new(cipher_vec.into()))
+// }
+
+// /// Pipeline completa per salvare una nuova password nel database.
+// #[deprecated]
+// pub async fn create_stored_data_pipeline(
+//     pool: &SqlitePool,
+//     user_id: i64,
+//     location: String,
+//     raw_password: SecretString,
+//     notes: Option<String>,
+//     score: Option<PasswordScore>,
+// ) -> Result<(), DBError> {
+//     // 1. Recupero credenziali e setup crittografico
+//     let user_auth = fetch_user_auth_from_id(pool, user_id).await?;
+//     let salt = get_salt(&user_auth.password);
+//     let cipher = create_cipher(&salt, &user_auth)?;
+//
+//     // 2. Cripta location
+//     let (encrypted_location, location_nonce) = encrypt_string(&location, &cipher)?;
+//
+//     // 3. Cripta password
+//     let password_nonce = create_nonce();
+//     let encrypted_password = create_password_with_cipher(&raw_password, &password_nonce, &cipher)
+//         .await
+//         .map_err(|_| DBError::new_password_save_error("Errore durante la criptazione".into()))?;
+//
+//     // 4. Cripta notes
+//     let (encrypted_notes, notes_nonce) = encrypt_optional_string(notes.as_deref(), &cipher)?;
+//
+//     // 5. Determinazione del punteggio
+//     let password_score = score.unwrap_or_else(|| {
+//         evaluate_password_strength(&raw_password, None)
+//             .score
+//             .unwrap_or(PasswordScore::new(0))
+//     });
+//
+//     // 6. Creazione della struct
+//     let stored_password = StoredPassword::new(
+//         None,
+//         user_id,
+//         encrypted_location,
+//         location_nonce.to_vec(),
+//         encrypted_password,
+//         encrypted_notes,
+//         notes_nonce.map(|n| n.to_vec()),
+//         password_score,
+//         None,
+//         password_nonce.to_vec(),
+//     );
+//
+//     // 7. Persistenza
+//     save_or_update_stored_password(pool, stored_password).await?;
+//
+//     Ok(())
+// }

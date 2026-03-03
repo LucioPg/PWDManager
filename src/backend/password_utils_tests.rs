@@ -1,11 +1,12 @@
 use crate::backend::db_backend::{
     create_user_settings, fetch_all_stored_passwords_for_user, fetch_user_data,
-    fetch_user_passwords_generation_settings, save_or_update_user,
+    fetch_user_passwords_generation_settings, fetch_user_temp_old_password, save_or_update_user,
 };
 use crate::backend::evaluate_password_strength;
 use crate::backend::password_utils::{
     create_cipher, create_stored_data_pipeline_bulk, create_stored_data_records,
-    decrypt_stored_password, generate_suggested_password,
+    decrypt_stored_password, generate_suggested_password, get_stored_raw_passwords,
+    stored_passwords_migration_pipeline,
 };
 use crate::backend::test_helpers::setup_test_db;
 use pwd_types::{
@@ -15,6 +16,7 @@ use pwd_types::{
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;
 use std::time::Instant;
+use uuid::Uuid;
 
 /// Helper function per creare un utente di test e restituire l'ID
 /// Usa un timestamp per garantire username univoci tra i test
@@ -92,6 +94,7 @@ async fn test_encrypt_decrypt_password() {
     let location = "https://example.com".to_string();
     let notes = Some(SecretString::new("Test password".into()));
     let stored_raw_password = StoredRawPassword {
+        uuid: Uuid::new_v4(),
         id: None,
         user_id,
         location: SecretString::new(location.to_string().into()),
@@ -210,6 +213,7 @@ async fn test_encrypt_decrypt_password() {
 //     for (locat, raw_pwd, password_evaluation) in &data {
 //         let rp = SecretString::new(raw_pwd.to_owned().into());
 //         let stored_password_raw = StoredRawPassword {
+//             uuid: Uuid::new_v4(),
 //             id: None,
 //             user_id,
 //             location: SecretString::new(locat.to_string().into()),
@@ -352,6 +356,7 @@ async fn test_decrypt_invalid_nonce() {
     // Crea una password valida
     let raw_password = SecretString::new("TestPassword".into());
     let stored_raw_password = StoredRawPassword {
+        uuid: Uuid::new_v4(),
         id: None,
         user_id,
         location: SecretString::new("https://test.com".to_string().into()),
@@ -420,6 +425,7 @@ async fn test_multiple_passwords_for_same_user() {
     let mut stored_raw_passwords: Vec<StoredRawPassword> = vec![];
     for (location, raw_pwd) in &passwords {
         let stored_raw_password = StoredRawPassword {
+            uuid: Uuid::new_v4(),
             id: None,
             user_id,
             location: SecretString::new(location.to_string().into()),
@@ -485,6 +491,7 @@ async fn test_multiple_passwords_for_same_user_with_predefined_strength() {
     let mut stored_raw_passwords: Vec<StoredRawPassword> = vec![];
     for (location, raw_pwd, strength) in &passwords {
         let stored_raw_password = StoredRawPassword {
+            uuid: Uuid::new_v4(),
             id: None,
             user_id,
             location: SecretString::new(location.to_string().into()),
@@ -529,6 +536,7 @@ async fn test_encrypted_password_is_different_from_original() {
 
     let raw_password = "MyPassword123";
     let stored_raw_password = StoredRawPassword {
+        uuid: Uuid::new_v4(),
         id: None,
         user_id,
         location: SecretString::new("https://encrypted.com".to_string().into()),
@@ -572,6 +580,7 @@ async fn test_location_and_notes_are_encrypted() {
     let location = "https://secret-location.com".to_string();
     let notes = Some("Confidential notes".to_string());
     let stored_raw_password = StoredRawPassword {
+        uuid: Uuid::new_v4(),
         id: None,
         user_id,
         location: SecretString::new(location.clone().into()),
@@ -623,6 +632,7 @@ async fn test_decrypt_location_and_notes_roundtrip() {
     let location = "MySecretService".to_string();
     let notes = Some(SecretString::new("My secret notes".into()));
     let stored_raw_password = StoredRawPassword {
+        uuid: Uuid::new_v4(),
         id: None,
         user_id,
         location: SecretString::new(location.clone().into()),
@@ -658,4 +668,182 @@ async fn test_decrypt_location_and_notes_roundtrip() {
         decrypted[0].password.expose_secret(),
         raw_password.expose_secret()
     );
+}
+
+// ============ Test per stored_passwords_migration_pipeline ============
+// Flusso corretto:
+// 1. Creare utente → password viene hashata
+// 2. Salvare StoredPassword (criptate con la vecchia master)
+// 3. Cambiare password → vecchio HASH salvato in temp_old_password
+// 4. Recuperare temp_old_password (è già un hash Argon2)
+// 5. Passare quell'hash a stored_passwords_migration_pipeline
+
+#[tokio::test]
+async fn test_password_migration_single_password() {
+    let pool = setup_test_db().await;
+    let old_password = "OldMasterPass123!";
+    let new_password = "NewMasterPass456!";
+
+    // 1. Crea utente con vecchia password
+    let user_id = create_test_user(&pool, "migration_single", old_password).await;
+
+    // 2. Crea StoredPassword da migrare (criptata con vecchia master)
+    let raw_password = SecretString::new("MySecurePassword789".into());
+    let location = "https://example.com".to_string();
+    let notes = Some(SecretString::new("Test notes".into()));
+    let stored_raw_password = StoredRawPassword {
+        uuid: Uuid::new_v4(),
+        id: None,
+        user_id,
+        location: SecretString::new(location.clone().into()),
+        password: raw_password.clone(),
+        notes: notes.clone(),
+        score: None,
+        created_at: None,
+    };
+    create_stored_data_pipeline_bulk(&pool, user_id, vec![stored_raw_password])
+        .await
+        .expect("Failed to save initial password");
+
+    // 3. Cambia master password → salva VECCHIO HASH in temp_old_password
+    save_or_update_user(
+        &pool,
+        Some(user_id),
+        format!("migration_single_{}", user_id),
+        Some(SecretString::new(new_password.into())),
+        None,
+    )
+    .await
+    .expect("Failed to update password");
+
+    // 4. Recupera temp_old_password (HASH della vecchia password)
+    let temp_old_hash = fetch_user_temp_old_password(&pool, user_id)
+        .await
+        .expect("Failed to fetch temp_old_password")
+        .expect("temp_old_password should exist");
+
+    // 5. Esegui migration passando l'HASH
+    let result = stored_passwords_migration_pipeline(&pool, user_id, temp_old_hash).await;
+    assert!(result.is_ok(), "Migration should succeed: {:?}", result);
+
+    // 6. Verifica temp_old_password rimosso
+    let temp_old_after = fetch_user_temp_old_password(&pool, user_id)
+        .await
+        .expect("Failed to fetch temp_old_password");
+    assert!(temp_old_after.is_none(), "temp_old_password should be removed, but was: {:?}", temp_old_after);
+
+    // 7. Verifica decriptazione con NUOVA master
+    let decrypted = get_stored_raw_passwords(&pool, user_id)
+        .await
+        .expect("Failed to decrypt with new password");
+    assert_eq!(decrypted.len(), 1);
+    assert_eq!(decrypted[0].password.expose_secret(), raw_password.expose_secret());
+    assert_eq!(decrypted[0].location.expose_secret(), location);
+}
+
+#[tokio::test]
+async fn test_password_migration_multiple_passwords() {
+    let pool = setup_test_db().await;
+    let old_password = "OldMasterPass123!";
+    let new_password = "NewMasterPass456!";
+
+    // 1. Crea utente
+    let user_id = create_test_user(&pool, "migration_multi", old_password).await;
+
+    // 2. Crea multiple StoredPassword
+    let passwords_data = vec![
+        ("https://site1.com", "Password1", Some("Note 1")),
+        ("https://site2.com", "Password2", None),
+        ("https://site3.com", "Password3", Some("Note 3")),
+    ];
+
+    let stored_raw_passwords: Vec<StoredRawPassword> = passwords_data
+        .iter()
+        .map(|(location, pwd, note)| StoredRawPassword {
+            uuid: Uuid::new_v4(),
+            id: None,
+            user_id,
+            location: SecretString::new(location.to_string().into()),
+            password: SecretString::new(pwd.to_string().into()),
+            notes: note.map(|n| SecretString::new(n.into())),
+            score: None,
+            created_at: None,
+        })
+        .collect();
+
+    create_stored_data_pipeline_bulk(&pool, user_id, stored_raw_passwords)
+        .await
+        .expect("Failed to save initial passwords");
+
+    // 3. Cambia master password
+    save_or_update_user(
+        &pool,
+        Some(user_id),
+        format!("migration_multi_{}", user_id),
+        Some(SecretString::new(new_password.into())),
+        None,
+    )
+    .await
+    .expect("Failed to update password");
+
+    // 4. Recupera temp_old_password e esegui migration
+    let temp_old_hash = fetch_user_temp_old_password(&pool, user_id)
+        .await
+        .expect("Failed to fetch temp_old_password")
+        .expect("temp_old_password should exist");
+
+    let result = stored_passwords_migration_pipeline(&pool, user_id, temp_old_hash).await;
+    assert!(result.is_ok(), "Migration should succeed: {:?}", result);
+
+    // 5. Verifica tutte le password
+    let decrypted = get_stored_raw_passwords(&pool, user_id)
+        .await
+        .expect("Failed to decrypt");
+    assert_eq!(decrypted.len(), passwords_data.len());
+
+    for (i, (location, pwd, note)) in passwords_data.iter().enumerate() {
+        assert_eq!(decrypted[i].location.expose_secret(), *location);
+        assert_eq!(decrypted[i].password.expose_secret(), *pwd);
+        match (note, &decrypted[i].notes) {
+            (Some(exp), Some(act)) => assert_eq!(act.expose_secret(), *exp),
+            (None, None) => {}
+            _ => panic!("Notes mismatch at index {}", i),
+        }
+    }
+}
+
+#[tokio::test]
+async fn test_password_migration_empty_passwords() {
+    let pool = setup_test_db().await;
+    let old_password = "OldMasterPass123!";
+    let new_password = "NewMasterPass456!";
+
+    // 1. Crea utente (NESSUNA StoredPassword)
+    let user_id = create_test_user(&pool, "migration_empty", old_password).await;
+
+    // 2. Cambia master password
+    save_or_update_user(
+        &pool,
+        Some(user_id),
+        format!("migration_empty_{}", user_id),
+        Some(SecretString::new(new_password.into())),
+        None,
+    )
+    .await
+    .expect("Failed to update password");
+
+    // 3. Recupera temp_old_password e esegui migration
+    let temp_old_hash = fetch_user_temp_old_password(&pool, user_id)
+        .await
+        .expect("Failed to fetch temp_old_password")
+        .expect("temp_old_password should exist");
+
+    let result = stored_passwords_migration_pipeline(&pool, user_id, temp_old_hash).await;
+    assert!(result.is_ok(), "Migration with no passwords should succeed: {:?}", result);
+
+    // 4. Verifica temp_old_password rimosso
+    let temp_old_after = fetch_user_temp_old_password(&pool, user_id)
+        .await
+        .expect("Failed to fetch temp_old_password");
+    assert!(temp_old_after.is_none(), "temp_old_password should be removed, but was: {:?}", temp_old_after);
 }

@@ -699,50 +699,6 @@ pub async fn check_user(
     Ok(())
 }
 
-/// Salva o aggiorna una password nel database usando sqlx-template.
-///
-/// Utilizza il metodo generato `upsert_by_id` che gestisce sia INSERT che UPDATE:
-/// - `id = None` → INSERT di una nuova password
-/// - `id = Some(id)` → INSERT OR REPLACE (aggiorna la password esistente)
-///
-/// # Parametri
-///
-/// * `pool` - Pool SQLite per la connessione al database
-/// * `stored_password` - Struct `StoredPassword` con i dati della password da salvare
-///
-/// # Valore Restituito
-///
-/// Return `Ok(())` se il salvataggio/aggiornamento ha successo
-///
-/// # Errori
-///
-/// - `DBError::new_password_save_error` - Password o location vuote
-/// - `DBError::new_password_save_error` - Errore durante l'upsert
-pub async fn save_or_update_stored_password(
-    pool: &SqlitePool,
-    stored_password: StoredPassword,
-) -> Result<(), DBError> {
-    debug!("Attempting to save/update user password");
-
-    // Validazione comune (location e password sono bytes criptati)
-    if stored_password.password.expose_secret().is_empty()
-        || stored_password.location.expose_secret().is_empty()
-    {
-        return Err(DBError::new_password_save_error(
-            "Password and location cannot be empty".into(),
-        ));
-    }
-
-    // sqlx-template genera upsert_by_id() che gestisce entrambi i casi:
-    // - Se id è None → INSERT
-    // - Se id è Some(id) → INSERT OR REPLACE (aggiorna)
-    StoredPassword::upsert_by_id(&stored_password, pool)
-        .await
-        .map_err(|e| DBError::new_password_save_error(format!("Upsert failed: {}", e)))?;
-
-    Ok(())
-}
-
 /// Recupera tutte le password di un utente dal database.
 ///
 /// Utilizza il builder pattern di sqlx-template per:
@@ -897,6 +853,7 @@ pub async fn delete_stored_password(pool: &SqlitePool, id: i64) -> Result<(), DB
     Ok(())
 }
 
+/// Questa funzione viene usata solo per i test - NON DEVE ESSERE RIMOSSA
 pub(crate) async fn fetch_user_temp_old_password(
     pool: &SqlitePool,
     user_id: i64,
@@ -908,8 +865,63 @@ pub(crate) async fn fetch_user_temp_old_password(
         .map_err(|e| {
             DBError::new_fetch_error(format!("Failed to fetch temp_old_password: {}", e))
         })?;
-    Ok(row.map(|row| row.get::<String, _>("temp_old_password")))
+    Ok(row.and_then(|row| row.get::<Option<String>, _>("temp_old_password")))
 }
+
+pub async fn remove_temp_old_password(pool: &SqlitePool, user_id: i64) -> Result<(), DBError> {
+    let _ = query("UPDATE users SET temp_old_password = NULL WHERE id = ?")
+        .bind(user_id)
+        .execute(pool)
+        .await
+        .map_err(|e| {
+            DBError::new_fetch_error(format!("Failed to remove temp_old_password: {}", e))
+        })?;
+    Ok(())
+}
+
+// /// Salva o aggiorna una password nel database usando sqlx-template.
+// ///
+// /// Utilizza il metodo generato `upsert_by_id` che gestisce sia INSERT che UPDATE:
+// /// - `id = None` → INSERT di una nuova password
+// /// - `id = Some(id)` → INSERT OR REPLACE (aggiorna la password esistente)
+// ///
+// /// # Parametri
+// ///
+// /// * `pool` - Pool SQLite per la connessione al database
+// /// * `stored_password` - Struct `StoredPassword` con i dati della password da salvare
+// ///
+// /// # Valore Restituito
+// ///
+// /// Return `Ok(())` se il salvataggio/aggiornamento ha successo
+// ///
+// /// # Errori
+// ///
+// /// - `DBError::new_password_save_error` - Password o location vuote
+// /// - `DBError::new_password_save_error` - Errore durante l'upsert
+// pub async fn save_or_update_stored_password(
+//     pool: &SqlitePool,
+//     stored_password: StoredPassword,
+// ) -> Result<(), DBError> {
+//     debug!("Attempting to save/update user password");
+//
+//     // Validazione comune (location e password sono bytes criptati)
+//     if stored_password.password.expose_secret().is_empty()
+//         || stored_password.location.expose_secret().is_empty()
+//     {
+//         return Err(DBError::new_password_save_error(
+//             "Password and location cannot be empty".into(),
+//         ));
+//     }
+//
+//     // sqlx-template genera upsert_by_id() che gestisce entrambi i casi:
+//     // - Se id è None → INSERT
+//     // - Se id è Some(id) → INSERT OR REPLACE (aggiorna)
+//     StoredPassword::upsert_by_id(&stored_password, pool)
+//         .await
+//         .map_err(|e| DBError::new_password_save_error(format!("Upsert failed: {}", e)))?;
+//
+//     Ok(())
+// }
 
 #[cfg(test)]
 mod tests {
