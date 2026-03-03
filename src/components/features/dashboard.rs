@@ -100,6 +100,17 @@ pub fn Dashboard() -> Element {
             })
     });
 
+    // upsert modal - refresh tabella dopo salvataggio
+    let on_confirm_upsert = {
+        let stored_raw_passwords_data = stored_raw_passwords_data.clone();
+        move |_| {
+            let mut resource = stored_raw_passwords_data.clone();
+            spawn(async move {
+                resource.restart();
+            });
+        }
+    };
+
     // deletion modal
     let on_confirm_delete = {
         // Cattura tutto quello che serve (già clonato)
@@ -160,67 +171,75 @@ pub fn Dashboard() -> Element {
                     value: stats().total.to_string(),
                     label: "Total Passwords".to_string(),
                     variant: StatVariant::Primary,
-                    on_click: move |_| current_filter.clone().set(None)
+                    on_click: move |_| current_filter.clone().set(None),
                 }
                 StatCard {
                     value: stats().god.to_string(),
                     label: "God Passwords".to_string(),
                     variant: StatVariant::Success,
-                    on_click: move |_| current_filter.clone().set(Some(PasswordStrength::GOD))
+                    on_click: move |_| current_filter.clone().set(Some(PasswordStrength::GOD)),
                 }
                 StatCard {
                     value: stats().epic.to_string(),
                     label: "Epic Passwords".to_string(),
                     variant: StatVariant::Success,
-                    on_click: move |_| current_filter.clone().set(Some(PasswordStrength::EPIC))
+                    on_click: move |_| current_filter.clone().set(Some(PasswordStrength::EPIC)),
                 }
                 StatCard {
                     value: stats().strong.to_string(),
                     label: "Strong Passwords".to_string(),
                     variant: StatVariant::Success,
-                    on_click: move |_| current_filter.clone().set(Some(PasswordStrength::STRONG))
+                    on_click: move |_| current_filter.clone().set(Some(PasswordStrength::STRONG)),
                 }
                 StatCard {
                     value: stats().medium.to_string(),
                     label: "Medium Passwords".to_string(),
                     variant: StatVariant::Warning,
-                    on_click: move |_| current_filter.clone().set(Some(PasswordStrength::MEDIUM))
+                    on_click: move |_| current_filter.clone().set(Some(PasswordStrength::MEDIUM)),
                 }
                 StatCard {
                     value: stats().weak.to_string(),
                     label: "Weak Passwords".to_string(),
                     variant: StatVariant::Warning,
-                    on_click: move |_| current_filter.clone().set(Some(PasswordStrength::WEAK))
+                    on_click: move |_| current_filter.clone().set(Some(PasswordStrength::WEAK)),
                 }
             }
-                        div { class: "card-no-border items-end",
-                button { class: "btn btn-success",
+            div { class: "card-no-border items-end",
+                button {
+                    class: "btn btn-success",
                     r#type: "button",
                     onclick: move |_| {
                         stored_password_dialog_state.current_stored_raw_password.set(None);
                         stored_password_dialog_state.is_open.set(true);
                     },
-                    "New Password" }
-            }
-            div { class: "card card-lg",
-                StoredRawPasswordsTable {
-                    data: filtered_stored_raw_passwords.clone(),
+                    "New Password"
                 }
             }
-
+            {
+                // Leggiamo il memo in modo reattivo - Dioxus traccia questa lettura
+                let table_data = filtered_stored_raw_passwords();
+                let count = table_data.as_ref().map(|p| p.len()).unwrap_or(0);
+                rsx! {
+                    div { class: "card card-lg",
+                        StoredRawPasswordsTable {
+                            key: "{count}",
+                            data: table_data,
+                        }
+                    }
+                }
+            }
+        
 
         }
+        // on_cancel gestito internamente al componente
         StoredPasswordUpsertDialog {
-            // on_confirm: move |_| {(stored_password_dialog_state.is_open).set(false);},
-            // on_cancel: move |_| {(stored_password_dialog_state.is_open).set(false);},
-            on_confirm: move |_| {stored_raw_passwords_data.clone().restart()},
-            on_cancel: move |_| {},  // gestito internamente al componente
-
+            on_confirm: on_confirm_upsert,
+            on_cancel: move |_| {},
         }
         StoredPasswordDeletionDialog {
             open: deletion_password_dialog_state.is_open.clone(),
             on_confirm: on_confirm_delete,
-            on_cancel: cancel_delete
+            on_cancel: cancel_delete,
         }
     }
 }
