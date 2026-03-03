@@ -9,6 +9,7 @@ use dioxus::prelude::*;
 use pwd_types::{PasswordChangeResult, StoredRawPassword};
 use secrecy::{ExposeSecret, SecretString};
 use sqlx::SqlitePool;
+use uuid::Uuid;
 
 #[component]
 pub fn StoredPasswordUpsertDialog(
@@ -102,6 +103,7 @@ pub fn StoredPasswordUpsertDialog(
             password_to_be_saved.expose_secret().to_string()
         );
         let stored_raw_password = StoredRawPassword {
+            uuid: Uuid::new_v4(),
             id: stored_password_id,
             user_id,
             location: SecretString::new(location().into()),

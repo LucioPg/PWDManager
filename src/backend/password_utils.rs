@@ -27,6 +27,7 @@ use pwd_types::{
     AegisPasswordConfig, DbSecretString, PasswordGeneratorConfig, PasswordPreset, PasswordScore,
     StoredPassword, StoredRawPassword, UserAuth,
 };
+use uuid::Uuid;
 use rayon::prelude::*;
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;
@@ -354,6 +355,7 @@ pub async fn decrypt_bulk_stored_data(
                 };
 
                 Ok(StoredRawPassword {
+                    uuid: Uuid::new_v4(),
                     id: sp.id,
                     user_id: user_auth.id,
                     location: SecretString::new(location.into()),

@@ -1,4 +1,5 @@
 use pwd_types::StoredRawPassword;
+use secrecy::ExposeSecret;
 use crate::components::{Spinner, SpinnerSize, StoredRawPasswordRow};
 
 use dioxus::prelude::*;
@@ -22,9 +23,11 @@ pub fn StoredRawPasswordsTable(
                         }
                     }
                     tbody {
-                        for stored_raw_password in stored_raw_passwords.iter() {
+                        for (index, stored_raw_password) in stored_raw_passwords.iter().enumerate() {
+                            // Key include id + len(password) + score per forzare re-render
+                            // quando qualsiasi campo significativo cambia
                             StoredRawPasswordRow {
-                                key: "{stored_raw_password.id.unwrap_or(0)}",
+                                key: "{stored_raw_password.id.unwrap_or(0)}-{stored_raw_password.password.expose_secret().len()}-{stored_raw_password.score.map(|s| s.value()).unwrap_or(0)}",
                                 stored_raw_password: stored_raw_password.clone(),
                                 on_edit: move |_| {},
                                 on_delete: move |_| {},
