@@ -1319,3 +1319,8 @@ button[class*="btn-"] {
 .toggle:before {
     box-shadow: 0 0 #0000 !important;
 }
+
+.label-text::after {
+    content: ":" !important;
+
+}
