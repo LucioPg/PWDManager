@@ -130,8 +130,8 @@ il pc
 - [x] decidere se offuscare e criptare anche location e note -- Fatto
 - [x] lo sfondo scala male: allungando la finestra la scritta del logo viene tagliata, mentre il sotto testo rimane al
   centro sovrapponendosi alla scritta del logo.
-- [ ] dashboard aggiungere pulsante per cancellare tutte le password salvate -- nel caso ci fosse errore di decrypting
-  irreversibile -- implementati manca backend
+- [x] dashboard aggiungere pulsante per cancellare tutte le password salvate -- nel caso ci fosse errore di decrypting
+  irreversibile.
 - [ ] dashboard aggiungere pulsante di export in vari formati (csv, json, xml)  -- implementati manca backend
 - [ ] dashboard aggiungere pulsante di import da vari formati (csv, json, xml)   -- implementati manca backend
 -
@@ -142,7 +142,7 @@ il pc
 - [x] creare form di modifica password e dati
 - [x] creare hook per salvataggio password nel database ( upsert )
 - [x] creare dialog di eliminazione password
-- [ ] creare trigger async di ri-cryptaggio password nel caso un utente cambi la password. \[vedi sezione Stored
+- [x] creare trigger async di ri-cryptaggio password nel caso un utente cambi la password. \[vedi sezione Stored
   Passwords migration]
 - [x] aggiungere un "diversificatore" per chiave AES prelevato dalla stringa di creazione dell'utente per evitare il
   KEY-REUSE.
@@ -170,9 +170,9 @@ il pc
 
 #### Migration
 
-- [ ] Creare trigger async di ri-cryptaggio password nel caso un utente cambi la password.
-- [ ] Creare dialog di avviso di migrazione password.
-- [ ] Creare dialog di migrazione password con progressbar e tasto pausa.
+- [x] Creare trigger async di ri-cryptaggio password nel caso un utente cambi la password.
+- [x] Creare dialog di avviso di migrazione password.
+- [x] Creare dialog di migrazione password con progressbar.
 
 ### Backend
 
@@ -183,8 +183,8 @@ il pc
 
 #### Migration
 
-- [ ] Creare funzione di fetch per temp_old_password.
-- [ ] Creare meccanismo di lavoro parallelo con rayon e tokio spawn_blocking. parzialmente fatto
+- [x] Creare funzione di fetch per temp_old_password (usata nei test, a runtime è passato come arg).
+- [x] Creare meccanismo di lavoro parallelo con rayon e tokio spawn_blocking.
 - [x] Creare funzione di aggregazione delle query per salvare in batch.
 
 #### Import/Export
