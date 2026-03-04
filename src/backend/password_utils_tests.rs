@@ -10,8 +10,8 @@ use crate::backend::password_utils::{
 };
 use crate::backend::test_helpers::setup_test_db;
 use pwd_types::{
-    DbSecretString, PasswordPreset, PasswordScore, PasswordStrength, StoredPassword,
-    StoredRawPassword, UserAuth,
+    DbSecretString, ExcludedSymbolSet, PasswordGeneratorConfig, PasswordPreset, PasswordScore,
+    PasswordStrength, StoredPassword, StoredRawPassword, UserAuth,
 };
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;
@@ -846,4 +846,112 @@ async fn test_password_migration_empty_passwords() {
         .await
         .expect("Failed to fetch temp_old_password");
     assert!(temp_old_after.is_none(), "temp_old_password should be removed, but was: {:?}", temp_old_after);
+}
+
+// ============ Test per ExcludedSymbolSet ============
+
+/// Test che verifica che le password generate rispettino ExcludedSymbolSet.
+///
+/// Usa tre set di simboli esclusi:
+/// - Piccolo: 3 simboli comuni (!@#)
+/// - Medio: 10 simboli (!@#$%^&*())
+/// - Massimale: tutti i simboli speciali della tastiera US standard
+///
+/// Per ogni set, genera 10 password e verifica che NESSUNA contenga i simboli esclusi.
+#[tokio::test]
+async fn test_excluded_symbol_set_respected() {
+    // Definisci i tre set di simboli esclusi
+    let small_excluded: String = "!@#".to_string();
+    let medium_excluded: String = "!@#$%^&*()".to_string();
+    // Massimale: tutti i simboli speciali della tastiera US (senza underscore e trattino che sono comuni)
+    let maximal_excluded: String = "!@#$%^&*()=+[]{}|;:'\",.<>/?~`".to_string();
+
+    let test_cases: Vec<(&str, String)> = vec![
+        ("small", small_excluded),
+        ("medium", medium_excluded),
+        ("maximal", maximal_excluded),
+    ];
+
+    for (name, excluded_str) in test_cases {
+        let excluded_set = ExcludedSymbolSet::from(excluded_str.clone());
+
+        let config = PasswordGeneratorConfig {
+            id: Some(1),
+            settings_id: 1,
+            length: 20,
+            symbols: 3,
+            numbers: true,
+            uppercase: true,
+            lowercase: true,
+            excluded_symbols: excluded_set.clone(),
+        };
+
+        // Genera 10 password e verifica che nessuna contenga i simboli esclusi
+        for i in 0..10 {
+            let password = generate_suggested_password(Some(config.clone()));
+            let pwd_str = password.expose_secret();
+
+            // Verifica che NESSUN simbolo escluso sia presente
+            for excluded_char in excluded_set.iter() {
+                assert!(
+                    !pwd_str.contains(*excluded_char),
+                    "[{}] Password #{} contains excluded symbol '{}': {}",
+                    name,
+                    i + 1,
+                    excluded_char,
+                    pwd_str
+                );
+            }
+
+            // Verifica anche che la password abbia ancora simboli (non solo alfanumerici)
+            let symbol_count = pwd_str.chars().filter(|c| !c.is_alphanumeric()).count();
+            assert!(
+                symbol_count >= config.symbols as usize,
+                "[{}] Password #{} should have at least {} symbols, got {}: {}",
+                name,
+                i + 1,
+                config.symbols,
+                symbol_count,
+                pwd_str
+            );
+        }
+
+        println!(
+            "[{}] All 10 passwords respected excluded symbols: {}",
+            name,
+            excluded_str
+        );
+    }
+}
+
+/// Test che verifica il caso limite: set di simboli esclusi vuoto.
+#[tokio::test]
+async fn test_excluded_symbol_set_empty() {
+    let excluded_set = ExcludedSymbolSet::default(); // Set vuoto
+
+    let config = PasswordGeneratorConfig {
+        id: Some(1),
+        settings_id: 1,
+        length: 16,
+        symbols: 2,
+        numbers: true,
+        uppercase: true,
+        lowercase: true,
+        excluded_symbols: excluded_set,
+    };
+
+    // Genera password - dovrebbe funzionare senza problemi
+    let password = generate_suggested_password(Some(config));
+    let pwd_str = password.expose_secret();
+
+    // Verifica che abbia simboli (nessuno escluso)
+    let symbol_count = pwd_str.chars().filter(|c| !c.is_alphanumeric()).count();
+    assert!(
+        symbol_count >= 2,
+        "Password should have at least 2 symbols, got {}: {}",
+        symbol_count,
+        pwd_str
+    );
+
+    println!("Empty excluded set test passed: {}", pwd_str);
 }
