@@ -1314,3 +1314,8 @@ button[class*="btn-"] {
     cursor: not-allowed;
     pointer-events: none;
 }
+
+
+.toggle:before {
+    box-shadow: 0 0 #0000 !important;
+}
