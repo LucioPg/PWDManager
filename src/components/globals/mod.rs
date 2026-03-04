@@ -16,6 +16,7 @@ mod svgs;
 mod table;
 pub mod tabs;
 mod toast_hub;
+pub mod toggle;
 
 pub use action_buttons::*;
 pub use auth_wrapper::*;

@@ -5,6 +5,7 @@ pub mod login;
 pub mod logout;
 mod progress_migration;
 pub mod settings;
+mod storedpassword_settings;
 pub mod upsert_user;
 
 pub use dashboard::*;
@@ -14,4 +15,5 @@ pub use login::*;
 pub use logout::*;
 pub use progress_migration::*;
 pub use settings::*;
+pub use storedpassword_settings::*;
 pub use upsert_user::*;
