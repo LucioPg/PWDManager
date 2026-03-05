@@ -1324,3 +1324,300 @@ button[class*="btn-"] {
     content: ":" !important;
 
 }
+
+/* ============================================================
+   STATS ASIDE - Expandable Statistics Panel (Left positioned)
+   ============================================================ */
+
+/* Base container - fixed positioning with high z-index */
+/* ========================================
+   Stats Aside - Sidebar con statistiche password
+   Design: minimal, trasparente, colori per lettera
+   ======================================== */
+
+.pwd-stats-aside {
+    position: fixed;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    /* Sfondo light per tema chiaro - leggermente più scuro della pagina */
+    background: linear-gradient(135deg, rgba(248, 250, 252, 0.95) 0%, rgba(241, 245, 249, 0.98) 100%);
+    backdrop-filter: blur(8px);
+    border-radius: 0 12px 12px 0;
+    border-right: 1px solid rgba(203, 213, 225, 0.5);
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.08);
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), z-index 0s 0.3s;
+    overflow: hidden;
+}
+
+/* Collapsed state */
+.pwd-stats-aside--collapsed {
+    width: 52px;
+}
+
+/* Expanded state - z-index alto per sovrapposizione senza spostare contenuto */
+.pwd-stats-aside--expanded {
+    width: 200px;
+    z-index: 100;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), z-index 0s 0s;
+}
+
+/* Toggle button - piccolo e discreto per tema light */
+.pwd-stats-aside__toggle {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 14px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(148, 163, 184, 0.4);
+    border: none;
+    border-radius: 0 6px 6px 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+.pwd-stats-aside__toggle:hover {
+    background: rgba(100, 116, 139, 0.5);
+    width: 16px;
+}
+
+.pwd-stats-aside__toggle-icon {
+    width: 10px;
+    height: 10px;
+    color: rgba(71, 85, 105, 0.9);
+    transition: transform 0.3s ease;
+}
+
+.pwd-stats-aside__toggle-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+/* Content wrapper */
+.pwd-stats-aside__content {
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem 1.25rem 0.75rem 0.5rem;
+    width: 100%;
+    gap: 0.25rem;
+}
+
+/* Header (visible when expanded) */
+.pwd-stats-aside__header {
+    padding: 0 0.25rem 0.5rem;
+    margin-bottom: 0.25rem;
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.pwd-stats-aside--expanded .pwd-stats-aside__header {
+    opacity: 1;
+    transform: translateY(0);
+    transition-delay: 0.05s;
+}
+
+.pwd-stats-aside__title {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #475569; /* slate-600 per tema light */
+    margin: 0;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.pwd-stats-aside__subtitle {
+    font-size: 0.6rem;
+    color: #64748b; /* slate-500 per tema light */
+    margin: 0.15rem 0 0;
+    opacity: 0.8;
+}
+
+/* Grid container for stat items */
+.pwd-stats-aside__grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+/* Individual stat item */
+.pwd-stats-aside__item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.25rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.pwd-stats-aside__item:hover {
+    background: rgba(148, 163, 184, 0.1);
+}
+
+/* Statcard con bordo arrotondato quando espansa */
+.pwd-stats-aside--expanded .pwd-stats-aside__item {
+    border-radius: 10px;
+}
+
+/* Badge (initial letter) - trasparente con lettera colorata */
+.pwd-stats-aside__badge {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+    background: transparent;
+    border: 1px solid transparent;
+}
+
+/* Badge color variants - solo lettera colorata */
+.pwd-stats-aside__badge--total {
+    color: #64748b; /* slate-500 */
+}
+
+.pwd-stats-aside__badge--god {
+    color: #a855f7; /* purple-500 */
+}
+
+.pwd-stats-aside__badge--epic {
+    color: #3b82f6; /* blue-500 - allineato a StrengthAnalyzer */
+}
+
+.pwd-stats-aside__badge--strong {
+    color: #22c55e; /* green-500 */
+}
+
+.pwd-stats-aside__badge--medium {
+    color: #f59e0b; /* amber-500 */
+}
+
+.pwd-stats-aside__badge--weak {
+    color: #ef4444; /* red-500 */
+}
+
+.pwd-stats-aside__initial {
+    /* No text-shadow - minimal look */
+}
+
+/* Details (value + label) - hidden when collapsed */
+.pwd-stats-aside__details {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    opacity: 0;
+    transform: translateX(-8px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    min-width: 0;
+}
+
+.pwd-stats-aside--expanded .pwd-stats-aside__details {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* Stagger animation for items */
+.pwd-stats-aside__item:nth-child(1) .pwd-stats-aside__details { transition-delay: 0.03s; }
+.pwd-stats-aside__item:nth-child(2) .pwd-stats-aside__details { transition-delay: 0.05s; }
+.pwd-stats-aside__item:nth-child(3) .pwd-stats-aside__details { transition-delay: 0.07s; }
+.pwd-stats-aside__item:nth-child(4) .pwd-stats-aside__details { transition-delay: 0.09s; }
+.pwd-stats-aside__item:nth-child(5) .pwd-stats-aside__details { transition-delay: 0.11s; }
+.pwd-stats-aside__item:nth-child(6) .pwd-stats-aside__details { transition-delay: 0.13s; }
+
+.pwd-stats-aside__value {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #1e293b; /* slate-800 per tema light */
+    line-height: 1.2;
+}
+
+.pwd-stats-aside__label {
+    font-size: 0.6rem;
+    color: #64748b; /* slate-500 per tema light */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+    .pwd-stats-aside {
+        /* Sfondo dark per dark mode */
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%);
+        border-right: 1px solid rgba(71, 85, 105, 0.3);
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.25);
+    }
+
+    .pwd-stats-aside__toggle {
+        background: rgba(71, 85, 105, 0.4);
+    }
+
+    .pwd-stats-aside__toggle:hover {
+        background: rgba(71, 85, 105, 0.6);
+    }
+
+    .pwd-stats-aside__toggle-icon {
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    .pwd-stats-aside__item:hover {
+        background: rgba(71, 85, 105, 0.2);
+    }
+
+    .pwd-stats-aside__title {
+        color: #cbd5e1; /* slate-300 */
+    }
+
+    .pwd-stats-aside__subtitle {
+        color: #94a3b8; /* slate-400 */
+    }
+
+    .pwd-stats-aside__value {
+        color: #f1f5f9; /* slate-100 */
+    }
+
+    .pwd-stats-aside__label {
+        color: #94a3b8; /* slate-400 */
+    }
+
+    /* Badge colors - slightly brighter in dark mode */
+    .pwd-stats-aside__badge--total {
+        color: #94a3b8; /* slate-400 */
+    }
+
+    .pwd-stats-aside__badge--god {
+        color: #c084fc; /* purple-400 */
+    }
+
+    .pwd-stats-aside__badge--epic {
+        color: #60a5fa; /* blue-400 - allineato a StrengthAnalyzer */
+    }
+
+    .pwd-stats-aside__badge--strong {
+        color: #4ade80; /* green-400 */
+    }
+
+    .pwd-stats-aside__badge--medium {
+        color: #fbbf24; /* amber-400 */
+    }
+
+    .pwd-stats-aside__badge--weak {
+        color: #f87171; /* red-400 */
+    }
+}

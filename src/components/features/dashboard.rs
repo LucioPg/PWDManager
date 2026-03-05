@@ -1,7 +1,7 @@
 use crate::backend::db_backend::delete_stored_password;
 use crate::backend::password_utils::get_stored_raw_passwords;
 use crate::components::features::DashboardMenu;
-use crate::components::globals::{StatCard, StatVariant};
+use crate::components::globals::StatsAside;
 use crate::components::{
     StoredPasswordDeletionDialog, StoredPasswordUpsertDialog, StoredRawPasswordsTable,
     show_toast_error, use_toast,
@@ -168,7 +168,15 @@ pub fn Dashboard() -> Element {
     });
 
     rsx! {
-        div { class: "content-container animate-fade-in",
+        // Stats Aside - posizionato fixed con z-index alto
+        StatsAside {
+            stats: stats(),
+            on_stat_click: move |strength| current_filter.clone().set(strength),
+            active_filter: current_filter(),
+        }
+
+        // Main content con margin-left per fare spazio all'aside collassato (52px)
+        div { class: "content-container animate-fade-in ml-16",
             div { class: "mb-8 flex justify-between items-start",
                 div {
                     h1 { class: "text-h2", "Welcome, {username}!" }
@@ -176,44 +184,7 @@ pub fn Dashboard() -> Element {
                 }
                 DashboardMenu { on_need_restart: on_need_restart.clone() }
             }
-            div { class: "stats-grid",
-                StatCard {
-                    value: stats().total.to_string(),
-                    label: "Total Passwords".to_string(),
-                    variant: StatVariant::Primary,
-                    on_click: move |_| current_filter.clone().set(None),
-                }
-                StatCard {
-                    value: stats().god.to_string(),
-                    label: "God Passwords".to_string(),
-                    variant: StatVariant::Success,
-                    on_click: move |_| current_filter.clone().set(Some(PasswordStrength::GOD)),
-                }
-                StatCard {
-                    value: stats().epic.to_string(),
-                    label: "Epic Passwords".to_string(),
-                    variant: StatVariant::Success,
-                    on_click: move |_| current_filter.clone().set(Some(PasswordStrength::EPIC)),
-                }
-                StatCard {
-                    value: stats().strong.to_string(),
-                    label: "Strong Passwords".to_string(),
-                    variant: StatVariant::Success,
-                    on_click: move |_| current_filter.clone().set(Some(PasswordStrength::STRONG)),
-                }
-                StatCard {
-                    value: stats().medium.to_string(),
-                    label: "Medium Passwords".to_string(),
-                    variant: StatVariant::Warning,
-                    on_click: move |_| current_filter.clone().set(Some(PasswordStrength::MEDIUM)),
-                }
-                StatCard {
-                    value: stats().weak.to_string(),
-                    label: "Weak Passwords".to_string(),
-                    variant: StatVariant::Warning,
-                    on_click: move |_| current_filter.clone().set(Some(PasswordStrength::WEAK)),
-                }
-            }
+
             div { class: "card-no-border items-end",
                 button {
                     class: "btn btn-success",
@@ -234,7 +205,7 @@ pub fn Dashboard() -> Element {
                     }
                 }
             }
-        
+
 
         }
         // on_cancel gestito internamente al componente
