@@ -762,6 +762,16 @@ pub async fn fetch_all_user_settings(pool: &SqlitePool) -> Result<Vec<UserSettin
     Ok(settings)
 }
 
+pub async fn upsert_password_config(
+    pool: &SqlitePool,
+    password_config: PasswordGeneratorConfig,
+) -> Result<(), DBError> {
+    PasswordGeneratorConfig::upsert_by_id(&password_config, pool)
+        .await
+        .map_err(|e| DBError::new_password_save_error(format!("Upsert failed: {}", e)))?;
+    Ok(())
+}
+
 pub async fn fetch_user_passwords_generation_settings(
     pool: &SqlitePool,
     user_id: i64,

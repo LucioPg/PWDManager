@@ -1,13 +1,16 @@
 use crate::auth::{AuthState, User};
-use crate::backend::db_backend::fetch_user_passwords_generation_settings;
+use crate::backend::db_backend::{
+    fetch_user_passwords_generation_settings, upsert_password_config,
+};
 use crate::backend::password_types_helper::{PasswordGeneratorConfig, PasswordPreset};
 use crate::components::globals::toggle::{Toggle, ToggleColor, ToggleSize};
 use crate::components::{ActionButton, ButtonSize, ButtonType, ButtonVariant};
 use dioxus::prelude::*;
+use futures::SinkExt;
 use pwd_dioxus::combobox::Combobox;
 use pwd_dioxus::form::{FormField, PositiveInt};
 use pwd_dioxus::spinner::{Spinner, SpinnerSize};
-use pwd_dioxus::{InputType, show_toast_error, use_toast};
+use pwd_dioxus::{InputType, show_toast_error, show_toast_success, use_toast};
 use pwd_types::ExcludedSymbolSet;
 use sqlx::SqlitePool;
 
@@ -40,9 +43,10 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
     let mut settings_ready = use_signal(|| false);
     let mut settings_id = use_signal(|| -1);
     let mut password_config_id = use_signal(|| -1);
+    let pool_clone = pool.clone();
     let mut current_settings = use_resource(move || {
         let user_id = user_id.clone();
-        let pool = pool.clone();
+        let pool = pool_clone.clone();
         let mut with_numbers = with_numbers.clone();
         let mut with_uppercase = with_uppercase.clone();
         let mut with_lowercase = with_lowercase.clone();
@@ -115,6 +119,8 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
         let with_excluded_symbols = with_excluded_symbols.clone();
         let with_length = with_length.clone();
         let settings_id = settings_id.clone();
+        let pool_clone = pool.clone();
+        let mut error = error.clone();
 
         let result = PasswordGeneratorConfig {
             id: Some(password_config_id()),
@@ -127,6 +133,19 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
             excluded_symbols: ExcludedSymbolSet::from(with_excluded_symbols()),
         };
         println!("{:#?}", result);
+        async move {
+            match upsert_password_config(&pool_clone, result.clone()).await {
+                Ok(_) => {
+                    show_toast_success(
+                        "Password generation settings updated successfully!".to_string(),
+                        toast,
+                    );
+                }
+                Err(e) => {
+                    error.set(Some(e.to_string()));
+                }
+            }
+        }
     };
     if !settings_ready() {
         return rsx! {
