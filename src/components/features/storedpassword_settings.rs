@@ -10,7 +10,7 @@ use futures::SinkExt;
 use pwd_dioxus::combobox::Combobox;
 use pwd_dioxus::form::{FormField, PositiveInt};
 use pwd_dioxus::spinner::{Spinner, SpinnerSize};
-use pwd_dioxus::{InputType, show_toast_error, show_toast_success, use_toast};
+use pwd_dioxus::{InputType, show_toast_error, show_toast_success, use_toast, SPECIAL_CHARS};
 use pwd_types::ExcludedSymbolSet;
 use sqlx::SqlitePool;
 
@@ -105,9 +105,9 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
             with_symbols.set(settings.symbols.into());
             with_excluded_symbols.set(settings.excluded_symbols.into());
             with_length.set(PositiveInt(settings.length as u32));
-            readonly.set(false);
-        } else {
             readonly.set(true);
+        } else {
+            readonly.set(false);
         }
     });
 
@@ -121,6 +121,44 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
         let settings_id = settings_id.clone();
         let pool_clone = pool.clone();
         let mut error = error.clone();
+        let toast_for_validation = toast.clone();
+
+        let symbols_count: u32 = with_symbols().0;
+        let has_charset = with_numbers() || with_uppercase() || with_lowercase();
+        let excluded: String = with_excluded_symbols();
+
+        // Validazione 1: almeno un character set o symbols deve essere abilitato
+        if !has_charset && symbols_count == 0 {
+            show_toast_error(
+                "Cannot generate password: enable at least one character set (numbers, uppercase, lowercase) or symbols.".to_string(),
+                toast_for_validation,
+            );
+            return;
+        }
+
+        // Validazione 2: se symbols > 0, deve esserci almeno un character set
+        if symbols_count > 0 && !has_charset {
+            show_toast_error(
+                "Cannot generate password: enable at least one character set (numbers, uppercase, or lowercase) when using symbols.".to_string(),
+                toast_for_validation,
+            );
+            return;
+        }
+
+        // Validazione 3: se symbols > 0, verificare che non tutti i simboli siano esclusi
+        if symbols_count > 0 {
+            let available_count = SPECIAL_CHARS
+                .chars()
+                .filter(|c| !excluded.contains(*c))
+                .count();
+            if available_count == 0 {
+                show_toast_error(
+                    format!("Cannot generate password: all {} available symbols are excluded.", SPECIAL_CHARS.len()),
+                    toast_for_validation,
+                );
+                return;
+            }
+        }
 
         let result = PasswordGeneratorConfig {
             id: Some(password_config_id()),
@@ -133,7 +171,7 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
             excluded_symbols: ExcludedSymbolSet::from(with_excluded_symbols()),
         };
         println!("{:#?}", result);
-        async move {
+        spawn(async move {
             match upsert_password_config(&pool_clone, result.clone()).await {
                 Ok(_) => {
                     show_toast_success(
@@ -145,7 +183,7 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
                     error.set(Some(e.to_string()));
                 }
             }
-        }
+        });
     };
     if !settings_ready() {
         return rsx! {
