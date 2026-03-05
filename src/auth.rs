@@ -69,4 +69,10 @@ impl AuthState {
         let user = self.user.read().clone();
         user
     }
+    pub fn get_user_id(&self) -> i64 {
+        match &*self.user.read() {
+            Some(user) => user.id.clone(),
+            None => -1,
+        }
+    }
 }
