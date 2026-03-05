@@ -10,7 +10,7 @@ use futures::SinkExt;
 use pwd_dioxus::combobox::Combobox;
 use pwd_dioxus::form::{FormField, PositiveInt};
 use pwd_dioxus::spinner::{Spinner, SpinnerSize};
-use pwd_dioxus::{InputType, show_toast_error, show_toast_success, use_toast, SPECIAL_CHARS};
+use pwd_dioxus::{InputType, SPECIAL_CHARS, show_toast_error, show_toast_success, use_toast};
 use pwd_types::ExcludedSymbolSet;
 use sqlx::SqlitePool;
 
@@ -37,9 +37,11 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
     let mut with_symbols = use_signal(|| PositiveInt(2));
     let mut with_excluded_symbols = use_signal(|| String::new());
     let mut with_length = use_signal(|| PositiveInt(26));
-    let mut readonly = use_signal(|| false);
+    let mut readonly = use_signal(|| true); // Start as true
     let options = preset_options();
     let mut current_preset = use_signal(|| Option::<PasswordPreset>::None);
+    let mut prev_preset = use_signal(|| Option::<PasswordPreset>::None); // Track previous value
+    let mut has_ever_selected = use_signal(|| false); // Track if user has ever selected anything
     let mut settings_ready = use_signal(|| false);
     let mut settings_id = use_signal(|| -1);
     let mut password_config_id = use_signal(|| -1);
@@ -72,14 +74,14 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
                     settings_id.set(settings.settings_id);
                     password_config_id.set(settings.id.unwrap_or(-1));
                     settings_ready.set(true);
-                    readonly.set(false);
+                    readonly.set(true); // Reset to true on mount
 
                     s
                 }
                 Err(e) => {
                     error.set(Some(e.to_string()));
                     settings_ready.set(true);
-                    readonly.set(false);
+                    readonly.set(true); // Reset to true on mount
                     PasswordPreset::God.to_config(1) // dummy
                 }
             }
@@ -95,8 +97,22 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
         }
     });
 
+    // Track when user makes any selection from the combobox
+    use_effect(move || {
+        let current = current_preset();
+        let prev = prev_preset();
+        let mut has_sel = has_ever_selected.clone();
+
+        // Detect any change (user clicked something in the combobox)
+        if current != prev {
+            has_sel.set(true);
+        }
+        prev_preset.set(current);
+    });
+
     use_effect(move || {
         let custom_preset = current_preset.clone();
+        let has_ever_sel = has_ever_selected.clone();
         if let Some(preset) = custom_preset() {
             let settings = preset.to_config(1); //change id
             with_numbers.set(settings.numbers);
@@ -106,9 +122,11 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
             with_excluded_symbols.set(settings.excluded_symbols.into());
             with_length.set(PositiveInt(settings.length as u32));
             readonly.set(true);
-        } else {
+        } else if has_ever_sel() {
+            // User explicitly selected Custom (current_preset is None but user interacted)
             readonly.set(false);
         }
+        // If !has_ever_selected and current_preset is None, keep readonly as-is (true - initial state)
     });
 
     let on_submit = move |_| {
@@ -153,7 +171,10 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
                 .count();
             if available_count == 0 {
                 show_toast_error(
-                    format!("Cannot generate password: all {} available symbols are excluded.", SPECIAL_CHARS.len()),
+                    format!(
+                        "Cannot generate password: all {} available symbols are excluded.",
+                        SPECIAL_CHARS.len()
+                    ),
                     toast_for_validation,
                 );
                 return;
@@ -315,48 +336,3 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
         }
     }
 }
-// #[component]
-// fn CustomDropdown(
-//     options: Vec<(&'static str, Option<PasswordPreset>)>,
-//     current_preset: Signal<Option<PasswordPreset>>,
-// ) -> Element {
-//     let mut is_open = use_signal(|| false);
-//     let mut selected_item = use_signal(|| "Select a preset".to_string());
-//     let dropdown_class = use_memo(move || if is_open() { "dropdown-open" } else { "" });
-//     rsx! {
-//         div { class: "dropdown {dropdown_class}",
-//
-//             // Bottone che apre/chiude lo switch
-//             div {
-//                 role: "button",
-//                 class: "btn m-1 w-64 justify-between",
-//                 onclick: move |_| is_open.toggle(),
-//                 "{selected_item}"
-//                 // Icona freccia (opzionale)
-//                 span { class: "text-xs", {if is_open() { "▲" } else { "▼" }} }
-//             }
-//
-//             // Menu delle opzioni
-//             if is_open() {
-//                 div {
-//                     class: "fixed inset-0 z-0",
-//                     onclick: move |_| is_open.set(false),
-//                 }
-//                 ul { class: "dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-64",
-//                     for (label , preset) in options {
-//                         li {
-//                             a {
-//                                 onclick: move |_| {
-//                                     selected_item.set(label.to_string());
-//                                     current_preset.set(preset);
-//                                     is_open.set(false);
-//                                 },
-//                                 "{label}"
-//                             }
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }
