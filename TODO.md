@@ -109,7 +109,7 @@ il pc
 - [x] Modificare nome utente
 - [ ] Preferenze utente:
     - [x] Creazione tabella settings
-    - [ ] Creazione di un form per la modifica delle preferenze utente per le password
+    - [x] Creazione di un form per la modifica delle preferenze utente per le password
     - [x] Creazione trigger creazione di settings per ogni nuovo utente
 
 ## UI e UX
