@@ -3988,8 +3988,8 @@ dependencies = [
 
 [[package]]
 name = "pwd-dioxus"
-version = "0.2.14"
-source = "git+https://github.com/LucioPg/pwd-dioxus?branch=main#a25e0f77fd14c3087665776c148b174723e9e60d"
+version = "0.2.15"
+source = "git+https://github.com/LucioPg/pwd-dioxus?branch=main#9287abbb692a6868567c78e8a69877c69c8238b9"
 dependencies = [
  "arboard",
  "dioxus",

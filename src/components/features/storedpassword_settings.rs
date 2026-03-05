@@ -4,6 +4,7 @@ use crate::backend::password_types_helper::{PasswordGeneratorConfig, PasswordPre
 use crate::components::globals::toggle::{Toggle, ToggleColor, ToggleSize};
 use crate::components::{ActionButton, ButtonSize, ButtonType, ButtonVariant};
 use dioxus::prelude::*;
+use pwd_dioxus::combobox::Combobox;
 use pwd_dioxus::form::{FormField, PositiveInt};
 use pwd_dioxus::spinner::{Spinner, SpinnerSize};
 use pwd_dioxus::{InputType, show_toast_error, use_toast};
@@ -145,7 +146,7 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
                             span { class: "label-text", "Presets" }
                         }
                     }
-                    CustomDropdown {
+                    Combobox {
                         options: options.clone(),
                         current_preset: current_preset.clone(),
                     }
@@ -254,48 +255,48 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
         }
     }
 }
-#[component]
-fn CustomDropdown(
-    options: Vec<(&'static str, Option<PasswordPreset>)>,
-    current_preset: Signal<Option<PasswordPreset>>,
-) -> Element {
-    let mut is_open = use_signal(|| false);
-    let mut selected_item = use_signal(|| "Select a preset".to_string());
-    let dropdown_class = use_memo(move || if is_open() { "dropdown-open" } else { "" });
-    rsx! {
-        div { class: "dropdown {dropdown_class}",
-
-            // Bottone che apre/chiude lo switch
-            div {
-                role: "button",
-                class: "btn m-1 w-64 justify-between",
-                onclick: move |_| is_open.toggle(),
-                "{selected_item}"
-                // Icona freccia (opzionale)
-                span { class: "text-xs", {if is_open() { "▲" } else { "▼" }} }
-            }
-
-            // Menu delle opzioni
-            if is_open() {
-                div {
-                    class: "fixed inset-0 z-0",
-                    onclick: move |_| is_open.set(false),
-                }
-                ul { class: "dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-64",
-                    for (label , preset) in options {
-                        li {
-                            a {
-                                onclick: move |_| {
-                                    selected_item.set(label.to_string());
-                                    current_preset.set(preset);
-                                    is_open.set(false);
-                                },
-                                "{label}"
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
+// #[component]
+// fn CustomDropdown(
+//     options: Vec<(&'static str, Option<PasswordPreset>)>,
+//     current_preset: Signal<Option<PasswordPreset>>,
+// ) -> Element {
+//     let mut is_open = use_signal(|| false);
+//     let mut selected_item = use_signal(|| "Select a preset".to_string());
+//     let dropdown_class = use_memo(move || if is_open() { "dropdown-open" } else { "" });
+//     rsx! {
+//         div { class: "dropdown {dropdown_class}",
+//
+//             // Bottone che apre/chiude lo switch
+//             div {
+//                 role: "button",
+//                 class: "btn m-1 w-64 justify-between",
+//                 onclick: move |_| is_open.toggle(),
+//                 "{selected_item}"
+//                 // Icona freccia (opzionale)
+//                 span { class: "text-xs", {if is_open() { "▲" } else { "▼" }} }
+//             }
+//
+//             // Menu delle opzioni
+//             if is_open() {
+//                 div {
+//                     class: "fixed inset-0 z-0",
+//                     onclick: move |_| is_open.set(false),
+//                 }
+//                 ul { class: "dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-64",
+//                     for (label , preset) in options {
+//                         li {
+//                             a {
+//                                 onclick: move |_| {
+//                                     selected_item.set(label.to_string());
+//                                     current_preset.set(preset);
+//                                     is_open.set(false);
+//                                 },
+//                                 "{label}"
+//                             }
+//                         }
+//                     }
+//                 }
+//             }
+//         }
+//     }
+// }

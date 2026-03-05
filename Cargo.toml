@@ -12,7 +12,7 @@ custom_errors = { git = "https://github.com/LucioPg/custom_errors" }
 pwd-types = { git = "https://github.com/LucioPg/pwd-types", features = ["sqlx", "generator"] }
 pwd-strength = { git = "https://github.com/LucioPg/pwd-strength", features = ["async", "tracing"] }
 pwd-crypto = { git = "https://github.com/LucioPg/pwd-crypto", features = ["full", "base64", "pwd-types"] }
-pwd-dioxus = { git = "https://github.com/LucioPg/pwd-dioxus", branch = "main", features = ["handler", "secret-display", "modal", "icons-visibility", "icons-action", "icons-alert", "toast", "toggle"] }
+pwd-dioxus = { git = "https://github.com/LucioPg/pwd-dioxus", branch = "main", features = ["handler", "secret-display", "modal", "icons-visibility", "icons-action", "icons-alert", "toast", "toggle", "combobox"] }
 
 # Dipendenze esterne
 tracing = "0.1.44"
