@@ -135,8 +135,9 @@ il pc
 - [ ] dashboard aggiungere pulsante di export in vari formati (csv, json, xml)  -- implementati manca backend
 - [ ] dashboard aggiungere pulsante di import da vari formati (csv, json, xml)   -- implementati manca backend
 - [ ] migliorare dashboard:
-    - [ ] le card stat sono troppo grandi e prominenti rispetto la tabella
-    - [ ] c'è un problema di overflow con tablerow
+    - [x] le card stat sono troppo grandi e prominenti rispetto la tabella
+    - [x] c'è un problema di overflow con tablerow
+    - [ ] verificare comportamento tabella quando sono presenti migliaia di password.
 - ## Gestione password registrate
 
 - [x] creare tabella password
