@@ -39,6 +39,7 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
     let mut current_preset = use_signal(|| Option::<PasswordPreset>::None);
     let mut settings_ready = use_signal(|| false);
     let mut settings_id = use_signal(|| -1);
+    let mut password_config_id = use_signal(|| -1);
     let mut current_settings = use_resource(move || {
         let user_id = user_id.clone();
         let pool = pool.clone();
@@ -49,6 +50,7 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
         let mut with_excluded_symbols = with_excluded_symbols.clone();
         let mut with_length = with_length.clone();
         let mut settings_id = settings_id.clone();
+        let mut password_config_id = password_config_id.clone();
         let mut settings_ready = settings_ready.clone();
         let mut error = error.clone();
         let mut readonly = readonly.clone();
@@ -64,6 +66,7 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
                     with_excluded_symbols.set(settings.excluded_symbols.into());
                     with_length.set(PositiveInt(settings.length as u32));
                     settings_id.set(settings.settings_id);
+                    password_config_id.set(settings.id.unwrap_or(-1));
                     settings_ready.set(true);
                     readonly.set(false);
 
@@ -114,7 +117,7 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
         let settings_id = settings_id.clone();
 
         let result = PasswordGeneratorConfig {
-            id: Some(settings_id()),
+            id: Some(password_config_id()),
             settings_id: settings_id(),
             length: with_length().into(),
             symbols: with_symbols().into(),
