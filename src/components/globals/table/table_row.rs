@@ -39,23 +39,23 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
             class: "stored-password-row hover:bg-base-200/50 transition-colors",
 
             // Column 1: Location (visualizzazione sicura con toggle)
-            td { class: "px-1 py-3",
+            td { class: "pwd-table__cell-content",
                 SecretDisplay {
                     secret: FormSecret(props.stored_raw_password.location.clone()),
-                    max_width: "150px".to_string(),
+                    max_width: "120px".to_string(),
                 }
             }
 
             // Column 2: Password (visualizzazione sicura con toggle)
-            td { class: "px-1 py-3",
+            td { class: "pwd-table__cell-content",
                 SecretDisplay {
                     secret: FormSecret(store_raw_password_clone.password.clone()),
-                    max_width: "200px".to_string(),
+                    max_width: "150px".to_string(),
                 }
             }
 
-            // Column 3: Score (using StrengthAnalyzer without bar)
-            td { class: "px-1 py-3",
+            // Column 3: Score (using StrengthAnalyzer without bar) - nascosto su mobile
+            td { class: "pwd-table__col-strength",
                 StrengthAnalyzer {
                     strength,
                     reasons: vec![], // No reasons tooltip in table view
@@ -65,8 +65,8 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                 }
             }
 
-            // Column 4: Burger button (tooltip for notes and created_at)
-            td { class: "px-1 py-3",
+            // Column 4: Burger button (tooltip for notes and created_at) - nascosto su mobile
+            td { class: "pwd-table__col-info",
                 div { class: "relative",
                     button {
                         class: "pwd-row-action-btn pwd-burger-btn",
@@ -95,7 +95,7 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
             }
 
             // Column 5: Edit button (gear icon, yellow warning background)
-            td { class: "px-1 py-3",
+            td { class: "pwd-table__col-actions",
                 button {
                     class: "pwd-row-action-btn pwd-edit-btn",
                     r#type: "button",
@@ -112,7 +112,7 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
             }
 
             // Column 6: Delete button (trash outline)
-            td { class: "px-1 py-3",
+            td { class: "pwd-table__col-actions",
                 button {
                     class: "pwd-row-action-btn pwd-delete-btn",
                     r#type: "button",

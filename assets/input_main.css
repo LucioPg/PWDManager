@@ -1621,3 +1621,104 @@ button[class*="btn-"] {
         color: #f87171; /* red-400 */
     }
 }
+
+/* ============================================================
+   RESPONSIVE TABLE - Password table overflow handling
+   ============================================================ */
+
+/* Table wrapper - scroll solo quando necessario */
+.pwd-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Tabella che usa tutto lo spazio disponibile */
+.pwd-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: auto;
+}
+
+/* Header della tabella */
+.pwd-table th {
+    padding: 0.75rem 0.5rem;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--secondary-color-6, #5d5d5d);
+    border-bottom: 2px solid var(--primary-color-5, #262626);
+    white-space: nowrap;
+}
+
+/* Celle della tabella */
+.pwd-table td {
+    padding: 0.5rem;
+    vertical-align: middle;
+}
+
+/* Colonne a larghezza fissa per i bottoni azione */
+.pwd-table__col-actions {
+    width: 1%;
+    white-space: nowrap;
+    text-align: center;
+}
+
+/* Colonna strength */
+.pwd-table__col-strength {
+    width: 1%;
+    white-space: nowrap;
+}
+
+/* Colonna info */
+.pwd-table__col-info {
+    width: 1%;
+    white-space: nowrap;
+}
+
+/* Contenuto cella con truncature per testo lungo */
+.pwd-table__cell-content {
+    max-width: 0; /* Trucco per far funzionare text-overflow con table-layout: auto */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Responsive - nascondi colonne meno importanti su schermi piccoli */
+@media (max-width: 768px) {
+    .pwd-table__col-strength {
+        display: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .pwd-table__col-info {
+        display: none;
+    }
+    
+    .pwd-table th,
+    .pwd-table td {
+        padding: 0.375rem 0.25rem;
+    }
+    
+    .pwd-table .pwd-row-action-btn {
+        padding: 0.375rem;
+    }
+}
+
+/* Riga hover effect */
+.pwd-table tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+@media (prefers-color-scheme: dark) {
+    .pwd-table tbody tr:hover {
+        background-color: rgba(255, 255, 255, 0.03);
+    }
+    
+    .pwd-table th {
+        color: var(--secondary-color-3, #dcdcdc);
+        border-bottom-color: var(--primary-color-5, #262626);
+    }
+}
