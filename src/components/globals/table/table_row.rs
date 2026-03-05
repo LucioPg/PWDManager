@@ -39,7 +39,7 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
             class: "stored-password-row hover:bg-base-200/50 transition-colors",
 
             // Column 1: Location (visualizzazione sicura con toggle)
-            td { class: "px-4 py-3",
+            td { class: "px-1 py-3",
                 SecretDisplay {
                     secret: FormSecret(props.stored_raw_password.location.clone()),
                     max_width: "150px".to_string(),
@@ -47,7 +47,7 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
             }
 
             // Column 2: Password (visualizzazione sicura con toggle)
-            td { class: "px-4 py-3",
+            td { class: "px-1 py-3",
                 SecretDisplay {
                     secret: FormSecret(store_raw_password_clone.password.clone()),
                     max_width: "200px".to_string(),
@@ -55,9 +55,9 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
             }
 
             // Column 3: Score (using StrengthAnalyzer without bar)
-            td { class: "px-4 py-3",
+            td { class: "px-1 py-3",
                 StrengthAnalyzer {
-                    strength: strength,
+                    strength,
                     reasons: vec![], // No reasons tooltip in table view
                     is_evaluating: false,
                     score: store_raw_password_clone.score,
@@ -66,7 +66,7 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
             }
 
             // Column 4: Burger button (tooltip for notes and created_at)
-            td { class: "px-2 py-3",
+            td { class: "px-1 py-3",
                 div { class: "relative",
                     button {
                         class: "pwd-row-action-btn pwd-burger-btn",
@@ -95,22 +95,24 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
             }
 
             // Column 5: Edit button (gear icon, yellow warning background)
-            td { class: "px-2 py-3",
+            td { class: "px-1 py-3",
                 button {
                     class: "pwd-row-action-btn pwd-edit-btn",
                     r#type: "button",
                     onclick: move |evt| {
                         evt.stop_propagation();
-                        stored_password_dialog_state.current_stored_raw_password.set(Some(store_raw_password_clone.clone()));
+                        stored_password_dialog_state
+                            .current_stored_raw_password
+                            .set(Some(store_raw_password_clone.clone()));
                         stored_password_dialog_state.is_open.set(true);
                     },
                     // Gear icon
-                    EditIcon {}
+                    EditIcon { size: "12".to_string() }
                 }
             }
 
             // Column 6: Delete button (trash outline)
-            td { class: "px-2 py-3",
+            td { class: "px-1 py-3",
                 button {
                     class: "pwd-row-action-btn pwd-delete-btn",
                     r#type: "button",
@@ -121,7 +123,7 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                         props.on_delete.call(password_id)
                     },
                     // Trash icon (outline)
-                    DeleteIcon {}
+                    DeleteIcon { size: "12".to_string() }
                 }
             }
         }

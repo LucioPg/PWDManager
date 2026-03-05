@@ -1,13 +1,13 @@
+use crate::components::{Spinner, SpinnerSize, StoredRawPasswordRow};
 use pwd_types::StoredRawPassword;
 use secrecy::ExposeSecret;
-use crate::components::{Spinner, SpinnerSize, StoredRawPasswordRow};
 
 use dioxus::prelude::*;
 
 #[component]
 pub fn StoredRawPasswordsTable(
     /// Valore dei dati (già calcolato dal parent in modo reattivo)
-    data: Option<Vec<StoredRawPassword>>
+    data: Option<Vec<StoredRawPassword>>,
 ) -> Element {
     match data.as_ref() {
         Some(stored_raw_passwords) => {
@@ -17,13 +17,14 @@ pub fn StoredRawPasswordsTable(
                         tr {
                             th { "Location" }
                             th { "Password" }
+                            th { "Strength" }
                             th { "Info" }
                             th { "Edit" }
                             th { "Delete" }
                         }
                     }
                     tbody {
-                        for (index, stored_raw_password) in stored_raw_passwords.iter().enumerate() {
+                        for (index , stored_raw_password) in stored_raw_passwords.iter().enumerate() {
                             // Key include id + len(password) + score per forzare re-render
                             // quando qualsiasi campo significativo cambia
                             StoredRawPasswordRow {
