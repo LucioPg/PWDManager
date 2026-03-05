@@ -3,7 +3,7 @@ pub mod db_backend;
 pub mod migration_types;
 pub mod init_queries;
 pub(crate) mod password_types_helper;
-pub(crate) mod password_utils;
+pub mod password_utils;
 pub mod ui_utils;
 pub mod utils;
 pub mod avatar_utils;

@@ -3,6 +3,14 @@ name = "PWDManager"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+name = "pwd_manager"
+path = "src/lib.rs"
+
+[[bin]]
+name = "PWDManager"
+path = "src/main.rs"
+
 [dependencies]
 image = { version = "0.25.9", features = ["png"] }
 gui-launcher = { path = "gui_launcher" }
