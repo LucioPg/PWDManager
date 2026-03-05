@@ -3900,7 +3900,7 @@ version = "3.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e67ba7e9b2b56446f1d419b1d807906278ffa1a658a8a5d8a39dcb1f5a78614f"
 dependencies = [
- "toml_edit 0.25.3+spec-1.1.0",
+ "toml_edit 0.25.4+spec-1.1.0",
 ]
 
 [[package]]
@@ -3988,8 +3988,8 @@ dependencies = [
 
 [[package]]
 name = "pwd-dioxus"
-version = "0.2.11"
-source = "git+https://github.com/LucioPg/pwd-dioxus?branch=main#71062e70a6ba2e0a5843b9b522641fe5c0a62e3c"
+version = "0.2.14"
+source = "git+https://github.com/LucioPg/pwd-dioxus?branch=main#a25e0f77fd14c3087665776c148b174723e9e60d"
 dependencies = [
  "arboard",
  "dioxus",
@@ -4014,8 +4014,8 @@ dependencies = [
 
 [[package]]
 name = "pwd-types"
-version = "0.1.2"
-source = "git+https://github.com/LucioPg/pwd-types#b9cd19222c920c99739392e3668af01ab5bd3aa8"
+version = "0.1.3"
+source = "git+https://github.com/LucioPg/pwd-types#58ca039b578aebae3140bfba49eb42c09c440514"
 dependencies = [
  "aegis-password-generator",
  "chrono",
@@ -5543,9 +5543,9 @@ dependencies = [
 
 [[package]]
 name = "toml_edit"
-version = "0.25.3+spec-1.1.0"
+version = "0.25.4+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0a07913e63758bc95142d9863a5a45173b71515e68b690cad70cf99c3255ce1"
+checksum = "7193cbd0ce53dc966037f54351dbbcf0d5a642c7f0038c382ef9e677ce8c13f2"
 dependencies = [
  "indexmap",
  "toml_datetime 1.0.0+spec-1.1.0",
