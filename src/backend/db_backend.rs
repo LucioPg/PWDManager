@@ -4,7 +4,10 @@ use crate::backend::settings_types::UserSettings;
 use crate::backend::utils::verify_password;
 use custom_errors::{AuthError, DBError};
 use dioxus::prelude::*;
-use pwd_types::{PasswordGeneratorConfig, PasswordPreset, StoredPassword, UserAuth};
+use pwd_types::{
+    PasswordGeneratorConfig, PasswordPreset, PasswordStats, PasswordStrength, StoredPassword,
+    UserAuth,
+};
 use secrecy::{ExposeSecret, SecretString};
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqliteRow};
 use sqlx::{Row, query};
@@ -735,6 +738,179 @@ pub async fn fetch_all_stored_passwords_for_user(
         .find_all(pool)
         .await
         .map_err(|e| DBError::new_list_error(format!("Failed to fetch passwords: {}", e)))
+}
+
+/// Fetch passwords paginate con filtro opzionale per strength.
+///
+/// Restituisce `StoredPassword` (dati cifrati). Per ottenere password decifrate,
+/// usare `get_stored_raw_passwords_paginated` da `password_utils`.
+///
+/// # Arguments
+/// * `pool` - Connection pool SQLite
+/// * `user_id` - ID dell'utente
+/// * `filter` - Filtro opzionale per PasswordStrength
+/// * `page` - Pagina (0-indexed)
+/// * `page_size` - Numero di elementi per pagina
+///
+/// # Returns
+/// * `Ok((Vec<StoredPassword>, u64))` - Passwords cifrate e totale count
+/// * `Err(DBError)` - Errore database
+#[instrument(skip(pool))]
+pub async fn fetch_passwords_paginated(
+    pool: &SqlitePool,
+    user_id: i64,
+    filter: Option<PasswordStrength>,
+    page: usize,
+    page_size: usize,
+) -> Result<(Vec<StoredPassword>, u64), DBError> {
+    debug!(
+        "Fetching passwords paginated: user_id={}, filter={:?}, page={}, page_size={}",
+        user_id, filter, page, page_size
+    );
+
+    // Mappa filtro strength → range di score
+    let (min_score, max_score) = match filter {
+        None => (None, None), // Nessun filtro: tutte le password
+        Some(PasswordStrength::WEAK) => (Some(0), Some(49)),
+        Some(PasswordStrength::MEDIUM) => (Some(50), Some(69)),
+        Some(PasswordStrength::STRONG) => (Some(70), Some(84)),
+        Some(PasswordStrength::EPIC) => (Some(85), Some(95)),
+        Some(PasswordStrength::GOD) => (Some(96), Some(100)),
+        Some(PasswordStrength::NotEvaluated) => {
+            // Range impossibile: score >= 255 AND score <= 0 → nessun risultato
+            (Some(255), Some(0))
+        }
+    };
+
+    let offset = page as i64 * page_size as i64;
+
+    // Query raw SQL con filtro score dinamico
+    let results = match (min_score, max_score) {
+        (None, None) => {
+            // Nessun filtro: tutte le password dell'utente
+            sqlx::query_as::<_, StoredPassword>(
+                r#"
+                SELECT id, user_id, location, location_nonce, password, password_nonce,
+                       notes, notes_nonce, score, created_at
+                FROM passwords
+                WHERE user_id = ?
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
+                "#,
+            )
+            .bind(user_id)
+            .bind(page_size as i32)
+            .bind(offset)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| {
+                DBError::new_list_error(format!("Failed to fetch paginated passwords: {}", e))
+            })?
+        }
+        (Some(min), Some(max)) => {
+            // Filtro range score
+            sqlx::query_as::<_, StoredPassword>(
+                r#"
+                SELECT id, user_id, location, location_nonce, password, password_nonce,
+                       notes, notes_nonce, score, created_at
+                FROM passwords
+                WHERE user_id = ? AND score >= ? AND score <= ?
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
+                "#,
+            )
+            .bind(user_id)
+            .bind(min as i32)
+            .bind(max as i32)
+            .bind(page_size as i32)
+            .bind(offset)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| {
+                DBError::new_list_error(format!("Failed to fetch paginated passwords: {}", e))
+            })?
+        }
+        _ => unreachable!("min_score e max_score sono sempre entrambi Some o entrambi None"),
+    };
+
+    // Count totale per la paginazione (con stesso filtro)
+    let total: (i64,) = match (min_score, max_score) {
+        (None, None) => {
+            sqlx::query_as("SELECT COUNT(*) FROM passwords WHERE user_id = ?")
+                .bind(user_id)
+                .fetch_one(pool)
+                .await
+                .map_err(|e| DBError::new_list_error(format!("Failed to count passwords: {}", e)))?
+        }
+        (Some(min), Some(max)) => {
+            sqlx::query_as(
+                "SELECT COUNT(*) FROM passwords WHERE user_id = ? AND score >= ? AND score <= ?",
+            )
+            .bind(user_id)
+            .bind(min as i32)
+            .bind(max as i32)
+            .fetch_one(pool)
+            .await
+            .map_err(|e| DBError::new_list_error(format!("Failed to count passwords: {}", e)))?
+        }
+        _ => unreachable!(),
+    };
+
+    Ok((results, total.0 as u64))
+}
+
+/// Fetch statistiche password per l'utente (conteggi per strength).
+///
+/// Questa query è sempre "fresca" perché viene eseguita separatamente
+/// dalla paginazione e non viene cacheata.
+#[instrument(skip(pool))]
+pub async fn fetch_password_stats(
+    pool: &SqlitePool,
+    user_id: i64,
+) -> Result<PasswordStats, DBError> {
+    debug!("Fetching password stats for user_id: {}", user_id);
+
+    // Query con CASE per raggruppare per strength
+    let rows = sqlx::query_as::<_, (i64, i64)>(
+        r#"
+        SELECT
+            CASE
+                WHEN score < 50 THEN 0
+                WHEN score < 70 THEN 1
+                WHEN score < 85 THEN 2
+                WHEN score < 96 THEN 3
+                ELSE 4
+            END as strength_group,
+            COUNT(*) as count
+        FROM passwords
+        WHERE user_id = ?
+        GROUP BY strength_group
+        ORDER BY strength_group
+        "#,
+    )
+    .bind(user_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| DBError::new_list_error(format!("Failed to fetch password stats: {}", e)))?;
+
+    let mut stats = PasswordStats::default();
+
+    for (group, count) in rows {
+        match group {
+            0 => stats.weak = count as usize,
+            1 => stats.medium = count as usize,
+            2 => stats.strong = count as usize,
+            3 => stats.epic = count as usize,
+            4 => stats.god = count as usize,
+            _ => {}
+        }
+    }
+
+    // not_evaluated rimane 0 perché la query raggruppa solo score esistenti.
+    // Se necessario contarle, aggiungere branch per score IS NULL nella query.
+    stats.total = stats.weak + stats.medium + stats.strong + stats.epic + stats.god;
+
+    Ok(stats)
 }
 
 pub async fn fetch_user_settings(
