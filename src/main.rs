@@ -152,7 +152,7 @@ fn App() -> Element {
                     class: "flex gap-4 justify-center items-center h-screen",
                     Spinner {
                         size: SpinnerSize::XXXXLarge,
-                        // color_class: "spinner-success".to_string(),
+                        color_class: "text-blue-500",
                     }
                 }
 

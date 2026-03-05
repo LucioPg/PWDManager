@@ -148,7 +148,7 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
     if !settings_ready() {
         return rsx! {
             div { class: "flex flex-col gap-4",
-                Spinner { size: SpinnerSize::Medium }
+                Spinner { size: SpinnerSize::Medium, color_class: "text-blue-500" }
             }
         };
     }
