@@ -1,26 +1,23 @@
 use crate::auth::{AuthState, User};
-use crate::backend::db_backend::{
-    fetch_user_passwords_generation_settings, upsert_password_config,
-};
+use crate::backend::db_backend::fetch_user_passwords_generation_settings;
 use crate::backend::password_types_helper::{PasswordGeneratorConfig, PasswordPreset};
 use crate::components::globals::toggle::{Toggle, ToggleColor, ToggleSize};
 use crate::components::{ActionButton, ButtonSize, ButtonType, ButtonVariant};
 use dioxus::prelude::*;
-use futures::SinkExt;
-use pwd_dioxus::combobox::Combobox;
+use pwd_dioxus::combobox::{AnyPreset, Combobox};
 use pwd_dioxus::form::{FormField, PositiveInt};
 use pwd_dioxus::spinner::{Spinner, SpinnerSize};
-use pwd_dioxus::{InputType, SPECIAL_CHARS, show_toast_error, show_toast_success, use_toast};
+use pwd_dioxus::{InputType, show_toast_error, use_toast};
 use pwd_types::ExcludedSymbolSet;
 use sqlx::SqlitePool;
 
-fn preset_options() -> Vec<(&'static str, Option<PasswordPreset>)> {
+fn preset_options() -> Vec<(&'static str, Option<AnyPreset>)> {
     vec![
-        ("Medium", Some(PasswordPreset::Medium)),
-        ("Strong", Some(PasswordPreset::Strong)),
-        ("Epic", Some(PasswordPreset::Epic)),
-        ("God", Some(PasswordPreset::God)),
-        ("Custom", None), // ← Custom rappresentato come None
+        ("Medium", Some(AnyPreset::Standard(PasswordPreset::Medium))),
+        ("Strong", Some(AnyPreset::Standard(PasswordPreset::Strong))),
+        ("Epic", Some(AnyPreset::Standard(PasswordPreset::Epic))),
+        ("God", Some(AnyPreset::Standard(PasswordPreset::God))),
+        ("Custom", Some(AnyPreset::Custom)),
     ]
 }
 
@@ -37,18 +34,14 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
     let mut with_symbols = use_signal(|| PositiveInt(2));
     let mut with_excluded_symbols = use_signal(|| String::new());
     let mut with_length = use_signal(|| PositiveInt(26));
-    let mut readonly = use_signal(|| true); // Start as true
+    let mut readonly = use_signal(|| true);
     let options = preset_options();
-    let mut current_preset = use_signal(|| Option::<PasswordPreset>::None);
-    let mut prev_preset = use_signal(|| Option::<PasswordPreset>::None); // Track previous value
-    let mut has_ever_selected = use_signal(|| false); // Track if user has ever selected anything
+    let mut current_preset = use_signal(|| Option::<AnyPreset>::None);
     let mut settings_ready = use_signal(|| false);
     let mut settings_id = use_signal(|| -1);
-    let mut password_config_id = use_signal(|| -1);
-    let pool_clone = pool.clone();
     let mut current_settings = use_resource(move || {
         let user_id = user_id.clone();
-        let pool = pool_clone.clone();
+        let pool = pool.clone();
         let mut with_numbers = with_numbers.clone();
         let mut with_uppercase = with_uppercase.clone();
         let mut with_lowercase = with_lowercase.clone();
@@ -56,7 +49,6 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
         let mut with_excluded_symbols = with_excluded_symbols.clone();
         let mut with_length = with_length.clone();
         let mut settings_id = settings_id.clone();
-        let mut password_config_id = password_config_id.clone();
         let mut settings_ready = settings_ready.clone();
         let mut error = error.clone();
         let mut readonly = readonly.clone();
@@ -72,16 +64,15 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
                     with_excluded_symbols.set(settings.excluded_symbols.into());
                     with_length.set(PositiveInt(settings.length as u32));
                     settings_id.set(settings.settings_id);
-                    password_config_id.set(settings.id.unwrap_or(-1));
                     settings_ready.set(true);
-                    readonly.set(true); // Reset to true on mount
+                    readonly.set(false);
 
                     s
                 }
                 Err(e) => {
                     error.set(Some(e.to_string()));
                     settings_ready.set(true);
-                    readonly.set(true); // Reset to true on mount
+                    readonly.set(false);
                     PasswordPreset::God.to_config(1) // dummy
                 }
             }
@@ -97,36 +88,40 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
         }
     });
 
-    // Track when user makes any selection from the combobox
-    use_effect(move || {
-        let current = current_preset();
-        let prev = prev_preset();
-        let mut has_sel = has_ever_selected.clone();
-
-        // Detect any change (user clicked something in the combobox)
-        if current != prev {
-            has_sel.set(true);
-        }
-        prev_preset.set(current);
-    });
-
     use_effect(move || {
         let custom_preset = current_preset.clone();
-        let has_ever_sel = has_ever_selected.clone();
+        let mut readonly = readonly.clone();
         if let Some(preset) = custom_preset() {
-            let settings = preset.to_config(1); //change id
-            with_numbers.set(settings.numbers);
-            with_uppercase.set(settings.uppercase);
-            with_lowercase.set(settings.lowercase);
-            with_symbols.set(settings.symbols.into());
-            with_excluded_symbols.set(settings.excluded_symbols.into());
-            with_length.set(PositiveInt(settings.length as u32));
-            readonly.set(true);
-        } else if has_ever_sel() {
-            // User explicitly selected Custom (current_preset is None but user interacted)
+            match preset {
+                AnyPreset::Standard(preset) => {
+                    let settings = preset.to_config(settings_id());
+                    with_numbers.set(settings.numbers);
+                    with_uppercase.set(settings.uppercase);
+                    with_lowercase.set(settings.lowercase);
+                    with_symbols.set(settings.symbols.into());
+                    with_excluded_symbols.set(settings.excluded_symbols.into());
+                    with_length.set(PositiveInt(settings.length as u32));
+                    readonly.set(true);
+                }
+                AnyPreset::Custom => {
+                    readonly.set(false);
+                }
+            }
+        } else {
             readonly.set(false);
         }
-        // If !has_ever_selected and current_preset is None, keep readonly as-is (true - initial state)
+        // if let Some(preset) = custom_preset() {
+        //     let settings = preset.to_config(1); //change id
+        //     with_numbers.set(settings.numbers);
+        //     with_uppercase.set(settings.uppercase);
+        //     with_lowercase.set(settings.lowercase);
+        //     with_symbols.set(settings.symbols.into());
+        //     with_excluded_symbols.set(settings.excluded_symbols.into());
+        //     with_length.set(PositiveInt(settings.length as u32));
+        //     readonly.set(false);
+        // } else {
+        //     readonly.set(true);
+        // }
     });
 
     let on_submit = move |_| {
@@ -137,52 +132,9 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
         let with_excluded_symbols = with_excluded_symbols.clone();
         let with_length = with_length.clone();
         let settings_id = settings_id.clone();
-        let pool_clone = pool.clone();
-        let mut error = error.clone();
-        let toast_for_validation = toast.clone();
-
-        let symbols_count: u32 = with_symbols().0;
-        let has_charset = with_numbers() || with_uppercase() || with_lowercase();
-        let excluded: String = with_excluded_symbols();
-
-        // Validazione 1: almeno un character set o symbols deve essere abilitato
-        if !has_charset && symbols_count == 0 {
-            show_toast_error(
-                "Cannot generate password: enable at least one character set (numbers, uppercase, lowercase) or symbols.".to_string(),
-                toast_for_validation,
-            );
-            return;
-        }
-
-        // Validazione 2: se symbols > 0, deve esserci almeno un character set
-        if symbols_count > 0 && !has_charset {
-            show_toast_error(
-                "Cannot generate password: enable at least one character set (numbers, uppercase, or lowercase) when using symbols.".to_string(),
-                toast_for_validation,
-            );
-            return;
-        }
-
-        // Validazione 3: se symbols > 0, verificare che non tutti i simboli siano esclusi
-        if symbols_count > 0 {
-            let available_count = SPECIAL_CHARS
-                .chars()
-                .filter(|c| !excluded.contains(*c))
-                .count();
-            if available_count == 0 {
-                show_toast_error(
-                    format!(
-                        "Cannot generate password: all {} available symbols are excluded.",
-                        SPECIAL_CHARS.len()
-                    ),
-                    toast_for_validation,
-                );
-                return;
-            }
-        }
 
         let result = PasswordGeneratorConfig {
-            id: Some(password_config_id()),
+            id: Some(settings_id()),
             settings_id: settings_id(),
             length: with_length().into(),
             symbols: with_symbols().into(),
@@ -192,19 +144,6 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
             excluded_symbols: ExcludedSymbolSet::from(with_excluded_symbols()),
         };
         println!("{:#?}", result);
-        spawn(async move {
-            match upsert_password_config(&pool_clone, result.clone()).await {
-                Ok(_) => {
-                    show_toast_success(
-                        "Password generation settings updated successfully!".to_string(),
-                        toast,
-                    );
-                }
-                Err(e) => {
-                    error.set(Some(e.to_string()));
-                }
-            }
-        });
     };
     if !settings_ready() {
         return rsx! {
