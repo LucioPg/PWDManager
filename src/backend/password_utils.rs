@@ -8,8 +8,8 @@
 #![allow(dead_code)]
 
 use crate::backend::db_backend::{
-    fetch_all_stored_passwords_for_user, fetch_user_auth_from_id, remove_temp_old_password,
-    upsert_stored_passwords_batch,
+    fetch_all_stored_passwords_for_user, fetch_passwords_paginated, fetch_user_auth_from_id,
+    remove_temp_old_password, upsert_stored_passwords_batch,
 };
 use crate::backend::evaluate_password_strength;
 use crate::backend::migration_types::{MigrationStage, ProgressMessage, ProgressSender};
@@ -27,7 +27,7 @@ use pwd_crypto::{
 };
 use pwd_types::{
     AegisPasswordConfig, DbSecretString, PasswordGeneratorConfig, PasswordPreset, PasswordScore,
-    StoredPassword, StoredRawPassword, UserAuth,
+    PasswordStrength, StoredPassword, StoredRawPassword, UserAuth,
 };
 use rayon::prelude::*;
 use secrecy::{ExposeSecret, SecretBox, SecretString};
@@ -240,6 +240,40 @@ pub async fn get_stored_raw_passwords(
     )
     .await?;
     Ok(stored_raw_passwords)
+}
+
+/// Recupera e decifra le password in modo paginato.
+///
+/// Combina `fetch_passwords_paginated` con `decrypt_bulk_stored_data`
+/// per restituire password decifrate con supporto al filtro per strength.
+///
+/// # Arguments
+/// * `pool` - Connection pool SQLite
+/// * `user_id` - ID dell'utente
+/// * `filter` - Filtro opzionale per PasswordStrength
+/// * `page` - Pagina (0-indexed)
+/// * `page_size` - Numero di elementi per pagina
+///
+/// # Returns
+/// * `Ok((Vec<StoredRawPassword>, u64))` - Password decifrate e totale count
+pub async fn get_stored_raw_passwords_paginated(
+    pool: &SqlitePool,
+    user_id: i64,
+    filter: Option<PasswordStrength>,
+    page: usize,
+    page_size: usize,
+) -> Result<(Vec<StoredRawPassword>, u64), DBError> {
+    let (stored_passwords, total_count) =
+        fetch_passwords_paginated(pool, user_id, filter, page, page_size).await?;
+
+    let stored_raw_passwords = decrypt_bulk_stored_data(
+        fetch_user_auth_from_id(pool, user_id).await?,
+        stored_passwords,
+        None,
+    )
+    .await?;
+
+    Ok((stored_raw_passwords, total_count))
 }
 
 /// Decripta in parallelo un batch di StoredPassword.

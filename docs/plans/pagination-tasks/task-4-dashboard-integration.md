@@ -1,6 +1,6 @@
 # Task 4: Dashboard Integration
 
-> **Per Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+> **Status:** ✅ COMPLETED
 
 **Goal:** Integrare la paginazione nella Dashboard esistente.
 
@@ -46,14 +46,14 @@ let stored_raw_passwords_data = use_resource(move || {
 
 ```rust
 // Stato paginazione
-let mut pagination = use_context_provider(|| PaginationState::default());
+let mut pagination = use_context_provider(|| PaginationState::new());
 
 // Resource per pagina corrente
 let password_page_data = use_resource(move || {
     let pool = pool.clone();
-    let page = *pagination.current_page.read();
-    let filter = *pagination.active_filter.read();
-    let page_size = *pagination.page_size.read();
+    let page = pagination.current_page();
+    let filter = pagination.active_filter();
+    let page_size = pagination.page_size();
 
     async move {
         // Controlla cache prima di fetchare
@@ -288,3 +288,5 @@ git branch -d task-4-dashboard-integration
 - `pagination.set_filter()` resetta automaticamente a pagina 0
 - Dopo CRUD: `invalidate()` + `restart()` su entrambe le resource
 - `stats_data` è separato da `password_page_data` per avere stats sempre fresche
+- **Signal API**: `pagination.current_page()` (non `.read()`) è il pattern corretto per tipi `Copy` in Dioxus 0.7
+- **Reattività**: `use_resource` è reattivo ai Signal letti al suo interno, quindi `restart()` esplicito è necessario solo dopo operazioni CRUD (che modificano dati esterni al Signal)

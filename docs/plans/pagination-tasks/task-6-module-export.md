@@ -108,6 +108,7 @@ git branch -d task-6-module-export
 
 ## Notes
 
-- Questo è l'ultimo task, completa l'integrazione
+- ⚠️ **Questo è il task finale di consolidamento** - deve essere eseguito per ultimo dopo Task 1-5
+- Task 2 e Task 3 creano file nel modulo `pagination/`, ma questo task finalizza gli export in `globals/mod.rs`
 - Verificare che non ci siano warning del compilatore
 - La build release assicura che tutto funzioni in produzione

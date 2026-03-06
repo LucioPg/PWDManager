@@ -8,7 +8,7 @@
 
 **Tech Stack:** Rust, Dioxus 0.7, Signal
 
-**Dipendenze:** Nessuna (task indipendente, può essere sviluppato in parallelo con Task 1 e 3)
+**Dipendenze:** `pwd-types` (già nel progetto per `PasswordStrength`, `StoredRawPassword`)
 
 ---
 
@@ -66,8 +66,18 @@ pub struct PaginationState {
     pub is_loading: Signal<bool>,
 }
 
-impl Default for PaginationState {
-    fn default() -> Self {
+impl PaginationState {
+    /// Crea un nuovo stato di paginazione con page_size di default (20).
+    ///
+    /// **IMPORTANTE:** Questo metodo deve essere chiamato all'interno di
+    /// `use_context_provider()` per garantire che i Signal siano gestiti
+    /// correttamente dal lifecycle di Dioxus.
+    ///
+    /// # Example
+    /// ```rust
+    /// let mut pagination = use_context_provider(|| PaginationState::new());
+    /// ```
+    pub fn new() -> Self {
         Self {
             current_page: Signal::new(0),
             page_size: Signal::new(20),
@@ -77,14 +87,12 @@ impl Default for PaginationState {
             is_loading: Signal::new(false),
         }
     }
-}
 
-impl PaginationState {
-    /// Crea un nuovo stato con page_size personalizzato
-    pub fn new(page_size: usize) -> Self {
+    /// Crea un nuovo stato con page_size personalizzato.
+    pub fn with_page_size(page_size: usize) -> Self {
         Self {
             page_size: Signal::new(page_size),
-            ..Default::default()
+            ..Self::new()
         }
     }
 
@@ -94,6 +102,18 @@ impl PaginationState {
     /// per forzare il refresh dei dati.
     pub fn invalidate(&mut self) {
         self.cache.write().clear();
+    }
+
+    /// Imposta una nuova dimensione pagina e invalida la cache.
+    ///
+    /// La cache viene invalidata perché le pagine cached
+    /// avrebbero dimensione diversa dal nuovo page_size.
+    pub fn set_page_size(&mut self, page_size: usize) {
+        if *self.page_size.read() != page_size {
+            self.page_size.set(page_size);
+            self.cache.write().clear();  // Invalida cache per evitare dimensioni mismatch
+            self.current_page.set(0);     // Reset a prima pagina
+        }
     }
 
     /// Imposta un nuovo filtro e resetta a pagina 0.
@@ -135,8 +155,8 @@ impl PaginationState {
 
     /// Calcola numero totale di pagine
     pub fn total_pages(&self) -> usize {
-        let total = *self.total_count.read() as usize;
-        let page_size = *self.page_size.read();
+        let total = self.total_count() as usize;
+        let page_size = self.page_size();
         if page_size == 0 {
             return 0;
         }
@@ -145,18 +165,18 @@ impl PaginationState {
 
     /// Verifica se può andare a pagina precedente
     pub fn has_prev(&self) -> bool {
-        *self.current_page.read() > 0
+        self.current_page() > 0
     }
 
     /// Verifica se può andare a pagina successiva
     pub fn has_next(&self) -> bool {
-        let current = *self.current_page.read();
+        let current = self.current_page();
         current + 1 < self.total_pages()
     }
 
     /// Ottiene la chiave cache corrente
     pub fn current_cache_key(&self) -> CacheKey {
-        (*self.active_filter.read(), *self.current_page.read())
+        (self.active_filter(), self.current_page())
     }
 
     /// Verifica se la pagina corrente è in cache
@@ -181,7 +201,23 @@ impl PaginationState {
 
 ---
 
-## Step 3: Verificare compilazione
+## Step 3: Creare mod.rs per il modulo pagination
+
+In `src/components/globals/pagination/mod.rs`:
+
+```rust
+mod pagination_state;
+// Aggiungere qui altri moduli pagination in futuro:
+// mod pagination_controls;
+
+pub use pagination_state::{CacheKey, PaginationState};
+```
+
+**Nota:** Questo file deve essere creato prima di poter usare `PaginationState` da altri componenti.
+
+---
+
+## Step 4: Verificare compilazione
 
 ```bash
 cargo check
@@ -191,10 +227,10 @@ cargo check
 
 ---
 
-## Step 4: Commit
+## Step 5: Commit
 
 ```bash
-git add src/components/globals/pagination/pagination_state.rs
+git add src/components/globals/pagination/
 git commit -m "feat(pagination): add PaginationState with cache"
 ```
 
@@ -212,6 +248,10 @@ git branch -d task-2-pagination-state
 
 ## Notes
 
-- ⚠️ **IMPORTANTE**: Tutti i Signal devono essere `mut` anche se il compilatore suggerisce il contrario (vedi MEMORY.md)
+- ⚠️ **IMPORTANTE**: Quando si dichiara una variabile che contiene un Signal, questa deve essere `mut` anche se il compilatore suggerisce il contrario (vedi MEMORY.md). Esempio: `let mut pagination = use_context_provider(|| PaginationState::new());`
+- **Non** serve `mut` sui campi della struct - i metodi che modificano prendono `&mut self`
 - La cache usa `HashMap` con chiave `(filter, page)` per supportare più filtri contemporaneamente
 - `invalidate()` pulisce tutta la cache, ma `set_filter()` mantiene le pagine di altri filtri
+- `set_page_size()` invalida automaticamente la cache (pagine con dimensione vecchia sarebbero incoerenti)
+- I Signal vengono creati con `Signal::new()` all'interno di `use_context_provider()` - questo è il pattern corretto per Dioxus 0.7
+- **Signal API**: Per tipi `Copy` (es. `usize`, `u64`), usare `self.current_page()` invece di `*self.current_page.read()`. È più idiomatico e leggibile. Per `HashMap` (non Copy), usare `.read()` o `.write()`
