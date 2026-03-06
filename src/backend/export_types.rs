@@ -11,6 +11,12 @@ pub enum ExportFormat {
     Xml,
 }
 
+impl Default for ExportFormat {
+    fn default() -> Self {
+        ExportFormat::Json
+    }
+}
+
 impl ExportFormat {
     /// Restituisce l'estensione file per il formato.
     pub fn extension(&self) -> &'static str {
