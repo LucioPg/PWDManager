@@ -9,7 +9,7 @@ pub type CacheKey = (Option<PasswordStrength>, usize);
 ///
 /// Gestisce pagina corrente, filtro, cache e loading state.
 /// Tutti i campi sono Signal per la reattività Dioxus.
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct PaginationState {
     /// Pagina corrente (0-indexed, display come 1-indexed)
     pub current_page: Signal<usize>,
@@ -160,5 +160,32 @@ impl PaginationState {
     pub fn cache_page(&mut self, filter: Option<PasswordStrength>, page: usize, passwords: Vec<StoredRawPassword>) {
         let key = (filter, page);
         self.cache.write().insert(key, passwords);
+    }
+
+    // === Getter methods ===
+
+    /// Ottiene la pagina corrente (0-indexed)
+    pub fn current_page(&self) -> usize {
+        *self.current_page.read()
+    }
+
+    /// Ottiene la dimensione pagina
+    pub fn page_size(&self) -> usize {
+        *self.page_size.read()
+    }
+
+    /// Ottiene il filtro attivo
+    pub fn active_filter(&self) -> Option<PasswordStrength> {
+        *self.active_filter.read()
+    }
+
+    /// Ottiene il conteggio totale
+    pub fn total_count(&self) -> u64 {
+        *self.total_count.read()
+    }
+
+    /// Verifica se è in caricamento
+    pub fn is_loading(&self) -> bool {
+        *self.is_loading.read()
     }
 }
