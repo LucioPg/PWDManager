@@ -9,14 +9,14 @@
 | 1. Default ExportFormat | ✅ Completato | `2f89e23` |
 | 2. ExportData Context | ✅ Completato | `454eab5` |
 | 3. Modulo features | ✅ Completato | `7aa8a79` |
-| 4. ExportWarningDialog | ⏳ Pending | - |
-| 5. ExportProgressChn | ⏳ Pending | - |
-| 6. ExportProgressDialog | ⏳ Pending | - |
+| 4. ExportWarningDialog | ✅ Completato | `295092c` |
+| 5. ExportProgressChn | ✅ Completato | `caada34` |
+| 6. ExportProgressDialog | ✅ Completato | `0802d5a` |
 | 7. Modulo dialogs | ⏳ Pending | - |
 | 8. DashboardMenu integration | ⏳ Pending | - |
 | 9. Test End-to-End | ⏳ Pending | - |
 
-**Ultimo aggiornamento:** 2026-03-06 - Batch 1 completato (Task 1-3)
+**Ultimo aggiornamento:** 2026-03-06 - Batch 2 completato (Task 4-6)
 
 ---
 
