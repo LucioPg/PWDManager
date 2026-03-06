@@ -12,11 +12,11 @@
 | 4. ExportWarningDialog | ✅ Completato | `295092c` |
 | 5. ExportProgressChn | ✅ Completato | `caada34` |
 | 6. ExportProgressDialog | ✅ Completato | `0802d5a` |
-| 7. Modulo dialogs | ⏳ Pending | - |
-| 8. DashboardMenu integration | ⏳ Pending | - |
+| 7. Modulo dialogs | ✅ Completato | `6a16d2b` |
+| 8. DashboardMenu integration | ✅ Completato | `ae3ad1e` |
 | 9. Test End-to-End | ⏳ Pending | - |
 
-**Ultimo aggiornamento:** 2026-03-06 - Batch 2 completato (Task 4-6)
+**Ultimo aggiornamento:** 2026-03-06 - Batch 3 completato (Task 7-8)
 
 ---
 
