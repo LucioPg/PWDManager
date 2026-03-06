@@ -11,8 +11,17 @@
 //! File JSON/CSV/XML
 //! ```
 
+use crate::backend::db_backend::{fetch_all_stored_passwords_for_user, fetch_user_auth_from_id};
 use crate::backend::export_types::{ExportFormat, ExportablePassword, XmlExportRoot};
+use crate::backend::migration_types::{MigrationStage, ProgressMessage, ProgressSender};
+use crate::backend::password_utils::decrypt_bulk_stored_data;
+use pwd_types::StoredRawPassword;
 use quick_xml::se::to_string as xml_to_string;
+use sqlx::SqlitePool;
+use std::path::Path;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+use tokio::{fs, task};
 
 /// Serializza le password in formato JSON (pretty-printed).
 pub fn serialize_to_json(passwords: &[ExportablePassword]) -> Result<String, String> {
@@ -54,6 +63,146 @@ pub fn serialize_passwords(
         ExportFormat::Csv => serialize_to_csv(passwords),
         ExportFormat::Xml => serialize_to_xml(passwords),
     }
+}
+
+/// Pipeline completa per esportare le password con feedback di progresso.
+///
+/// Segue lo stesso pattern di `stored_passwords_migration_pipeline_with_progress`:
+/// - Passa `progress_tx` direttamente a `decrypt_bulk_stored_data`
+/// - Invia messaggi di cambio stage manualmente
+/// - Usa `Arc<AtomicUsize>` per progress tracking durante serializzazione
+///
+/// # Flusso dati
+/// 1. Fetch StoredPassword dal DB (crittografate)
+/// 2. Decrypt in StoredRawPassword con progress tracking (riusa ProgressSender)
+/// 3. Converti in ExportablePassword (chiama .expose_secret())
+/// 4. Serializza e scrivi su file
+///
+/// # Arguments
+/// * `pool` - Connection pool SQLite
+/// * `user_id` - ID dell'utente
+/// * `output_path` - Path del file di output
+/// * `format` - Formato di export (JSON, CSV, XML)
+/// * `progress_tx` - Canale opzionale per il progress tracking (stesso tipo della migrazione)
+pub async fn export_passwords_pipeline_with_progress(
+    pool: &SqlitePool,
+    user_id: i64,
+    output_path: &Path,
+    format: ExportFormat,
+    progress_tx: Option<Arc<ProgressSender>>,
+) -> Result<(), String> {
+    // Invia stato iniziale
+    if let Some(tx) = &progress_tx {
+        let _ = tx
+            .send(ProgressMessage::new(MigrationStage::Decrypting, 0, 0))
+            .await;
+    }
+
+    // 1. Fetch StoredPassword crittografate dal database
+    let stored_passwords = fetch_all_stored_passwords_for_user(pool, user_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let total = stored_passwords.len();
+
+    if total == 0 {
+        // Nessuna password da esportare
+        if let Some(tx) = &progress_tx {
+            let _ = tx
+                .send(ProgressMessage::new(MigrationStage::Completed, 0, 0))
+                .await;
+        }
+        let content = serialize_passwords(&[], format)?;
+        fs::write(output_path, content)
+            .await
+            .map_err(|e| format!("File write error: {}", e))?;
+        return Ok(());
+    }
+
+    // 2. Prepara UserAuth per la decrittografia
+    let user_auth = fetch_user_auth_from_id(pool, user_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // 3. Decrypt con progress tracking (stesso pattern della migrazione)
+    // Passiamo progress_tx direttamente a decrypt_bulk_stored_data
+    let raw_passwords = decrypt_bulk_stored_data(user_auth, stored_passwords, progress_tx.clone())
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Invia cambio stage - Serializing
+    if let Some(tx) = &progress_tx {
+        let _ = tx
+            .send(ProgressMessage::new(MigrationStage::Serializing, 0, total))
+            .await;
+    }
+
+    // 4. Converti in ExportablePassword con progress tracking
+    // ExportablePassword::from_stored_raw() chiama .expose_secret()
+    let exportable_passwords =
+        convert_to_exportable_with_progress(raw_passwords, progress_tx.clone(), total);
+
+    // Invia cambio stage - Writing
+    if let Some(tx) = &progress_tx {
+        let _ = tx
+            .send(ProgressMessage::new(MigrationStage::Writing, 0, total))
+            .await;
+    }
+
+    // 5. Serializza nel formato richiesto
+    let content = serialize_passwords(&exportable_passwords, format)?;
+
+    // 6. Scrivi su file
+    fs::write(output_path, content)
+        .await
+        .map_err(|e| format!("File write error: {}", e))?;
+
+    // Invia completamento
+    if let Some(tx) = &progress_tx {
+        let _ = tx
+            .send(ProgressMessage::new(MigrationStage::Completed, 100, 100))
+            .await;
+    }
+
+    Ok(())
+}
+
+/// Converte StoredRawPassword in ExportablePassword con progress tracking.
+///
+/// Usa `.expose_secret()` per convertire i SecretString in String in chiaro.
+fn convert_to_exportable_with_progress(
+    raw_passwords: Vec<StoredRawPassword>,
+    progress_tx: Option<Arc<ProgressSender>>,
+    total: usize,
+) -> Vec<ExportablePassword> {
+    if raw_passwords.is_empty() {
+        return Vec::new();
+    }
+
+    let completed = Arc::new(AtomicUsize::new(0));
+
+    // Usa block_in_place per la conversione CPU-bound
+    task::block_in_place(|| {
+        raw_passwords
+            .into_iter()
+            .map(|rp| {
+                // ExportablePassword::from_stored_raw() chiama .expose_secret()
+                let exportable = ExportablePassword::from_stored_raw(&rp);
+
+                // Aggiorna progress (stesso pattern di decrypt_bulk_stored_data)
+                if let Some(tx) = &progress_tx {
+                    let current = completed.fetch_add(1, Ordering::SeqCst) + 1;
+                    let _ = tx.blocking_send(ProgressMessage::new(
+                        MigrationStage::Serializing,
+                        current,
+                        total,
+                    ));
+                }
+
+                exportable
+            })
+            .collect()
+    })
 }
 
 #[cfg(test)]
