@@ -24,7 +24,7 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
     let mut export_completed = use_signal(|| false);
     let mut export_failed = use_signal(|| false);
     // Provide ExportData as context for ExportProgressChn
-    let mut export_data = use_context_provider(ExportData::default);
+    let mut export_data = use_context_provider(|| Signal::new(ExportData::default()));
     let mut export_format = use_signal(|| ExportFormat::Json);
 
     // Clone user for each closure that needs it
@@ -68,12 +68,15 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
 
     // Export handler per JSON
     let toast_json = toast.clone();
-    let mut export_data_json = export_data.clone();
-    let mut export_format_json = export_format.clone();
-    let mut export_warning_open_json = export_warning_open.clone();
+    let export_data_for_json = export_data.clone();
+    let export_format_for_json = export_format.clone();
+    let export_warning_open_for_json = export_warning_open.clone();
     let on_export_json = move |_| {
         let user_clone = user_json.clone();
         let toast = toast_json.clone();
+        let mut export_data_json = export_data_for_json.clone();
+        let mut export_format_json = export_format_for_json.clone();
+        let mut export_warning_open_json = export_warning_open_for_json.clone();
         let format = ExportFormat::Json;
 
         spawn(async move {
@@ -106,12 +109,15 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
 
     // Export handler per CSV
     let toast_csv = toast.clone();
-    let mut export_data_csv = export_data.clone();
-    let mut export_format_csv = export_format.clone();
-    let mut export_warning_open_csv = export_warning_open.clone();
+    let export_data_for_csv = export_data.clone();
+    let export_format_for_csv = export_format.clone();
+    let export_warning_open_for_csv = export_warning_open.clone();
     let on_export_csv = move |_| {
         let user_clone = user_csv.clone();
         let toast = toast_csv.clone();
+        let mut export_data_csv = export_data_for_csv.clone();
+        let mut export_format_csv = export_format_for_csv.clone();
+        let mut export_warning_open_csv = export_warning_open_for_csv.clone();
         let format = ExportFormat::Csv;
 
         spawn(async move {
@@ -144,12 +150,15 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
 
     // Export handler per XML
     let toast_xml = toast.clone();
-    let mut export_data_xml = export_data.clone();
-    let mut export_format_xml = export_format.clone();
-    let mut export_warning_open_xml = export_warning_open.clone();
+    let export_data_for_xml = export_data.clone();
+    let export_format_for_xml = export_format.clone();
+    let export_warning_open_for_xml = export_warning_open.clone();
     let on_export_xml = move |_| {
         let user_clone = user_xml.clone();
         let toast = toast_xml.clone();
+        let mut export_data_xml = export_data_for_xml.clone();
+        let mut export_format_xml = export_format_for_xml.clone();
+        let mut export_warning_open_xml = export_warning_open_for_xml.clone();
         let format = ExportFormat::Xml;
 
         spawn(async move {

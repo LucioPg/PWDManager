@@ -91,6 +91,8 @@ pub async fn export_passwords_pipeline_with_progress(
     format: ExportFormat,
     progress_tx: Option<Arc<ProgressSender>>,
 ) -> Result<(), String> {
+    tracing::info!("export_passwords_pipeline_with_progress: starting");
+
     // Invia stato iniziale
     if let Some(tx) = &progress_tx {
         let _ = tx
@@ -99,11 +101,13 @@ pub async fn export_passwords_pipeline_with_progress(
     }
 
     // 1. Fetch StoredPassword crittografate dal database
+    tracing::info!("export_passwords_pipeline_with_progress: fetching passwords from DB");
     let stored_passwords = fetch_all_stored_passwords_for_user(pool, user_id)
         .await
         .map_err(|e| e.to_string())?;
 
     let total = stored_passwords.len();
+    tracing::info!("export_passwords_pipeline_with_progress: fetched {} passwords", total);
 
     if total == 0 {
         // Nessuna password da esportare
@@ -120,27 +124,34 @@ pub async fn export_passwords_pipeline_with_progress(
     }
 
     // 2. Prepara UserAuth per la decrittografia
+    tracing::info!("export_passwords_pipeline_with_progress: fetching user auth");
     let user_auth = fetch_user_auth_from_id(pool, user_id)
         .await
         .map_err(|e| e.to_string())?;
 
     // 3. Decrypt con progress tracking (stesso pattern della migrazione)
     // Passiamo progress_tx direttamente a decrypt_bulk_stored_data
+    tracing::info!("export_passwords_pipeline_with_progress: calling decrypt_bulk_stored_data");
     let raw_passwords = decrypt_bulk_stored_data(user_auth, stored_passwords, progress_tx.clone())
         .await
         .map_err(|e| e.to_string())?;
+    tracing::info!("export_passwords_pipeline_with_progress: decrypt_bulk_stored_data completed");
 
     // Invia cambio stage - Serializing
+    tracing::info!("export_passwords_pipeline_with_progress: sending Serializing stage");
     if let Some(tx) = &progress_tx {
         let _ = tx
             .send(ProgressMessage::new(MigrationStage::Serializing, 0, total))
             .await;
     }
+    tracing::info!("export_passwords_pipeline_with_progress: Serializing stage sent");
 
     // 4. Converti in ExportablePassword con progress tracking
     // ExportablePassword::from_stored_raw() chiama .expose_secret()
+    tracing::info!("export_passwords_pipeline_with_progress: converting to exportable format");
     let exportable_passwords =
         convert_to_exportable_with_progress(raw_passwords, progress_tx.clone(), total);
+    tracing::info!("export_passwords_pipeline_with_progress: conversion completed");
 
     // Invia cambio stage - Writing
     if let Some(tx) = &progress_tx {
@@ -192,7 +203,8 @@ fn convert_to_exportable_with_progress(
                 // Aggiorna progress (stesso pattern di decrypt_bulk_stored_data)
                 if let Some(tx) = &progress_tx {
                     let current = completed.fetch_add(1, Ordering::SeqCst) + 1;
-                    let _ = tx.blocking_send(ProgressMessage::new(
+                    // Usa try_send invece di blocking_send per evitare deadlock con molti elementi
+                    let _ = tx.try_send(ProgressMessage::new(
                         MigrationStage::Serializing,
                         current,
                         total,

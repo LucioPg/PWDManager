@@ -48,43 +48,52 @@ pub fn ExportProgressChn(
         }
         export_started.set(true);
 
-        let context = context.clone();
-        let pool = pool.clone();
-        let mut on_completed = on_completed.clone();
-        let mut on_failed = on_failed.clone();
+        let context_for_progress = context.clone();
+        let pool_for_progress = pool.clone();
+        let mut on_completed_progress = on_completed.clone();
+        let mut on_failed_progress = on_failed.clone();
         let toast = toast.clone();
 
         let (tx, mut rx) = mpsc::channel::<ProgressMessage>(100);
 
         // Task per ricevere progress updates
         spawn(async move {
+            tracing::info!("Export progress receiver task started");
             while let Some(msg) = rx.recv().await {
+                tracing::info!("Export progress received: stage={:?}, progress={}%", msg.stage, msg.percentage());
                 stage.set(msg.stage.clone());
                 progress.set(msg.percentage());
                 status_message.set(format_export_stage_message(&msg.stage));
 
                 if msg.stage == MigrationStage::Completed {
-                    on_completed.set(true);
+                    on_completed_progress.set(true);
                 }
             }
+            tracing::info!("Export progress receiver task ended");
         });
 
         // Task per eseguire l'export
         spawn(async move {
-            let user_id = context.read().user_id;
-            let output_path = context.read().output_path.clone();
-            let format = context.read().format;
+            tracing::info!("Export task started");
+            let user_id = context_for_progress.read().user_id;
+            let output_path = context_for_progress.read().output_path.clone();
+            let format = context_for_progress.read().format;
+
+            tracing::info!("Export data: user_id={}, path={:?}, format={:?}", user_id, output_path, format);
 
             let progress_tx: Option<Arc<ProgressSender>> = Some(Arc::new(tx));
 
+            tracing::info!("Calling export_passwords_pipeline_with_progress...");
             let result = export_passwords_pipeline_with_progress(
-                &pool,
+                &pool_for_progress,
                 user_id,
                 &output_path,
                 format,
                 progress_tx,
             )
             .await;
+
+            tracing::info!("Export pipeline completed with result: {:?}", result.is_ok());
 
             match result {
                 Ok(()) => {
@@ -96,7 +105,7 @@ pub fn ExportProgressChn(
                 Err(e) => {
                     show_toast_error(format!("Export failed: {}", e), toast);
                     stage.set(MigrationStage::Failed);
-                    on_failed.set(true);
+                    on_failed_progress.set(true);
                 }
             }
         });

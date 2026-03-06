@@ -9,7 +9,7 @@ use crate::backend::export_types::ExportFormat;
 use std::path::PathBuf;
 
 /// Dati di contesto per l'export delle password.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ExportData {
     pub user_id: i64,
     pub output_path: PathBuf,

@@ -201,7 +201,8 @@ pub async fn create_stored_data_records(
                 // Aggiorna progress
                 if let Some(tx) = &progress_tx_clone {
                     let current = completed.fetch_add(1, Ordering::SeqCst) + 1;
-                    let _ = tx.blocking_send(ProgressMessage::new(
+                    // Usa try_send invece di blocking_send per evitare deadlock
+                    let _ = tx.try_send(ProgressMessage::new(
                         MigrationStage::Encrypting,
                         current,
                         total,
@@ -282,6 +283,8 @@ pub async fn decrypt_bulk_stored_data(
     stored_passwords: Vec<StoredPassword>,
     progress_tx: Option<Arc<ProgressSender>>,
 ) -> Result<Vec<StoredRawPassword>, DBError> {
+    tracing::info!("decrypt_bulk_stored_data: starting with {} passwords, progress_tx={:?}", stored_passwords.len(), progress_tx.is_some());
+
     if stored_passwords.is_empty() {
         return Ok(Vec::new());
     }
@@ -293,7 +296,8 @@ pub async fn decrypt_bulk_stored_data(
     let completed = Arc::new(AtomicUsize::new(0));
     let progress_tx_clone = progress_tx.clone();
 
-    task::spawn_blocking(move || {
+    let result = task::spawn_blocking(move || {
+        tracing::info!("decrypt_bulk_stored_data: spawn_blocking task started");
         stored_passwords
             .into_par_iter()
             .map(|sp| {
@@ -329,7 +333,9 @@ pub async fn decrypt_bulk_stored_data(
                 // Aggiorna progress
                 if let Some(tx) = &progress_tx_clone {
                     let current = completed.fetch_add(1, Ordering::SeqCst) + 1;
-                    let _ = tx.blocking_send(ProgressMessage::new(
+                    tracing::debug!("decrypt_bulk_stored_data: sending progress {}/{}", current, total);
+                    // Usa try_send invece di blocking_send per evitare deadlock
+                    let _ = tx.try_send(ProgressMessage::new(
                         MigrationStage::Decrypting,
                         current,
                         total,
@@ -348,9 +354,16 @@ pub async fn decrypt_bulk_stored_data(
                 })
             })
             .collect::<Result<Vec<StoredRawPassword>, DBError>>()
-    })
+    });
+
+    tracing::info!("decrypt_bulk_stored_data: spawn_blocking task completed, awaiting result");
+
+    result
     .await
-    .map_err(|e| DBError::new_password_conversion_error(format!("Join error: {}", e)))?
+    .map_err(|e| {
+        tracing::error!("decrypt_bulk_stored_data: task failed with error: {}", e);
+        DBError::new_password_conversion_error(format!("Join error: {}", e))
+    })?
 }
 
 /// Deprecated: Use `decrypt_bulk_stored_data` instead
