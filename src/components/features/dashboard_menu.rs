@@ -23,7 +23,8 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
     let mut export_progress_open = use_signal(|| false);
     let mut export_completed = use_signal(|| false);
     let mut export_failed = use_signal(|| false);
-    let mut export_data = use_signal(ExportData::default);
+    // Provide ExportData as context for ExportProgressChn
+    let mut export_data = use_context_provider(ExportData::default);
     let mut export_format = use_signal(|| ExportFormat::Json);
 
     // Clone user for each closure that needs it
