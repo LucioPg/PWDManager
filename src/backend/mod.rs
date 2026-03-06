@@ -1,6 +1,7 @@
 pub mod settings_types;
 pub mod db_backend;
 pub mod migration_types;
+pub mod export_types;
 pub mod init_queries;
 pub(crate) mod password_types_helper;
 pub mod password_utils;
