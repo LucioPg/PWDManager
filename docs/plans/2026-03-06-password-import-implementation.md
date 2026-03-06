@@ -10,11 +10,9 @@
 | Task 2: Create ImportablePassword DTO | ✅ DONE | `570583d` |
 | Task 3: Implement File Parsers | ✅ DONE | `6b85630` |
 | Task 4: Register Import Module | ✅ DONE | `6b85630` |
-| Task 5: Implement Import Pipeline with Progress | ⏳ TODO | - |
-| Task 6: Add Integration Tests | ⏳ TODO | - |
-| Task 7: Run Full Test Suite | ⏳ TODO | - |
-
-**Note per Task 5:** La funzione `get_salt` in `password_utils.rs:63` è privata. Renderla `pub(crate)` prima di implementare `create_cipher_from_auth`.
+| Task 5: Implement Import Pipeline with Progress | ✅ DONE | `01200f9` |
+| Task 6: Add Integration Tests | ✅ DONE | `d57fdcf` |
+| Task 7: Run Full Test Suite | ✅ DONE | - |
 
 ---
 
