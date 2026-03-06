@@ -161,9 +161,8 @@ pub async fn import_passwords_pipeline_with_progress(
 ) -> Result<ImportResult, String> {
     // Invia stato iniziale - Reading
     if let Some(tx) = &progress_tx {
-        let _ = tx
-            .send(ProgressMessage::new(MigrationStage::Reading, 0, 0))
-            .await;
+        // Usa try_send invece di blocking_send per evitare deadlock con molti elementi
+        let _ = tx.try_send(ProgressMessage::new(MigrationStage::Reading, 0, 0));
     }
 
     // 1. Leggi file
@@ -173,9 +172,8 @@ pub async fn import_passwords_pipeline_with_progress(
 
     // Invia cambio stage - Parsing
     if let Some(tx) = &progress_tx {
-        let _ = tx
-            .send(ProgressMessage::new(MigrationStage::Deserializing, 0, 0))
-            .await;
+        // Usa try_send invece di blocking_send per evitare deadlock
+        let _ = tx.try_send(ProgressMessage::new(MigrationStage::Deserializing, 0, 0));
     }
 
     // 2. Parse content
@@ -185,9 +183,8 @@ pub async fn import_passwords_pipeline_with_progress(
     if total_in_file == 0 {
         // File vuoto
         if let Some(tx) = &progress_tx {
-            let _ = tx
-                .send(ProgressMessage::new(MigrationStage::Completed, 0, 0))
-                .await;
+            // Usa try_send invece di blocking_send per evitare deadlock
+            let _ = tx.try_send(ProgressMessage::new(MigrationStage::Completed, 0, 0));
         }
         return Ok(ImportResult {
             imported_count: 0,
@@ -198,9 +195,8 @@ pub async fn import_passwords_pipeline_with_progress(
 
     // Invia cambio stage - Deduplicating
     if let Some(tx) = &progress_tx {
-        let _ = tx
-            .send(ProgressMessage::new(MigrationStage::Deduplicating, 0, total_in_file))
-            .await;
+        // Usa try_send invece di blocking_send per evitare deadlock
+        let _ = tx.try_send(ProgressMessage::new(MigrationStage::Deduplicating, 0, total_in_file));
     }
 
     // 3. Deduplica password nel file
@@ -244,9 +240,8 @@ pub async fn import_passwords_pipeline_with_progress(
     if new_passwords.is_empty() {
         // Nessuna nuova password da importare
         if let Some(tx) = &progress_tx {
-            let _ = tx
-                .send(ProgressMessage::new(MigrationStage::Completed, 0, total_in_file))
-                .await;
+            // Usa try_send invece di blocking_send per evitare deadlock
+            let _ = tx.try_send(ProgressMessage::new(MigrationStage::Completed, 0, total_in_file));
         }
         return Ok(ImportResult {
             imported_count: 0,
@@ -259,9 +254,8 @@ pub async fn import_passwords_pipeline_with_progress(
 
     // Invia cambio stage - Encrypting
     if let Some(tx) = &progress_tx {
-        let _ = tx
-            .send(ProgressMessage::new(MigrationStage::Encrypting, 0, to_import))
-            .await;
+        // Usa try_send invece di blocking_send per evitare deadlock
+        let _ = tx.try_send(ProgressMessage::new(MigrationStage::Encrypting, 0, to_import));
     }
 
     // 5. Converti in StoredRawPassword con user_id
@@ -285,9 +279,8 @@ pub async fn import_passwords_pipeline_with_progress(
 
     // Invia cambio stage - Importing
     if let Some(tx) = &progress_tx {
-        let _ = tx
-            .send(ProgressMessage::new(MigrationStage::Importing, 0, to_import))
-            .await;
+        // Usa try_send invece di blocking_send per evitare deadlock
+        let _ = tx.try_send(ProgressMessage::new(MigrationStage::Importing, 0, to_import));
     }
 
     // 7. Salva nel DB
@@ -297,9 +290,8 @@ pub async fn import_passwords_pipeline_with_progress(
 
     // Invia completamento
     if let Some(tx) = &progress_tx {
-        let _ = tx
-            .send(ProgressMessage::new(MigrationStage::Completed, to_import, to_import))
-            .await;
+        // Usa try_send invece di blocking_send per evitare deadlock
+        let _ = tx.try_send(ProgressMessage::new(MigrationStage::Completed, to_import, to_import));
     }
 
     Ok(ImportResult {

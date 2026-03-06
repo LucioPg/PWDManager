@@ -1,10 +1,13 @@
 use crate::backend::db_backend::delete_all_user_stored_passwords;
 use crate::backend::export_types::ExportFormat;
+use crate::backend::import::validate_import_path;
 use crate::components::features::export_data::ExportData;
+use crate::components::{ImportData, ImportWarningDialog, ImportProgressDialog};
 use crate::components::globals::{ExportProgressDialog, ExportWarningDialog};
 use crate::components::AllStoredPasswordDeletionDialog;
 use dioxus::prelude::*;
 use pwd_dioxus::{show_toast_error, use_toast};
+use rfd::FileDialog;
 use sqlx::SqlitePool;
 
 /// Dashboard menu component with import/export actions and delete all option.
@@ -27,11 +30,23 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
     let mut export_data = use_context_provider(|| Signal::new(ExportData::default()));
     let mut export_format = use_signal(|| ExportFormat::Json);
 
+    // Import state
+    let mut import_warning_open = use_signal(|| false);
+    let mut import_progress_open = use_signal(|| false);
+    let mut import_completed = use_signal(|| false);
+    let mut import_failed = use_signal(|| false);
+    // Provide ImportData as context for ImportProgressChn
+    let mut import_data = use_context_provider(|| Signal::new(ImportData::default()));
+    let mut import_format = use_signal(|| ExportFormat::Json);
+
     // Clone user for each closure that needs it
     let user_for_delete = user.clone();
     let user_json = user.clone();
     let user_csv = user.clone();
     let user_xml = user.clone();
+    let user_import_json = user.clone();
+    let user_import_csv = user.clone();
+    let user_import_xml = user.clone();
 
     let on_delete_all = move |_| {
         let user_clone = user_for_delete.clone();
@@ -195,10 +210,163 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
         export_progress_open.set(true);
     };
 
-    // Handler per chiudere il progress dopo completamento
+    // Handler per chiudere il progress dopo completamento (export)
     use_effect(move || {
         if export_completed() || export_failed() {
             export_progress_open.set(false);
+        }
+    });
+
+    // Import handler per JSON
+    let toast_import_json = toast.clone();
+    let import_data_for_json = import_data.clone();
+    let import_format_for_json = import_format.clone();
+    let import_warning_open_for_json = import_warning_open.clone();
+    let on_import_json = move |_| {
+        let user_clone = user_import_json.clone();
+        let toast = toast_import_json.clone();
+        let mut import_data_json = import_data_for_json.clone();
+        let mut import_format_json = import_format_for_json.clone();
+        let mut import_warning_open_json = import_warning_open_for_json.clone();
+
+        spawn(async move {
+            if let Some(user) = user_clone {
+                let file_result = tokio::task::spawn_blocking(move || {
+                    FileDialog::new()
+                        .add_filter("Import File", &["json"])
+                        .set_title("Import JSON passwords")
+                        .pick_file()
+                })
+                .await;
+
+                match file_result {
+                    Ok(Some(path)) => {
+                        match validate_import_path(&path) {
+                            Ok(detected_format) => {
+                                import_data_json.set(ImportData::new(user.id, path, detected_format));
+                                import_format_json.set(detected_format);
+                                import_warning_open_json.set(true);
+                            }
+                            Err(e) => {
+                                show_toast_error(format!("Invalid file: {}", e), toast);
+                            }
+                        }
+                    }
+                    Ok(None) => {
+                        tracing::info!("Import cancelled by user");
+                    }
+                    Err(e) => {
+                        show_toast_error(format!("Error opening file dialog: {}", e), toast);
+                    }
+                }
+            }
+        });
+    };
+
+    // Import handler per CSV
+    let toast_import_csv = toast.clone();
+    let import_data_for_csv = import_data.clone();
+    let import_format_for_csv = import_format.clone();
+    let import_warning_open_for_csv = import_warning_open.clone();
+    let on_import_csv = move |_| {
+        let user_clone = user_import_csv.clone();
+        let toast = toast_import_csv.clone();
+        let mut import_data_csv = import_data_for_csv.clone();
+        let mut import_format_csv = import_format_for_csv.clone();
+        let mut import_warning_open_csv = import_warning_open_for_csv.clone();
+
+        spawn(async move {
+            if let Some(user) = user_clone {
+                let file_result = tokio::task::spawn_blocking(move || {
+                    FileDialog::new()
+                        .add_filter("Import File", &["csv"])
+                        .set_title("Import CSV passwords")
+                        .pick_file()
+                })
+                .await;
+
+                match file_result {
+                    Ok(Some(path)) => {
+                        match validate_import_path(&path) {
+                            Ok(detected_format) => {
+                                import_data_csv.set(ImportData::new(user.id, path, detected_format));
+                                import_format_csv.set(detected_format);
+                                import_warning_open_csv.set(true);
+                            }
+                            Err(e) => {
+                                show_toast_error(format!("Invalid file: {}", e), toast);
+                            }
+                        }
+                    }
+                    Ok(None) => {
+                        tracing::info!("Import cancelled by user");
+                    }
+                    Err(e) => {
+                        show_toast_error(format!("Error opening file dialog: {}", e), toast);
+                    }
+                }
+            }
+        });
+    };
+
+    // Import handler per XML
+    let toast_import_xml = toast.clone();
+    let import_data_for_xml = import_data.clone();
+    let import_format_for_xml = import_format.clone();
+    let import_warning_open_for_xml = import_warning_open.clone();
+    let on_import_xml = move |_| {
+        let user_clone = user_import_xml.clone();
+        let toast = toast_import_xml.clone();
+        let mut import_data_xml = import_data_for_xml.clone();
+        let mut import_format_xml = import_format_for_xml.clone();
+        let mut import_warning_open_xml = import_warning_open_for_xml.clone();
+
+        spawn(async move {
+            if let Some(user) = user_clone {
+                let file_result = tokio::task::spawn_blocking(move || {
+                    FileDialog::new()
+                        .add_filter("Import File", &["xml"])
+                        .set_title("Import XML passwords")
+                        .pick_file()
+                })
+                .await;
+
+                match file_result {
+                    Ok(Some(path)) => {
+                        match validate_import_path(&path) {
+                            Ok(detected_format) => {
+                                import_data_xml.set(ImportData::new(user.id, path, detected_format));
+                                import_format_xml.set(detected_format);
+                                import_warning_open_xml.set(true);
+                            }
+                            Err(e) => {
+                                show_toast_error(format!("Invalid file: {}", e), toast);
+                            }
+                        }
+                    }
+                    Ok(None) => {
+                        tracing::info!("Import cancelled by user");
+                    }
+                    Err(e) => {
+                        show_toast_error(format!("Error opening file dialog: {}", e), toast);
+                    }
+                }
+            }
+        });
+    };
+
+    // Handler per confermare l'import
+    let on_import_confirm = move |_| {
+        import_warning_open.set(false);
+        import_progress_open.set(true);
+    };
+
+    // Handler per chiudere il progress dopo completamento (import)
+    use_effect(move || {
+        if import_completed() || import_failed() {
+            import_progress_open.set(false);
+            // Trigger restart per ricaricare le password
+            on_need_restart.set(true);
         }
     });
 
@@ -227,27 +395,21 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
                             li {
                                 button {
                                     r#type: "button",
-                                    onclick: move |_| {
-                                        tracing::info!("Import JSON clicked");
-                                    },
+                                    onclick: on_import_json,
                                     "JSON"
                                 }
                             }
                             li {
                                 button {
                                     r#type: "button",
-                                    onclick: move |_| {
-                                        tracing::info!("Import CSV clicked");
-                                    },
+                                    onclick: on_import_csv,
                                     "CSV"
                                 }
                             }
                             li {
                                 button {
                                     r#type: "button",
-                                    onclick: move |_| {
-                                        tracing::info!("Import XML clicked");
-                                    },
+                                    onclick: on_import_xml,
                                     "XML"
                                 }
                             }
@@ -326,6 +488,24 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
             open: export_progress_open,
             on_completed: export_completed,
             on_failed: export_failed,
+        }
+
+        // Import warning dialog
+        ImportWarningDialog {
+            open: import_warning_open,
+            input_path: import_data.read().input_path.display().to_string(),
+            format: format!("{:?}", import_format()),
+            on_confirm: on_import_confirm,
+            on_cancel: move |_| {
+                import_warning_open.set(false);
+            },
+        }
+
+        // Import progress dialog
+        ImportProgressDialog {
+            open: import_progress_open,
+            on_completed: import_completed,
+            on_failed: import_failed,
         }
     }
 }
