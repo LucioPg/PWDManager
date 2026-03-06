@@ -1,6 +1,7 @@
 pub mod dashboard;
 mod dashboard_menu;
 mod export_data;
+mod export_progress;
 mod landing;
 pub mod login;
 pub mod logout;
@@ -12,6 +13,7 @@ pub mod upsert_user;
 pub use dashboard::*;
 pub use dashboard_menu::*;
 pub use export_data::*;
+pub use export_progress::*;
 pub use landing::*;
 pub use login::*;
 pub use logout::*;
