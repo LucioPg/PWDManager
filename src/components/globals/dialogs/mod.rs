@@ -1,4 +1,6 @@
 pub mod base_modal;
+mod export_progress;
+mod export_warning;
 mod migration_progress;
 mod migration_warning;
 mod stored_all_passwords_deletion;
@@ -12,6 +14,8 @@ pub use user_deletion::*;
 
 // ide-only serve per avere highlight mentre si lavora su elementi non ancora completati.
 // #[cfg(feature = "ide-only")]
+pub use export_progress::*;
+pub use export_warning::*;
 pub use migration_progress::*;
 pub use migration_warning::*;
 pub use stored_all_passwords_deletion::*;
