@@ -1,6 +1,7 @@
-use crate::backend::db_backend::delete_stored_password;
-use crate::backend::password_utils::get_stored_raw_passwords;
+use crate::backend::db_backend::{delete_stored_password, fetch_password_stats};
+use crate::backend::password_utils::get_stored_raw_passwords_paginated;
 use crate::components::features::DashboardMenu;
+use crate::components::globals::pagination::{PaginationControls, PaginationState};
 use crate::components::globals::StatsAside;
 use crate::components::{
     StoredPasswordDeletionDialog, StoredPasswordUpsertDialog, StoredRawPasswordsTable,
@@ -8,7 +9,7 @@ use crate::components::{
 };
 use custom_errors::DBError;
 use dioxus::prelude::*;
-use pwd_types::{PasswordScore, PasswordStats, PasswordStrength, StoredRawPassword};
+use pwd_types::{PasswordStats, PasswordStrength, StoredRawPassword};
 use sqlx::SqlitePool;
 use std::ops::Deref;
 
@@ -30,24 +31,59 @@ pub fn Dashboard() -> Element {
         });
     // DATA
     let pool = use_context::<SqlitePool>();
-    let pool_clone = pool.clone();
+    let pool_for_page = pool.clone();
+    let pool_for_stats = pool.clone();
+    let pool_for_delete = pool.clone();
     let mut error = use_signal(|| <Option<DBError>>::None);
     let user_id_option = auth_state.user.cloned().map(|u| u.id);
     let toast = use_toast();
 
-    let stored_raw_passwords_data = use_resource(move || {
-        let pool_clone = pool.clone();
+    // Estrae user_id
+    let user_id = user_id_option.unwrap_or(-1);
+
+    // Stato paginazione
+    let mut pagination = use_context_provider(|| PaginationState::new());
+
+    // Resource per pagina corrente
+    let mut password_page_data = use_resource(move || {
+        let pool = pool.clone();
+        let page = pagination.current_page();
+        let filter = pagination.active_filter();
+        let page_size = pagination.page_size();
         async move {
-            let user_id = user_id_option.unwrap_or_else(|| {
-                error.set(Some(DBError::new_select_error("User not logged in".into())));
-                return -1;
-            });
             if user_id == -1 {
                 return None;
             }
-            let result = get_stored_raw_passwords(&pool_clone, user_id).await;
+            // Controlla cache
+            if let Some(cached) = pagination.get_current_page_from_cache() {
+                return Some(cached);
+            }
+            pagination.is_loading.set(true);
+            let result = get_stored_raw_passwords_paginated(&pool, user_id, filter, page, page_size).await;
+            pagination.is_loading.set(false);
             match result {
-                Ok(passwords) => Some(passwords),
+                Ok((passwords, total)) => {
+                    pagination.total_count.set(total);
+                    pagination.cache_page(filter, page, passwords.clone());
+                    Some(passwords)
+                }
+                Err(e) => {
+                    error.set(Some(e));
+                    None
+                }
+            }
+        }
+    });
+
+    // Stats sempre fresche (query separata)
+    let stats_data = use_resource(move || {
+        let pool = pool_for_stats.clone();
+        async move {
+            if user_id == -1 {
+                return None;
+            }
+            match fetch_password_stats(&pool, user_id).await {
+                Ok(stats) => Some(stats),
                 Err(e) => {
                     error.set(Some(e));
                     None
@@ -58,74 +94,39 @@ pub fn Dashboard() -> Element {
 
     // stored raw passwords
 
-    #[allow(unused_mut)]
-    let current_filter = use_signal(|| <Option<PasswordStrength>>::None);
-
+    // Stats dalle query DB (non più calcolate lato client)
     let stats = use_memo(move || {
-        let mut stats_ = PasswordStats::default();
-        if let Some(Some(list)) = &*stored_raw_passwords_data.read() {
-            for p in list {
-                let strength = PasswordScore::get_strength(p.score.map(|s| s.value() as i64));
-                match strength {
-                    PasswordStrength::WEAK => stats_.weak += 1,
-                    PasswordStrength::MEDIUM => stats_.medium += 1,
-                    PasswordStrength::STRONG => stats_.strong += 1,
-                    PasswordStrength::EPIC => stats_.epic += 1,
-                    PasswordStrength::GOD => stats_.god += 1,
-                    PasswordStrength::NotEvaluated => stats_.not_evaluated += 1,
-                }
-                stats_.total += 1;
-            }
-        }
-        stats_
-    });
-
-    let filtered_stored_raw_passwords = use_memo(move || {
-        let data = stored_raw_passwords_data.read();
-        let active_filter = current_filter();
-        // Invece di fare l'if let qui, mappiamo il contenuto del segnale
-        // Questo restituirà Some(Vec) se i dati sono pronti, None altrimenti
-        data.as_ref()
-            .and_then(|inner_option| inner_option.as_ref())
-            .map(|list| match active_filter {
-                None => list.clone(),
-                Some(target_strength) => list
-                    .iter()
-                    .filter(|p| {
-                        let current_strength =
-                            PasswordScore::get_strength(p.score.map(|s| s.value() as i64));
-                        target_strength == current_strength
-                    })
-                    .cloned()
-                    .collect(),
-            })
+        stats_data.read().clone().flatten().unwrap_or_default()
     });
 
     // upsert modal - refresh tabella dopo salvataggio
     let on_confirm_upsert = {
-        let stored_raw_passwords_data = stored_raw_passwords_data.clone();
+        let mut pagination = pagination.clone();
+        let mut stats_data = stats_data.clone();
+        let mut password_page_data = password_page_data.clone();
         move |_| {
-            let mut resource = stored_raw_passwords_data.clone();
-            spawn(async move {
-                resource.restart();
-            });
+            pagination.invalidate();
+            stats_data.restart();
+            password_page_data.restart();
         }
     };
 
     // deletion modal
     let on_confirm_delete = {
-        // Cattura tutto quello che serve (già clonato)
-        let pool = pool_clone.clone();
-        let stored_raw_passwords_data = stored_raw_passwords_data.clone();
+        let pool = pool_for_delete.clone();
+        let mut pagination = pagination.clone();
+        let mut stats_data = stats_data.clone();
+        let mut password_page_data = password_page_data.clone();
         let mut deletion_password_dialog_state = deletion_password_dialog_state.clone();
         let mut error = error.clone();
 
         move |_| {
-            // Clona PER OGNI invocazione (rende la closure FnMut)
             let pool = pool.clone();
-            let mut resource = stored_raw_passwords_data.clone();
             let mut delete_state = deletion_password_dialog_state.clone();
             let mut error_signal = error.clone();
+            let mut pagination = pagination.clone();
+            let mut stats_data = stats_data.clone();
+            let mut password_page_data = password_page_data.clone();
 
             let Some(password_id) = (delete_state.password_id)() else {
                 error_signal.set(Some(DBError::new_general_error(
@@ -138,7 +139,9 @@ pub fn Dashboard() -> Element {
                 let result = delete_stored_password(&pool, password_id).await;
                 match result {
                     Ok(_) => {
-                        resource.restart();
+                        pagination.invalidate();
+                        stats_data.restart();
+                        password_page_data.restart();
                         delete_state.is_open.set(false);
                     }
                     Err(e) => {
@@ -160,9 +163,13 @@ pub fn Dashboard() -> Element {
 
     use_effect(move || {
         let mut need_restart = on_need_restart.clone();
-        let mut resource = stored_raw_passwords_data.clone();
+        let mut pagination = pagination.clone();
+        let mut stats_data = stats_data.clone();
+        let mut password_page_data = password_page_data.clone();
         if need_restart() {
-            resource.restart();
+            pagination.invalidate();
+            stats_data.restart();
+            password_page_data.restart();
             need_restart.set(false);
         }
     });
@@ -171,8 +178,11 @@ pub fn Dashboard() -> Element {
         // Stats Aside - posizionato fixed con z-index alto
         StatsAside {
             stats: stats(),
-            on_stat_click: move |strength| current_filter.clone().set(strength),
-            active_filter: current_filter(),
+            on_stat_click: move |strength| {
+                pagination.set_filter(strength);
+                password_page_data.restart();
+            },
+            active_filter: pagination.active_filter(),
         }
 
         // Main content con margin-left per fare spazio all'aside collassato (52px)
@@ -197,7 +207,7 @@ pub fn Dashboard() -> Element {
                 }
             }
             {
-                let table_data = filtered_stored_raw_passwords();
+                let table_data: Option<Vec<StoredRawPassword>> = password_page_data.read().clone().flatten();
                 let count = table_data.as_ref().map(|p| p.len()).unwrap_or(0);
                 rsx! {
                     div { class: "card card-lg",
@@ -206,7 +216,14 @@ pub fn Dashboard() -> Element {
                 }
             }
 
-
+            // Controlli paginazione
+            PaginationControls {
+                pagination: pagination.clone(),
+                on_page_change: move |new_page| {
+                    pagination.go_to_page(new_page);
+                    password_page_data.restart();
+                },
+            }
         }
         // on_cancel gestito internamente al componente
         StoredPasswordUpsertDialog { on_confirm: on_confirm_upsert, on_cancel: move |_| {} }

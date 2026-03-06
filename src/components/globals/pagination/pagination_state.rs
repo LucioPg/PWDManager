@@ -9,7 +9,7 @@ pub type CacheKey = (Option<PasswordStrength>, usize);
 ///
 /// Gestisce pagina corrente, filtro, cache e loading state.
 /// Tutti i campi sono Signal per la reattività Dioxus.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct PaginationState {
     /// Pagina corrente (0-indexed, display come 1-indexed)
     pub current_page: Signal<usize>,
