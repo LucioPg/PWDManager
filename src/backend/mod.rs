@@ -26,6 +26,9 @@ mod db_settings_tests;
 #[cfg(test)]
 mod export_tests;
 
+#[cfg(test)]
+mod import_tests;
+
 // Re-export pwd-strength for backward compatibility
 pub use pwd_strength::{
     init_blacklist, init_blacklist_from_path, is_blacklisted, evaluate_password_strength,
