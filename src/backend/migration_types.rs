@@ -1,14 +1,16 @@
-//! Tipi per il tracking del progresso della migrazione password.
+//! Tipi per il tracking del progresso della migrazione password o export.
 
 use tokio::sync::mpsc::Sender;
 
-/// Rappresenta lo stage corrente della migrazione password.
+/// Rappresenta lo stage corrente della migrazione password o export.
 #[derive(Clone, Debug, PartialEq, Default)]
 pub enum MigrationStage {
     #[default]
     Idle,
     Decrypting,
     Encrypting,
+    Serializing, // Serializzazione per export
+    Writing,     // Scrittura file
     Finalizing,
     Completed,
     Failed,

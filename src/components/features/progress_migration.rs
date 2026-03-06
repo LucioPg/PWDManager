@@ -13,6 +13,8 @@ fn format_stage_message(stage: &MigrationStage) -> String {
         MigrationStage::Idle => "Preparing migration...".to_string(),
         MigrationStage::Decrypting => "Decrypting passwords...".to_string(),
         MigrationStage::Encrypting => "Encrypting with new password...".to_string(),
+        MigrationStage::Serializing => "Serializing data...".to_string(),
+        MigrationStage::Writing => "Writing file...".to_string(),
         MigrationStage::Finalizing => "Finalizing...".to_string(),
         MigrationStage::Completed => "Migration completed!".to_string(),
         MigrationStage::Failed => "Migration failed".to_string(),
