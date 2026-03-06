@@ -15,8 +15,18 @@
 //! Database
 //! ```
 
+use crate::backend::db_backend::{
+    fetch_all_stored_passwords_for_user, fetch_user_auth_from_id, upsert_stored_passwords_batch,
+};
 use crate::backend::export_types::{ExportFormat, ExportablePassword, XmlExportRoot};
+use crate::backend::migration_types::{MigrationStage, ProgressMessage, ProgressSender};
+use crate::backend::password_utils::{create_cipher, create_stored_data_records, decrypt_bulk_stored_data, get_salt};
+use pwd_types::StoredRawPassword;
+use secrecy::ExposeSecret;
+use sqlx::SqlitePool;
 use std::path::Path;
+use std::sync::Arc;
+use tokio::fs;
 
 /// Parse JSON content into ExportablePassword list.
 pub fn parse_from_json(content: &str) -> Result<Vec<ExportablePassword>, String> {
@@ -113,6 +123,190 @@ pub fn validate_import_path(path: &Path) -> Result<ExportFormat, String> {
             extension
         )),
     }
+}
+
+/// Result of an import operation.
+#[derive(Debug, Clone)]
+pub struct ImportResult {
+    pub imported_count: usize,
+    pub skipped_duplicates: usize,
+    pub total_in_file: usize,
+}
+
+/// Pipeline completa per importare password con feedback di progresso.
+///
+/// # Flusso
+/// 1. Leggi file dal disco
+/// 2. Parse nel formato appropriato
+/// 3. Deduplica (per location + password)
+/// 4. Filtra password che esistono già nel DB per questo utente
+/// 5. Cripta e salva nel DB
+///
+/// # Arguments
+/// * `pool` - Connection pool SQLite
+/// * `user_id` - ID dell'utente (assegnato alle password importate)
+/// * `input_path` - Path del file di input
+/// * `format` - Formato del file (JSON, CSV, XML)
+/// * `progress_tx` - Canale opzionale per il progress tracking
+///
+/// # Returns
+/// * `Ok(ImportResult)` - Con conteggi di importazione
+/// * `Err(String)` - Con descrizione dell'errore
+pub async fn import_passwords_pipeline_with_progress(
+    pool: &SqlitePool,
+    user_id: i64,
+    input_path: &Path,
+    format: ExportFormat,
+    progress_tx: Option<Arc<ProgressSender>>,
+) -> Result<ImportResult, String> {
+    // Invia stato iniziale - Reading
+    if let Some(tx) = &progress_tx {
+        let _ = tx
+            .send(ProgressMessage::new(MigrationStage::Reading, 0, 0))
+            .await;
+    }
+
+    // 1. Leggi file
+    let content = fs::read_to_string(input_path)
+        .await
+        .map_err(|e| format!("File read error: {}", e))?;
+
+    // Invia cambio stage - Parsing
+    if let Some(tx) = &progress_tx {
+        let _ = tx
+            .send(ProgressMessage::new(MigrationStage::Deserializing, 0, 0))
+            .await;
+    }
+
+    // 2. Parse content
+    let passwords = parse_passwords(&content, format)?;
+    let total_in_file = passwords.len();
+
+    if total_in_file == 0 {
+        // File vuoto
+        if let Some(tx) = &progress_tx {
+            let _ = tx
+                .send(ProgressMessage::new(MigrationStage::Completed, 0, 0))
+                .await;
+        }
+        return Ok(ImportResult {
+            imported_count: 0,
+            skipped_duplicates: 0,
+            total_in_file: 0,
+        });
+    }
+
+    // Invia cambio stage - Deduplicating
+    if let Some(tx) = &progress_tx {
+        let _ = tx
+            .send(ProgressMessage::new(MigrationStage::Deduplicating, 0, total_in_file))
+            .await;
+    }
+
+    // 3. Deduplica password nel file
+    let (unique_passwords, file_duplicates) = deduplicate_passwords(passwords);
+
+    // 4. Recupera password esistenti dell'utente per confronto
+    let existing_passwords = fetch_all_stored_passwords_for_user(pool, user_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Recupera user_auth per il decrypt delle password esistenti
+    let user_auth_for_decrypt = fetch_user_auth_from_id(pool, user_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Decrypt password esistenti per confronto (senza progress tracking)
+    let existing_raw = decrypt_bulk_stored_data(user_auth_for_decrypt, existing_passwords, None)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Crea set di (location, password) esistenti
+    let existing_set: std::collections::HashSet<(String, String)> = existing_raw
+        .iter()
+        .map(|rp| {
+            (
+                rp.location.expose_secret().to_string(),
+                rp.password.expose_secret().to_string(),
+            )
+        })
+        .collect();
+
+    // Filtra password che esistono già
+    let new_passwords: Vec<ExportablePassword> = unique_passwords
+        .into_iter()
+        .filter(|p| !existing_set.contains(&(p.location.clone(), p.password.clone())))
+        .collect();
+
+    let db_duplicates = total_in_file - file_duplicates - new_passwords.len();
+    let skipped_duplicates = file_duplicates + db_duplicates;
+
+    if new_passwords.is_empty() {
+        // Nessuna nuova password da importare
+        if let Some(tx) = &progress_tx {
+            let _ = tx
+                .send(ProgressMessage::new(MigrationStage::Completed, 0, total_in_file))
+                .await;
+        }
+        return Ok(ImportResult {
+            imported_count: 0,
+            skipped_duplicates,
+            total_in_file,
+        });
+    }
+
+    let to_import = new_passwords.len();
+
+    // Invia cambio stage - Encrypting
+    if let Some(tx) = &progress_tx {
+        let _ = tx
+            .send(ProgressMessage::new(MigrationStage::Encrypting, 0, to_import))
+            .await;
+    }
+
+    // 5. Converti in StoredRawPassword con user_id
+    let stored_raw: Vec<StoredRawPassword> = new_passwords
+        .into_iter()
+        .map(|p| p.to_stored_raw(user_id))
+        .collect();
+
+    // 6. Cripta con progress tracking
+    // Recupera user_auth per l'encrypt delle nuove password
+    let user_auth = fetch_user_auth_from_id(pool, user_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let salt = get_salt(&user_auth.password);
+    let cipher = create_cipher(&salt, &user_auth).map_err(|e| e.to_string())?;
+
+    let stored_passwords = create_stored_data_records(cipher, user_auth, stored_raw, progress_tx.clone())
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Invia cambio stage - Importing
+    if let Some(tx) = &progress_tx {
+        let _ = tx
+            .send(ProgressMessage::new(MigrationStage::Importing, 0, to_import))
+            .await;
+    }
+
+    // 7. Salva nel DB
+    upsert_stored_passwords_batch(pool, stored_passwords)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    // Invia completamento
+    if let Some(tx) = &progress_tx {
+        let _ = tx
+            .send(ProgressMessage::new(MigrationStage::Completed, to_import, to_import))
+            .await;
+    }
+
+    Ok(ImportResult {
+        imported_count: to_import,
+        skipped_duplicates,
+        total_in_file,
+    })
 }
 
 #[cfg(test)]

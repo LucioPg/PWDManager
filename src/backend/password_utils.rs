@@ -60,7 +60,7 @@ pub fn generate_suggested_password(custom_config: Option<PasswordGeneratorConfig
 /// Estrae il sale da una password hash Argon2.
 ///
 /// Il sale è necessario per derivare la chiave AES della password utente.
-fn get_salt(hash_password: &DbSecretString) -> Salt<'_> {
+pub(crate) fn get_salt(hash_password: &DbSecretString) -> Salt<'_> {
     let hash_password = hash_password.0.expose_secret();
     let parsed_hash = PasswordHash::new(hash_password).unwrap();
     parsed_hash.salt.unwrap()
