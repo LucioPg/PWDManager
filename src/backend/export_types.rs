@@ -35,7 +35,7 @@ impl ExportFormat {
 ///
 /// Questo tipo "apre" i SecretString tramite `.expose_secret()`
 /// per consentire la serializzazione in chiaro nel file di export.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ExportablePassword {
     pub location: String,
     pub password: String,
