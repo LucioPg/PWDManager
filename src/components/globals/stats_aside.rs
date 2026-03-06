@@ -103,11 +103,19 @@ pub fn StatsAside(
                             rsx! {
                                 div {
                                     key: "{label}",
-                                    class: if is_expanded() {
-                                        "pwd-stats-aside__item pwd-stats-aside__item--expanded"
-                                    } else {
-                                        "pwd-stats-aside__item pwd-stats-aside__item--collapsed"
-                                    },
+                                    class: format!(
+                                        "{} {}",
+                                        if is_expanded() {
+                                            "pwd-stats-aside__item pwd-stats-aside__item--expanded"
+                                        } else {
+                                            "pwd-stats-aside__item pwd-stats-aside__item--collapsed"
+                                        },
+                                        if active_filter == strength {
+                                            "pwd-stats-aside__item--active"
+                                        } else {
+                                            ""
+                                        }
+                                    ),
                                     onclick: move |_| {
                                         on_stat_click.call(strength_clone);
                                     },
