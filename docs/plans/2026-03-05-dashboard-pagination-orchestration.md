@@ -17,7 +17,7 @@
 | 2-pagination-state | [task-2-pagination-state.md](./pagination-tasks/task-2-pagination-state.md) | ✅ COMPLETATO | - | `350ec04` |
 | 3-pagination-controls | [task-3-pagination-controls.md](./pagination-tasks/task-3-pagination-controls.md) | ✅ COMPLETATO | - | `dd42e25` |
 | 4-dashboard-integration | [task-4-dashboard-integration.md](./pagination-tasks/task-4-dashboard-integration.md) | ✅ COMPLETATO | - | `00d3bff` |
-| 5-stats-aside-update | [task-5-stats-aside-update.md](./pagination-tasks/task-5-stats-aside-update.md) | 🔵 DA FARE | - | - |
+| 5-stats-aside-update | [task-5-stats-aside-update.md](./pagination-tasks/task-5-stats-aside-update.md) | ✅ COMPLETATO | - | `d5d3150` |
 | 6-module-export | [task-6-module-export.md](./pagination-tasks/task-6-module-export.md) | 🔵 DA FARE | - | - |
 
 **Legenda:** 🔵 DA FARE | 🟡 IN CORSO | 🟢 COMPLETATO | 🔴 BLOCCATO

@@ -8,7 +8,7 @@
 
 **Tech Stack:** Rust, Dioxus 0.7
 
-**Dipendenze:** Task 1 (Database Layer) per `fetch_password_stats`
+**Dipendenze:** Task 4 (Dashboard Integration) - StatsAside riceve le stats come prop dalla Dashboard
 
 ---
 
@@ -106,3 +106,21 @@ git branch -d task-5-stats-aside
 - Questo task potrebbe essere un "no-op" se StatsAside è già corretto
 - L'importante è verificare che le stats vengano dalla query DB, non calcolate lato client
 - `active_filter` visivo aiuta l'utente a capire quale filtro è attivo
+
+---
+
+## Implementation Log
+
+**Data:** 2026-03-06
+**Commit:** `d5d3150`
+
+**Modifiche effettuate:**
+1. Il componente `StatsAside` aveva già `active_filter` come prop, ma non lo usava
+2. Aggiunta logica di evidenziazione nel rendering degli stat items
+3. Creata classe CSS `pwd-stats-aside__item--active` con sfondo indigo e ring
+
+**File modificati:**
+- `src/components/globals/stats_aside.rs` — uso di `active_filter` per highlighting
+- `assets/input_main.css` — aggiunta classe `.pwd-stats-aside__item--active`
+
+**Verifica:** `cargo check` ✅ passato
