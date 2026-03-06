@@ -9,11 +9,11 @@
 | Task 1: Estendi MigrationStage per Export | ✅ COMPLETATO | `74e8e5b` |
 | Task 2: Crea DTO per Serializzazione Export | ✅ COMPLETATO | `429773c` |
 | Task 3: Implementa Serializzatori | ✅ COMPLETATO | `ad690bf` |
-| Task 4: Implementa Pipeline Export con Progress Tracking | ⏳ PENDING | - |
-| Task 5: Helper per Path di Export | ⏳ PENDING | - |
-| Task 6: Test di Integrazione Export | ⏳ PENDING | - |
+| Task 4: Implementa Pipeline Export con Progress Tracking | ✅ COMPLETATO | `58ae12b` |
+| Task 5: Helper per Path di Export | ✅ COMPLETATO | `bcb54d4` |
+| Task 6: Test di Integrazione Export | ✅ COMPLETATO | `174215e` |
 
-**Ultima sessione:** Batch 1 completato (Task 1-3). Prossimo: Batch 2 (Task 4-6).
+**Ultima sessione:** Batch 2 completato (Task 4-6). Piano completato.
 
 ---
 
