@@ -13,10 +13,10 @@
 
 | Task | File Piano | Stato | Worktree | Branch |
 |------|------------|-------|----------|--------|
-| 1-database-layer | [task-1-database-layer.md](./pagination-tasks/task-1-database-layer.md) | ✅ COMPLETATO | - | `d42f8aa` |
-| 2-pagination-state | [task-2-pagination-state.md](./pagination-tasks/task-2-pagination-state.md) | ✅ COMPLETATO | - | `fcb2769` |
-| 3-pagination-controls | [task-3-pagination-controls.md](./pagination-tasks/task-3-pagination-controls.md) | 🔵 DA FARE | - | - |
-| 4-dashboard-integration | [task-4-dashboard-integration.md](./pagination-tasks/task-4-dashboard-integration.md) | 🔵 DA FARE | - | - |
+| 1-database-layer | [task-1-database-layer.md](./pagination-tasks/task-1-database-layer.md) | ✅ COMPLETATO | - | `dd42e25` |
+| 2-pagination-state | [task-2-pagination-state.md](./pagination-tasks/task-2-pagination-state.md) | ✅ COMPLETATO | - | `350ec04` |
+| 3-pagination-controls | [task-3-pagination-controls.md](./pagination-tasks/task-3-pagination-controls.md) | ✅ COMPLETATO | - | `dd42e25` |
+| 4-dashboard-integration | [task-4-dashboard-integration.md](./pagination-tasks/task-4-dashboard-integration.md) | ✅ COMPLETATO | - | `00d3bff` |
 | 5-stats-aside-update | [task-5-stats-aside-update.md](./pagination-tasks/task-5-stats-aside-update.md) | 🔵 DA FARE | - | - |
 | 6-module-export | [task-6-module-export.md](./pagination-tasks/task-6-module-export.md) | 🔵 DA FARE | - | - |
 
