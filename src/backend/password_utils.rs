@@ -13,7 +13,6 @@ use crate::backend::db_backend::{
 };
 use crate::backend::evaluate_password_strength;
 use crate::backend::migration_types::{MigrationStage, ProgressMessage, ProgressSender};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use aes_gcm::aead::{Aead, Nonce, OsRng};
 use aes_gcm::{Aes256Gcm, KeyInit};
 use argon2::password_hash::{PasswordHash, Salt};
@@ -33,6 +32,7 @@ use rayon::prelude::*;
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::task;
 use uuid::Uuid;
 
@@ -146,7 +146,7 @@ pub async fn create_stored_data_pipeline_bulk(
     let cipher = create_cipher(&salt, &user_auth)?;
     // 2. Creazione StoredPassword
     let stored_passwords =
-        create_stored_data_records(cipher, user_auth, stored_raw_passwords, None).await?;  // None = no progress
+        create_stored_data_records(cipher, user_auth, stored_raw_passwords, None).await?; // None = no progress
     // 3. Salvataggio in batch
     upsert_stored_passwords_batch(&pool, stored_passwords).await?;
 
@@ -236,7 +236,7 @@ pub async fn get_stored_raw_passwords(
     let stored_raw_passwords = decrypt_bulk_stored_data(
         fetch_user_auth_from_id(pool, user_id).await?,
         stored_passwords,
-        None,  // Nessun progress tracking
+        None, // Nessun progress tracking
     )
     .await?;
     Ok(stored_raw_passwords)
@@ -405,7 +405,9 @@ pub async fn stored_passwords_migration_pipeline_with_progress(
 ) -> Result<(), DBError> {
     // Invia stato iniziale
     if let Some(tx) = &progress_tx {
-        let _ = tx.send(ProgressMessage::new(MigrationStage::Decrypting, 0, 0)).await;
+        let _ = tx
+            .send(ProgressMessage::new(MigrationStage::Decrypting, 0, 0))
+            .await;
     }
 
     // 1. Fetch tutte le password salvate
@@ -424,7 +426,9 @@ pub async fn stored_passwords_migration_pipeline_with_progress(
 
     // Invia cambio stage
     if let Some(tx) = &progress_tx {
-        let _ = tx.send(ProgressMessage::new(MigrationStage::Encrypting, 0, total)).await;
+        let _ = tx
+            .send(ProgressMessage::new(MigrationStage::Encrypting, 0, total))
+            .await;
     }
 
     // 4. Recupera cipher con NUOVA password (dal DB aggiornato)
@@ -439,7 +443,9 @@ pub async fn stored_passwords_migration_pipeline_with_progress(
 
     // Invia finalizzazione
     if let Some(tx) = &progress_tx {
-        let _ = tx.send(ProgressMessage::new(MigrationStage::Finalizing, 0, 0)).await;
+        let _ = tx
+            .send(ProgressMessage::new(MigrationStage::Finalizing, 0, 0))
+            .await;
     }
 
     // 6. Salvataggio in batch
@@ -450,73 +456,10 @@ pub async fn stored_passwords_migration_pipeline_with_progress(
 
     // Invia completamento
     if let Some(tx) = &progress_tx {
-        let _ = tx.send(ProgressMessage::new(MigrationStage::Completed, 100, 100)).await;
+        let _ = tx
+            .send(ProgressMessage::new(MigrationStage::Completed, 100, 100))
+            .await;
     }
 
     Ok(())
 }
-
-// async fn create_password_with_cipher(
-//     new_password: &SecretString,
-//     nonce: &Nonce<Aes256Gcm>,
-//     cipher: &Aes256Gcm,
-// ) -> Result<SecretBox<[u8]>, DBError> {
-//     let cipher_vec = cipher
-//         .encrypt(nonce, new_password.expose_secret().as_bytes())
-//         .map_err(|e| DBError::new_cipher_encryption_error(e.to_string()))?;
-//     Ok(SecretBox::new(cipher_vec.into()))
-// }
-
-// /// Pipeline completa per salvare una nuova password nel database.
-// #[deprecated]
-// pub async fn create_stored_data_pipeline(
-//     pool: &SqlitePool,
-//     user_id: i64,
-//     location: String,
-//     raw_password: SecretString,
-//     notes: Option<String>,
-//     score: Option<PasswordScore>,
-// ) -> Result<(), DBError> {
-//     // 1. Recupero credenziali e setup crittografico
-//     let user_auth = fetch_user_auth_from_id(pool, user_id).await?;
-//     let salt = get_salt(&user_auth.password);
-//     let cipher = create_cipher(&salt, &user_auth)?;
-//
-//     // 2. Cripta location
-//     let (encrypted_location, location_nonce) = encrypt_string(&location, &cipher)?;
-//
-//     // 3. Cripta password
-//     let password_nonce = create_nonce();
-//     let encrypted_password = create_password_with_cipher(&raw_password, &password_nonce, &cipher)
-//         .await
-//         .map_err(|_| DBError::new_password_save_error("Errore durante la criptazione".into()))?;
-//
-//     // 4. Cripta notes
-//     let (encrypted_notes, notes_nonce) = encrypt_optional_string(notes.as_deref(), &cipher)?;
-//
-//     // 5. Determinazione del punteggio
-//     let password_score = score.unwrap_or_else(|| {
-//         evaluate_password_strength(&raw_password, None)
-//             .score
-//             .unwrap_or(PasswordScore::new(0))
-//     });
-//
-//     // 6. Creazione della struct
-//     let stored_password = StoredPassword::new(
-//         None,
-//         user_id,
-//         encrypted_location,
-//         location_nonce.to_vec(),
-//         encrypted_password,
-//         encrypted_notes,
-//         notes_nonce.map(|n| n.to_vec()),
-//         password_score,
-//         None,
-//         password_nonce.to_vec(),
-//     );
-//
-//     // 7. Persistenza
-//     save_or_update_stored_password(pool, stored_password).await?;
-//
-//     Ok(())
-// }
