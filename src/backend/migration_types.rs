@@ -9,8 +9,12 @@ pub enum MigrationStage {
     Idle,
     Decrypting,
     Encrypting,
-    Serializing, // Serializzazione per export
-    Writing,     // Scrittura file
+    Serializing,   // Serializzazione per export
+    Deserializing, // Parsing per import (JSON/CSV/XML)
+    Reading,       // Lettura file per import
+    Writing,       // Scrittura file
+    Deduplicating, // Rimozione duplicati per import
+    Importing,     // Salvataggio nel DB per import
     Finalizing,
     Completed,
     Failed,

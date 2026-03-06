@@ -10,14 +10,18 @@ use tokio::sync::mpsc;
 /// Formatta il messaggio dello stage per la UI.
 fn format_stage_message(stage: &MigrationStage) -> String {
     match stage {
-        MigrationStage::Idle => "Preparing migration...".to_string(),
+        MigrationStage::Idle => "Preparing...".to_string(),
         MigrationStage::Decrypting => "Decrypting passwords...".to_string(),
-        MigrationStage::Encrypting => "Encrypting with new password...".to_string(),
+        MigrationStage::Encrypting => "Encrypting...".to_string(),
         MigrationStage::Serializing => "Serializing data...".to_string(),
+        MigrationStage::Deserializing => "Parsing file...".to_string(),
+        MigrationStage::Reading => "Reading file...".to_string(),
         MigrationStage::Writing => "Writing file...".to_string(),
+        MigrationStage::Deduplicating => "Removing duplicates...".to_string(),
+        MigrationStage::Importing => "Importing to database...".to_string(),
         MigrationStage::Finalizing => "Finalizing...".to_string(),
-        MigrationStage::Completed => "Migration completed!".to_string(),
-        MigrationStage::Failed => "Migration failed".to_string(),
+        MigrationStage::Completed => "Completed!".to_string(),
+        MigrationStage::Failed => "Operation failed".to_string(),
     }
 }
 
