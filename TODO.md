@@ -1,6 +1,8 @@
 ## CRITICAL
 
 - [ ] non è possibile modificare il campo password dopo che è stato usato il pulsante suggest
+- [ ] le celle della tabella non sono responsive (c'è un max-width in pwd-secret-display)
+- [ ] le note non sono visibili perché restano in overflow dentro la tabella
 
 ## Generali
 
