@@ -17,17 +17,19 @@
 
 **Step 1: Locate the insertion point**
 
-Open `assets/input_main.css` and find the `.pwd-stats-aside--expanded .pwd-stats-aside__item` rule at line 1475:
+Open `assets/input_main.css` and find the `.pwd-stats-aside--expanded .pwd-stats-aside__item` rule (lines 1475-1477):
 
 ```css
-.pwd-stats-aside--expanded .pwd-stats-aside__item {
-    border-radius: 10px;
-}
+/* Line 1475 */ .pwd-stats-aside--expanded .pwd-stats-aside__item {
+/* Line 1476 */     border-radius: 10px;
+/* Line 1477 */ }
 ```
+
+The insertion point is the blank line 1478 (after the closing brace).
 
 **Step 2: Add the new CSS rule**
 
-Insert the following rule immediately after line 1477 (after the closing brace):
+Insert the following rule at line 1478 (blank line after the closing brace):
 
 ```css
 /* Center the badge in collapsed aside */
@@ -61,17 +63,7 @@ Expected output:
 }
 ```
 
-**Step 4: Rebuild Tailwind CSS**
-
-Since we modified `input_main.css`, we need to rebuild the compiled CSS:
-
-```bash
-npx tailwindcss -i ./assets/input.css -o ./assets/tailwind.css
-```
-
-Expected: CSS recompiled without errors.
-
-**Step 5: Test the changes**
+**Step 4: Test the changes**
 
 Run the application in development mode:
 
@@ -81,7 +73,7 @@ dx serve --desktop
 
 Expected: Application starts successfully.
 
-**Step 6: Manual verification in the app**
+**Step 5: Manual verification in the app**
 
 1. Navigate to the Dashboard
 2. Click the toggle button to collapse the stats aside
@@ -96,7 +88,7 @@ Expected results:
 - ✅ Expanded state works as before
 - ✅ Transition animation is smooth
 
-**Step 7: Commit the changes**
+**Step 6: Commit the changes**
 
 ```bash
 git add assets/input_main.css
@@ -125,5 +117,6 @@ This implementation plan addresses the badge centering issue with a minimal CSS 
 - **Lines of code added:** 6 (1 comment + 5 CSS rules)
 - **No breaking changes:** Existing expanded state behavior unchanged
 - **No component changes:** Pure CSS fix, no Rust/RSX modifications
+- **No rebuild required:** `input_main.css` is custom CSS (not Tailwind source), included directly in `main.rs`
 
 The fix uses flexbox's `justify-content: center` property combined with zero lateral padding to ensure the badge is perfectly centered in the collapsed aside's limited 52px width.
