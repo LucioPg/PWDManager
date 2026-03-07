@@ -1,8 +1,9 @@
 use crate::backend::db_backend::{delete_stored_password, fetch_password_stats};
 use crate::backend::password_utils::get_stored_raw_passwords_paginated;
 use crate::components::features::DashboardMenu;
-use crate::components::globals::pagination::{PaginationControls, PaginationState};
 use crate::components::globals::StatsAside;
+use crate::components::globals::pagination::{PaginationControls, PaginationState};
+use crate::components::globals::toggle::{Toggle, ToggleColor, ToggleSize};
 use crate::components::{
     StoredPasswordDeletionDialog, StoredPasswordUpsertDialog, StoredRawPasswordsTable,
     show_toast_error, use_toast,
@@ -38,6 +39,9 @@ pub fn Dashboard() -> Element {
     let user_id_option = auth_state.user.cloned().map(|u| u.id);
     let toast = use_toast();
 
+    // SIGNALS
+    let mut unlock_locations = use_signal(|| false);
+    let mut unlock_passwords = use_signal(|| false);
     // Estrae user_id
     let user_id = user_id_option.unwrap_or(-1);
 
@@ -59,7 +63,8 @@ pub fn Dashboard() -> Element {
                 return Some(cached);
             }
             pagination.is_loading.set(true);
-            let result = get_stored_raw_passwords_paginated(&pool, user_id, filter, page, page_size).await;
+            let result =
+                get_stored_raw_passwords_paginated(&pool, user_id, filter, page, page_size).await;
             pagination.is_loading.set(false);
             match result {
                 Ok((passwords, total)) => {
@@ -95,9 +100,7 @@ pub fn Dashboard() -> Element {
     // stored raw passwords
 
     // Stats dalle query DB (non più calcolate lato client)
-    let stats = use_memo(move || {
-        stats_data.read().clone().flatten().unwrap_or_default()
-    });
+    let stats = use_memo(move || stats_data.read().clone().flatten().unwrap_or_default());
 
     // upsert modal - refresh tabella dopo salvataggio
     let on_confirm_upsert = {
@@ -187,7 +190,7 @@ pub fn Dashboard() -> Element {
 
         // Main content con margin-left per fare spazio all'aside collassato (52px)
         div { class: "content-container animate-fade-in ml-16",
-            div { class: "mb-8 flex justify-between items-start",
+            div { class: "mb-8 flex justify-between items-start align-center",
                 div {
                     h1 { class: "text-h2", "Welcome, {username}!" }
                     p { class: "text-body mt-2", "Manage your passwords and secure your digital life" }
@@ -195,7 +198,35 @@ pub fn Dashboard() -> Element {
                 DashboardMenu { on_need_restart: on_need_restart.clone() }
             }
 
-            div { class: "card-no-border items-end",
+            div { class: "flex flex-row gap-3 mb-4 justify-end align-center",
+                label { class: "label cursor-pointer",
+                    strong {
+                        span { class: "label-text strong", "View Locations" }
+                    }
+                    // Toggle con dimensione e colore personalizzati
+                    Toggle {
+                        checked: unlock_locations(),
+                        onchange: move |_| unlock_locations.toggle(),
+                        size: ToggleSize::Small,
+                        color: ToggleColor::Success,
+                        disabled: false,
+                    }
+                }
+
+                label { class: "label cursor-pointer",
+                    strong {
+                        span { class: "label-text strong", "View Passwords" }
+                    }
+                    // Toggle con dimensione e colore personalizzati
+                    Toggle {
+                        checked: unlock_passwords(),
+                        onchange: move |_| unlock_passwords.toggle(),
+                        size: ToggleSize::Small,
+                        color: ToggleColor::Success,
+                        disabled: false,
+                    }
+                }
+
                 button {
                     class: "btn btn-success",
                     r#type: "button",
@@ -207,7 +238,10 @@ pub fn Dashboard() -> Element {
                 }
             }
             {
-                let table_data: Option<Vec<StoredRawPassword>> = password_page_data.read().clone().flatten();
+                let table_data: Option<Vec<StoredRawPassword>> = password_page_data
+                    .read()
+                    .clone()
+                    .flatten();
                 let count = table_data.as_ref().map(|p| p.len()).unwrap_or(0);
                 rsx! {
                     div { class: "card card-lg",
