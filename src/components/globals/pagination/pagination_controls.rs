@@ -45,10 +45,10 @@ pub fn PaginationControls(
     rsx! {
         div { class: "pwd-pagination-container mt-4",
             // Controlli paginazione
-            div { class: "join justify-center w-full flex",
+            div { class: "pwd-pagination-join justify-center w-full flex",
                 // Previous button
                 button {
-                    class: "join-item btn btn-sm",
+                    class: "pwd-pagination-btn",
                     disabled: !has_prev || is_loading,
                     onclick: move |_| {
                         if has_prev {
@@ -66,9 +66,9 @@ pub fn PaginationControls(
                         rsx! {
                             button {
                                 class: if is_current {
-                                    "join-item btn btn-sm btn-primary"
+                                    "pwd-pagination-btn-active"
                                 } else {
-                                    "join-item btn btn-sm"
+                                    "pwd-pagination-btn"
                                 },
                                 disabled: is_loading,
                                 onclick: move |_| {
@@ -82,7 +82,7 @@ pub fn PaginationControls(
 
                 // Next button
                 button {
-                    class: "join-item btn btn-sm",
+                    class: "pwd-pagination-btn",
                     disabled: !has_next || is_loading,
                     onclick: move |_| {
                         if has_next {
