@@ -153,6 +153,10 @@ il pc
   FRONTEND
 - [x] criptare anche location e note. Quindi usare lo stesso campo di visualizzazione per la password per la location,
   ma non per le note.
+- [ ] aggiungere due toggles per lo sblocco della visualizzazione di tutte le location e di tutte le passwords.
+- [ ] aggungere pulsante per ordinare la dashboard per data crescente o decrescente.
+- [ ] Assicurarsi che nella fase di import lo score venga ricalcolato.
+- [ ] Assicurarsi che il campo score del file di import non sia utilizzato.
 
 ## To be Threaded
 
