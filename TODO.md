@@ -1,3 +1,7 @@
+## CRITICAL
+
+- [ ] non è possibile modificare il campo password dopo che è stato usato il pulsante suggest
+
 ## Generali
 
 - [ ] rimuovere possibilità di aprire in devtools in release
