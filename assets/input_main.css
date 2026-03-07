@@ -1476,6 +1476,21 @@ button[class*="btn-"] {
     border-radius: 10px;
 }
 
+/* Center the badge in collapsed aside */
+.pwd-stats-aside--collapsed .pwd-stats-aside__item {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+/* Force badge to stay square in collapsed state */
+.pwd-stats-aside--collapsed .pwd-stats-aside__badge {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    flex-grow: 0;
+}
+
 /* Badge (initial letter) - trasparente con lettera colorata */
 .pwd-stats-aside__badge {
     width: 28px;
@@ -1518,7 +1533,10 @@ button[class*="btn-"] {
 }
 
 .pwd-stats-aside__initial {
-    /* No text-shadow - minimal look */
+    line-height: 1;
+    display: block;
+    margin: 0;
+    padding: 0;
 }
 
 /* Details (value + label) - hidden when collapsed */
