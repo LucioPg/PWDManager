@@ -37,7 +37,6 @@ sqlx-template = "0.2.1"
 futures = "0.3"
 rayon = "1.11.0"
 tokio-util = { version = "0.7.18", features = ["full"] }
-aegis-password-generator = "0.1.1"
 uuid = { version = "1.0", features = ["v4"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -60,3 +59,20 @@ desktop = ["dioxus/desktop"]
 # ide-only serve per fare in modo che la ide analizzi il codice normalmente ma il compilatore non tenterà di compilare
 # utile per avere highlight mentre si lavora su elementi non ancora completati. (ricordarsi di attivare la feature nel pannello di cargo della ide)
 ide-only = []
+
+# da rimuovere per la release
+
+[patch."https://github.com/LucioPg/custom_errors"]
+custom_errors = { path = "../custom_errors" }
+
+[patch."https://github.com/LucioPg/pwd-types"]
+pwd-types = { path = "../pwd-types" }
+
+[patch."https://github.com/LucioPg/pwd-strength"]
+pwd-strength = { path = "../pwd-strength" }
+
+[patch."https://github.com/LucioPg/pwd-crypto"]
+pwd-crypto = { path = "../pwd-crypto" }
+
+[patch."https://github.com/LucioPg/pwd-dioxus"]
+pwd-dioxus = { path = "../pwd-dioxus" }

@@ -6,7 +6,6 @@ version = 4
 name = "PWDManager"
 version = "0.1.0"
 dependencies = [
- "aegis-password-generator",
  "aes-gcm",
  "argon2",
  "base64",
@@ -880,7 +879,6 @@ dependencies = [
 [[package]]
 name = "custom_errors"
 version = "0.1.0"
-source = "git+https://github.com/LucioPg/custom_errors#676877a34b7eaa9ba1ad50e902655cd7b5a8554c"
 dependencies = [
  "thiserror 2.0.18",
 ]
@@ -2435,7 +2433,7 @@ dependencies = [
  "js-sys",
  "log",
  "wasm-bindgen",
- "windows-core",
+ "windows-core 0.62.2",
 ]
 
 [[package]]
@@ -2977,7 +2975,7 @@ dependencies = [
  "dioxus-cli-config",
  "dioxus-core-types",
  "serde",
- "winnow 0.7.14",
+ "winnow 0.7.15",
 ]
 
 [[package]]
@@ -4002,7 +4000,6 @@ dependencies = [
 [[package]]
 name = "pwd-crypto"
 version = "0.1.0"
-source = "git+https://github.com/LucioPg/pwd-crypto#ce097530dd64a77ad6612c81960d0c8a03d436e3"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -4014,8 +4011,7 @@ dependencies = [
 
 [[package]]
 name = "pwd-dioxus"
-version = "0.2.17"
-source = "git+https://github.com/LucioPg/pwd-dioxus?branch=main#20fdb00df12fb29a863c4f876c12300ac968c5fd"
+version = "0.2.18"
 dependencies = [
  "arboard",
  "dioxus",
@@ -4028,7 +4024,6 @@ dependencies = [
 [[package]]
 name = "pwd-strength"
 version = "0.1.4"
-source = "git+https://github.com/LucioPg/pwd-strength#1ea4fc9d61306900b42ce87ac77bdd2b32cf9221"
 dependencies = [
  "pwd-types",
  "secrecy",
@@ -4041,7 +4036,6 @@ dependencies = [
 [[package]]
 name = "pwd-types"
 version = "0.1.4"
-source = "git+https://github.com/LucioPg/pwd-types#6de18b3fe7740af38953e94e32376df2632773c3"
 dependencies = [
  "aegis-password-generator",
  "chrono",
@@ -4855,12 +4849,12 @@ dependencies = [
 
 [[package]]
 name = "socket2"
-version = "0.6.2"
+version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86f4aa3ad99f2088c990dfa82d367e19cb29268ed67c574d10d0a4bfe71f07e0"
+checksum = "3a766e1110788c36f4fa1c2b71b387a7815aa65f88ce0229841826633d93723e"
 dependencies = [
  "libc",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5290,7 +5284,7 @@ dependencies = [
  "unicode-segmentation",
  "url",
  "windows",
- "windows-core",
+ "windows-core 0.61.2",
  "windows-version",
  "x11-dl",
 ]
@@ -5586,7 +5580,7 @@ dependencies = [
  "indexmap",
  "toml_datetime 1.0.0+spec-1.1.0",
  "toml_parser",
- "winnow 0.7.14",
+ "winnow 0.7.15",
 ]
 
 [[package]]
@@ -5595,7 +5589,7 @@ version = "1.0.9+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "702d4415e08923e7e1ef96cd5727c0dfed80b4d2fa25db9647fe5eb6f7c5a4c4"
 dependencies = [
- "winnow 0.7.14",
+ "winnow 0.7.15",
 ]
 
 [[package]]
@@ -6036,9 +6030,9 @@ dependencies = [
 
 [[package]]
 name = "wayland-backend"
-version = "0.3.13"
+version = "0.3.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eaa6143502b9a87f759cb6a649ca801a226f77740eb54f3951cba2227790afeb"
+checksum = "aa75f400b7f719bcd68b3f47cd939ba654cedeef690f486db71331eec4c6a406"
 dependencies = [
  "cc",
  "downcast-rs",
@@ -6085,9 +6079,9 @@ dependencies = [
 
 [[package]]
 name = "wayland-sys"
-version = "0.31.9"
+version = "0.31.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81d2bd69b1dadd601d0e98ef2fc9339a1b1e00cec5ee7545a77b5a0f52a90394"
+checksum = "374f6b70e8e0d6bf9461a32988fd553b59ff630964924dad6e4a4eb6bd538d17"
 dependencies = [
  "dlib",
  "log",
@@ -6173,7 +6167,7 @@ dependencies = [
  "webview2-com-macros",
  "webview2-com-sys",
  "windows",
- "windows-core",
+ "windows-core 0.61.2",
  "windows-implement",
  "windows-interface",
 ]
@@ -6197,7 +6191,7 @@ checksum = "381336cfffd772377d291702245447a5251a2ffa5bad679c99e61bc48bacbf9c"
 dependencies = [
  "thiserror 2.0.18",
  "windows",
- "windows-core",
+ "windows-core 0.61.2",
 ]
 
 [[package]]
@@ -6254,7 +6248,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9babd3a767a4c1aef6900409f85f5d53ce2544ccdfaa86dad48c91782c6d6893"
 dependencies = [
  "windows-collections",
- "windows-core",
+ "windows-core 0.61.2",
  "windows-future",
  "windows-link 0.1.3",
  "windows-numerics",
@@ -6266,7 +6260,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3beeceb5e5cfd9eb1d76b381630e82c4241ccd0d27f1a39ed41b2760b255c5e8"
 dependencies = [
- "windows-core",
+ "windows-core 0.61.2",
 ]
 
 [[package]]
@@ -6278,8 +6272,21 @@ dependencies = [
  "windows-implement",
  "windows-interface",
  "windows-link 0.1.3",
- "windows-result",
- "windows-strings",
+ "windows-result 0.3.4",
+ "windows-strings 0.4.2",
+]
+
+[[package]]
+name = "windows-core"
+version = "0.62.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b8e83a14d34d0623b51dce9581199302a221863196a1dde71a7663a4c2be9deb"
+dependencies = [
+ "windows-implement",
+ "windows-interface",
+ "windows-link 0.2.1",
+ "windows-result 0.4.1",
+ "windows-strings 0.5.1",
 ]
 
 [[package]]
@@ -6288,7 +6295,7 @@ version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc6a41e98427b19fe4b73c550f060b59fa592d7d686537eebf9385621bfbad8e"
 dependencies = [
- "windows-core",
+ "windows-core 0.61.2",
  "windows-link 0.1.3",
  "windows-threading",
 ]
@@ -6333,7 +6340,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9150af68066c4c5c07ddc0ce30421554771e528bde427614c61038bc2c92c2b1"
 dependencies = [
- "windows-core",
+ "windows-core 0.61.2",
  "windows-link 0.1.3",
 ]
 
@@ -6347,12 +6354,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "windows-result"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7781fa89eaf60850ac3d2da7af8e5242a5ea78d1a11c49bf2910bb5a73853eb5"
+dependencies = [
+ "windows-link 0.2.1",
+]
+
+[[package]]
 name = "windows-strings"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56e6c93f3a0c3b36176cb1327a4958a0353d5d166c2a35cb268ace15e91d3b57"
 dependencies = [
  "windows-link 0.1.3",
+]
+
+[[package]]
+name = "windows-strings"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7837d08f69c77cf6b07689544538e017c1bfcf57e34b4c0ff58e6c2cd3b37091"
+dependencies = [
+ "windows-link 0.2.1",
 ]
 
 [[package]]
@@ -6681,9 +6706,9 @@ dependencies = [
 
 [[package]]
 name = "winnow"
-version = "0.7.14"
+version = "0.7.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a5364e9d77fcdeeaa6062ced926ee3381faa2ee02d3eb83a5c27a8825540829"
+checksum = "df79d97927682d2fd8adb29682d1140b343be4ac0f08fd68b7765d9c059d3945"
 dependencies = [
  "memchr",
 ]
@@ -6830,7 +6855,7 @@ dependencies = [
  "webkit2gtk-sys",
  "webview2-com",
  "windows",
- "windows-core",
+ "windows-core 0.61.2",
  "windows-version",
 ]
 
