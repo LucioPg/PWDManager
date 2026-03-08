@@ -25,3 +25,4 @@ test_import.json
 /scratches/
 /assets/pwd-dioxus-classes.rs
 /assets/pwd-dioxus-components.css
+/.cargo/config.toml
