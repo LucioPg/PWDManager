@@ -8,6 +8,8 @@ use dioxus::prelude::*;
 pub fn StoredRawPasswordsTable(
     /// Valore dei dati (già calcolato dal parent in modo reattivo)
     data: Option<Vec<StoredRawPassword>>,
+    unlocked_locations: Signal<bool>,
+    unlocked_passwords: Signal<bool>,
 ) -> Element {
     match data.as_ref() {
         Some(stored_raw_passwords) => {
@@ -34,6 +36,8 @@ pub fn StoredRawPasswordsTable(
                                     stored_raw_password: stored_raw_password.clone(),
                                     on_edit: move |_| {},
                                     on_delete: move |_| {},
+                                    unlocked_location: unlocked_locations,
+                                    unlocked_password: unlocked_passwords,
                                 }
                             }
                         }

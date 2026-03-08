@@ -19,6 +19,8 @@ pub struct StoredRawPasswordRowProps {
     pub on_edit: EventHandler<StoredRawPassword>,
     /// Callback when delete button is clicked
     pub on_delete: EventHandler<i64>,
+    pub unlocked_location: Signal<bool>,
+    pub unlocked_password: Signal<bool>,
     // /// Callback when user clicks on burger button
     // pub on_click: EventHandler<StoredRawPassword>,
 }
@@ -42,7 +44,9 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
             td { class: "pwd-table__cell-content",
                 SecretDisplay {
                     secret: FormSecret(props.stored_raw_password.location.clone()),
-                    max_width: "120px".to_string(),
+                    max_width: "".to_string(),
+                    // max_width: "120px".to_string(),
+                    unlocked: props.unlocked_location,
                 }
             }
 
@@ -50,7 +54,9 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
             td { class: "pwd-table__cell-content",
                 SecretDisplay {
                     secret: FormSecret(store_raw_password_clone.password.clone()),
-                    max_width: "150px".to_string(),
+                    // max_width: "150px".to_string(),
+                    max_width: "".to_string(),
+                    unlocked: props.unlocked_password,
                 }
             }
 

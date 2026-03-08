@@ -41,7 +41,9 @@ pub fn Dashboard() -> Element {
 
     // SIGNALS
     let mut unlock_locations = use_signal(|| false);
+    let unlock_locations_clone = unlock_locations.clone();
     let mut unlock_passwords = use_signal(|| false);
+    let unlock_passwords_clone = unlock_passwords.clone();
     // Estrae user_id
     let user_id = user_id_option.unwrap_or(-1);
 
@@ -122,7 +124,6 @@ pub fn Dashboard() -> Element {
         let mut password_page_data = password_page_data.clone();
         let mut deletion_password_dialog_state = deletion_password_dialog_state.clone();
         let mut error = error.clone();
-
         move |_| {
             let pool = pool.clone();
             let mut delete_state = deletion_password_dialog_state.clone();
@@ -245,7 +246,12 @@ pub fn Dashboard() -> Element {
                 let count = table_data.as_ref().map(|p| p.len()).unwrap_or(0);
                 rsx! {
                     div { class: "card card-lg",
-                        StoredRawPasswordsTable { key: "{count}", data: table_data }
+                        StoredRawPasswordsTable {
+                            key: "{count}",
+                            data: table_data,
+                            unlocked_locations: unlock_locations_clone,
+                            unlocked_passwords: unlock_passwords_clone,
+                        }
                     }
                 }
             }
