@@ -6,6 +6,7 @@
 - [x] le note non sono visibili perché restano in overflow dentro la tabella
 - [x] in edit non è possibile salvare il form perché la password risulta vuota
 - [x] la prima volta che si apre il form per l'edit il campo password è vuoto
+- [x] created_at non salvato nel database
 
 ## Generali
 

@@ -107,6 +107,10 @@ pub fn StoredPasswordUpsertDialog(
             note().unwrap_or("".to_string()),
             password_to_be_saved.expose_secret().to_string()
         );
+        // Preserva created_at in modalità edit, altrimenti None per nuove password
+        let original_created_at = (stored_password_dialog_state.current_stored_raw_password)()
+            .and_then(|p| p.created_at);
+
         let stored_raw_password = StoredRawPassword {
             uuid: Uuid::new_v4(),
             id: stored_password_id,
@@ -114,7 +118,7 @@ pub fn StoredPasswordUpsertDialog(
             location: SecretString::new(location().into()),
             notes: note().map(|n| SecretString::new(n.into())),
             password: password_to_be_saved,
-            created_at: None,
+            created_at: original_created_at,
             score,
         };
         let stored_raw_passwords = vec![stored_raw_password];

@@ -14,6 +14,7 @@ use crate::backend::db_backend::{
 use crate::backend::evaluate_password_strength;
 use crate::backend::migration_types::{MigrationStage, ProgressMessage, ProgressSender};
 use aes_gcm::aead::{Aead, Nonce, OsRng};
+use chrono::Utc;
 use aes_gcm::{Aes256Gcm, KeyInit};
 use argon2::password_hash::{PasswordHash, Salt};
 use custom_errors::DBError;
@@ -209,6 +210,11 @@ pub async fn create_stored_data_records(
                     ));
                 }
 
+                // Se created_at è None, calcola il timestamp corrente (formato SQLite)
+                let created_at = srp.created_at.or_else(|| {
+                    Some(Utc::now().format("%Y-%m-%d %H:%M:%S").to_string())
+                });
+
                 Ok(StoredPassword::new(
                     srp.id,
                     user_auth.id,
@@ -218,7 +224,7 @@ pub async fn create_stored_data_records(
                     encrypted_notes,
                     notes_nonce.map(|n| n.to_vec()),
                     score_evaluation,
-                    None,
+                    created_at,
                     password_nonce.to_vec(),
                 ))
             })
