@@ -117,7 +117,7 @@ il pc
 - [x] Eliminare utente
 - [x] Modificare password
 - [x] Modificare nome utente
-- [ ] Preferenze utente:
+- [x] Preferenze utente:
     - [x] Creazione tabella settings
     - [x] Creazione di un form per la modifica delle preferenze utente per le password
     - [x] Creazione trigger creazione di settings per ogni nuovo utente
@@ -163,8 +163,8 @@ il pc
   FRONTEND
 - [x] criptare anche location e note. Quindi usare lo stesso campo di visualizzazione per la password per la location,
   ma non per le note.
-- [ ] aggiungere due toggles per lo sblocco della visualizzazione di tutte le location e di tutte le passwords.
-- [ ] aggungere pulsante per ordinare la dashboard per data crescente o decrescente.
+- [x] aggiungere due toggles per lo sblocco della visualizzazione di tutte le location e di tutte le passwords.
+- [ ] aggiungere pulsante per ordinare la dashboard per data crescente o decrescente.
 - [ ] Assicurarsi che nella fase di import lo score venga ricalcolato.
 - [ ] Assicurarsi che il campo score del file di import non sia utilizzato.
 
