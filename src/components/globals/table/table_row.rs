@@ -4,7 +4,6 @@ use crate::components::features::dashboard::{
 use crate::components::globals::form_field::FormSecret;
 use crate::components::globals::password_handler::StrengthAnalyzer;
 use crate::components::globals::secret_display::SecretDisplay;
-use crate::components::globals::secret_notes_tooltip::SecretNotesTooltip;
 use crate::components::globals::svgs::{BurgerIcon, DeleteIcon, EditIcon};
 use dioxus::prelude::*;
 use pwd_types::{PasswordScore, StoredRawPassword};
@@ -21,15 +20,16 @@ pub struct StoredRawPasswordRowProps {
     pub on_delete: EventHandler<i64>,
     pub unlocked_location: Signal<bool>,
     pub unlocked_password: Signal<bool>,
-    // /// Callback when user clicks on burger button
-    // pub on_click: EventHandler<StoredRawPassword>,
+    /// Callback when user clicks on burger button - passa (password, x, y)
+    pub on_show_tooltip: EventHandler<(StoredRawPassword, f64, f64)>,
 }
 
 #[component]
 pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
-    let mut show_info_tooltip = use_signal(|| false);
     let password_id = props.stored_raw_password.id.unwrap_or(0);
     let store_raw_password_clone = props.stored_raw_password.clone();
+    let password_for_tooltip = props.stored_raw_password.clone();
+    let password_for_edit = props.stored_raw_password.clone();
     let mut stored_password_dialog_state = use_context::<StoredPasswordUpsertDialogState>();
     let mut deletion_password_dialog_state = use_context::<DeleteStoredPasswordDialogState>();
     // Get strength from score for StrengthAnalyzer
@@ -45,7 +45,6 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                 SecretDisplay {
                     secret: FormSecret(props.stored_raw_password.location.clone()),
                     max_width: "".to_string(),
-                    // max_width: "120px".to_string(),
                     unlocked: props.unlocked_location,
                 }
             }
@@ -54,7 +53,6 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
             td { class: "pwd-table__cell-content",
                 SecretDisplay {
                     secret: FormSecret(store_raw_password_clone.password.clone()),
-                    // max_width: "150px".to_string(),
                     max_width: "".to_string(),
                     unlocked: props.unlocked_password,
                 }
@@ -77,25 +75,15 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                     button {
                         class: "pwd-row-action-btn pwd-burger-btn",
                         r#type: "button",
-                        onclick: move |_| show_info_tooltip.set(!show_info_tooltip()),
-                        // Burger icon (three horizontal lines)
+                        onclick: move |evt| {
+                            let coords = evt.client_coordinates();
+                            props.on_show_tooltip.call((
+                                password_for_tooltip.clone(),
+                                coords.x,
+                                coords.y,
+                            ));
+                        },
                         BurgerIcon {}
-                    }
-
-                    // Tooltip dropdown
-                    if show_info_tooltip() {
-                        // Overlay to close tooltip on click outside
-                        div {
-                            class: "fixed inset-0 z-[5]",
-                            onclick: move |_| show_info_tooltip.set(false),
-                        }
-
-                        div { class: "pwd-row-tooltip absolute right-0 top-full mt-2 z-10",
-                            SecretNotesTooltip {
-                                notes: store_raw_password_clone.notes.as_ref().map(|n| n.expose_secret().to_string()),
-                                created_at: store_raw_password_clone.created_at.clone(),
-                            }
-                        }
                     }
                 }
             }
@@ -109,10 +97,9 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                         evt.stop_propagation();
                         stored_password_dialog_state
                             .current_stored_raw_password
-                            .set(Some(store_raw_password_clone.clone()));
+                            .set(Some(password_for_edit.clone()));
                         stored_password_dialog_state.is_open.set(true);
                     },
-                    // Gear icon
                     EditIcon { size: "12".to_string() }
                 }
             }
@@ -128,7 +115,6 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                         println!("[modal] Deleting password with id: {}", password_id);
                         props.on_delete.call(password_id)
                     },
-                    // Trash icon (outline)
                     DeleteIcon { size: "12".to_string() }
                 }
             }

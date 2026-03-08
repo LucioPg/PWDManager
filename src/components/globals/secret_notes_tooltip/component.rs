@@ -16,7 +16,7 @@ pub fn SecretNotesTooltip(
     let mut notes_visible = use_signal(|| false);
 
     rsx! {
-        div { class: "dropdown-content mockup-code bg-base-200 shadow-lg rounded-lg p-3 min-w-[200px] max-w-[280px]",
+        div { class: "pwd-notes-tooltip bg-base-200 shadow-lg rounded-lg p-3 min-w-[200px] max-w-[280px]",
             // Notes section
             if let Some(notes) = &notes {
                 if !notes.is_empty() {
@@ -24,9 +24,9 @@ pub fn SecretNotesTooltip(
                         h4 { class: "font-bold text-xs mb-1 text-gray-600", "Notes" }
 
                         // Toggle reveal button
-                        div { class: "flex items-center gap-2",
+                        div { class: "flex items-start gap-2",
                             if notes_visible() {
-                                p { class: "text-xs text-gray-700 break-words flex-1",
+                                p { class: "text-xs text-gray-700 break-words whitespace-pre-wrap flex-1",
                                     "{notes}"
                                 }
                             } else {
@@ -36,7 +36,7 @@ pub fn SecretNotesTooltip(
                             }
 
                             button {
-                                class: "btn btn-ghost btn-xs",
+                                class: "btn btn-ghost btn-xs flex-shrink-0",
                                 r#type: "button",
                                 onclick: move |_| notes_visible.set(!notes_visible()),
                                 aria_label: if notes_visible() { "Nascondi notes" } else { "Mostra notes" },

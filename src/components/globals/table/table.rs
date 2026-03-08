@@ -1,8 +1,18 @@
+use crate::components::globals::secret_notes_tooltip::SecretNotesTooltip;
+use crate::components::globals::table::TooltipState;
 use crate::components::{Spinner, SpinnerSize, StoredRawPasswordRow};
 use pwd_types::StoredRawPassword;
 use secrecy::ExposeSecret;
 
+use dioxus::document;
 use dioxus::prelude::*;
+
+/// Dimensioni della finestra per boundary detection
+#[derive(Clone, Copy, Default, serde::Deserialize)]
+struct WindowSize {
+    width: f64,
+    height: f64,
+}
 
 #[component]
 pub fn StoredRawPasswordsTable(
@@ -11,6 +21,26 @@ pub fn StoredRawPasswordsTable(
     unlocked_locations: Signal<bool>,
     unlocked_passwords: Signal<bool>,
 ) -> Element {
+    let mut tooltip_state = use_signal(TooltipState::default);
+    let mut window_size = use_signal(WindowSize::default);
+
+    // Aggiorna le dimensioni della finestra quando il tooltip si apre
+    use_effect(move || {
+        if tooltip_state.read().is_open() {
+            let mut window_size_clone = window_size.clone();
+            spawn(async move {
+                let mut eval = document::eval(
+                    r#"
+                    dioxus.send({ width: window.innerWidth, height: window.innerHeight });
+                    "#,
+                );
+                if let Ok(result) = eval.recv::<WindowSize>().await {
+                    window_size_clone.set(result);
+                }
+            });
+        }
+    });
+
     match data.as_ref() {
         Some(stored_raw_passwords) => {
             rsx! {
@@ -38,8 +68,60 @@ pub fn StoredRawPasswordsTable(
                                     on_delete: move |_| {},
                                     unlocked_location: unlocked_locations,
                                     unlocked_password: unlocked_passwords,
+                                    on_show_tooltip: move |(password, x, y)| {
+                                        tooltip_state.set(TooltipState::new(password, x, y));
+                                    },
                                 }
                             }
+                        }
+                    }
+                }
+
+                // Tooltip renderizzato UNA sola volta a livello di tabella
+                if tooltip_state.read().is_open() {
+                    // Overlay per chiudere il tooltip on click outside
+                    div {
+                        class: "fixed inset-0 z-[5]",
+                        onclick: move |_| tooltip_state.write().close(),
+                    }
+
+                    {
+                        let state = tooltip_state.read();
+                        if let Some(password) = &state.password {
+                            // Dimensioni tooltip stimate
+                            let tooltip_width = 280.0;
+                            let tooltip_height = 150.0;
+                            let margin = 16.0;
+
+                            let win = window_size.read();
+
+                            // Calcola posizione con boundary detection
+                            let left = if state.x + tooltip_width + margin > win.width {
+                                // Troppo a destra, sposta a sinistra del cursore
+                                (state.x - tooltip_width - margin).max(margin)
+                            } else {
+                                state.x + margin
+                            };
+
+                            let top = if state.y + tooltip_height + margin > win.height {
+                                // Troppo in basso, mostra sopra il cursore
+                                (state.y - tooltip_height - margin).max(margin)
+                            } else {
+                                state.y + margin
+                            };
+
+                            rsx! {
+                                div {
+                                    class: "pwd-row-tooltip fixed z-10",
+                                    style: "left: {left}px; top: {top}px;",
+                                    SecretNotesTooltip {
+                                        notes: password.notes.as_ref().map(|n| n.expose_secret().to_string()),
+                                        created_at: password.created_at.clone(),
+                                    }
+                                }
+                            }
+                        } else {
+                            rsx! {}
                         }
                     }
                 }
