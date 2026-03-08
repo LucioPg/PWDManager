@@ -3,7 +3,8 @@
 - [ ] non è possibile modificare il campo password dopo che è stato usato il pulsante suggest
 - [ ] le celle della tabella non sono responsive (c'è un max-width in pwd-secret-display)
 - [ ] le note non sono visibili perché restano in overflow dentro la tabella
-- [ ] in edit non è possibile salvare il form perché la password risulta vuota
+- [x] in edit non è possibile salvare il form perché la password risulta vuota
+- [x] la prima volta che si apre il form per l'edit il campo password è vuoto
 
 ## Generali
 

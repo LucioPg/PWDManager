@@ -93,8 +93,13 @@ pub fn StoredPasswordUpsertDialog(
         let (password_to_be_saved, score) = if let Some(ref result) = evaluated_password_reader {
             (result.password.clone(), result.score)
         } else {
-            error.set(Some("Password cannot be empty".to_string()));
-            return;
+            match (stored_password_dialog_state.current_stored_raw_password)() {
+                Some(stored) => (stored.password, stored.score),
+                None => {
+                    error.set(Some("Password cannot be empty".to_string()));
+                    return;
+                }
+            }
         };
         println!(
             "Location: {}\nNote: {}\nPassword: {}",
@@ -150,11 +155,8 @@ pub fn StoredPasswordUpsertDialog(
             }
 
             // Titolo del dialog
-            div {
-                class: "alert {alert_type} mb-4 flex items-center justify-center mx-10",
-                p {
-                   class: "text-center",
-                {title}}
+            div { class: "alert {alert_type} mb-4 flex items-center justify-center mx-10",
+                p { class: "text-center", {title} }
                 p { class: "text-center", "{created_at}" }
             }
 
@@ -180,7 +182,8 @@ pub fn StoredPasswordUpsertDialog(
                     },
                     password_required: true,
                     // Legge direttamente dal signal originale
-                    initial_password: (stored_password_dialog_state.current_stored_raw_password)().map(|p| FormSecret(p.password)),
+                    initial_password: (stored_password_dialog_state.current_stored_raw_password)()
+                        .map(|p| FormSecret(p.password)),
                     initial_score: (stored_password_dialog_state.current_stored_raw_password)().and_then(|p| p.score),
                 }
                 FormField {
@@ -192,34 +195,31 @@ pub fn StoredPasswordUpsertDialog(
                     required: false,
                     alphanumeric_only: false,
                 }
-                            // Action buttons
-            div {
-                class: "modal-action",
+                // Action buttons
+                div { class: "modal-action",
 
-                ActionButton {
-                    text: "Annulla".to_string(),
-                    variant: ButtonVariant::Secondary,
-                    button_type: ButtonType::Button,
-                    size: ButtonSize::Normal,
-                    on_click: move |_| {
-                        on_cancel.call(());
-                        open_clone.set(false);
-                    },
-                }
+                    ActionButton {
+                        text: "Annulla".to_string(),
+                        variant: ButtonVariant::Secondary,
+                        button_type: ButtonType::Button,
+                        size: ButtonSize::Normal,
+                        on_click: move |_| {
+                            on_cancel.call(());
+                            open_clone.set(false);
+                        },
+                    }
 
-                ActionButton {
-                    text: "Save".to_string(),
-                    variant: ButtonVariant::Ghost,
-                    button_type: ButtonType::Submit,
-                    size: ButtonSize::Normal,
-                    additional_class: "text-success-600 hover:bg-success-50".to_string(),
-                    on_click: move |_| {
-                        // definito dal on_submit
-                    },
+                    ActionButton {
+                        text: "Save".to_string(),
+                        variant: ButtonVariant::Ghost,
+                        button_type: ButtonType::Submit,
+                        size: ButtonSize::Normal,
+                        additional_class: "text-success-600 hover:bg-success-50".to_string(),
+                        on_click: move |_| {},
+                    }
                 }
             }
-            }
-
+        
 
         }
     }
