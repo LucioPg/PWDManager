@@ -165,8 +165,8 @@ il pc
   ma non per le note.
 - [x] aggiungere due toggles per lo sblocco della visualizzazione di tutte le location e di tutte le passwords.
 - [ ] aggiungere pulsante per ordinare la dashboard per data crescente o decrescente.
-- [ ] Assicurarsi che nella fase di import lo score venga ricalcolato.
-- [ ] Assicurarsi che il campo score del file di import non sia utilizzato.
+- [x] Assicurarsi che nella fase di import lo score venga ricalcolato.
+- [x] Assicurarsi che il campo score del file di import non sia utilizzato.
 
 ## To be Threaded
 

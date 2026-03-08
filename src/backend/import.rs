@@ -20,8 +20,10 @@ use crate::backend::db_backend::{
 };
 use crate::backend::export_types::{ExportFormat, ExportablePassword, XmlExportRoot};
 use crate::backend::migration_types::{MigrationStage, ProgressMessage, ProgressSender};
-use crate::backend::password_utils::{create_cipher, create_stored_data_records, decrypt_bulk_stored_data, get_salt};
-use pwd_types::StoredRawPassword;
+use crate::backend::password_utils::{
+    create_cipher, create_stored_data_records, decrypt_bulk_stored_data, get_salt,
+};
+use pwd_types::{StoredPassword, StoredRawPassword};
 use secrecy::ExposeSecret;
 use sqlx::SqlitePool;
 use std::path::Path;
@@ -133,6 +135,13 @@ pub struct ImportResult {
     pub total_in_file: usize,
 }
 
+/// Patch the imported StoredPasswords for forcing score recalculation
+fn storedRawPasswords_score_patch(stored_passwords: &mut Vec<StoredRawPassword>) {
+    stored_passwords.iter_mut().for_each(|sp| {
+        sp.score = None;
+    })
+}
+
 /// Pipeline completa per importare password con feedback di progresso.
 ///
 /// # Flusso
@@ -196,7 +205,11 @@ pub async fn import_passwords_pipeline_with_progress(
     // Invia cambio stage - Deduplicating
     if let Some(tx) = &progress_tx {
         // Usa try_send invece di blocking_send per evitare deadlock
-        let _ = tx.try_send(ProgressMessage::new(MigrationStage::Deduplicating, 0, total_in_file));
+        let _ = tx.try_send(ProgressMessage::new(
+            MigrationStage::Deduplicating,
+            0,
+            total_in_file,
+        ));
     }
 
     // 3. Deduplica password nel file
@@ -241,7 +254,11 @@ pub async fn import_passwords_pipeline_with_progress(
         // Nessuna nuova password da importare
         if let Some(tx) = &progress_tx {
             // Usa try_send invece di blocking_send per evitare deadlock
-            let _ = tx.try_send(ProgressMessage::new(MigrationStage::Completed, 0, total_in_file));
+            let _ = tx.try_send(ProgressMessage::new(
+                MigrationStage::Completed,
+                0,
+                total_in_file,
+            ));
         }
         return Ok(ImportResult {
             imported_count: 0,
@@ -255,15 +272,19 @@ pub async fn import_passwords_pipeline_with_progress(
     // Invia cambio stage - Encrypting
     if let Some(tx) = &progress_tx {
         // Usa try_send invece di blocking_send per evitare deadlock
-        let _ = tx.try_send(ProgressMessage::new(MigrationStage::Encrypting, 0, to_import));
+        let _ = tx.try_send(ProgressMessage::new(
+            MigrationStage::Encrypting,
+            0,
+            to_import,
+        ));
     }
 
     // 5. Converti in StoredRawPassword con user_id
-    let stored_raw: Vec<StoredRawPassword> = new_passwords
+    let mut stored_raw: Vec<StoredRawPassword> = new_passwords
         .into_iter()
         .map(|p| p.to_stored_raw(user_id))
         .collect();
-
+    storedRawPasswords_score_patch(&mut stored_raw);
     // 6. Cripta con progress tracking
     // Recupera user_auth per l'encrypt delle nuove password
     let user_auth = fetch_user_auth_from_id(pool, user_id)
@@ -273,14 +294,19 @@ pub async fn import_passwords_pipeline_with_progress(
     let salt = get_salt(&user_auth.password);
     let cipher = create_cipher(&salt, &user_auth).map_err(|e| e.to_string())?;
 
-    let stored_passwords = create_stored_data_records(cipher, user_auth, stored_raw, progress_tx.clone())
-        .await
-        .map_err(|e| e.to_string())?;
+    let stored_passwords =
+        create_stored_data_records(cipher, user_auth, stored_raw, progress_tx.clone())
+            .await
+            .map_err(|e| e.to_string())?;
 
     // Invia cambio stage - Importing
     if let Some(tx) = &progress_tx {
         // Usa try_send invece di blocking_send per evitare deadlock
-        let _ = tx.try_send(ProgressMessage::new(MigrationStage::Importing, 0, to_import));
+        let _ = tx.try_send(ProgressMessage::new(
+            MigrationStage::Importing,
+            0,
+            to_import,
+        ));
     }
 
     // 7. Salva nel DB
@@ -291,7 +317,11 @@ pub async fn import_passwords_pipeline_with_progress(
     // Invia completamento
     if let Some(tx) = &progress_tx {
         // Usa try_send invece di blocking_send per evitare deadlock
-        let _ = tx.try_send(ProgressMessage::new(MigrationStage::Completed, to_import, to_import));
+        let _ = tx.try_send(ProgressMessage::new(
+            MigrationStage::Completed,
+            to_import,
+            to_import,
+        ));
     }
 
     Ok(ImportResult {
