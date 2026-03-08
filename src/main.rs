@@ -71,7 +71,7 @@ fn App() -> Element {
         let blacklist_path = BLACKLIST_ASSET.to_string();
         let blacklist_path = blacklist_path.trim_start_matches('/');
         if let Err(e) = init_blacklist_from_path(blacklist_path) {
-            let error = format!("Caricamento BLACKLIST Fallito: {}", e.to_string());
+            let error = format!("BLACKLIST Loading is Failed!: {}", e.to_string());
 
             show_toast_error(error, toast_state);
         }
@@ -84,7 +84,7 @@ fn App() -> Element {
             Some(Ok(pool)) => {
                 // Toast: solo la prima volta che il DB è caricato con successo
                 if !db_init_notified() {
-                    show_toast_success("Caricamento database riuscito!".into(), toast_state);
+                    show_toast_success("Database online!".into(), toast_state);
                     db_init_notified.set(true);
                 }
                 let mut spawn_handle = spawn_handle.clone();
@@ -117,7 +117,7 @@ fn App() -> Element {
             }
             Some(Err(_)) => {
                 // L'errore può essere temporaneo, non usiamo flag
-                show_toast_error("Caricamento database Fallito!".into(), toast_state);
+                show_toast_error("Database Loading failed!".into(), toast_state);
             }
             None => {}
         }
@@ -148,14 +148,12 @@ fn App() -> Element {
         None => {
             rsx! {
                 Style {}
-                div {
-                    class: "flex gap-4 justify-center items-center h-screen",
+                div { class: "flex gap-4 justify-center items-center h-screen",
                     Spinner {
                         size: SpinnerSize::XXXXLarge,
                         color_class: "text-blue-500",
                     }
                 }
-
             }
         }
     }
