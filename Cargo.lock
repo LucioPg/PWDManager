@@ -4011,7 +4011,7 @@ dependencies = [
 
 [[package]]
 name = "pwd-dioxus"
-version = "0.2.19"
+version = "0.2.20"
 dependencies = [
  "arboard",
  "dioxus",
