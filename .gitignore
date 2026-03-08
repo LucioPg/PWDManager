@@ -18,6 +18,10 @@ CLAUDE.md
 
 # Database di test
 /test_dbs/
+
+# File di test per import/export (contengono dati di test ma non devono essere committati)
+pwdmanager_export.json
+test_import.json
 /scratches/
 /assets/pwd-dioxus-classes.rs
 /assets/pwd-dioxus-components.css
