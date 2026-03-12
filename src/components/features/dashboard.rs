@@ -1,18 +1,30 @@
 use crate::backend::db_backend::{delete_stored_password, fetch_password_stats};
-use crate::backend::password_utils::get_stored_raw_passwords_paginated;
+use crate::backend::password_utils::get_all_stored_raw_passwords_with_filter;
 use crate::components::features::DashboardMenu;
 use crate::components::globals::StatsAside;
 use crate::components::globals::pagination::{PaginationControls, PaginationState};
 use crate::components::globals::toggle::{Toggle, ToggleColor, ToggleSize};
+use crate::components::globals::types::TableOrder;
 use crate::components::{
     StoredPasswordDeletionDialog, StoredPasswordUpsertDialog, StoredRawPasswordsTable,
     show_toast_error, use_toast,
 };
+use crate::components::globals::spinner::{Spinner, SpinnerSize};
 use custom_errors::DBError;
 use dioxus::prelude::*;
-use pwd_types::{PasswordStats, PasswordStrength, StoredRawPassword};
+use pwd_dioxus::Combobox;
+use pwd_types::StoredRawPassword;
 use sqlx::SqlitePool;
 use std::ops::Deref;
+
+fn table_order_options() -> Vec<(&'static str, Option<TableOrder>)> {
+    vec![
+        ("A-Z", Some(TableOrder::AZ)),
+        ("Z-A", Some(TableOrder::ZA)),
+        ("Oldest", Some(TableOrder::Oldest)),
+        ("Newest", Some(TableOrder::Newest)),
+    ]
+}
 
 #[component]
 pub fn Dashboard() -> Element {
@@ -32,53 +44,79 @@ pub fn Dashboard() -> Element {
         });
     // DATA
     let pool = use_context::<SqlitePool>();
-    let pool_for_page = pool.clone();
     let pool_for_stats = pool.clone();
     let pool_for_delete = pool.clone();
     let mut error = use_signal(|| <Option<DBError>>::None);
     let user_id_option = auth_state.user.cloned().map(|u| u.id);
     let toast = use_toast();
+    let options = table_order_options();
 
     // SIGNALS
     let mut unlock_locations = use_signal(|| false);
     let unlock_locations_clone = unlock_locations.clone();
     let mut unlock_passwords = use_signal(|| false);
     let unlock_passwords_clone = unlock_passwords.clone();
+
+    // Ordinamento: default Newest (coincide con ORDER BY created_at DESC del DB)
+    let mut current_table_order = use_signal(|| Some(TableOrder::Newest));
+
+    // Dati completi per ordinamento frontend
+    let mut all_passwords = use_signal(|| Vec::<StoredRawPassword>::new());
+
     // Estrae user_id
     let user_id = user_id_option.unwrap_or(-1);
 
     // Stato paginazione
     let mut pagination = use_context_provider(|| PaginationState::new());
 
-    // Resource per pagina corrente
-    let mut password_page_data = use_resource(move || {
+    // Resource per fetch completa + ordinamento
+    // Reagisce a: current_table_order, pagination.active_filter()
+    let mut sorted_passwords_resource = use_resource(move || {
         let pool = pool.clone();
-        let page = pagination.current_page();
+        let user_id = user_id.clone();
         let filter = pagination.active_filter();
-        let page_size = pagination.page_size();
+        let order = current_table_order();
+
         async move {
             if user_id == -1 {
-                return None;
+                return Vec::new();
             }
-            // Controlla cache
-            if let Some(cached) = pagination.get_current_page_from_cache() {
-                return Some(cached);
-            }
-            pagination.is_loading.set(true);
-            let result =
-                get_stored_raw_passwords_paginated(&pool, user_id, filter, page, page_size).await;
-            pagination.is_loading.set(false);
-            match result {
-                Ok((passwords, total)) => {
-                    pagination.total_count.set(total);
-                    pagination.cache_page(filter, page, passwords.clone());
-                    Some(passwords)
-                }
-                Err(e) => {
+
+            let mut passwords = get_all_stored_raw_passwords_with_filter(&pool, user_id, filter)
+                .await
+                .unwrap_or_else(|e| {
                     error.set(Some(e));
-                    None
-                }
+                    Vec::new()
+                });
+
+            // Applica ordinamento
+            if let Some(order) = order {
+                order.sort(&mut passwords);
             }
+
+            passwords
+        }
+    });
+
+    // Aggiorna all_passwords quando la resource completa
+    use_effect(move || {
+        if let Some(data) = sorted_passwords_resource.read().as_ref() {
+            all_passwords.set(data.clone());
+            pagination.total_count.set(data.len() as u64);
+        }
+    });
+
+    // Paginazione locale: slice dei dati completi
+    let page_data = use_memo(move || {
+        let page = pagination.current_page();
+        let page_size = pagination.page_size();
+        let all = all_passwords();
+        let start = page * page_size;
+        let end = (start + page_size).min(all.len());
+        if start < all.len() {
+            Some(all[start..end].to_vec())
+        } else {
+            Some(Vec::new())
         }
     });
 
@@ -106,31 +144,28 @@ pub fn Dashboard() -> Element {
 
     // upsert modal - refresh tabella dopo salvataggio
     let on_confirm_upsert = {
-        let mut pagination = pagination.clone();
         let mut stats_data = stats_data.clone();
-        let mut password_page_data = password_page_data.clone();
+        let mut sorted_passwords_resource = sorted_passwords_resource.clone();
         move |_| {
-            pagination.invalidate();
             stats_data.restart();
-            password_page_data.restart();
+            sorted_passwords_resource.restart();
         }
     };
 
     // deletion modal
     let on_confirm_delete = {
         let pool = pool_for_delete.clone();
-        let mut pagination = pagination.clone();
         let mut stats_data = stats_data.clone();
-        let mut password_page_data = password_page_data.clone();
+        let mut sorted_passwords_resource = sorted_passwords_resource.clone();
         let mut deletion_password_dialog_state = deletion_password_dialog_state.clone();
         let mut error = error.clone();
+
         move |_| {
             let pool = pool.clone();
             let mut delete_state = deletion_password_dialog_state.clone();
             let mut error_signal = error.clone();
-            let mut pagination = pagination.clone();
             let mut stats_data = stats_data.clone();
-            let mut password_page_data = password_page_data.clone();
+            let mut sorted_passwords_resource = sorted_passwords_resource.clone();
 
             let Some(password_id) = (delete_state.password_id)() else {
                 error_signal.set(Some(DBError::new_general_error(
@@ -143,10 +178,9 @@ pub fn Dashboard() -> Element {
                 let result = delete_stored_password(&pool, password_id).await;
                 match result {
                     Ok(_) => {
-                        pagination.invalidate();
                         stats_data.restart();
-                        password_page_data.restart();
                         delete_state.is_open.set(false);
+                        sorted_passwords_resource.restart();
                     }
                     Err(e) => {
                         error_signal.set(Some(e));
@@ -167,13 +201,11 @@ pub fn Dashboard() -> Element {
 
     use_effect(move || {
         let mut need_restart = on_need_restart.clone();
-        let mut pagination = pagination.clone();
         let mut stats_data = stats_data.clone();
-        let mut password_page_data = password_page_data.clone();
+        let mut sorted_passwords_resource = sorted_passwords_resource.clone();
         if need_restart() {
-            pagination.invalidate();
             stats_data.restart();
-            password_page_data.restart();
+            sorted_passwords_resource.restart();
             need_restart.set(false);
         }
     });
@@ -184,7 +216,8 @@ pub fn Dashboard() -> Element {
             stats: stats(),
             on_stat_click: move |strength| {
                 pagination.set_filter(strength);
-                password_page_data.restart();
+                pagination.go_to_page(0);
+                sorted_passwords_resource.restart();
             },
             active_filter: pagination.active_filter(),
         }
@@ -198,59 +231,75 @@ pub fn Dashboard() -> Element {
                 }
                 DashboardMenu { on_need_restart: on_need_restart.clone() }
             }
-
-            div { class: "flex flex-row gap-3 mb-4 justify-end align-center",
-                label { class: "label cursor-pointer",
-                    strong {
-                        span { class: "label-text strong", "View Locations" }
-                    }
-                    // Toggle con dimensione e colore personalizzati
-                    Toggle {
-                        checked: unlock_locations(),
-                        onchange: move |_| unlock_locations.toggle(),
-                        size: ToggleSize::Small,
-                        color: ToggleColor::Success,
-                        disabled: false,
-                    }
-                }
-
-                label { class: "label cursor-pointer",
-                    strong {
-                        span { class: "label-text strong", "View Passwords" }
-                    }
-                    // Toggle con dimensione e colore personalizzati
-                    Toggle {
-                        checked: unlock_passwords(),
-                        onchange: move |_| unlock_passwords.toggle(),
-                        size: ToggleSize::Small,
-                        color: ToggleColor::Success,
-                        disabled: false,
-                    }
-                }
-
-                button {
-                    class: "btn btn-success",
-                    r#type: "button",
-                    onclick: move |_| {
-                        stored_password_dialog_state.current_stored_raw_password.set(None);
-                        stored_password_dialog_state.is_open.set(true);
+            div { class: "flex flex-row justify-between",
+                Combobox::<TableOrder> {
+                    options: options.clone(),
+                    placeholder: "Order by".to_string(),
+                    on_change: move |v| {
+                        current_table_order.set(v);
+                        pagination.go_to_page(0);
+                        sorted_passwords_resource.restart();
                     },
-                    "New Password"
+                }
+                div { class: "flex flex-row gap-3 mb-4 justify-end align-center",
+                    label { class: "label cursor-pointer",
+                        strong {
+                            span { class: "label-text strong", "View Locations" }
+                        }
+                        // Toggle con dimensione e colore personalizzati
+                        Toggle {
+                            checked: unlock_locations(),
+                            onchange: move |_| unlock_locations.toggle(),
+                            size: ToggleSize::Small,
+                            color: ToggleColor::Success,
+                            disabled: false,
+                        }
+                    }
+
+                    label { class: "label cursor-pointer",
+                        strong {
+                            span { class: "label-text strong", "View Passwords" }
+                        }
+                        // Toggle con dimensione e colore personalizzati
+                        Toggle {
+                            checked: unlock_passwords(),
+                            onchange: move |_| unlock_passwords.toggle(),
+                            size: ToggleSize::Small,
+                            color: ToggleColor::Success,
+                            disabled: false,
+                        }
+                    }
+
+                    button {
+                        class: "btn btn-success",
+                        r#type: "button",
+                        onclick: move |_| {
+                            stored_password_dialog_state.current_stored_raw_password.set(None);
+                            stored_password_dialog_state.is_open.set(true);
+                        },
+                        "New Password"
+                    }
                 }
             }
+
             {
-                let table_data: Option<Vec<StoredRawPassword>> = password_page_data
-                    .read()
-                    .clone()
-                    .flatten();
-                let count = table_data.as_ref().map(|p| p.len()).unwrap_or(0);
-                rsx! {
-                    div { class: "card card-lg",
-                        StoredRawPasswordsTable {
-                            key: "{count}",
-                            data: table_data,
-                            unlocked_locations: unlock_locations_clone,
-                            unlocked_passwords: unlock_passwords_clone,
+                let table_data = page_data();
+                if sorted_passwords_resource.read().is_none() {
+                    rsx! {
+                        div { class: "card card-lg",
+                            div { class: "flex justify-center py-8",
+                                Spinner { size: SpinnerSize::Medium, color_class: "text-blue-500" }
+                            }
+                        }
+                    }
+                } else {
+                    rsx! {
+                        div { class: "card card-lg",
+                            StoredRawPasswordsTable {
+                                data: table_data,
+                                unlocked_locations: unlock_locations_clone,
+                                unlocked_passwords: unlock_passwords_clone,
+                            }
                         }
                     }
                 }
@@ -261,7 +310,7 @@ pub fn Dashboard() -> Element {
                 pagination: pagination.clone(),
                 on_page_change: move |new_page| {
                     pagination.go_to_page(new_page);
-                    password_page_data.restart();
+                    // Non serve restart: paginazione è locale
                 },
             }
         }
