@@ -166,9 +166,10 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
                             span { class: "label-text", "Presets" }
                         }
                     }
-                    Combobox {
+                    Combobox::<AnyPreset> {
                         options: options.clone(),
-                        current_preset: current_preset.clone(),
+                        placeholder: "Select a preset".to_string(),
+                        on_change: move |v| current_preset.set(v),
                     }
                 }
 
