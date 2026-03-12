@@ -859,6 +859,84 @@ pub async fn fetch_passwords_paginated(
     Ok((results, total.0 as u64))
 }
 
+/// Recupera TUTTE le password di un utente con filtro opzionale per strength.
+///
+/// A differenza di `fetch_passwords_paginated`, questa funzione restituisce
+/// tutti i record senza paginazione. L'ordinamento rimane `created_at DESC`.
+///
+/// # Arguments
+/// * `pool` - Connection pool SQLite
+/// * `user_id` - ID dell'utente
+/// * `filter` - Filtro opzionale per PasswordStrength
+///
+/// # Returns
+/// * `Ok(Vec<StoredPassword>)` - Tutte le password cifrate che matchano il filtro
+/// * `Err(DBError)` - Errore database
+#[instrument(skip(pool))]
+pub async fn fetch_all_passwords_for_user_with_filter(
+    pool: &SqlitePool,
+    user_id: i64,
+    filter: Option<PasswordStrength>,
+) -> Result<Vec<StoredPassword>, DBError> {
+    debug!(
+        "Fetching all passwords for user_id={} with filter={:?}",
+        user_id, filter
+    );
+
+    // Mappa filtro strength → range di score
+    let (min_score, max_score) = match filter {
+        None => (None, None),
+        Some(PasswordStrength::WEAK) => (Some(0), Some(49)),
+        Some(PasswordStrength::MEDIUM) => (Some(50), Some(69)),
+        Some(PasswordStrength::STRONG) => (Some(70), Some(84)),
+        Some(PasswordStrength::EPIC) => (Some(85), Some(95)),
+        Some(PasswordStrength::GOD) => (Some(96), Some(100)),
+        Some(PasswordStrength::NotEvaluated) => (Some(255), Some(0)),
+    };
+
+    let results = match (min_score, max_score) {
+        (None, None) => {
+            sqlx::query_as::<_, StoredPassword>(
+                r#"
+                SELECT id, user_id, location, location_nonce, password, password_nonce,
+                       notes, notes_nonce, score, created_at
+                FROM passwords
+                WHERE user_id = ?
+                ORDER BY created_at DESC
+                "#,
+            )
+            .bind(user_id)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| {
+                DBError::new_list_error(format!("Failed to fetch all passwords: {}", e))
+            })?
+        }
+        (Some(min), Some(max)) => {
+            sqlx::query_as::<_, StoredPassword>(
+                r#"
+                SELECT id, user_id, location, location_nonce, password, password_nonce,
+                       notes, notes_nonce, score, created_at
+                FROM passwords
+                WHERE user_id = ? AND score >= ? AND score <= ?
+                ORDER BY created_at DESC
+                "#,
+            )
+            .bind(user_id)
+            .bind(min as i32)
+            .bind(max as i32)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| {
+                DBError::new_list_error(format!("Failed to fetch all passwords: {}", e))
+            })?
+        }
+        _ => unreachable!("min_score e max_score sono sempre entrambi Some o entrambi None"),
+    };
+
+    Ok(results)
+}
+
 /// Fetch statistiche password per l'utente (conteggi per strength).
 ///
 /// Questa query è sempre "fresca" perché viene eseguita separatamente
