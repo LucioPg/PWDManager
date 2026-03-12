@@ -110,18 +110,6 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
         } else {
             readonly.set(false);
         }
-        // if let Some(preset) = custom_preset() {
-        //     let settings = preset.to_config(1); //change id
-        //     with_numbers.set(settings.numbers);
-        //     with_uppercase.set(settings.uppercase);
-        //     with_lowercase.set(settings.lowercase);
-        //     with_symbols.set(settings.symbols.into());
-        //     with_excluded_symbols.set(settings.excluded_symbols.into());
-        //     with_length.set(PositiveInt(settings.length as u32));
-        //     readonly.set(false);
-        // } else {
-        //     readonly.set(true);
-        // }
     });
 
     let on_submit = move |_| {
