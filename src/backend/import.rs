@@ -337,6 +337,8 @@ mod tests {
 
     fn create_test_password() -> ExportablePassword {
         ExportablePassword {
+            name: "Example Service".to_string(),
+            username: "user@example.com".to_string(),
             location: "example.com".to_string(),
             password: "secret123".to_string(),
             notes: Some("test notes".to_string()),
@@ -376,10 +378,36 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_from_json_with_name_username() {
+        let json = r#"[{"name":"GitHub","username":"devuser","location":"github.com","password":"pass123"}]"#;
+        let result = parse_from_json(json);
+        assert!(result.is_ok());
+        let passwords = result.unwrap();
+        assert_eq!(passwords.len(), 1);
+        assert_eq!(passwords[0].name, "GitHub");
+        assert_eq!(passwords[0].username, "devuser");
+        assert_eq!(passwords[0].location, "github.com");
+    }
+
+    #[test]
+    fn test_parse_from_json_missing_name_username_defaults_to_empty() {
+        // Test backwards compatibility: old files without name/username
+        let json = r#"[{"location":"legacy.com","password":"oldpass"}]"#;
+        let result = parse_from_json(json);
+        assert!(result.is_ok());
+        let passwords = result.unwrap();
+        assert_eq!(passwords.len(), 1);
+        assert_eq!(passwords[0].name, ""); // Default from #[serde(default)]
+        assert_eq!(passwords[0].username, ""); // Default from #[serde(default)]
+    }
+
+    #[test]
     fn test_deduplicate_passwords_no_duplicates() {
         let passwords = vec![
             create_test_password(),
             ExportablePassword {
+                name: "Other Service".to_string(),
+                username: "other@example.com".to_string(),
                 location: "other.com".to_string(),
                 password: "different".to_string(),
                 notes: None,

@@ -266,6 +266,8 @@ mod tests {
 
     fn create_test_password() -> ExportablePassword {
         ExportablePassword {
+            name: "Example Service".to_string(),
+            username: "user@example.com".to_string(),
             location: "example.com".to_string(),
             password: "secret123".to_string(),
             notes: Some("test notes".to_string()),

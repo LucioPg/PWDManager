@@ -97,6 +97,8 @@ async fn test_encrypt_decrypt_password() {
         uuid: Uuid::new_v4(),
         id: None,
         user_id,
+        name: String::new(),
+        username: SecretString::new(String::new().into()),
         location: SecretString::new(location.to_string().into()),
         password: raw_password.clone(),
         notes: notes.clone(),
@@ -359,6 +361,8 @@ async fn test_decrypt_invalid_nonce() {
         uuid: Uuid::new_v4(),
         id: None,
         user_id,
+        name: String::new(),
+        username: SecretString::new(String::new().into()),
         location: SecretString::new("https://test.com".to_string().into()),
         password: raw_password,
         notes: None,
@@ -396,6 +400,9 @@ async fn test_decrypt_nonexistent_user() {
     let stored_password = StoredPassword::new(
         None,
         99999, // User ID inesistente
+        String::new(), // name
+        SecretBox::new(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].into()), // encrypted username
+        vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], // username_nonce
         SecretBox::new(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].into()), // encrypted location
         vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], // location_nonce
         SecretBox::new(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].into()), // password
@@ -428,6 +435,8 @@ async fn test_multiple_passwords_for_same_user() {
             uuid: Uuid::new_v4(),
             id: None,
             user_id,
+            name: String::new(),
+            username: SecretString::new(String::new().into()),
             location: SecretString::new(location.to_string().into()),
             password: SecretString::new(raw_pwd.to_string().into()),
             notes: None,
@@ -494,6 +503,8 @@ async fn test_multiple_passwords_for_same_user_with_predefined_strength() {
             uuid: Uuid::new_v4(),
             id: None,
             user_id,
+            name: String::new(),
+            username: SecretString::new(String::new().into()),
             location: SecretString::new(location.to_string().into()),
             password: SecretString::new(raw_pwd.to_string().into()),
             notes: Some(SecretString::new("Ciao io sono una nota".into())),
@@ -539,6 +550,8 @@ async fn test_encrypted_password_is_different_from_original() {
         uuid: Uuid::new_v4(),
         id: None,
         user_id,
+        name: String::new(),
+        username: SecretString::new(String::new().into()),
         location: SecretString::new("https://encrypted.com".to_string().into()),
         password: SecretString::new(raw_password.into()),
         notes: None,
@@ -583,6 +596,8 @@ async fn test_location_and_notes_are_encrypted() {
         uuid: Uuid::new_v4(),
         id: None,
         user_id,
+        name: String::new(),
+        username: SecretString::new(String::new().into()),
         location: SecretString::new(location.clone().into()),
         password: raw_password.clone(),
         notes: Some(SecretString::new(notes.clone().unwrap().into())),
@@ -635,6 +650,8 @@ async fn test_decrypt_location_and_notes_roundtrip() {
         uuid: Uuid::new_v4(),
         id: None,
         user_id,
+        name: String::new(),
+        username: SecretString::new(String::new().into()),
         location: SecretString::new(location.clone().into()),
         password: raw_password.clone(),
         notes: notes.clone(),
@@ -695,6 +712,8 @@ async fn test_password_migration_single_password() {
         uuid: Uuid::new_v4(),
         id: None,
         user_id,
+        name: String::new(),
+        username: SecretString::new(String::new().into()),
         location: SecretString::new(location.clone().into()),
         password: raw_password.clone(),
         notes: notes.clone(),
@@ -763,6 +782,8 @@ async fn test_password_migration_multiple_passwords() {
             uuid: Uuid::new_v4(),
             id: None,
             user_id,
+            name: String::new(),
+            username: SecretString::new(String::new().into()),
             location: SecretString::new(location.to_string().into()),
             password: SecretString::new(pwd.to_string().into()),
             notes: note.map(|n| SecretString::new(n.into())),

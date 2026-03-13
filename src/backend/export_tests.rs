@@ -9,6 +9,8 @@ mod tests {
     fn create_test_passwords() -> Vec<ExportablePassword> {
         vec![
             ExportablePassword {
+                name: "Site 1".to_string(),
+                username: "user1@site.com".to_string(),
                 location: "site1.com".to_string(),
                 password: "pass1".to_string(),
                 notes: Some("note1".to_string()),
@@ -16,6 +18,8 @@ mod tests {
                 created_at: Some("2024-01-01".to_string()),
             },
             ExportablePassword {
+                name: "Site 2".to_string(),
+                username: "user2@site.com".to_string(),
                 location: "site2.com".to_string(),
                 password: "pass2".to_string(),
                 notes: Some("note2".to_string()),

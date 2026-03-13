@@ -13,6 +13,8 @@ mod tests {
     fn create_test_passwords() -> Vec<ExportablePassword> {
         vec![
             ExportablePassword {
+                name: "Site 1".to_string(),
+                username: "user1@site.com".to_string(),
                 location: "site1.com".to_string(),
                 password: "pass1".to_string(),
                 notes: Some("note1".to_string()),
@@ -20,6 +22,8 @@ mod tests {
                 created_at: Some("2024-01-01".to_string()),
             },
             ExportablePassword {
+                name: "Site 2".to_string(),
+                username: "user2@site.com".to_string(),
                 location: "site2.com".to_string(),
                 password: "pass2".to_string(),
                 notes: Some("note2".to_string()),
@@ -107,6 +111,8 @@ mod tests {
     fn test_deduplicate_keeps_first() {
         let passwords = vec![
             ExportablePassword {
+                name: "Site A".to_string(),
+                username: "user1".to_string(),
                 location: "site.com".to_string(),
                 password: "pass".to_string(),
                 notes: Some("first".to_string()),
@@ -114,6 +120,8 @@ mod tests {
                 created_at: None,
             },
             ExportablePassword {
+                name: "Site B".to_string(),
+                username: "user2".to_string(),
                 location: "site.com".to_string(),
                 password: "pass".to_string(),
                 notes: Some("second".to_string()),
@@ -271,6 +279,8 @@ mod tests {
         // Stessa location, password diversa = NON duplicato
         let passwords = vec![
             ExportablePassword {
+                name: "".to_string(),
+                username: "".to_string(),
                 location: "site.com".to_string(),
                 password: "pass1".to_string(),
                 notes: None,
@@ -278,6 +288,8 @@ mod tests {
                 created_at: None,
             },
             ExportablePassword {
+                name: "".to_string(),
+                username: "".to_string(),
                 location: "site.com".to_string(),
                 password: "pass2".to_string(),
                 notes: None,
@@ -295,6 +307,8 @@ mod tests {
         // Stessa password, location diversa = NON duplicato
         let passwords = vec![
             ExportablePassword {
+                name: "".to_string(),
+                username: "".to_string(),
                 location: "site1.com".to_string(),
                 password: "samepass".to_string(),
                 notes: None,
@@ -302,6 +316,8 @@ mod tests {
                 created_at: None,
             },
             ExportablePassword {
+                name: "".to_string(),
+                username: "".to_string(),
                 location: "site2.com".to_string(),
                 password: "samepass".to_string(),
                 notes: None,
