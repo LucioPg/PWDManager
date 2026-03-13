@@ -6,10 +6,11 @@
 - **Total Phases**: 7
 
 ## Current State
-- **Current Phase**: 2
+- **Current Phase**: 3
 - **Current Stage**: pending
-- **Branch**: refactor/stored-password-phase-1 (Phase 1 WIP committed)
+- **Branch**: refactor/stored-password-phase-1
 - **Phase 1 Commit**: 4d1f8e4
+- **Phase 2 Commit**: 510481c
 
 ---
 
@@ -23,9 +24,9 @@
 
 ### Phase 2: Aggiornamento password_utils.rs
 - **Plan**: [`docs/plans/2026-03-13-phase-2-password-utils.md`](./plans/2026-03-13-phase-2-password-utils.md)
-- **Status**: ✅ ready
-- [ ] Implementation
-- [ ] Verification
+- **Status**: ✅ completed
+- [x] Implementation (WIP - requires Phase 3-7 to compile)
+- [ ] Verification (pending compilation)
 
 ### Phase 3: Aggiornamento pipeline di migrazione
 - **Plan**: [`docs/plans/2026-03-13-phase-3-migration-pipeline.md`](./plans/2026-03-13-phase-3-migration-pipeline.md)
@@ -87,4 +88,8 @@
   - Commit: 4d1f8e4
   - Branch: refactor/stored-password-phase-1
   - Nota: Richiede Phase 2-7 per compilazione completa
+- **Phase 2 WIP completata** - Aggiornato password_utils.rs con encryption/decryption username
+  - Commit: 510481c
+  - Modifiche: create_stored_data_records(), decrypt_bulk_stored_data()
+  - Nota: Richiede Phase 3-7 per compilazione completa (errore in export_types.rs)
 
