@@ -111,10 +111,14 @@ pub fn StoredPasswordUpsertDialog(
         let original_created_at = (stored_password_dialog_state.current_stored_raw_password)()
             .and_then(|p| p.created_at);
 
+        // TODO(future): Aggiungere campi UI per name e username
+        // Per ora usiamo stringhe vuote come default
         let stored_raw_password = StoredRawPassword {
             uuid: Uuid::new_v4(),
             id: stored_password_id,
             user_id,
+            name: String::new(),           // TODO: collegare a signal quando UI pronta
+            username: SecretString::new(String::new().into()), // TODO: collegare a signal quando UI pronta
             location: SecretString::new(location().into()),
             notes: note().map(|n| SecretString::new(n.into())),
             password: password_to_be_saved,

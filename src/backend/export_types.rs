@@ -43,6 +43,10 @@ impl ExportFormat {
 /// per consentire la serializzazione in chiaro nel file di export.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportablePassword {
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub username: String,
     pub location: String,
     pub password: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -62,6 +66,8 @@ impl ExportablePassword {
     /// Usa `.expose_secret()` per convertire i SecretString in String.
     pub fn from_stored_raw(stored: &pwd_types::StoredRawPassword) -> Self {
         Self {
+            name: stored.name.clone(),
+            username: stored.username.expose_secret().to_string(),
             location: stored.location.expose_secret().to_string(),
             password: stored.password.expose_secret().to_string(),
             notes: stored.notes.as_ref().map(|n| n.expose_secret().to_string()),
@@ -84,6 +90,8 @@ impl ExportablePassword {
             uuid: Uuid::new_v4(),
             id: None, // Nuovo record, sarà assegnato dal DB
             user_id,
+            name: self.name.clone(),
+            username: SecretString::new(self.username.clone().into()),
             location: SecretString::new(self.location.clone().into()),
             password: SecretString::new(self.password.clone().into()),
             notes: self.notes.as_ref().map(|n| SecretString::new(n.clone().into())),
