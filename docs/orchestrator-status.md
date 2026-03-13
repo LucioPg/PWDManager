@@ -6,11 +6,12 @@
 - **Total Phases**: 7
 
 ## Current State
-- **Current Phase**: 3
+- **Current Phase**: 5
 - **Current Stage**: pending
 - **Branch**: refactor/stored-password-phase-1
 - **Phase 1 Commit**: 4d1f8e4
 - **Phase 2 Commit**: 510481c
+- **Phase 4 Commit**: ab97505
 
 ---
 
@@ -30,14 +31,14 @@
 
 ### Phase 3: Aggiornamento pipeline di migrazione
 - **Plan**: [`docs/plans/2026-03-13-phase-3-migration-pipeline.md`](./plans/2026-03-13-phase-3-migration-pipeline.md)
-- **Status**: ✅ ready
-- [ ] Verification (no code changes)
+- **Status**: ✅ completed (no code changes required)
+- [x] Verification (no code changes)
 
 ### Phase 4: Aggiornamento pipeline di export
 - **Plan**: [`docs/plans/2026-03-13-phase-4-export-pipeline.md`](./plans/2026-03-13-phase-4-export-pipeline.md)
-- **Status**: ✅ ready
-- [ ] Implementation
-- [ ] Verification
+- **Status**: ✅ WIP committed
+- [x] Implementation (WIP - requires Phase 5-7 to compile)
+- [ ] Verification (pending compilation)
 
 ### Phase 5: Aggiornamento pipeline di import
 - **Plan**: [`docs/plans/2026-03-13-phase-5-import-pipeline.md`](./plans/2026-03-13-phase-5-import-pipeline.md)
@@ -92,4 +93,11 @@
   - Commit: 510481c
   - Modifiche: create_stored_data_records(), decrypt_bulk_stored_data()
   - Nota: Richiede Phase 3-7 per compilazione completa (errore in export_types.rs)
+- **Phase 3 completata** - Migration pipeline già compatibile
+  - Nota: Nessuna modifica al codice richiesta
+- **Phase 4 WIP completata** - Aggiornato export_types.rs con name/username
+  - Commit: ab97505
+  - Modifiche: ExportablePassword con serde(default), from_stored_raw(), to_stored_raw()
+  - Modifiche: stored_password_upsert.rs placeholder per UI
+  - Nota: Richiede Phase 5-7 per compilazione completa
 
