@@ -28,6 +28,9 @@
 /// 2. **passwords**:
 ///    - `id`: INTEGER PRIMARY KEY (auto-increment)
 ///    - `user_id`: INTEGER NOT NULL (rif. all'utente)
+///    - `name`: TEXT NOT NULL (nome del servizio)
+///    - `username`: BLOB NOT NULL (nome utente criptato AES-256-GCM)
+///    - `username_nonce`: BLOB NOT NULL UNIQUE (nonce per username, 12 byte)
 ///    - `location`: BLOB NOT NULL (luogo/nome del servizio criptato AES-256-GCM)
 ///    - `location_nonce`: BLOB NOT NULL UNIQUE (nonce per location, 12 byte)
 ///    - `password`: BLOB NOT NULL (password criptata AES-256-GCM)
@@ -49,6 +52,9 @@ pub static QUERIES: &[&str] = &[
     "CREATE TABLE IF NOT EXISTS passwords (
                 id INTEGER PRIMARY KEY,
                 user_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                username BLOB NOT NULL,
+                username_nonce BLOB NOT NULL UNIQUE,
                 location BLOB NOT NULL,
                 location_nonce BLOB NOT NULL UNIQUE,
                 password BLOB NOT NULL,

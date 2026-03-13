@@ -790,8 +790,8 @@ pub async fn fetch_passwords_paginated(
             // Nessun filtro: tutte le password dell'utente
             sqlx::query_as::<_, StoredPassword>(
                 r#"
-                SELECT id, user_id, location, location_nonce, password, password_nonce,
-                       notes, notes_nonce, score, created_at
+                SELECT id, user_id, name, username, username_nonce, location, location_nonce,
+                       password, password_nonce, notes, notes_nonce, score, created_at
                 FROM passwords
                 WHERE user_id = ?
                 ORDER BY created_at DESC
@@ -811,8 +811,8 @@ pub async fn fetch_passwords_paginated(
             // Filtro range score
             sqlx::query_as::<_, StoredPassword>(
                 r#"
-                SELECT id, user_id, location, location_nonce, password, password_nonce,
-                       notes, notes_nonce, score, created_at
+                SELECT id, user_id, name, username, username_nonce, location, location_nonce,
+                       password, password_nonce, notes, notes_nonce, score, created_at
                 FROM passwords
                 WHERE user_id = ? AND score >= ? AND score <= ?
                 ORDER BY created_at DESC
@@ -898,8 +898,8 @@ pub async fn fetch_all_passwords_for_user_with_filter(
         (None, None) => {
             sqlx::query_as::<_, StoredPassword>(
                 r#"
-                SELECT id, user_id, location, location_nonce, password, password_nonce,
-                       notes, notes_nonce, score, created_at
+                SELECT id, user_id, name, username, username_nonce, location, location_nonce,
+                       password, password_nonce, notes, notes_nonce, score, created_at
                 FROM passwords
                 WHERE user_id = ?
                 ORDER BY created_at DESC
@@ -915,8 +915,8 @@ pub async fn fetch_all_passwords_for_user_with_filter(
         (Some(min), Some(max)) => {
             sqlx::query_as::<_, StoredPassword>(
                 r#"
-                SELECT id, user_id, location, location_nonce, password, password_nonce,
-                       notes, notes_nonce, score, created_at
+                SELECT id, user_id, name, username, username_nonce, location, location_nonce,
+                       password, password_nonce, notes, notes_nonce, score, created_at
                 FROM passwords
                 WHERE user_id = ? AND score >= ? AND score <= ?
                 ORDER BY created_at DESC
