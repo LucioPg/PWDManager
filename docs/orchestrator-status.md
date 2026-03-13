@@ -6,10 +6,10 @@
 - **Total Phases**: 7
 
 ## Current State
-- **Current Phase**: 1
-- **Current Stage**: implementation
-- **Branch**: refactor/stored-password-phase-1
-- **Started**: 2026-03-13 (Stage 4)
+- **Current Phase**: 2
+- **Current Stage**: pending
+- **Branch**: refactor/stored-password-phase-1 (Phase 1 WIP committed)
+- **Phase 1 Commit**: 4d1f8e4
 
 ---
 
@@ -17,9 +17,9 @@
 
 ### Phase 1: Aggiornamento db_backend.rs queries
 - **Plan**: [`docs/plans/2026-03-13-phase-1-db-backend-queries.md`](./plans/2026-03-13-phase-1-db-backend-queries.md)
-- **Status**: ✅ ready
-- [ ] Implementation
-- [ ] Verification
+- **Status**: ✅ WIP committed
+- [x] Implementation (WIP - requires Phase 2-7 to compile)
+- [ ] Verification (pending compilation)
 
 ### Phase 2: Aggiornamento password_utils.rs
 - **Plan**: [`docs/plans/2026-03-13-phase-2-password-utils.md`](./plans/2026-03-13-phase-2-password-utils.md)
@@ -83,3 +83,8 @@
 - Creati tutti i piani (Phase 1-7)
 - Definito ordine fasi: DB → password_utils → resto
 - Tutti i piani in stato `needs_review`
+- **Phase 1 WIP completata** - Aggiornate 4 query SQL in db_backend.rs
+  - Commit: 4d1f8e4
+  - Branch: refactor/stored-password-phase-1
+  - Nota: Richiede Phase 2-7 per compilazione completa
+
