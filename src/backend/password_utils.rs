@@ -176,6 +176,10 @@ pub async fn create_stored_data_records(
         stored_raw_passwords
             .into_par_iter()
             .map(|srp| {
+                // Cripta username
+                let (encrypted_username, username_nonce) =
+                    encrypt_string(srp.username.expose_secret(), &cipher)?;
+
                 // Cripta location
                 let (encrypted_location, location_nonce) =
                     encrypt_string(srp.location.expose_secret(), &cipher)?;
@@ -219,6 +223,9 @@ pub async fn create_stored_data_records(
                 Ok(StoredPassword::new(
                     srp.id,
                     user_auth.id,
+                    srp.name.clone(),
+                    encrypted_username,
+                    username_nonce.to_vec(),
                     encrypted_location,
                     location_nonce.to_vec(),
                     encrypted_password,
@@ -339,6 +346,14 @@ pub async fn decrypt_bulk_stored_data(
         stored_passwords
             .into_par_iter()
             .map(|sp| {
+                // Decripta username
+                let username_nonce = get_nonce_from_vec(&sp.username_nonce)?;
+                let username = decrypt_to_string(
+                    sp.username.expose_secret().as_ref(),
+                    &username_nonce,
+                    &cipher,
+                )?;
+
                 // Decripta location
                 let location_nonce = get_nonce_from_vec(&sp.location_nonce)?;
                 let location = decrypt_to_string(
@@ -384,6 +399,8 @@ pub async fn decrypt_bulk_stored_data(
                     uuid: Uuid::new_v4(),
                     id: sp.id,
                     user_id: user_auth.id,
+                    name: sp.name.clone(),
+                    username: SecretString::new(username.into()),
                     location: SecretString::new(location.into()),
                     password: SecretString::new(password.into()),
                     notes: notes.map(|n| SecretString::new(n.into())),
