@@ -104,6 +104,8 @@ fn generate_single_password(
         uuid: Uuid::new_v4(),
         id: None,
         user_id,
+        name: format!("Service {}", index + 1),
+        username: Some(SecretString::new(format!("user{}@example.com", index + 1).into())),
         location: SecretString::new(location.into()),
         password,
         notes: Some(SecretString::new(
