@@ -74,7 +74,7 @@ pub fn StoredPasswordUpsertDialog(
         ("New Stored Password".to_string(), "alert-info".to_string())
     } else {
         (
-            format!("Edit Stored Password: \"{}\"", url_sig()),
+            format!("Edit: \"{}\"", name_sig()),
             "alert-warning".to_string(),
         )
     };
@@ -108,14 +108,7 @@ pub fn StoredPasswordUpsertDialog(
                 }
             }
         };
-        println!(
-            "name: {}\nusername: {}\nurl: {}\nNote: {}\nPassword: {}",
-            name(),
-            username(),
-            url(),
-            note().unwrap_or("".to_string()),
-            password_to_be_saved.expose_secret().to_string()
-        );
+
         // Preserva created_at in modalità edit, altrimenti None per nuove password
         let original_created_at =
             (stored_password_dialog_state.current_stored_raw_password)().and_then(|p| p.created_at);
@@ -255,7 +248,6 @@ pub fn StoredPasswordUpsertDialog(
                 }
             }
         
-
         }
     }
 }
