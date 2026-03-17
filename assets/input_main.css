@@ -1857,12 +1857,17 @@ button[class*="btn-"] {
         font-size: 0.875rem;
         height: 2rem;
     }
+}
 
-    .pwd-search-input:focus {
-        outline: 2px solid theme('colors.primary');
-        outline-offset: -2px;
-        border-color: transparent;
-    }
+/* Focus ring fuori da @layer per vincere su DaisyUI utilities */
+.pwd-search-input:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: -2px;
+    border-color: transparent;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+@layer components {
 
     .pwd-search-clear {
         position: absolute;
