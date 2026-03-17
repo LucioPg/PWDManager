@@ -29,13 +29,13 @@ use std::time::Instant;
 use uuid::Uuid;
 
 // Importa le funzioni dalla crate principale
+use pwd_manager::backend::db_backend::{
+    create_user_settings, fetch_user_auth_from_id, fetch_user_passwords_generation_settings,
+};
+use pwd_manager::backend::evaluate_password_strength;
 use pwd_manager::backend::password_utils::{
     create_stored_data_pipeline_bulk, generate_suggested_password,
 };
-use pwd_manager::backend::db_backend::{
-    fetch_user_auth_from_id, create_user_settings, fetch_user_passwords_generation_settings,
-};
-use pwd_manager::backend::evaluate_password_strength;
 
 /// Configurazione del generatore di password
 const TOTAL_PASSWORDS: usize = 10_000;
@@ -74,17 +74,16 @@ async fn verify_test_user(pool: &SqlitePool, user_id: i64) -> Result<(), DBError
 
     println!("Utente trovato:");
     println!("  ID: {}", user_auth.id);
-    println!("  Password hash (primi 50 char): {}...", &user_auth.password.0.expose_secret()[..50]);
+    println!(
+        "  Password hash (primi 50 char): {}...",
+        &user_auth.password.0.expose_secret()[..50]
+    );
 
     Ok(())
 }
 
 /// Genera un singolo StoredRawPassword con preset casuale.
-fn generate_single_password(
-    user_id: i64,
-    index: usize,
-    settings_id: i64,
-) -> StoredRawPassword {
+fn generate_single_password(user_id: i64, index: usize, settings_id: i64) -> StoredRawPassword {
     // Seleziona preset in base all'indice (distribuzione uniforme)
     let preset = &PRESETS[index % PRESETS.len()];
     let config = preset.to_config(settings_id);
@@ -105,11 +104,11 @@ fn generate_single_password(
         id: None,
         user_id,
         name: format!("Service {}", index + 1),
-        username: Some(SecretString::new(format!("user{}@example.com", index + 1).into())),
+        username: SecretString::new(format!("user{}@example.com", index + 1).into()),
         location: SecretString::new(location.into()),
         password,
         notes: Some(SecretString::new(
-            format!("Nota di test per password #{}", index + 1).into()
+            format!("Nota di test per password #{}", index + 1).into(),
         )),
         score: Some(score),
         created_at: None,
@@ -137,8 +136,10 @@ async fn generate_and_save_passwords(
 
         println!(
             "\nBatch {}/{} (password {}-{})...",
-            batch_num, total_batches,
-            batch_start + 1, batch_end
+            batch_num,
+            total_batches,
+            batch_start + 1,
+            batch_end
         );
 
         let batch_start_time = Instant::now();
@@ -148,7 +149,8 @@ async fn generate_and_save_passwords(
             .map(|i| generate_single_password(user_id, i, settings_id))
             .collect();
 
-        println!("  Generate {} password in {:?}",
+        println!(
+            "  Generate {} password in {:?}",
             stored_raw_passwords.len(),
             batch_start_time.elapsed()
         );
@@ -159,11 +161,13 @@ async fn generate_and_save_passwords(
 
         generated_count += batch_end - batch_start;
 
-        println!("  Salvate {} password in {:?}",
+        println!(
+            "  Salvate {} password in {:?}",
             batch_end - batch_start,
             save_start.elapsed()
         );
-        println!("  Progresso totale: {}/{} ({:.1}%)",
+        println!(
+            "  Progresso totale: {}/{} ({:.1}%)",
             generated_count,
             TOTAL_PASSWORDS,
             (generated_count as f64 / TOTAL_PASSWORDS as f64) * 100.0
@@ -203,7 +207,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\nConfigurazione settings utente...");
     let settings_id = match fetch_user_passwords_generation_settings(&pool, TEST_USER_ID).await {
         Ok(config) => {
-            println!("Settings esistenti trovati (ID: {})", config.id.unwrap_or(0));
+            println!(
+                "Settings esistenti trovati (ID: {})",
+                config.id.unwrap_or(0)
+            );
             config.id.unwrap_or(1)
         }
         Err(_) => {
