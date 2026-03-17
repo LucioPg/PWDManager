@@ -41,11 +41,15 @@ pub fn StoredPasswordUpsertDialog(
         if (stored_password_dialog_state.is_open)() {
             match (stored_password_dialog_state.current_stored_raw_password)() {
                 Some(data) => {
+                    name_sig.set(data.name.clone());
+                    username_sig.set(data.username.expose_secret().to_string());
                     url_sig.set(data.url.expose_secret().to_string());
                     notes_sig.set(data.notes.as_ref().map(|n| n.expose_secret().to_string()));
                     is_new.set(false);
                 }
                 None => {
+                    name_sig.set(String::new());
+                    username_sig.set(String::new());
                     url_sig.set(String::new());
                     notes_sig.set(None);
                     is_new.set(true);
