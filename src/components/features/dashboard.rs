@@ -3,13 +3,13 @@ use crate::backend::password_utils::get_all_stored_raw_passwords_with_filter;
 use crate::components::features::DashboardMenu;
 use crate::components::globals::StatsAside;
 use crate::components::globals::pagination::{PaginationControls, PaginationState};
+use crate::components::globals::spinner::{Spinner, SpinnerSize};
 use crate::components::globals::toggle::{Toggle, ToggleColor, ToggleSize};
 use crate::components::globals::types::TableOrder;
 use crate::components::{
     StoredPasswordDeletionDialog, StoredPasswordUpsertDialog, StoredRawPasswordsTable,
     show_toast_error, use_toast,
 };
-use crate::components::globals::spinner::{Spinner, SpinnerSize};
 use custom_errors::DBError;
 use dioxus::prelude::*;
 use pwd_dioxus::Combobox;
@@ -52,8 +52,8 @@ pub fn Dashboard() -> Element {
     let options = table_order_options();
 
     // SIGNALS
-    let mut unlock_locations = use_signal(|| false);
-    let unlock_locations_clone = unlock_locations.clone();
+    let mut unlock_urls = use_signal(|| false);
+    let unlock_urls_clone = unlock_urls.clone();
     let mut unlock_passwords = use_signal(|| false);
     let unlock_passwords_clone = unlock_passwords.clone();
 
@@ -244,12 +244,12 @@ pub fn Dashboard() -> Element {
                 div { class: "flex flex-row gap-3 mb-4 justify-end align-center",
                     label { class: "label cursor-pointer",
                         strong {
-                            span { class: "label-text strong", "View Locations" }
+                            span { class: "label-text strong", "View urls" }
                         }
                         // Toggle con dimensione e colore personalizzati
                         Toggle {
-                            checked: unlock_locations(),
-                            onchange: move |_| unlock_locations.toggle(),
+                            checked: unlock_urls(),
+                            onchange: move |_| unlock_urls.toggle(),
                             size: ToggleSize::Small,
                             color: ToggleColor::Success,
                             disabled: false,
@@ -297,7 +297,7 @@ pub fn Dashboard() -> Element {
                         div { class: "card card-lg",
                             StoredRawPasswordsTable {
                                 data: table_data,
-                                unlocked_locations: unlock_locations_clone,
+                                unlocked_urls: unlock_urls_clone,
                                 unlocked_passwords: unlock_passwords_clone,
                             }
                         }
@@ -310,7 +310,6 @@ pub fn Dashboard() -> Element {
                 pagination: pagination.clone(),
                 on_page_change: move |new_page| {
                     pagination.go_to_page(new_page);
-                    // Non serve restart: paginazione è locale
                 },
             }
         }

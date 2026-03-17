@@ -18,7 +18,7 @@ pub struct StoredRawPasswordRowProps {
     pub on_edit: EventHandler<StoredRawPassword>,
     /// Callback when delete button is clicked
     pub on_delete: EventHandler<i64>,
-    pub unlocked_location: Signal<bool>,
+    pub unlocked_url: Signal<bool>,
     pub unlocked_password: Signal<bool>,
     /// Callback when user clicks on burger button - passa (password, x, y)
     pub on_show_tooltip: EventHandler<(StoredRawPassword, f64, f64)>,
@@ -40,12 +40,12 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
             key: "{password_id}",
             class: "stored-password-row hover:bg-base-200/50 transition-colors",
 
-            // Column 1: Location (visualizzazione sicura con toggle)
+            // Column 1: url (visualizzazione sicura con toggle)
             td { class: "pwd-table__cell-content",
                 SecretDisplay {
                     secret: FormSecret(props.stored_raw_password.url.clone()),
                     max_width: "".to_string(),
-                    unlocked: props.unlocked_location,
+                    unlocked: props.unlocked_url,
                 }
             }
 

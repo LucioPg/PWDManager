@@ -18,7 +18,7 @@ struct WindowSize {
 pub fn StoredRawPasswordsTable(
     /// Valore dei dati (già calcolato dal parent in modo reattivo)
     data: Option<Vec<StoredRawPassword>>,
-    unlocked_locations: Signal<bool>,
+    unlocked_urls: Signal<bool>,
     unlocked_passwords: Signal<bool>,
 ) -> Element {
     let mut tooltip_state = use_signal(TooltipState::default);
@@ -49,7 +49,7 @@ pub fn StoredRawPasswordsTable(
                     table { class: "pwd-table",
                         thead {
                             tr {
-                                th { class: "", "Location" }
+                                th { class: "", "url" }
                                 th { class: "", "Password" }
                                 th { class: "pwd-table__col-strength", "Strength" }
                                 th { class: "pwd-table__col-info", "Info" }
@@ -66,7 +66,7 @@ pub fn StoredRawPasswordsTable(
                                     stored_raw_password: stored_raw_password.clone(),
                                     on_edit: move |_| {},
                                     on_delete: move |_| {},
-                                    unlocked_location: unlocked_locations,
+                                    unlocked_url: unlocked_urls,
                                     unlocked_password: unlocked_passwords,
                                     on_show_tooltip: move |(password, x, y)| {
                                         tooltip_state.set(TooltipState::new(password, x, y));
@@ -88,28 +88,20 @@ pub fn StoredRawPasswordsTable(
                     {
                         let state = tooltip_state.read();
                         if let Some(password) = &state.password {
-                            // Dimensioni tooltip stimate
                             let tooltip_width = 280.0;
                             let tooltip_height = 150.0;
                             let margin = 16.0;
-
                             let win = window_size.read();
-
-                            // Calcola posizione con boundary detection
                             let left = if state.x + tooltip_width + margin > win.width {
-                                // Troppo a destra, sposta a sinistra del cursore
                                 (state.x - tooltip_width - margin).max(margin)
                             } else {
                                 state.x + margin
                             };
-
                             let top = if state.y + tooltip_height + margin > win.height {
-                                // Troppo in basso, mostra sopra il cursore
                                 (state.y - tooltip_height - margin).max(margin)
                             } else {
                                 state.y + margin
                             };
-
                             rsx! {
                                 div {
                                     class: "pwd-row-tooltip fixed z-10",

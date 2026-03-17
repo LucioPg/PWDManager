@@ -6,8 +6,8 @@ use dioxus::prelude::*;
 /// Dialog di conferma per l'import delle password.
 ///
 /// Mostra info sul comportamento dell'import:
-/// - I duplicati (location+password) vengono saltati
-/// - Password con stessa location ma password diversa vengono importate come nuove
+/// - I duplicati (url+password) vengono saltati
+/// - Password con stessa url ma password diversa vengono importate come nuove
 #[component]
 pub fn ImportWarningDialog(
     /// Controlla la visibilità del modal
@@ -30,7 +30,7 @@ pub fn ImportWarningDialog(
 
     rsx! {
         crate::components::globals::dialogs::BaseModal {
-            open: open,
+            open,
             on_close: move |_| {
                 on_cancel.call(());
                 open_clone.set(false);
@@ -48,44 +48,34 @@ pub fn ImportWarningDialog(
             }
 
             // Icona warning
-            div {
-                class: "alert alert-warning mb-4 flex items-center justify-center mx-10",
-                WarningIcon {
-                    class: Some("w-6 h-6".to_string()),
-                }
+            div { class: "alert alert-warning mb-4 flex items-center justify-center mx-10",
+                WarningIcon { class: Some("w-6 h-6".to_string()) }
             }
 
             // Titolo
             h3 { class: "font-bold text-lg mb-2", "Import Passwords" }
 
             // Dettagli import
-            p { class: "py-2",
-                "You are about to import passwords from:"
-            }
+            p { class: "py-2", "You are about to import passwords from:" }
             p { class: "font-mono text-sm bg-base-200 p-2 rounded mb-2 break-all",
                 "{input_path}"
             }
-            p { class: "text-sm opacity-70 mb-4",
-                "Format: {format}"
-            }
+            p { class: "text-sm opacity-70 mb-4", "Format: {format}" }
 
             // Warning su duplicati
-            p {
-                class: "text-warning-600 py-2",
+            p { class: "text-warning-600 py-2",
                 strong { "Note: " }
-                "Duplicate passwords (same location and password) in the file will be skipped. "
+                "Duplicate passwords (same url and password) in the file will be skipped. "
                 "Passwords that already exist in your database will also be skipped."
             }
 
-            p {
-                class: "text-info-600 py-2",
+            p { class: "text-info-600 py-2",
                 strong { "Info: " }
-                "Passwords with the same location but different password will be imported as new entries."
+                "Passwords with the same url but different password will be imported as new entries."
             }
 
             // Action buttons
-            div {
-                class: "modal-action",
+            div { class: "modal-action",
 
                 ActionButton {
                     text: "Import".to_string(),

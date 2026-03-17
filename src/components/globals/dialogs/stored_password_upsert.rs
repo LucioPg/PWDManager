@@ -31,7 +31,7 @@ pub fn StoredPasswordUpsertDialog(
     let mut stored_password_dialog_state = use_context::<StoredPasswordUpsertDialogState>();
     let mut open_clone = stored_password_dialog_state.is_open.clone();
     let mut is_new = use_signal(|| false);
-    let mut location_sig = use_signal(String::new);
+    let mut url_sig = use_signal(String::new);
     let mut notes_sig = use_signal(|| None::<String>);
     let mut evaluated_password = use_signal(|| Option::<PasswordChangeResult>::None);
 
@@ -40,12 +40,12 @@ pub fn StoredPasswordUpsertDialog(
         if (stored_password_dialog_state.is_open)() {
             match (stored_password_dialog_state.current_stored_raw_password)() {
                 Some(data) => {
-                    location_sig.set(data.url.expose_secret().to_string());
+                    url_sig.set(data.url.expose_secret().to_string());
                     notes_sig.set(data.notes.as_ref().map(|n| n.expose_secret().to_string()));
                     is_new.set(false);
                 }
                 None => {
-                    location_sig.set(String::new());
+                    url_sig.set(String::new());
                     notes_sig.set(None);
                     is_new.set(true);
                 }
@@ -69,7 +69,7 @@ pub fn StoredPasswordUpsertDialog(
         ("New Stored Password".to_string(), "alert-info".to_string())
     } else {
         (
-            format!("Edit Stored Password: \"{}\"", location_sig()),
+            format!("Edit Stored Password: \"{}\"", url_sig()),
             "alert-warning".to_string(),
         )
     };
@@ -87,7 +87,7 @@ pub fn StoredPasswordUpsertDialog(
             Some(data) => data.id,
             None => None,
         };
-        let location = location_sig.clone();
+        let url = url_sig.clone();
         let note = notes_sig.clone();
         let evaluated_password_reader = evaluated_password.read().clone();
         let (password_to_be_saved, score) = if let Some(ref result) = evaluated_password_reader {
@@ -102,8 +102,8 @@ pub fn StoredPasswordUpsertDialog(
             }
         };
         println!(
-            "Location: {}\nNote: {}\nPassword: {}",
-            location(),
+            "url: {}\nNote: {}\nPassword: {}",
+            url(),
             note().unwrap_or("".to_string()),
             password_to_be_saved.expose_secret().to_string()
         );
@@ -119,7 +119,7 @@ pub fn StoredPasswordUpsertDialog(
             user_id,
             name: String::new(), // TODO: collegare a signal quando UI pronta
             username: SecretString::new(String::new().into()), // TODO: collegare a signal quando UI pronta
-            url: SecretString::new(location().into()),
+            url: SecretString::new(url().into()),
             notes: note().map(|n| SecretString::new(n.into())),
             password: password_to_be_saved,
             created_at: original_created_at,
@@ -170,11 +170,11 @@ pub fn StoredPasswordUpsertDialog(
 
             form { onsubmit: on_submit, class: "flex flex-col gap-3",
                 FormField {
-                    label: "Location".to_string(),
+                    label: "url".to_string(),
                     input_type: InputType::Text,
                     placeholder: "location or url or whatever...".to_string(),
-                    value: location_sig,
-                    name: Some("location".to_string()),
+                    value: url_sig,
+                    name: Some("url".to_string()),
                     required: true,
                     forbid_spaces: false,
                     alphanumeric_only: false,
