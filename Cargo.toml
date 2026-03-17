@@ -60,19 +60,21 @@ desktop = ["dioxus/desktop"]
 # utile per avere highlight mentre si lavora su elementi non ancora completati. (ricordarsi di attivare la feature nel pannello di cargo della ide)
 ide-only = []
 
-# da rimuovere per la release
+# ⚠️ WORKTREE PATCH - Percorsi modificati per funzionare dal worktree .worktrees/refactor-location-to-url/
+# PRIMA DEL MERGE: ripristinare i percorsi relativi a "../<nome_repo>" (un solo livello)
+# [patch] usa percorsi ../../../ perché dal worktree si deve salire fino a RustroverProjects/
 
 [patch."https://github.com/LucioPg/custom_errors"]
-custom_errors = { path = "../custom_errors" }
+custom_errors = { path = "../../../custom_errors" }
 
 [patch."https://github.com/LucioPg/pwd-types"]
-pwd-types = { path = "../pwd-types" }
+pwd-types = { path = "../../../pwd-types" }
 
 [patch."https://github.com/LucioPg/pwd-strength"]
-pwd-strength = { path = "../pwd-strength" }
+pwd-strength = { path = "../../../pwd-strength" }
 
 [patch."https://github.com/LucioPg/pwd-crypto"]
-pwd-crypto = { path = "../pwd-crypto" }
+pwd-crypto = { path = "../../../pwd-crypto" }
 
 [patch."https://github.com/LucioPg/pwd-dioxus"]
-pwd-dioxus = { path = "../pwd-dioxus" }
+pwd-dioxus = { path = "../../../pwd-dioxus" }
