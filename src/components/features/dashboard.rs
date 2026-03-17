@@ -264,6 +264,7 @@ pub fn Dashboard() -> Element {
                             class: "input input-bordered input-sm pwd-search-input",
                             r#type: "text",
                             placeholder: "Cerca per nome...",
+                            aria_label: "Search passwords by name",
                             value: "{search_query}",
                             oninput: move |e| {
                                 let value = e.value();
@@ -274,6 +275,7 @@ pub fn Dashboard() -> Element {
                         if !search_query().is_empty() {
                             button {
                                 class: "pwd-search-clear",
+                                aria_label: "Clear search",
                                 onclick: move |_| {
                                     search_query.set(String::new());
                                     pagination.go_to_page(0);
