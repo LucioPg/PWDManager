@@ -1788,10 +1788,6 @@ button[class*="btn-"] {
 }
 
 @media (max-width: 640px) {
-    .pwd-table__col-info {
-        display: none;
-    }
-    
     .pwd-table th,
     .pwd-table td {
         padding: 0.375rem 0.25rem;
