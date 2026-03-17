@@ -20,7 +20,7 @@ pub fn StoredRawPasswordsTable(
     data: Option<Vec<StoredRawPassword>>,
 ) -> Element {
     let mut tooltip_state = use_signal(TooltipState::default);
-    let mut window_size = use_signal(WindowSize::default);
+    let window_size = use_signal(WindowSize::default);
 
     // Aggiorna le dimensioni della finestra quando il tooltip si apre
     use_effect(move || {
