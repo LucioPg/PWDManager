@@ -68,7 +68,7 @@ pub static QUERIES: &[&str] = &[
     "CREATE TABLE IF NOT EXISTS user_settings (
                 id INTEGER PRIMARY KEY,
                 user_id INTEGER NOT NULL UNIQUE,
-                theme TEXT NOT NULL DEFAULT 'light',
+                theme TEXT NOT NULL DEFAULT 'Light',
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     )",
     "CREATE TABLE IF NOT EXISTS passwords_generation_settings (
