@@ -40,7 +40,7 @@ pub fn StoredPasswordUpsertDialog(
         if (stored_password_dialog_state.is_open)() {
             match (stored_password_dialog_state.current_stored_raw_password)() {
                 Some(data) => {
-                    location_sig.set(data.location.expose_secret().to_string());
+                    location_sig.set(data.url.expose_secret().to_string());
                     notes_sig.set(data.notes.as_ref().map(|n| n.expose_secret().to_string()));
                     is_new.set(false);
                 }
@@ -108,8 +108,8 @@ pub fn StoredPasswordUpsertDialog(
             password_to_be_saved.expose_secret().to_string()
         );
         // Preserva created_at in modalità edit, altrimenti None per nuove password
-        let original_created_at = (stored_password_dialog_state.current_stored_raw_password)()
-            .and_then(|p| p.created_at);
+        let original_created_at =
+            (stored_password_dialog_state.current_stored_raw_password)().and_then(|p| p.created_at);
 
         // TODO(future): Aggiungere campi UI per name e username
         // Per ora usiamo stringhe vuote come default
@@ -117,9 +117,9 @@ pub fn StoredPasswordUpsertDialog(
             uuid: Uuid::new_v4(),
             id: stored_password_id,
             user_id,
-            name: String::new(),           // TODO: collegare a signal quando UI pronta
+            name: String::new(), // TODO: collegare a signal quando UI pronta
             username: SecretString::new(String::new().into()), // TODO: collegare a signal quando UI pronta
-            location: SecretString::new(location().into()),
+            url: SecretString::new(location().into()),
             notes: note().map(|n| SecretString::new(n.into())),
             password: password_to_be_saved,
             created_at: original_created_at,

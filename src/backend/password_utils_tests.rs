@@ -91,7 +91,7 @@ async fn test_encrypt_decrypt_password() {
 
     // Test 1: Cifra una password
     let raw_password = SecretString::new("MySecurePassword456".into());
-    let location = "https://example.com".to_string();
+    let url = "https://example.com".to_string();
     let notes = Some(SecretString::new("Test password".into()));
     let stored_raw_password = StoredRawPassword {
         uuid: Uuid::new_v4(),
@@ -99,7 +99,7 @@ async fn test_encrypt_decrypt_password() {
         user_id,
         name: String::new(),
         username: SecretString::new(String::new().into()),
-        location: SecretString::new(location.to_string().into()),
+        url: SecretString::new(url.to_string().into()),
         password: raw_password.clone(),
         notes: notes.clone(),
         score: None,
@@ -122,13 +122,10 @@ async fn test_encrypt_decrypt_password() {
     );
     let stored_password = &stored_passwords[0];
 
-    // Verifica che location sia crittografato (non plain text)
-    let location_bytes: &[u8] = stored_password.location.expose_secret().as_ref();
-    let location_plain: &[u8] = location.as_bytes();
-    assert_ne!(
-        location_bytes, location_plain,
-        "Location should be encrypted"
-    );
+    // Verifica che url sia crittografato (non plain text)
+    let url_bytes: &[u8] = stored_password.url.expose_secret().as_ref();
+    let url_plain: &[u8] = url.as_bytes();
+    assert_ne!(url_bytes, url_plain, "url should be encrypted");
 
     // Verifica che notes siano crittografate (non plain text)
     if let Some(notes_enc) = &stored_password.notes {
@@ -139,7 +136,7 @@ async fn test_encrypt_decrypt_password() {
 
     assert_eq!(stored_password.user_id, user_id);
 
-    // Verifica i nonce (password_nonce e location_nonce devono essere 12 byte)
+    // Verifica i nonce (password_nonce e url_nonce devono essere 12 byte)
     assert!(
         !stored_password.password_nonce.is_empty(),
         "Password nonce should not be empty"
@@ -150,9 +147,9 @@ async fn test_encrypt_decrypt_password() {
         "Password nonce should be 12 bytes"
     );
     assert_eq!(
-        stored_password.location_nonce.len(),
+        stored_password.url_nonce.len(),
         12,
-        "Location nonce should be 12 bytes"
+        "url nonce should be 12 bytes"
     );
     if let Some(nn) = &stored_password.notes_nonce {
         assert_eq!(nn.len(), 12, "Notes nonce should be 12 bytes");
@@ -187,7 +184,7 @@ async fn test_encrypt_decrypt_password() {
 //     };
 //     // Test 1: Cifra una password
 //     let raw_password = SecretString::new("MySecurePassword456".into());
-//     let location = "https://example.com".to_string();
+//     let url = "https://example.com".to_string();
 //     let notes = Some("Test password".to_string());
 //     let salt = crate::backend::utils::generate_salt();
 //     let cipher = create_cipher(&salt.as_salt(), &user_auth);
@@ -218,7 +215,7 @@ async fn test_encrypt_decrypt_password() {
 //             uuid: Uuid::new_v4(),
 //             id: None,
 //             user_id,
-//             location: SecretString::new(locat.to_string().into()),
+//             url: SecretString::new(locat.to_string().into()),
 //             password: rp,
 //             notes: Some(SecretString::new("test rayon".into())),
 //             score: password_evaluation.score,
@@ -258,12 +255,12 @@ async fn test_encrypt_decrypt_password() {
 //     );
 //     let stored_password = &stored_passwords[0];
 //
-//     // Verifica che location sia crittografato (non plain text)
-//     let location_bytes: &[u8] = stored_password.location.expose_secret().as_ref();
-//     let location_plain: &[u8] = location.as_bytes();
+//     // Verifica che url sia crittografato (non plain text)
+//     let url_bytes: &[u8] = stored_password.url.expose_secret().as_ref();
+//     let url_plain: &[u8] = url.as_bytes();
 //     assert_ne!(
-//         location_bytes, location_plain,
-//         "Location should be encrypted"
+//         url_bytes, url_plain,
+//         "url should be encrypted"
 //     );
 //
 //     // Verifica che notes siano crittografate
@@ -286,9 +283,9 @@ async fn test_encrypt_decrypt_password() {
 //         "Password nonce should be 12 bytes"
 //     );
 //     assert_eq!(
-//         stored_password.location_nonce.len(),
+//         stored_password.url_nonce.len(),
 //         12,
-//         "Location nonce should be 12 bytes"
+//         "url nonce should be 12 bytes"
 //     );
 //
 //     // Test 3: Decifra la password
@@ -363,7 +360,7 @@ async fn test_decrypt_invalid_nonce() {
         user_id,
         name: String::new(),
         username: SecretString::new(String::new().into()),
-        location: SecretString::new("https://test.com".to_string().into()),
+        url: SecretString::new("https://test.com".to_string().into()),
         password: raw_password,
         notes: None,
         score: None,
@@ -399,15 +396,15 @@ async fn test_decrypt_nonexistent_user() {
     // Crea una stored password con un user_id inesistente
     let stored_password = StoredPassword::new(
         None,
-        99999, // User ID inesistente
+        99999,         // User ID inesistente
         String::new(), // name
         SecretBox::new(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].into()), // encrypted username
         vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], // username_nonce
-        SecretBox::new(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].into()), // encrypted location
-        vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], // location_nonce
+        SecretBox::new(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].into()), // encrypted url
+        vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], // url_nonce
         SecretBox::new(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].into()), // password
-        None,  // notes
-        None,  // notes_nonce
+        None,          // notes
+        None,          // notes_nonce
         PasswordScore::new(38),
         None,
         vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], // password_nonce
@@ -430,14 +427,14 @@ async fn test_multiple_passwords_for_same_user() {
         ("https://site3.com", "VeryLongSecurePassword123!"),
     ];
     let mut stored_raw_passwords: Vec<StoredRawPassword> = vec![];
-    for (location, raw_pwd) in &passwords {
+    for (url, raw_pwd) in &passwords {
         let stored_raw_password = StoredRawPassword {
             uuid: Uuid::new_v4(),
             id: None,
             user_id,
             name: String::new(),
             username: SecretString::new(String::new().into()),
-            location: SecretString::new(location.to_string().into()),
+            url: SecretString::new(url.to_string().into()),
             password: SecretString::new(raw_pwd.to_string().into()),
             notes: None,
             score: None,
@@ -456,8 +453,8 @@ async fn test_multiple_passwords_for_same_user() {
     assert_eq!(stored_passwords.len(), 3, "Should have 3 stored passwords");
 
     // Verifica che ogni password possa essere decifrata correttamente
-    // Nota: location è crittografato, quindi non confrontiamo direttamente
-    for (i, (_expected_location, expected_password)) in passwords.iter().enumerate() {
+    // Nota: url è crittografato, quindi non confrontiamo direttamente
+    for (i, (_expected_url, expected_password)) in passwords.iter().enumerate() {
         let stored = &stored_passwords[i];
 
         let decrypted = decrypt_stored_password(&pool, stored)
@@ -498,14 +495,14 @@ async fn test_multiple_passwords_for_same_user_with_predefined_strength() {
         ),
     ];
     let mut stored_raw_passwords: Vec<StoredRawPassword> = vec![];
-    for (location, raw_pwd, strength) in &passwords {
+    for (url, raw_pwd, strength) in &passwords {
         let stored_raw_password = StoredRawPassword {
             uuid: Uuid::new_v4(),
             id: None,
             user_id,
             name: String::new(),
             username: SecretString::new(String::new().into()),
-            location: SecretString::new(location.to_string().into()),
+            url: SecretString::new(url.to_string().into()),
             password: SecretString::new(raw_pwd.to_string().into()),
             notes: Some(SecretString::new("Ciao io sono una nota".into())),
             score: strength.score,
@@ -525,10 +522,8 @@ async fn test_multiple_passwords_for_same_user_with_predefined_strength() {
     assert_eq!(stored_passwords.len(), 3, "Should have 3 stored passwords");
 
     // Verifica che ogni password possa essere decifrata correttamente
-    // Nota: location è crittografato, quindi non confrontiamo direttamente
-    for (i, (_expected_location, expected_password, expected_strength)) in
-        passwords.iter().enumerate()
-    {
+    // Nota: url è crittografato, quindi non confrontiamo direttamente
+    for (i, (_expected_url, expected_password, expected_strength)) in passwords.iter().enumerate() {
         let stored = &stored_passwords[i];
         let expected_strength_score = expected_strength.score.map(|s| s.value()).unwrap_or(0);
         assert_eq!(stored.score.value(), expected_strength_score);
@@ -552,7 +547,7 @@ async fn test_encrypted_password_is_different_from_original() {
         user_id,
         name: String::new(),
         username: SecretString::new(String::new().into()),
-        location: SecretString::new("https://encrypted.com".to_string().into()),
+        url: SecretString::new("https://encrypted.com".to_string().into()),
         password: SecretString::new(raw_password.into()),
         notes: None,
         score: None,
@@ -585,12 +580,12 @@ async fn test_encrypted_password_is_different_from_original() {
 }
 
 #[tokio::test]
-async fn test_location_and_notes_are_encrypted() {
+async fn test_url_and_notes_are_encrypted() {
     let pool = setup_test_db().await;
     let user_id = create_test_user(&pool, "testuser_enc", "MasterPass123!").await;
 
     let raw_password = SecretString::new("MySecurePassword456".into());
-    let location = "https://secret-location.com".to_string();
+    let url = "https://secret-url.com".to_string();
     let notes = Some("Confidential notes".to_string());
     let stored_raw_password = StoredRawPassword {
         uuid: Uuid::new_v4(),
@@ -598,7 +593,7 @@ async fn test_location_and_notes_are_encrypted() {
         user_id,
         name: String::new(),
         username: SecretString::new(String::new().into()),
-        location: SecretString::new(location.clone().into()),
+        url: SecretString::new(url.clone().into()),
         password: raw_password.clone(),
         notes: Some(SecretString::new(notes.clone().unwrap().into())),
         score: None,
@@ -615,13 +610,10 @@ async fn test_location_and_notes_are_encrypted() {
 
     let stored = &stored_passwords[0];
 
-    // Verify location is NOT plaintext
-    let location_bytes: &[u8] = stored.location.expose_secret().as_ref();
-    let location_plain: &[u8] = location.as_bytes();
-    assert_ne!(
-        location_bytes, location_plain,
-        "Location should be encrypted"
-    );
+    // Verify url is NOT plaintext
+    let url_bytes: &[u8] = stored.url.expose_secret().as_ref();
+    let url_plain: &[u8] = url.as_bytes();
+    assert_ne!(url_bytes, url_plain, "url should be encrypted");
 
     // Verify notes are NOT plaintext
     if let Some(notes_enc) = &stored.notes {
@@ -631,7 +623,7 @@ async fn test_location_and_notes_are_encrypted() {
     }
 
     // Verify nonces are 12 bytes
-    assert_eq!(stored.location_nonce.len(), 12);
+    assert_eq!(stored.url_nonce.len(), 12);
     assert_eq!(stored.password_nonce.len(), 12);
     if let Some(nn) = &stored.notes_nonce {
         assert_eq!(nn.len(), 12);
@@ -639,12 +631,12 @@ async fn test_location_and_notes_are_encrypted() {
 }
 
 #[tokio::test]
-async fn test_decrypt_location_and_notes_roundtrip() {
+async fn test_decrypt_url_and_notes_roundtrip() {
     let pool = setup_test_db().await;
     let user_id = create_test_user(&pool, "testuser_rt", "MasterPass123!").await;
 
     let raw_password = SecretString::new("MyPassword".into());
-    let location = "MySecretService".to_string();
+    let url = "MySecretService".to_string();
     let notes = Some(SecretString::new("My secret notes".into()));
     let stored_raw_password = StoredRawPassword {
         uuid: Uuid::new_v4(),
@@ -652,7 +644,7 @@ async fn test_decrypt_location_and_notes_roundtrip() {
         user_id,
         name: String::new(),
         username: SecretString::new(String::new().into()),
-        location: SecretString::new(location.clone().into()),
+        url: SecretString::new(url.clone().into()),
         password: raw_password.clone(),
         notes: notes.clone(),
         score: None,
@@ -669,7 +661,7 @@ async fn test_decrypt_location_and_notes_roundtrip() {
         .expect("Failed to decrypt");
 
     assert_eq!(decrypted.len(), 1);
-    assert_eq!(decrypted[0].location.expose_secret(), location);
+    assert_eq!(decrypted[0].url.expose_secret(), url);
     // Confronta notes: Option<SecretString> vs Option<String>
     match (&decrypted[0].notes, &notes) {
         (Some(dec_notes), Some(exp_notes)) => {
@@ -706,7 +698,7 @@ async fn test_password_migration_single_password() {
 
     // 2. Crea StoredPassword da migrare (criptata con vecchia master)
     let raw_password = SecretString::new("MySecurePassword789".into());
-    let location = "https://example.com".to_string();
+    let url = "https://example.com".to_string();
     let notes = Some(SecretString::new("Test notes".into()));
     let stored_raw_password = StoredRawPassword {
         uuid: Uuid::new_v4(),
@@ -714,7 +706,7 @@ async fn test_password_migration_single_password() {
         user_id,
         name: String::new(),
         username: SecretString::new(String::new().into()),
-        location: SecretString::new(location.clone().into()),
+        url: SecretString::new(url.clone().into()),
         password: raw_password.clone(),
         notes: notes.clone(),
         score: None,
@@ -749,15 +741,22 @@ async fn test_password_migration_single_password() {
     let temp_old_after = fetch_user_temp_old_password(&pool, user_id)
         .await
         .expect("Failed to fetch temp_old_password");
-    assert!(temp_old_after.is_none(), "temp_old_password should be removed, but was: {:?}", temp_old_after);
+    assert!(
+        temp_old_after.is_none(),
+        "temp_old_password should be removed, but was: {:?}",
+        temp_old_after
+    );
 
     // 7. Verifica decriptazione con NUOVA master
     let decrypted = get_stored_raw_passwords(&pool, user_id)
         .await
         .expect("Failed to decrypt with new password");
     assert_eq!(decrypted.len(), 1);
-    assert_eq!(decrypted[0].password.expose_secret(), raw_password.expose_secret());
-    assert_eq!(decrypted[0].location.expose_secret(), location);
+    assert_eq!(
+        decrypted[0].password.expose_secret(),
+        raw_password.expose_secret()
+    );
+    assert_eq!(decrypted[0].url.expose_secret(), url);
 }
 
 #[tokio::test]
@@ -778,13 +777,13 @@ async fn test_password_migration_multiple_passwords() {
 
     let stored_raw_passwords: Vec<StoredRawPassword> = passwords_data
         .iter()
-        .map(|(location, pwd, note)| StoredRawPassword {
+        .map(|(url, pwd, note)| StoredRawPassword {
             uuid: Uuid::new_v4(),
             id: None,
             user_id,
             name: String::new(),
             username: SecretString::new(String::new().into()),
-            location: SecretString::new(location.to_string().into()),
+            url: SecretString::new(url.to_string().into()),
             password: SecretString::new(pwd.to_string().into()),
             notes: note.map(|n| SecretString::new(n.into())),
             score: None,
@@ -822,8 +821,8 @@ async fn test_password_migration_multiple_passwords() {
         .expect("Failed to decrypt");
     assert_eq!(decrypted.len(), passwords_data.len());
 
-    for (i, (location, pwd, note)) in passwords_data.iter().enumerate() {
-        assert_eq!(decrypted[i].location.expose_secret(), *location);
+    for (i, (url, pwd, note)) in passwords_data.iter().enumerate() {
+        assert_eq!(decrypted[i].url.expose_secret(), *url);
         assert_eq!(decrypted[i].password.expose_secret(), *pwd);
         match (note, &decrypted[i].notes) {
             (Some(exp), Some(act)) => assert_eq!(act.expose_secret(), *exp),
@@ -860,13 +859,21 @@ async fn test_password_migration_empty_passwords() {
         .expect("temp_old_password should exist");
 
     let result = stored_passwords_migration_pipeline(&pool, user_id, temp_old_hash).await;
-    assert!(result.is_ok(), "Migration with no passwords should succeed: {:?}", result);
+    assert!(
+        result.is_ok(),
+        "Migration with no passwords should succeed: {:?}",
+        result
+    );
 
     // 4. Verifica temp_old_password rimosso
     let temp_old_after = fetch_user_temp_old_password(&pool, user_id)
         .await
         .expect("Failed to fetch temp_old_password");
-    assert!(temp_old_after.is_none(), "temp_old_password should be removed, but was: {:?}", temp_old_after);
+    assert!(
+        temp_old_after.is_none(),
+        "temp_old_password should be removed, but was: {:?}",
+        temp_old_after
+    );
 }
 
 // ============ Test per ExcludedSymbolSet ============
@@ -939,8 +946,7 @@ async fn test_excluded_symbol_set_respected() {
 
         println!(
             "[{}] All 10 passwords respected excluded symbols: {}",
-            name,
-            excluded_str
+            name, excluded_str
         );
     }
 }

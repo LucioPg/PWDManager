@@ -790,7 +790,7 @@ pub async fn fetch_passwords_paginated(
             // Nessun filtro: tutte le password dell'utente
             sqlx::query_as::<_, StoredPassword>(
                 r#"
-                SELECT id, user_id, name, username, username_nonce, location, location_nonce,
+                SELECT id, user_id, name, username, username_nonce, url, url_nonce,
                        password, password_nonce, notes, notes_nonce, score, created_at
                 FROM passwords
                 WHERE user_id = ?
@@ -811,7 +811,7 @@ pub async fn fetch_passwords_paginated(
             // Filtro range score
             sqlx::query_as::<_, StoredPassword>(
                 r#"
-                SELECT id, user_id, name, username, username_nonce, location, location_nonce,
+                SELECT id, user_id, name, username, username_nonce, url, url_nonce,
                        password, password_nonce, notes, notes_nonce, score, created_at
                 FROM passwords
                 WHERE user_id = ? AND score >= ? AND score <= ?
@@ -835,24 +835,20 @@ pub async fn fetch_passwords_paginated(
 
     // Count totale per la paginazione (con stesso filtro)
     let total: (i64,) = match (min_score, max_score) {
-        (None, None) => {
-            sqlx::query_as("SELECT COUNT(*) FROM passwords WHERE user_id = ?")
-                .bind(user_id)
-                .fetch_one(pool)
-                .await
-                .map_err(|e| DBError::new_list_error(format!("Failed to count passwords: {}", e)))?
-        }
-        (Some(min), Some(max)) => {
-            sqlx::query_as(
-                "SELECT COUNT(*) FROM passwords WHERE user_id = ? AND score >= ? AND score <= ?",
-            )
+        (None, None) => sqlx::query_as("SELECT COUNT(*) FROM passwords WHERE user_id = ?")
             .bind(user_id)
-            .bind(min as i32)
-            .bind(max as i32)
             .fetch_one(pool)
             .await
-            .map_err(|e| DBError::new_list_error(format!("Failed to count passwords: {}", e)))?
-        }
+            .map_err(|e| DBError::new_list_error(format!("Failed to count passwords: {}", e)))?,
+        (Some(min), Some(max)) => sqlx::query_as(
+            "SELECT COUNT(*) FROM passwords WHERE user_id = ? AND score >= ? AND score <= ?",
+        )
+        .bind(user_id)
+        .bind(min as i32)
+        .bind(max as i32)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| DBError::new_list_error(format!("Failed to count passwords: {}", e)))?,
         _ => unreachable!(),
     };
 
@@ -895,42 +891,34 @@ pub async fn fetch_all_passwords_for_user_with_filter(
     };
 
     let results = match (min_score, max_score) {
-        (None, None) => {
-            sqlx::query_as::<_, StoredPassword>(
-                r#"
-                SELECT id, user_id, name, username, username_nonce, location, location_nonce,
+        (None, None) => sqlx::query_as::<_, StoredPassword>(
+            r#"
+                SELECT id, user_id, name, username, username_nonce, url, url_nonce,
                        password, password_nonce, notes, notes_nonce, score, created_at
                 FROM passwords
                 WHERE user_id = ?
                 ORDER BY created_at DESC
                 "#,
-            )
-            .bind(user_id)
-            .fetch_all(pool)
-            .await
-            .map_err(|e| {
-                DBError::new_list_error(format!("Failed to fetch all passwords: {}", e))
-            })?
-        }
-        (Some(min), Some(max)) => {
-            sqlx::query_as::<_, StoredPassword>(
-                r#"
-                SELECT id, user_id, name, username, username_nonce, location, location_nonce,
+        )
+        .bind(user_id)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| DBError::new_list_error(format!("Failed to fetch all passwords: {}", e)))?,
+        (Some(min), Some(max)) => sqlx::query_as::<_, StoredPassword>(
+            r#"
+                SELECT id, user_id, name, username, username_nonce, url, url_nonce,
                        password, password_nonce, notes, notes_nonce, score, created_at
                 FROM passwords
                 WHERE user_id = ? AND score >= ? AND score <= ?
                 ORDER BY created_at DESC
                 "#,
-            )
-            .bind(user_id)
-            .bind(min as i32)
-            .bind(max as i32)
-            .fetch_all(pool)
-            .await
-            .map_err(|e| {
-                DBError::new_list_error(format!("Failed to fetch all passwords: {}", e))
-            })?
-        }
+        )
+        .bind(user_id)
+        .bind(min as i32)
+        .bind(max as i32)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| DBError::new_list_error(format!("Failed to fetch all passwords: {}", e)))?,
         _ => unreachable!("min_score e max_score sono sempre entrambi Some o entrambi None"),
     };
 
@@ -1079,10 +1067,10 @@ pub async fn upsert_stored_passwords_batch(
     for stored_password in &passwords {
         // Validazione
         if stored_password.password.expose_secret().is_empty()
-            || stored_password.location.expose_secret().is_empty()
+            || stored_password.url.expose_secret().is_empty()
         {
             return Err(DBError::new_password_save_error(
-                "Password and location cannot be empty".into(),
+                "Password and url cannot be empty".into(),
             ));
         }
 

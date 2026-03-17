@@ -1,7 +1,7 @@
 //! Tipi per l'export delle password in vari formati.
 
-use serde::{Deserialize, Serialize};
 use secrecy::ExposeSecret;
+use serde::{Deserialize, Serialize};
 
 /// Formato di export supportato.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -47,7 +47,7 @@ pub struct ExportablePassword {
     pub name: String,
     #[serde(default)]
     pub username: String,
-    pub location: String,
+    pub url: String,
     pub password: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default)]
@@ -68,7 +68,7 @@ impl ExportablePassword {
         Self {
             name: stored.name.clone(),
             username: stored.username.expose_secret().to_string(),
-            location: stored.location.expose_secret().to_string(),
+            url: stored.url.expose_secret().to_string(),
             password: stored.password.expose_secret().to_string(),
             notes: stored.notes.as_ref().map(|n| n.expose_secret().to_string()),
             score: stored.score.map(|s| s.value()),
@@ -92,9 +92,12 @@ impl ExportablePassword {
             user_id,
             name: self.name.clone(),
             username: SecretString::new(self.username.clone().into()),
-            location: SecretString::new(self.location.clone().into()),
+            url: SecretString::new(self.url.clone().into()),
             password: SecretString::new(self.password.clone().into()),
-            notes: self.notes.as_ref().map(|n| SecretString::new(n.clone().into())),
+            notes: self
+                .notes
+                .as_ref()
+                .map(|n| SecretString::new(n.clone().into())),
             score: self.score.map(PasswordScore::new),
             created_at: self.created_at.clone(),
         }

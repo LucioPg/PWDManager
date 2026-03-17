@@ -15,9 +15,9 @@ use crate::backend::db_backend::{
 use crate::backend::evaluate_password_strength;
 use crate::backend::migration_types::{MigrationStage, ProgressMessage, ProgressSender};
 use aes_gcm::aead::{Aead, Nonce, OsRng};
-use chrono::Utc;
 use aes_gcm::{Aes256Gcm, KeyInit};
 use argon2::password_hash::{PasswordHash, Salt};
+use chrono::Utc;
 use custom_errors::DBError;
 use pwd_crypto::{
     create_cipher as crypto_create_cipher, create_nonce,
@@ -155,7 +155,7 @@ pub async fn create_stored_data_pipeline_bulk(
     Ok(())
 }
 
-/// Crea record StoredPassword criptando location, password e notes in parallelo.
+/// Crea record StoredPassword criptando url, password e notes in parallelo.
 pub async fn create_stored_data_records(
     cipher: Aes256Gcm,
     user_auth: UserAuth,
@@ -180,9 +180,8 @@ pub async fn create_stored_data_records(
                 let (encrypted_username, username_nonce) =
                     encrypt_string(srp.username.expose_secret(), &cipher)?;
 
-                // Cripta location
-                let (encrypted_location, location_nonce) =
-                    encrypt_string(srp.location.expose_secret(), &cipher)?;
+                // Cripta url
+                let (encrypted_url, url_nonce) = encrypt_string(srp.url.expose_secret(), &cipher)?;
 
                 // Cripta password
                 let password_nonce = create_nonce();
@@ -216,9 +215,9 @@ pub async fn create_stored_data_records(
                 }
 
                 // Se created_at è None, calcola il timestamp corrente (formato SQLite)
-                let created_at = srp.created_at.or_else(|| {
-                    Some(Utc::now().format("%Y-%m-%d %H:%M:%S").to_string())
-                });
+                let created_at = srp
+                    .created_at
+                    .or_else(|| Some(Utc::now().format("%Y-%m-%d %H:%M:%S").to_string()));
 
                 Ok(StoredPassword::new(
                     srp.id,
@@ -226,8 +225,8 @@ pub async fn create_stored_data_records(
                     srp.name.clone(),
                     encrypted_username,
                     username_nonce.to_vec(),
-                    encrypted_location,
-                    location_nonce.to_vec(),
+                    encrypted_url,
+                    url_nonce.to_vec(),
                     encrypted_password,
                     encrypted_notes,
                     notes_nonce.map(|n| n.to_vec()),
@@ -260,7 +259,7 @@ pub async fn get_stored_raw_passwords(
 /// Recupera e decifra TUTTE le password dell'utente con filtro opzionale.
 ///
 /// Questa funzione è usata per l'ordinamento frontend che richiede
-/// tutti i dati decifrati (location è cifrata nel DB).
+/// tutti i dati decifrati (url è cifrata nel DB).
 ///
 /// # Arguments
 /// * `pool` - Connection pool SQLite
@@ -275,8 +274,7 @@ pub async fn get_all_stored_raw_passwords_with_filter(
     user_id: i64,
     filter: Option<PasswordStrength>,
 ) -> Result<Vec<StoredRawPassword>, DBError> {
-    let stored_passwords =
-        fetch_all_passwords_for_user_with_filter(pool, user_id, filter).await?;
+    let stored_passwords = fetch_all_passwords_for_user_with_filter(pool, user_id, filter).await?;
 
     let stored_raw_passwords = decrypt_bulk_stored_data(
         fetch_user_auth_from_id(pool, user_id).await?,
@@ -328,7 +326,11 @@ pub async fn decrypt_bulk_stored_data(
     stored_passwords: Vec<StoredPassword>,
     progress_tx: Option<Arc<ProgressSender>>,
 ) -> Result<Vec<StoredRawPassword>, DBError> {
-    tracing::info!("decrypt_bulk_stored_data: starting with {} passwords, progress_tx={:?}", stored_passwords.len(), progress_tx.is_some());
+    tracing::info!(
+        "decrypt_bulk_stored_data: starting with {} passwords, progress_tx={:?}",
+        stored_passwords.len(),
+        progress_tx.is_some()
+    );
 
     if stored_passwords.is_empty() {
         return Ok(Vec::new());
@@ -354,13 +356,9 @@ pub async fn decrypt_bulk_stored_data(
                     &cipher,
                 )?;
 
-                // Decripta location
-                let location_nonce = get_nonce_from_vec(&sp.location_nonce)?;
-                let location = decrypt_to_string(
-                    sp.location.expose_secret().as_ref(),
-                    &location_nonce,
-                    &cipher,
-                )?;
+                // Decripta url
+                let url_nonce = get_nonce_from_vec(&sp.url_nonce)?;
+                let url = decrypt_to_string(sp.url.expose_secret().as_ref(), &url_nonce, &cipher)?;
 
                 // Decripta password
                 let password_nonce = get_nonce_from_vec(&sp.password_nonce)?;
@@ -386,7 +384,11 @@ pub async fn decrypt_bulk_stored_data(
                 // Aggiorna progress
                 if let Some(tx) = &progress_tx_clone {
                     let current = completed.fetch_add(1, Ordering::SeqCst) + 1;
-                    tracing::debug!("decrypt_bulk_stored_data: sending progress {}/{}", current, total);
+                    tracing::debug!(
+                        "decrypt_bulk_stored_data: sending progress {}/{}",
+                        current,
+                        total
+                    );
                     // Usa try_send invece di blocking_send per evitare deadlock
                     let _ = tx.try_send(ProgressMessage::new(
                         MigrationStage::Decrypting,
@@ -401,7 +403,7 @@ pub async fn decrypt_bulk_stored_data(
                     user_id: user_auth.id,
                     name: sp.name.clone(),
                     username: SecretString::new(username.into()),
-                    location: SecretString::new(location.into()),
+                    url: SecretString::new(url.into()),
                     password: SecretString::new(password.into()),
                     notes: notes.map(|n| SecretString::new(n.into())),
                     score: Some(sp.score),
@@ -413,9 +415,7 @@ pub async fn decrypt_bulk_stored_data(
 
     tracing::info!("decrypt_bulk_stored_data: spawn_blocking task completed, awaiting result");
 
-    result
-    .await
-    .map_err(|e| {
+    result.await.map_err(|e| {
         tracing::error!("decrypt_bulk_stored_data: task failed with error: {}", e);
         DBError::new_password_conversion_error(format!("Join error: {}", e))
     })?

@@ -31,8 +31,8 @@
 ///    - `name`: TEXT NOT NULL (nome del servizio)
 ///    - `username`: BLOB NOT NULL (nome utente criptato AES-256-GCM)
 ///    - `username_nonce`: BLOB NOT NULL UNIQUE (nonce per username, 12 byte)
-///    - `location`: BLOB NOT NULL (luogo/nome del servizio criptato AES-256-GCM)
-///    - `location_nonce`: BLOB NOT NULL UNIQUE (nonce per location, 12 byte)
+///    - `url`: BLOB NOT NULL (luogo/nome del servizio criptato AES-256-GCM)
+///    - `url_nonce`: BLOB NOT NULL UNIQUE (nonce per url, 12 byte)
 ///    - `password`: BLOB NOT NULL (password criptata AES-256-GCM)
 ///    - `password_nonce`: BLOB NOT NULL UNIQUE (nonce per password, 12 byte)
 ///    - `notes`: BLOB (note opzionali criptate)
@@ -55,8 +55,8 @@ pub static QUERIES: &[&str] = &[
                 name TEXT NOT NULL,
                 username BLOB NOT NULL,
                 username_nonce BLOB NOT NULL UNIQUE,
-                location BLOB NOT NULL,
-                location_nonce BLOB NOT NULL UNIQUE,
+                url BLOB NOT NULL,
+                url_nonce BLOB NOT NULL UNIQUE,
                 password BLOB NOT NULL,
                 password_nonce BLOB NOT NULL UNIQUE,
                 notes BLOB,

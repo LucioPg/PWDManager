@@ -105,7 +105,7 @@ fn generate_single_password(user_id: i64, index: usize, settings_id: i64) -> Sto
         user_id,
         name: format!("Service {}", index + 1),
         username: SecretString::new(format!("user{}@example.com", index + 1).into()),
-        location: SecretString::new(location.into()),
+        url: SecretString::new(location.into()),
         password,
         notes: Some(SecretString::new(
             format!("Nota di test per password #{}", index + 1).into(),

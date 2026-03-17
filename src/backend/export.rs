@@ -19,14 +19,13 @@ use pwd_types::StoredRawPassword;
 use quick_xml::se::to_string as xml_to_string;
 use sqlx::SqlitePool;
 use std::path::Path;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::{fs, task};
 
 /// Serializza le password in formato JSON (pretty-printed).
 pub fn serialize_to_json(passwords: &[ExportablePassword]) -> Result<String, String> {
-    serde_json::to_string_pretty(passwords)
-        .map_err(|e| format!("JSON serialization error: {}", e))
+    serde_json::to_string_pretty(passwords).map_err(|e| format!("JSON serialization error: {}", e))
 }
 
 /// Serializza le password in formato CSV.
@@ -107,7 +106,10 @@ pub async fn export_passwords_pipeline_with_progress(
         .map_err(|e| e.to_string())?;
 
     let total = stored_passwords.len();
-    tracing::info!("export_passwords_pipeline_with_progress: fetched {} passwords", total);
+    tracing::info!(
+        "export_passwords_pipeline_with_progress: fetched {} passwords",
+        total
+    );
 
     if total == 0 {
         // Nessuna password da esportare
@@ -245,16 +247,16 @@ pub fn validate_export_path(path: &Path) -> Result<(), String> {
     // Verifica che la directory padre esista
     if let Some(parent) = path.parent() {
         if !parent.exists() {
-            return Err(format!(
-                "Directory does not exist: {}",
-                parent.display()
-            ));
+            return Err(format!("Directory does not exist: {}", parent.display()));
         }
     }
 
     // Verifica che non sia una directory
     if path.exists() && path.is_dir() {
-        return Err(format!("Path is a directory, not a file: {}", path.display()));
+        return Err(format!(
+            "Path is a directory, not a file: {}",
+            path.display()
+        ));
     }
 
     Ok(())
@@ -268,7 +270,7 @@ mod tests {
         ExportablePassword {
             name: "Example Service".to_string(),
             username: "user@example.com".to_string(),
-            location: "example.com".to_string(),
+            url: "example.com".to_string(),
             password: "secret123".to_string(),
             notes: Some("test notes".to_string()),
             score: Some(85),
@@ -290,7 +292,7 @@ mod tests {
         let result = serialize_to_csv(&passwords);
         assert!(result.is_ok());
         let csv = result.unwrap();
-        assert!(csv.contains("location"));
+        assert!(csv.contains("url"));
         assert!(csv.contains("example.com"));
     }
 

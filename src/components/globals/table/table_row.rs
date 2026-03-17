@@ -43,7 +43,7 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
             // Column 1: Location (visualizzazione sicura con toggle)
             td { class: "pwd-table__cell-content",
                 SecretDisplay {
-                    secret: FormSecret(props.stored_raw_password.location.clone()),
+                    secret: FormSecret(props.stored_raw_password.url.clone()),
                     max_width: "".to_string(),
                     unlocked: props.unlocked_location,
                 }
@@ -77,11 +77,7 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                         r#type: "button",
                         onclick: move |evt| {
                             let coords = evt.client_coordinates();
-                            props.on_show_tooltip.call((
-                                password_for_tooltip.clone(),
-                                coords.x,
-                                coords.y,
-                            ));
+                            props.on_show_tooltip.call((password_for_tooltip.clone(), coords.x, coords.y));
                         },
                         BurgerIcon {}
                     }

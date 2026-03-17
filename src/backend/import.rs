@@ -5,7 +5,7 @@
 //! File (JSON/CSV/XML)
 //!          ↓ read + parse
 //! ExportablePassword (String in chiaro)
-//!          ↓ deduplicate by (location, password)
+//!          ↓ deduplicate by (url, password)
 //! ExportablePassword (unici)
 //!          ↓ to_stored_raw() + user_id
 //! StoredRawPassword (SecretString)
@@ -67,7 +67,7 @@ pub fn parse_passwords(
     }
 }
 
-/// Deduplicates passwords based on (location, password) combination.
+/// Deduplicates passwords based on (url, password) combination.
 ///
 /// Returns (unique_passwords, duplicates_count).
 /// Prioritizes first occurrence when duplicates exist.
@@ -81,7 +81,7 @@ pub fn deduplicate_passwords(
     let original_count = passwords.len();
 
     for pwd in passwords {
-        let key = (pwd.location.clone(), pwd.password.clone());
+        let key = (pwd.url.clone(), pwd.password.clone());
         if seen.insert(key) {
             unique.push(pwd);
         }
@@ -147,7 +147,7 @@ fn storedRawPasswords_score_patch(stored_passwords: &mut Vec<StoredRawPassword>)
 /// # Flusso
 /// 1. Leggi file dal disco
 /// 2. Parse nel formato appropriato
-/// 3. Deduplica (per location + password)
+/// 3. Deduplica (per url + password)
 /// 4. Filtra password che esistono già nel DB per questo utente
 /// 5. Cripta e salva nel DB
 ///
@@ -230,12 +230,12 @@ pub async fn import_passwords_pipeline_with_progress(
         .await
         .map_err(|e| e.to_string())?;
 
-    // Crea set di (location, password) esistenti
+    // Crea set di (url, password) esistenti
     let existing_set: std::collections::HashSet<(String, String)> = existing_raw
         .iter()
         .map(|rp| {
             (
-                rp.location.expose_secret().to_string(),
+                rp.url.expose_secret().to_string(),
                 rp.password.expose_secret().to_string(),
             )
         })
@@ -244,7 +244,7 @@ pub async fn import_passwords_pipeline_with_progress(
     // Filtra password che esistono già
     let new_passwords: Vec<ExportablePassword> = unique_passwords
         .into_iter()
-        .filter(|p| !existing_set.contains(&(p.location.clone(), p.password.clone())))
+        .filter(|p| !existing_set.contains(&(p.url.clone(), p.password.clone())))
         .collect();
 
     let db_duplicates = total_in_file - file_duplicates - new_passwords.len();
@@ -339,7 +339,7 @@ mod tests {
         ExportablePassword {
             name: "Example Service".to_string(),
             username: "user@example.com".to_string(),
-            location: "example.com".to_string(),
+            url: "example.com".to_string(),
             password: "secret123".to_string(),
             notes: Some("test notes".to_string()),
             score: Some(85),
@@ -349,50 +349,51 @@ mod tests {
 
     #[test]
     fn test_parse_from_json() {
-        let json = r#"[{"location":"site.com","password":"pass123"}]"#;
+        let json = r#"[{"url":"site.com","password":"pass123"}]"#;
         let result = parse_from_json(json);
         assert!(result.is_ok());
         let passwords = result.unwrap();
         assert_eq!(passwords.len(), 1);
-        assert_eq!(passwords[0].location, "site.com");
+        assert_eq!(passwords[0].url, "site.com");
     }
 
     #[test]
     fn test_parse_from_csv() {
-        let csv = "location,password,notes\nsite.com,pass123,test";
+        let csv = "url,password,notes\nsite.com,pass123,test";
         let result = parse_from_csv(csv);
         assert!(result.is_ok());
         let passwords = result.unwrap();
         assert_eq!(passwords.len(), 1);
-        assert_eq!(passwords[0].location, "site.com");
+        assert_eq!(passwords[0].url, "site.com");
     }
 
     #[test]
     fn test_parse_from_xml() {
-        let xml = r#"<passwords><password><location>site.com</location><password>pass123</password></password></passwords>"#;
+        let xml = r#"<passwords><password><url>site.com</url><password>pass123</password></password></passwords>"#;
         let result = parse_from_xml(xml);
         assert!(result.is_ok());
         let passwords = result.unwrap();
         assert_eq!(passwords.len(), 1);
-        assert_eq!(passwords[0].location, "site.com");
+        assert_eq!(passwords[0].url, "site.com");
     }
 
     #[test]
     fn test_parse_from_json_with_name_username() {
-        let json = r#"[{"name":"GitHub","username":"devuser","location":"github.com","password":"pass123"}]"#;
+        let json =
+            r#"[{"name":"GitHub","username":"devuser","url":"github.com","password":"pass123"}]"#;
         let result = parse_from_json(json);
         assert!(result.is_ok());
         let passwords = result.unwrap();
         assert_eq!(passwords.len(), 1);
         assert_eq!(passwords[0].name, "GitHub");
         assert_eq!(passwords[0].username, "devuser");
-        assert_eq!(passwords[0].location, "github.com");
+        assert_eq!(passwords[0].url, "github.com");
     }
 
     #[test]
     fn test_parse_from_json_missing_name_username_defaults_to_empty() {
         // Test backwards compatibility: old files without name/username
-        let json = r#"[{"location":"legacy.com","password":"oldpass"}]"#;
+        let json = r#"[{"url":"legacy.com","password":"oldpass"}]"#;
         let result = parse_from_json(json);
         assert!(result.is_ok());
         let passwords = result.unwrap();
@@ -408,7 +409,7 @@ mod tests {
             ExportablePassword {
                 name: "Other Service".to_string(),
                 username: "other@example.com".to_string(),
-                location: "other.com".to_string(),
+                url: "other.com".to_string(),
                 password: "different".to_string(),
                 notes: None,
                 score: None,

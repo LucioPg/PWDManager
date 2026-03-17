@@ -4,8 +4,8 @@
 mod tests {
     use crate::backend::export_types::{ExportFormat, ExportablePassword};
     use crate::backend::import::{
-        deduplicate_passwords, parse_from_csv, parse_from_json, parse_from_xml,
-        parse_passwords, validate_import_path,
+        deduplicate_passwords, parse_from_csv, parse_from_json, parse_from_xml, parse_passwords,
+        validate_import_path,
     };
     use std::io::Write;
     use tempfile::NamedTempFile;
@@ -15,7 +15,7 @@ mod tests {
             ExportablePassword {
                 name: "Site 1".to_string(),
                 username: "user1@site.com".to_string(),
-                location: "site1.com".to_string(),
+                url: "site1.com".to_string(),
                 password: "pass1".to_string(),
                 notes: Some("note1".to_string()),
                 score: Some(80),
@@ -24,7 +24,7 @@ mod tests {
             ExportablePassword {
                 name: "Site 2".to_string(),
                 username: "user2@site.com".to_string(),
-                location: "site2.com".to_string(),
+                url: "site2.com".to_string(),
                 password: "pass2".to_string(),
                 notes: Some("note2".to_string()),
                 score: Some(90),
@@ -39,7 +39,7 @@ mod tests {
         let json = crate::backend::export::serialize_to_json(&passwords).unwrap();
         let parsed = parse_from_json(&json).unwrap();
         assert_eq!(parsed.len(), passwords.len());
-        assert_eq!(parsed[0].location, "site1.com");
+        assert_eq!(parsed[0].url, "site1.com");
     }
 
     #[test]
@@ -48,7 +48,7 @@ mod tests {
         let csv = crate::backend::export::serialize_to_csv(&passwords).unwrap();
         let parsed = parse_from_csv(&csv).unwrap();
         assert_eq!(parsed.len(), passwords.len());
-        assert_eq!(parsed[0].location, "site1.com");
+        assert_eq!(parsed[0].url, "site1.com");
     }
 
     #[test]
@@ -57,7 +57,7 @@ mod tests {
         let xml = crate::backend::export::serialize_to_xml(&passwords).unwrap();
         let parsed = parse_from_xml(&xml).unwrap();
         assert_eq!(parsed.len(), passwords.len());
-        assert_eq!(parsed[0].location, "site1.com");
+        assert_eq!(parsed[0].url, "site1.com");
     }
 
     #[test]
@@ -73,7 +73,7 @@ mod tests {
     #[test]
     fn test_validate_import_path_csv() {
         let mut file = NamedTempFile::with_suffix(".csv").unwrap();
-        writeln!(file, "location,password").unwrap();
+        writeln!(file, "url,password").unwrap();
         let path = file.path();
         let result = validate_import_path(path);
         assert!(result.is_ok());
@@ -113,7 +113,7 @@ mod tests {
             ExportablePassword {
                 name: "Site A".to_string(),
                 username: "user1".to_string(),
-                location: "site.com".to_string(),
+                url: "site.com".to_string(),
                 password: "pass".to_string(),
                 notes: Some("first".to_string()),
                 score: Some(80),
@@ -122,7 +122,7 @@ mod tests {
             ExportablePassword {
                 name: "Site B".to_string(),
                 username: "user2".to_string(),
-                location: "site.com".to_string(),
+                url: "site.com".to_string(),
                 password: "pass".to_string(),
                 notes: Some("second".to_string()),
                 score: Some(90),
@@ -148,7 +148,7 @@ mod tests {
     #[test]
     fn test_parse_malformed_json_not_array() {
         // JSON valido ma non un array
-        let json = r#"{"location":"site.com","password":"pass"}"#;
+        let json = r#"{"url":"site.com","password":"pass"}"#;
         let result = parse_from_json(json);
         assert!(result.is_err());
     }
@@ -156,7 +156,7 @@ mod tests {
     #[test]
     fn test_parse_malformed_csv_missing_column() {
         // CSV con solo una colonna (manca password)
-        let csv = "location\nsite.com";
+        let csv = "url\nsite.com";
         let result = parse_from_csv(csv);
         // CSV crate richiede almeno le colonne obbligatorie per deserializzare
         // Se manca la colonna password, il crate csv potrebbe:
@@ -184,7 +184,7 @@ mod tests {
     fn test_parse_xml_wrong_root() {
         // XML con root element sbagliato
         // quick-xml deserializza in base ai tag trovati, non alla root
-        let xml = r#"<wrongroot><password><location>site.com</location><password>pass</password></password></wrongroot>"#;
+        let xml = r#"<wrongroot><password><url>site.com</url><password>pass</password></password></wrongroot>"#;
         let result = parse_from_xml(xml);
         // quick-xml può deserializzare comunque se trova i tag <password>
         // Il comportamento dipende dalla struttura di XmlExportRoot
@@ -210,7 +210,7 @@ mod tests {
     #[test]
     fn test_parse_empty_csv() {
         // CSV con solo header
-        let csv = "location,password,notes,score,created_at";
+        let csv = "url,password,notes,score,created_at";
         let result = parse_from_csv(csv);
         assert!(result.is_ok());
         assert_eq!(result.unwrap().len(), 0);
@@ -237,12 +237,12 @@ mod tests {
     #[test]
     fn test_csv_with_missing_optional_fields() {
         // CSV con notes e score mancanti
-        let csv = "location,password,notes,score,created_at\nsite.com,pass123,,,";
+        let csv = "url,password,notes,score,created_at\nsite.com,pass123,,,";
         let result = parse_from_csv(csv);
         assert!(result.is_ok());
         let passwords = result.unwrap();
         assert_eq!(passwords.len(), 1);
-        assert_eq!(passwords[0].location, "site.com");
+        assert_eq!(passwords[0].url, "site.com");
         assert_eq!(passwords[0].password, "pass123");
         assert_eq!(passwords[0].notes, None);
         assert_eq!(passwords[0].score, None);
@@ -251,7 +251,7 @@ mod tests {
     #[test]
     fn test_json_with_missing_optional_fields() {
         // JSON con campi opzionali omessi
-        let json = r#"[{"location":"site.com","password":"pass123"}]"#;
+        let json = r#"[{"url":"site.com","password":"pass123"}]"#;
         let result = parse_from_json(json);
         assert!(result.is_ok());
         let passwords = result.unwrap();
@@ -263,7 +263,7 @@ mod tests {
     #[test]
     fn test_xml_with_missing_optional_fields() {
         // XML con solo campi obbligatori
-        let xml = r#"<passwords><password><location>site.com</location><password>pass123</password></password></passwords>"#;
+        let xml = r#"<passwords><password><url>site.com</url><password>pass123</password></password></passwords>"#;
         let result = parse_from_xml(xml);
         assert!(result.is_ok());
         let passwords = result.unwrap();
@@ -275,13 +275,13 @@ mod tests {
     // ==================== EDGE CASES ====================
 
     #[test]
-    fn test_deduplicate_location_only_different() {
-        // Stessa location, password diversa = NON duplicato
+    fn test_deduplicate_url_only_different() {
+        // Stessa url, password diversa = NON duplicato
         let passwords = vec![
             ExportablePassword {
                 name: "".to_string(),
                 username: "".to_string(),
-                location: "site.com".to_string(),
+                url: "site.com".to_string(),
                 password: "pass1".to_string(),
                 notes: None,
                 score: None,
@@ -290,7 +290,7 @@ mod tests {
             ExportablePassword {
                 name: "".to_string(),
                 username: "".to_string(),
-                location: "site.com".to_string(),
+                url: "site.com".to_string(),
                 password: "pass2".to_string(),
                 notes: None,
                 score: None,
@@ -304,12 +304,12 @@ mod tests {
 
     #[test]
     fn test_deduplicate_password_only_different() {
-        // Stessa password, location diversa = NON duplicato
+        // Stessa password, url diversa = NON duplicato
         let passwords = vec![
             ExportablePassword {
                 name: "".to_string(),
                 username: "".to_string(),
-                location: "site1.com".to_string(),
+                url: "site1.com".to_string(),
                 password: "samepass".to_string(),
                 notes: None,
                 score: None,
@@ -318,7 +318,7 @@ mod tests {
             ExportablePassword {
                 name: "".to_string(),
                 username: "".to_string(),
-                location: "site2.com".to_string(),
+                url: "site2.com".to_string(),
                 password: "samepass".to_string(),
                 notes: None,
                 score: None,
@@ -333,16 +333,19 @@ mod tests {
     #[test]
     fn test_parse_passwords_dispatch() {
         // Verifica che parse_passwords dispatchi correttamente
-        let json = r#"[{"location":"site.com","password":"pass"}]"#;
+        let json = r#"[{"url":"site.com","password":"pass"}]"#;
 
         let result_json = crate::backend::import::parse_passwords(json, ExportFormat::Json);
         assert!(result_json.is_ok());
 
-        let result_csv = crate::backend::import::parse_passwords("location,password\nsite.com,pass", ExportFormat::Csv);
+        let result_csv = crate::backend::import::parse_passwords(
+            "url,password\nsite.com,pass",
+            ExportFormat::Csv,
+        );
         assert!(result_csv.is_ok());
 
         let result_xml = crate::backend::import::parse_passwords(
-            r#"<passwords><password><location>site.com</location><password>pass</password></password></passwords>"#,
+            r#"<passwords><password><url>site.com</url><password>pass</password></password></passwords>"#,
             ExportFormat::Xml,
         );
         assert!(result_xml.is_ok());

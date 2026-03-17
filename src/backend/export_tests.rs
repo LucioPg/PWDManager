@@ -11,7 +11,7 @@ mod tests {
             ExportablePassword {
                 name: "Site 1".to_string(),
                 username: "user1@site.com".to_string(),
-                location: "site1.com".to_string(),
+                url: "site1.com".to_string(),
                 password: "pass1".to_string(),
                 notes: Some("note1".to_string()),
                 score: Some(80),
@@ -20,7 +20,7 @@ mod tests {
             ExportablePassword {
                 name: "Site 2".to_string(),
                 username: "user2@site.com".to_string(),
-                location: "site2.com".to_string(),
+                url: "site2.com".to_string(),
                 password: "pass2".to_string(),
                 notes: Some("note2".to_string()),
                 score: Some(90),
@@ -45,7 +45,7 @@ mod tests {
         let passwords = create_test_passwords();
         let csv = serialize_passwords(&passwords, ExportFormat::Csv).unwrap();
 
-        assert!(csv.contains("location"));
+        assert!(csv.contains("url"));
         assert!(csv.contains("password"));
         assert!(csv.contains("site1.com"));
     }
@@ -57,7 +57,7 @@ mod tests {
 
         assert!(xml.contains("<passwords>"));
         assert!(xml.contains("</passwords>"));
-        assert!(xml.contains("<location>site1.com</location>"));
+        assert!(xml.contains("<url>site1.com</url>"));
     }
 
     #[test]
