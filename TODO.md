@@ -164,9 +164,18 @@ il pc
 - [x] criptare anche location e note. Quindi usare lo stesso campo di visualizzazione per la password per la location,
   ma non per le note.
 - [x] aggiungere due toggles per lo sblocco della visualizzazione di tutte le location e di tutte le passwords.
-- [ ] aggiungere pulsante per ordinare la dashboard per data crescente o decrescente.
+- [x] aggiungere pulsante per ordinare la dashboard per data crescente o decrescente. --- usata una combobox.
+- [x] il pulsante per ordinare la dashboard deve basarsi sul name e non sulla location.
+- [ ] inserire un campo input per la ricerca, impostare filtro.
 - [x] Assicurarsi che nella fase di import lo score venga ricalcolato.
 - [x] Assicurarsi che il campo score del file di import non sia utilizzato.
+- [x] Aggiungere un campo per il nome della StoredPassword alla tabella.
+- [x] Aggiungere il campo username per la url/location della StoredPassword.
+- [ ] Rimuovere dalla table della dashboard url/location e password, usare solo name e score.
+- [ ] Rimuovere toggles per lo sblocco totale delle locations e passwords
+- [ ] Rimuovere tooltip alla pressione del pulsante "info" nel row della table della dashboard.
+- [ ] Creare dialog per visionare username, url/location, password e note, l'apertura deve essere governata dal pulsante
+  precedentemente usato per le info.
 
 ## To be Threaded
 

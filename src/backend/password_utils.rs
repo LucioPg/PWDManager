@@ -273,8 +273,9 @@ pub async fn get_all_stored_raw_passwords_with_filter(
     pool: &SqlitePool,
     user_id: i64,
     filter: Option<PasswordStrength>,
+    order: &str,
 ) -> Result<Vec<StoredRawPassword>, DBError> {
-    let stored_passwords = fetch_all_passwords_for_user_with_filter(pool, user_id, filter).await?;
+    let stored_passwords = fetch_all_passwords_for_user_with_filter(pool, user_id, filter, order).await?;
 
     let stored_raw_passwords = decrypt_bulk_stored_data(
         fetch_user_auth_from_id(pool, user_id).await?,

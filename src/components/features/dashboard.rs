@@ -69,32 +69,27 @@ pub fn Dashboard() -> Element {
     // Stato paginazione
     let mut pagination = use_context_provider(|| PaginationState::new());
 
-    // Resource per fetch completa + ordinamento
+    // Resource per fetch completa (ordinamento delegato al DB)
     // Reagisce a: current_table_order, pagination.active_filter()
     let mut sorted_passwords_resource = use_resource(move || {
         let pool = pool.clone();
         let user_id = user_id.clone();
         let filter = pagination.active_filter();
-        let order = current_table_order();
+        let order_clause = current_table_order()
+            .unwrap_or(TableOrder::Newest)
+            .order_by_clause();
 
         async move {
             if user_id == -1 {
                 return Vec::new();
             }
 
-            let mut passwords = get_all_stored_raw_passwords_with_filter(&pool, user_id, filter)
+            get_all_stored_raw_passwords_with_filter(&pool, user_id, filter, order_clause)
                 .await
                 .unwrap_or_else(|e| {
                     error.set(Some(e));
                     Vec::new()
-                });
-
-            // Applica ordinamento
-            if let Some(order) = order {
-                order.sort(&mut passwords);
-            }
-
-            passwords
+                })
         }
     });
 

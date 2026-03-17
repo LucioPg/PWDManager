@@ -873,10 +873,11 @@ pub async fn fetch_all_passwords_for_user_with_filter(
     pool: &SqlitePool,
     user_id: i64,
     filter: Option<PasswordStrength>,
+    order: &str,
 ) -> Result<Vec<StoredPassword>, DBError> {
     debug!(
-        "Fetching all passwords for user_id={} with filter={:?}",
-        user_id, filter
+        "Fetching all passwords for user_id={} with filter={:?}, order={}",
+        user_id, filter, order
     );
 
     // Mappa filtro strength → range di score
@@ -892,26 +893,30 @@ pub async fn fetch_all_passwords_for_user_with_filter(
 
     let results = match (min_score, max_score) {
         (None, None) => sqlx::query_as::<_, StoredPassword>(
-            r#"
+            &format!(
+                r#"
                 SELECT id, user_id, name, username, username_nonce, url, url_nonce,
                        password, password_nonce, notes, notes_nonce, score, created_at
                 FROM passwords
                 WHERE user_id = ?
-                ORDER BY created_at DESC
-                "#,
+                ORDER BY {order}
+                "#
+            ),
         )
         .bind(user_id)
         .fetch_all(pool)
         .await
         .map_err(|e| DBError::new_list_error(format!("Failed to fetch all passwords: {}", e)))?,
         (Some(min), Some(max)) => sqlx::query_as::<_, StoredPassword>(
-            r#"
+            &format!(
+                r#"
                 SELECT id, user_id, name, username, username_nonce, url, url_nonce,
                        password, password_nonce, notes, notes_nonce, score, created_at
                 FROM passwords
                 WHERE user_id = ? AND score >= ? AND score <= ?
-                ORDER BY created_at DESC
-                "#,
+                ORDER BY {order}
+                "#
+            ),
         )
         .bind(user_id)
         .bind(min as i32)
