@@ -4,63 +4,97 @@
 
 **Goal:** Add a client-side search input to the Dashboard controls bar that filters the password table by name, combining with the existing strength filter.
 
-**Architecture:** A new `search_query` signal in `dashboard.rs` feeds into the existing `page_data` `use_memo`, which applies both the text filter (case-insensitive substring on `name`) and the strength filter (from StatsAside) via AND logic. Pagination resets to page 1 when the search query changes. CSS classes in `input_main.css` style the input with a search icon and clear button.
+**Architecture:** A new `search_query` signal in `dashboard.rs` feeds into a new `filtered_passwords` `use_memo` (pure computation, no side effects), which applies the text filter (case-insensitive substring on `name`). A separate `use_effect` syncs `total_count` from the filtered results. The existing `page_data` `use_memo` then slices the filtered data for pagination. CSS classes in `input_main.css` (all prefixed `pwd-`) style the input with a search icon and clear button. Responsive layout uses `flex-wrap` to prevent overflow on small screens.
 
-**Tech Stack:** Dioxus 0.7 (signals, use_memo, RSX), DaisyUI 5 (input classes), Tailwind CSS
+**Tech Stack:** Dioxus 0.7 (signals, use_memo, use_effect, RSX), DaisyUI 5 (input classes), Tailwind CSS v4
 
 ---
 
 ### Task 1: Add CSS classes for the search input
 
 **Files:**
-- Modify: `assets/input_main.css`
+- Modify: `assets/input_main.css` (append at end of file, after line 1815)
 
 - [ ] **Step 1: Add search input CSS classes**
 
-Add the following CSS at an appropriate location in `assets/input_main.css` (after the existing `.content-container` block or in a new section):
+Append the following CSS at the end of `assets/input_main.css`. All classes use the `pwd-` prefix per project convention. The search input uses `width: 100%` inside its wrapper so it can grow/shrink with `flex-wrap`.
 
 ```css
-/* === Search Input === */
+/* === Search Input (Dashboard) === */
 .pwd-search-wrapper {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    width: 14rem;
+    flex-shrink: 1;
 }
 
-.pwd-search-wrapper svg {
-  position: absolute;
-  left: 0.75rem;
-  width: 1rem;
-  height: 1rem;
-  pointer-events: none;
-  opacity: 0.5;
+.pwd-search-icon {
+    position: absolute;
+    left: 0.75rem;
+    width: 1rem;
+    height: 1rem;
+    pointer-events: none;
+    opacity: 0.5;
 }
 
 .pwd-search-input {
-  padding-left: 2.25rem;
-  padding-right: 2.25rem;
-  width: 14rem;
+    padding-left: 2.25rem;
+    padding-right: 2.25rem;
+    width: 100%;
+    font-size: 0.875rem;
+    height: 2rem;
+}
+
+.pwd-search-input:focus {
+    outline: 2px solid theme('colors.primary');
+    outline-offset: -2px;
+    border-color: transparent;
 }
 
 .pwd-search-clear {
-  position: absolute;
-  right: 0.5rem;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0.25rem;
-  display: flex;
-  align-items: center;
-  opacity: 0.5;
-  transition: opacity 0.15s;
+    position: absolute;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+    color: currentColor;
 }
 
 .pwd-search-clear:hover {
-  opacity: 0.8;
+    opacity: 0.8;
+}
+
+/* Controls bar: flex-wrap per responsività */
+.pwd-controls-bar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pwd-controls-left {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+    .pwd-search-wrapper {
+        width: 100%;
+    }
 }
 ```
 
-Note: check if `input-bordered` and `input-sm` (or similar DaisyUI input classes) exist in `input_main.css` already. If not, add them to the appropriate `@layer` so Tailwind generates the styles. Search for `input` in `input_main.css` first.
+**Note on DaisyUI classes:** `input-bordered` and `input-sm` are DaisyUI 5 utility classes. Since `input_main.css` uses `@source "../src/**/*.rs"`, Tailwind will scan the Rust source and generate these classes automatically when they appear in the RSX. No manual addition to `input_main.css` is needed for them.
 
 - [ ] **Step 2: Verify build**
 
@@ -76,7 +110,7 @@ git commit -m "style: add CSS classes for dashboard search input"
 
 ---
 
-### Task 2: Add search signal and filter logic in dashboard.rs
+### Task 2: Add search signal, filter logic, and RSX in dashboard.rs
 
 **Files:**
 - Modify: `src/components/features/dashboard.rs`
@@ -90,31 +124,51 @@ After line 62 (`let mut all_passwords = use_signal(|| Vec::<StoredRawPassword>::
     let mut search_query = use_signal(|| String::new());
 ```
 
-- [ ] **Step 2: Update the page_data use_memo to apply name filtering**
+- [ ] **Step 2: Add a filtered_passwords memo (pure computation)**
 
-Replace the existing `page_data` use_memo (lines 103-114) with:
+After the existing `use_effect` that sets `all_passwords` (lines 95-100), add a new `use_memo` that computes the filtered list. This is a **pure computation** — no side effects:
 
 ```rust
-    // Paginazione locale: filtro search + strength, poi slice
-    let page_data = use_memo(move || {
-        let page = pagination.current_page();
-        let page_size = pagination.page_size();
+    // Filtro per nome (case-insensitive). Computazione pura.
+    let filtered_passwords = use_memo(move || {
         let query = search_query();
         let query_lower = query.to_lowercase();
         let all = all_passwords();
 
-        // Filtro per nome (case-insensitive) + strength (AND)
-        let filtered: Vec<StoredRawPassword> = all
-            .into_iter()
-            .filter(|p| {
-                let name_match = query_lower.is_empty()
-                    || p.name.to_lowercase().contains(&query_lower);
-                name_match
-            })
-            .collect();
+        if query_lower.is_empty() {
+            all
+        } else {
+            all.into_iter()
+                .filter(|p| p.name.to_lowercase().contains(&query_lower))
+                .collect()
+        }
+    });
+```
 
-        // Aggiorna total_count con i risultati filtrati
-        pagination.total_count.set(filtered.len() as u64);
+**Why a separate memo:** Keeping the filter logic separate from the pagination slice makes each memo focused on one responsibility. The `page_data` memo will read `filtered_passwords()` instead of `all_passwords()`.
+
+- [ ] **Step 3: Add a use_effect to sync total_count from filtered results**
+
+After the new memo, add a `use_effect` to sync `total_count` — this keeps side effects out of `use_memo`:
+
+```rust
+    // Sync total_count con i risultati filtrati
+    use_effect(move || {
+        let count = filtered_passwords().len();
+        pagination.total_count.set(count as u64);
+    });
+```
+
+- [ ] **Step 4: Update page_data to use filtered_passwords instead of all_passwords**
+
+Replace the existing `page_data` `use_memo` (lines 103-114):
+
+```rust
+    // Paginazione locale: slice dei dati filtrati
+    let page_data = use_memo(move || {
+        let page = pagination.current_page();
+        let page_size = pagination.page_size();
+        let filtered = filtered_passwords();
 
         let start = page * page_size;
         let end = (start + page_size).min(filtered.len());
@@ -126,11 +180,9 @@ Replace the existing `page_data` use_memo (lines 103-114) with:
     });
 ```
 
-**Key detail:** `total_count` is set inside the memo so the pagination component always reflects the filtered count. The strength filter from StatsAside is already handled by the SQL query (the `sorted_passwords_resource` only fetches passwords matching the active strength range), so the client-side filter only needs to handle the search query.
+- [ ] **Step 5: Remove the total_count update from the use_effect on line 95-100**
 
-- [ ] **Step 3: Remove the total_count update from the use_effect**
-
-In the existing `use_effect` (lines 95-100), remove the `pagination.total_count.set(data.len() as u64);` line since `total_count` is now managed inside `page_data`:
+The existing `use_effect` that copies resource data into `all_passwords` also sets `total_count`. Remove that line since `total_count` is now synced via the new `use_effect` in Step 3:
 
 ```rust
     // Aggiorna all_passwords quando la resource completa
@@ -141,95 +193,87 @@ In the existing `use_effect` (lines 95-100), remove the `pagination.total_count.
     });
 ```
 
-- [ ] **Step 4: Add search input element in the controls bar RSX**
+- [ ] **Step 6: Replace the controls bar RSX with search input + responsive layout**
 
-In the RSX, modify the controls bar `div` (line 227) to include the search input before the Combobox. The current layout is:
-
-```rust
-div { class: "flex flex-row justify-between",
-    Combobox::<TableOrder> { ... }
-    div { class: "flex flex-row gap-3 mb-4 justify-end align-center",
-        button { class: "btn btn-success", ... }
-    }
-}
-```
-
-Change it to:
+Replace the controls bar `div` (line 227-248). The current layout is a single `flex-row` with Combobox on the left and button on the right. Replace it with a `pwd-controls-bar` wrapper that uses `flex-wrap` for responsiveness:
 
 ```rust
-div { class: "flex flex-row justify-between items-center",
-    div { class: "flex flex-row items-center gap-3",
-        // Search input
-        div { class: "pwd-search-wrapper",
-            svg {
-                class: "pwd-search-icon",
-                view_box: "0 0 24 24",
-                fill: "none",
-                stroke: "currentColor",
-                stroke_width: "2",
-                path { d: "M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" }
-            }
-            input {
-                class: "input input-bordered input-sm pwd-search-input",
-                r#type: "text",
-                placeholder: "Cerca per nome...",
-                value: "{search_query}",
-                oninput: move |e| {
-                    let value = e.value();
-                    search_query.set(value.clone());
-                    pagination.go_to_page(0);
-                },
-            }
-            if !search_query.read().is_empty() {
-                button {
-                    class: "pwd-search-clear",
-                    onclick: move |_| {
-                        search_query.set(String::new());
-                        pagination.go_to_page(0);
-                    },
-                    svg {
-                        view_box: "0 0 24 24",
-                        fill: "none",
-                        stroke: "currentColor",
-                        stroke_width: "2",
-                        path { d: "M18 6L6 18M6 6l12 12" }
+            div { class: "pwd-controls-bar",
+                div { class: "pwd-controls-left",
+                    // Search input
+                    div { class: "pwd-search-wrapper",
+                        svg {
+                            class: "pwd-search-icon",
+                            view_box: "0 0 24 24",
+                            fill: "none",
+                            stroke: "currentColor",
+                            stroke_width: "2",
+                            path { d: "M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" }
+                        }
+                        input {
+                            class: "input input-bordered input-sm pwd-search-input",
+                            r#type: "text",
+                            placeholder: "Cerca per nome...",
+                            value: "{search_query}",
+                            oninput: move |e| {
+                                let value = e.value();
+                                search_query.set(value);
+                                pagination.go_to_page(0);
+                            },
+                        }
+                        if !search_query().is_empty() {
+                            button {
+                                class: "pwd-search-clear",
+                                onclick: move |_| {
+                                    search_query.set(String::new());
+                                    pagination.go_to_page(0);
+                                },
+                                svg {
+                                    view_box: "0 0 24 24",
+                                    fill: "none",
+                                    stroke: "currentColor",
+                                    stroke_width: "2",
+                                    path { d: "M18 6L6 18M6 6l12 12" }
+                                }
+                            }
+                        }
+                    }
+                    // Sort Combobox
+                    Combobox::<TableOrder> {
+                        options: options.clone(),
+                        placeholder: "Order by".to_string(),
+                        on_change: move |v| {
+                            current_table_order.set(v);
+                            pagination.go_to_page(0);
+                            sorted_passwords_resource.restart();
+                        },
                     }
                 }
+                button {
+                    class: "btn btn-success",
+                    r#type: "button",
+                    onclick: move |_| {
+                        stored_password_dialog_state.current_stored_raw_password.set(None);
+                        stored_password_dialog_state.is_open.set(true);
+                    },
+                    "New Password"
+                }
             }
-        }
-        // Sort Combobox
-        Combobox::<TableOrder> {
-            options: options.clone(),
-            placeholder: "Order by".to_string(),
-            on_change: move |v| {
-                current_table_order.set(v);
-                pagination.go_to_page(0);
-                sorted_passwords_resource.restart();
-            },
-        }
-    }
-    div { class: "flex flex-row gap-3 mb-4 justify-end align-center",
-        button {
-            class: "btn btn-success",
-            r#type: "button",
-            onclick: move |_| {
-                stored_password_dialog_state.current_stored_raw_password.set(None);
-                stored_password_dialog_state.is_open.set(true);
-            },
-            "New Password"
-        }
-    }
-}
 ```
 
-**Important:** Before writing this RSX, check that `input-bordered` and `input-sm` classes exist in `input_main.css`. If not, add them to ensure Tailwind generates the styles. Run `grep -n "input-bordered\|input-sm\|input-" assets/input_main.css` to check.
+**Key differences from the old layout:**
+- `pwd-controls-bar` replaces `flex flex-row justify-between` — adds `flex-wrap` so items flow to next row on small screens
+- `pwd-controls-left` wraps search + Combobox — they stay together
+- "New Password" button is now a direct child of the bar (no extra wrapper div needed since `flex-wrap` handles alignment)
+- `search_query()` used consistently (not `.read()`) — matches the existing codebase style
+- Removed `mb-4` from the button wrapper — no longer needed with flex-wrap layout
 
-- [ ] **Step 5: Verify build**
+- [ ] **Step 7: Verify build**
 
 Run: `dx build --desktop 2>&1 | tail -20`
 Expected: Build succeeds
 
-- [ ] **Step 6: Manual test**
+- [ ] **Step 8: Manual test**
 
 Run: `dx serve --desktop`
 Verify:
@@ -239,10 +283,4 @@ Verify:
 4. Clicking a strength filter in StatsAside combines with the search query (AND)
 5. Pagination resets to page 1 when search query changes
 6. Pagination shows correct count for filtered results
-
-- [ ] **Step 7: Commit**
-
-```bash
-git add src/components/features/dashboard.rs
-git commit -m "feat: add search input filter to dashboard table"
-```
+7. On small screens (<640px), controls wrap to multiple rows without overflow
