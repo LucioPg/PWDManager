@@ -61,6 +61,9 @@ pub fn Dashboard() -> Element {
     // Dati completi per ordinamento frontend
     let mut all_passwords = use_signal(|| Vec::<StoredRawPassword>::new());
 
+    // Search query per filtro client-side
+    let mut search_query = use_signal(|| String::new());
+
     // Estrae user_id
     let user_id = user_id_option.unwrap_or(-1);
 
@@ -95,19 +98,40 @@ pub fn Dashboard() -> Element {
     use_effect(move || {
         if let Some(data) = sorted_passwords_resource.read().as_ref() {
             all_passwords.set(data.clone());
-            pagination.total_count.set(data.len() as u64);
         }
     });
 
-    // Paginazione locale: slice dei dati completi
+    // Filtro per nome (case-insensitive). Computazione pura.
+    let filtered_passwords = use_memo(move || {
+        let query = search_query();
+        let query_lower = query.to_lowercase();
+        let all = all_passwords();
+
+        if query_lower.is_empty() {
+            all
+        } else {
+            all.into_iter()
+                .filter(|p| p.name.to_lowercase().contains(&query_lower))
+                .collect()
+        }
+    });
+
+    // Sync total_count con i risultati filtrati
+    use_effect(move || {
+        let count = filtered_passwords().len();
+        pagination.total_count.set(count as u64);
+    });
+
+    // Paginazione locale: slice dei dati filtrati
     let page_data = use_memo(move || {
         let page = pagination.current_page();
         let page_size = pagination.page_size();
-        let all = all_passwords();
+        let filtered = filtered_passwords();
+
         let start = page * page_size;
-        let end = (start + page_size).min(all.len());
-        if start < all.len() {
-            Some(all[start..end].to_vec())
+        let end = (start + page_size).min(filtered.len());
+        if start < filtered.len() {
+            Some(filtered[start..end].to_vec())
         } else {
             Some(Vec::new())
         }
@@ -224,26 +248,65 @@ pub fn Dashboard() -> Element {
                 }
                 DashboardMenu { on_need_restart: on_need_restart.clone() }
             }
-            div { class: "flex flex-row justify-between",
-                Combobox::<TableOrder> {
-                    options: options.clone(),
-                    placeholder: "Order by".to_string(),
-                    on_change: move |v| {
-                        current_table_order.set(v);
-                        pagination.go_to_page(0);
-                        sorted_passwords_resource.restart();
-                    },
-                }
-                div { class: "flex flex-row gap-3 mb-4 justify-end align-center",
-                    button {
-                        class: "btn btn-success",
-                        r#type: "button",
-                        onclick: move |_| {
-                            stored_password_dialog_state.current_stored_raw_password.set(None);
-                            stored_password_dialog_state.is_open.set(true);
-                        },
-                        "New Password"
+            div { class: "pwd-controls-bar",
+                div { class: "pwd-controls-left",
+                    // Search input
+                    div { class: "pwd-search-wrapper",
+                        svg {
+                            class: "pwd-search-icon",
+                            view_box: "0 0 24 24",
+                            fill: "none",
+                            stroke: "currentColor",
+                            stroke_width: "2",
+                            path { d: "M21 21l-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z" }
+                        }
+                        input {
+                            class: "input input-bordered input-sm pwd-search-input",
+                            r#type: "text",
+                            placeholder: "Cerca per nome...",
+                            value: "{search_query}",
+                            oninput: move |e| {
+                                let value = e.value();
+                                search_query.set(value);
+                                pagination.go_to_page(0);
+                            },
+                        }
+                        if !search_query().is_empty() {
+                            button {
+                                class: "pwd-search-clear",
+                                onclick: move |_| {
+                                    search_query.set(String::new());
+                                    pagination.go_to_page(0);
+                                },
+                                svg {
+                                    view_box: "0 0 24 24",
+                                    fill: "none",
+                                    stroke: "currentColor",
+                                    stroke_width: "2",
+                                    path { d: "M18 6L6 18M6 6l12 12" }
+                                }
+                            }
+                        }
                     }
+                    // Sort Combobox
+                    Combobox::<TableOrder> {
+                        options: options.clone(),
+                        placeholder: "Order by".to_string(),
+                        on_change: move |v| {
+                            current_table_order.set(v);
+                            pagination.go_to_page(0);
+                            sorted_passwords_resource.restart();
+                        },
+                    }
+                }
+                button {
+                    class: "btn btn-success",
+                    r#type: "button",
+                    onclick: move |_| {
+                        stored_password_dialog_state.current_stored_raw_password.set(None);
+                        stored_password_dialog_state.is_open.set(true);
+                    },
+                    "New Password"
                 }
             }
 
