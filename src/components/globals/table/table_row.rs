@@ -2,13 +2,10 @@ use crate::components::StoredPasswordShowDialogState;
 use crate::components::features::dashboard::{
     DeleteStoredPasswordDialogState, StoredPasswordUpsertDialogState,
 };
-use crate::components::globals::form_field::FormSecret;
 use crate::components::globals::password_handler::StrengthAnalyzer;
-use crate::components::globals::secret_display::SecretDisplay;
 use crate::components::globals::svgs::{BurgerIcon, DeleteIcon, EditIcon};
 use dioxus::prelude::*;
 use pwd_types::{PasswordScore, StoredRawPassword};
-use secrecy::ExposeSecret;
 
 /// Props for the StoredRawPasswordRow component
 #[derive(Props, Clone, PartialEq)]
@@ -27,7 +24,6 @@ pub struct StoredRawPasswordRowProps {
 pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
     let password_id = props.stored_raw_password.id.unwrap_or(0);
     let store_raw_password_clone = props.stored_raw_password.clone();
-    let password_for_tooltip = props.stored_raw_password.clone();
     let password_for_edit = props.stored_raw_password.clone();
     let password_for_show = props.stored_raw_password.clone();
     let mut stored_password_dialog_state = use_context::<StoredPasswordUpsertDialogState>();
@@ -44,21 +40,9 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
             // Column 1: url (visualizzazione sicura con toggle)
             td { class: "pwd-table__cell-content",
                 p { class: "pwd-table__cell-content-label", "{props.stored_raw_password.name}" }
-                        // SecretDisplay {
-            //     secret: FormSecret(props.stored_raw_password.url.clone()),
-            //     max_width: "".to_string(),
-            // }
             }
 
-            // Column 2: Password (visualizzazione sicura con toggle)
-            // td { class: "pwd-table__cell-content",
-            //     SecretDisplay {
-            //         secret: FormSecret(store_raw_password_clone.password.clone()),
-            //         max_width: "".to_string(),
-            //     }
-            // }
-
-            // Column 3: Burger button (tooltip for notes and created_at) - nascosto su mobile
+            // Column 2: Burger button (tooltip for notes and created_at) - nascosto su mobile
             td { class: "pwd-table__col-info",
                 div { class: "relative",
                     button {
@@ -74,6 +58,7 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                     }
                 }
             }
+            // Column 3: Score (using StrengthAnalyzer without bar) - nascosto su mobile
             td { class: "pwd-table__col-strength",
                 StrengthAnalyzer {
                     strength,
@@ -84,10 +69,10 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                 }
             }
 
-            // Column 4: Score (using StrengthAnalyzer without bar) - nascosto su mobile
 
 
-            // Column 5: Edit button (gear icon, yellow warning background)
+
+            // Column 4: Edit button (gear icon, yellow warning background)
             td { class: "pwd-table__col-actions",
                 button {
                     class: "pwd-row-action-btn pwd-edit-btn",
@@ -103,7 +88,7 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                 }
             }
 
-            // Column 6: Delete button (trash outline)
+            // Column 5: Delete button (trash outline)
             td { class: "pwd-table__col-actions",
                 button {
                     class: "pwd-row-action-btn pwd-delete-btn",

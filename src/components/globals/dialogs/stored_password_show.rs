@@ -1,15 +1,13 @@
 use super::base_modal::{BaseModal, ModalVariant};
-use crate::backend::password_utils::create_stored_data_pipeline_bulk;
-use crate::components::features::dashboard::StoredPasswordUpsertDialogState;
+use crate::components::globals::secret_display::copy_to_clipboard;
 use crate::components::{
     ActionButton, ButtonSize, ButtonType, ButtonVariant, FormField, FormSecret, InputType,
     PasswordHandler, StoredPasswordShowDialogState, show_toast_error, use_toast,
 };
 use dioxus::prelude::*;
-use pwd_types::{PasswordChangeResult, StoredRawPassword};
+use pwd_dioxus::icons::ClipboardIcon;
+use pwd_types::StoredRawPassword;
 use secrecy::{ExposeSecret, SecretString};
-use sqlx::SqlitePool;
-use uuid::Uuid;
 
 #[component]
 pub fn StoredPasswordShowDialog(
@@ -94,17 +92,55 @@ pub fn StoredPasswordShowDialog(
                     strong { "Username: " }
                 
                 }
-                p { class: "label-text-alt", "{username_sig()}" }
+                div { class: "flex flex-row gap-2",
+                    button {
+                        class: "pwd-display-action-btn",
+                        r#type: "button",
+                        tabindex: "-1",
+                        aria_label: "Copy into clipboard",
+                        disabled: username_sig().len() == 0,
+                        onclick: move |_| {
+                            copy_to_clipboard(username_sig().clone());
+                        },
+                        ClipboardIcon { class: Some("text-current".to_string()) }
+                    }
+                    p { class: "label-text-alt", "{username_sig()}" }
+                }
                 label { class: "label",
                     strong { "url: " }
                 }
-                p { class: "label-text-alt", "{url_sig()}" }
-
+                div { class: "flex flex-row gap-2",
+                    button {
+                        class: "pwd-display-action-btn",
+                        r#type: "button",
+                        tabindex: "-1",
+                        aria_label: "Copy into clipboard",
+                        disabled: url_sig().len() == 0,
+                        onclick: move |_| {
+                            copy_to_clipboard(url_sig().clone());
+                        },
+                        ClipboardIcon { class: Some("text-current".to_string()) }
+                    }
+                    p { class: "label-text-alt", "{url_sig()}" }
+                }
                 label { class: "label",
                     strong { "Password: " }
-                
                 }
-                p { class: "label-text-alt", "{password()}" }
+                div { class: "flex flex-row gap-2",
+                    button {
+                        class: "pwd-display-action-btn",
+                        r#type: "button",
+                        tabindex: "-1",
+                        aria_label: "Copy into clipboard",
+                        disabled: password().len() == 0,
+                        onclick: move |_| {
+                            copy_to_clipboard(password().clone());
+                        },
+                        ClipboardIcon { class: Some("text-current".to_string()) }
+                    }
+                    p { class: "label-text-alt", "{password()}" }
+                }
+
                 label { class: "label",
                     strong { "Notes: " }
                 
