@@ -18,8 +18,6 @@ struct WindowSize {
 pub fn StoredRawPasswordsTable(
     /// Valore dei dati (già calcolato dal parent in modo reattivo)
     data: Option<Vec<StoredRawPassword>>,
-    unlocked_urls: Signal<bool>,
-    unlocked_passwords: Signal<bool>,
 ) -> Element {
     let mut tooltip_state = use_signal(TooltipState::default);
     let mut window_size = use_signal(WindowSize::default);
@@ -66,8 +64,6 @@ pub fn StoredRawPasswordsTable(
                                     stored_raw_password: stored_raw_password.clone(),
                                     on_edit: move |_| {},
                                     on_delete: move |_| {},
-                                    unlocked_url: unlocked_urls,
-                                    unlocked_password: unlocked_passwords,
                                     on_show_tooltip: move |(password, x, y)| {
                                         tooltip_state.set(TooltipState::new(password, x, y));
                                     },

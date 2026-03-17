@@ -4,7 +4,6 @@ use crate::components::features::DashboardMenu;
 use crate::components::globals::StatsAside;
 use crate::components::globals::pagination::{PaginationControls, PaginationState};
 use crate::components::globals::spinner::{Spinner, SpinnerSize};
-use crate::components::globals::toggle::{Toggle, ToggleColor, ToggleSize};
 use crate::components::globals::types::TableOrder;
 use crate::components::{
     StoredPasswordDeletionDialog, StoredPasswordUpsertDialog, StoredRawPasswordsTable,
@@ -50,12 +49,6 @@ pub fn Dashboard() -> Element {
     let user_id_option = auth_state.user.cloned().map(|u| u.id);
     let toast = use_toast();
     let options = table_order_options();
-
-    // SIGNALS
-    let mut unlock_urls = use_signal(|| false);
-    let unlock_urls_clone = unlock_urls.clone();
-    let mut unlock_passwords = use_signal(|| false);
-    let unlock_passwords_clone = unlock_passwords.clone();
 
     // Ordinamento: default Newest (coincide con ORDER BY created_at DESC del DB)
     let mut current_table_order = use_signal(|| Some(TableOrder::Newest));
@@ -237,34 +230,6 @@ pub fn Dashboard() -> Element {
                     },
                 }
                 div { class: "flex flex-row gap-3 mb-4 justify-end align-center",
-                    label { class: "label cursor-pointer",
-                        strong {
-                            span { class: "label-text strong", "View urls" }
-                        }
-                        // Toggle con dimensione e colore personalizzati
-                        Toggle {
-                            checked: unlock_urls(),
-                            onchange: move |_| unlock_urls.toggle(),
-                            size: ToggleSize::Small,
-                            color: ToggleColor::Success,
-                            disabled: false,
-                        }
-                    }
-
-                    label { class: "label cursor-pointer",
-                        strong {
-                            span { class: "label-text strong", "View Passwords" }
-                        }
-                        // Toggle con dimensione e colore personalizzati
-                        Toggle {
-                            checked: unlock_passwords(),
-                            onchange: move |_| unlock_passwords.toggle(),
-                            size: ToggleSize::Small,
-                            color: ToggleColor::Success,
-                            disabled: false,
-                        }
-                    }
-
                     button {
                         class: "btn btn-success",
                         r#type: "button",
@@ -292,8 +257,6 @@ pub fn Dashboard() -> Element {
                         div { class: "card card-lg",
                             StoredRawPasswordsTable {
                                 data: table_data,
-                                unlocked_urls: unlock_urls_clone,
-                                unlocked_passwords: unlock_passwords_clone,
                             }
                         }
                     }
