@@ -41,14 +41,14 @@ pub fn SettingsTabContent() -> Element {
             TabContent {
                 index: 2usize,
                 class: "tabs-content",
-                value: "Notifications".to_string(),
+                value: "Aspect".to_string(),
                 div {
                     width: "100%",
                     height: "5rem",
                     display: "flex",
                     align_items: "center",
                     justify_content: "center",
-                    "Notifications"
+                    "Aspect"
                 }
             }
         }
