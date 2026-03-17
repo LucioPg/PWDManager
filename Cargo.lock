@@ -4011,7 +4011,7 @@ dependencies = [
 
 [[package]]
 name = "pwd-dioxus"
-version = "0.2.22"
+version = "0.2.23"
 dependencies = [
  "arboard",
  "dioxus",
@@ -4035,7 +4035,7 @@ dependencies = [
 
 [[package]]
 name = "pwd-types"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "aegis-password-generator",
  "chrono",
