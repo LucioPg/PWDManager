@@ -1,3 +1,4 @@
+use crate::components::StoredPasswordShowDialogState;
 use crate::components::features::dashboard::{
     DeleteStoredPasswordDialogState, StoredPasswordUpsertDialogState,
 };
@@ -28,7 +29,9 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
     let store_raw_password_clone = props.stored_raw_password.clone();
     let password_for_tooltip = props.stored_raw_password.clone();
     let password_for_edit = props.stored_raw_password.clone();
+    let password_for_show = props.stored_raw_password.clone();
     let mut stored_password_dialog_state = use_context::<StoredPasswordUpsertDialogState>();
+    let mut stored_password_show_dialog_state = use_context::<StoredPasswordShowDialogState>();
     let mut deletion_password_dialog_state = use_context::<DeleteStoredPasswordDialogState>();
     // Get strength from score for StrengthAnalyzer
     let strength =
@@ -71,9 +74,11 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                     button {
                         class: "pwd-row-action-btn pwd-burger-btn",
                         r#type: "button",
-                        onclick: move |evt| {
-                            let coords = evt.client_coordinates();
-                            props.on_show_tooltip.call((password_for_tooltip.clone(), coords.x, coords.y));
+                        onclick: move |_| {
+                            stored_password_show_dialog_state
+                                .current_stored_raw_password
+                                .set(Some(password_for_show.clone()));
+                            stored_password_show_dialog_state.is_open.set(true);
                         },
                         BurgerIcon {}
                     }

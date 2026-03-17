@@ -7,6 +7,7 @@ mod migration_progress;
 mod migration_warning;
 mod stored_all_passwords_deletion;
 mod stored_password_deletion;
+mod stored_password_show;
 mod stored_password_upsert;
 pub mod user_deletion;
 
@@ -23,4 +24,5 @@ pub use import_warning::*;
 pub use migration_progress::*;
 pub use migration_warning::*;
 pub use stored_all_passwords_deletion::*;
+pub use stored_password_show::*;
 pub use stored_password_upsert::*;

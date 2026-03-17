@@ -6,8 +6,8 @@ use crate::components::globals::pagination::{PaginationControls, PaginationState
 use crate::components::globals::spinner::{Spinner, SpinnerSize};
 use crate::components::globals::types::TableOrder;
 use crate::components::{
-    StoredPasswordDeletionDialog, StoredPasswordUpsertDialog, StoredRawPasswordsTable,
-    show_toast_error, use_toast,
+    StoredPasswordDeletionDialog, StoredPasswordShowDialog, StoredPasswordUpsertDialog,
+    StoredRawPasswordsTable, show_toast_error, use_toast,
 };
 use custom_errors::DBError;
 use dioxus::prelude::*;
@@ -32,6 +32,11 @@ pub fn Dashboard() -> Element {
     let username = auth_state.get_username();
     let mut stored_password_dialog_state =
         use_context_provider(|| StoredPasswordUpsertDialogState {
+            is_open: Signal::new(false),
+            current_stored_raw_password: Signal::new(None::<StoredRawPassword>),
+        });
+    let mut stored_password_show_dialog_state =
+        use_context_provider(|| StoredPasswordShowDialogState {
             is_open: Signal::new(false),
             current_stored_raw_password: Signal::new(None::<StoredRawPassword>),
         });
@@ -255,9 +260,7 @@ pub fn Dashboard() -> Element {
                 } else {
                     rsx! {
                         div { class: "card card-lg",
-                            StoredRawPasswordsTable {
-                                data: table_data,
-                            }
+                            StoredRawPasswordsTable { data: table_data }
                         }
                     }
                 }
@@ -273,6 +276,7 @@ pub fn Dashboard() -> Element {
         }
         // on_cancel gestito internamente al componente
         StoredPasswordUpsertDialog { on_confirm: on_confirm_upsert, on_cancel: move |_| {} }
+        StoredPasswordShowDialog { on_confirm: move |_| {}, on_cancel: move |_| {} }
         StoredPasswordDeletionDialog {
             open: deletion_password_dialog_state.is_open.clone(),
             on_confirm: on_confirm_delete,
@@ -291,4 +295,10 @@ pub struct StoredPasswordUpsertDialogState {
 pub struct DeleteStoredPasswordDialogState {
     pub is_open: Signal<bool>,
     pub password_id: Signal<Option<i64>>,
+}
+
+#[derive(Clone)]
+pub struct StoredPasswordShowDialogState {
+    pub is_open: Signal<bool>,
+    pub current_stored_raw_password: Signal<Option<StoredRawPassword>>,
 }
