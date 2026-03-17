@@ -43,32 +43,22 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
 
             // Column 1: url (visualizzazione sicura con toggle)
             td { class: "pwd-table__cell-content",
-                SecretDisplay {
-                    secret: FormSecret(props.stored_raw_password.url.clone()),
-                    max_width: "".to_string(),
-                }
+                p { class: "pwd-table__cell-content-label", "{props.stored_raw_password.name}" }
+                        // SecretDisplay {
+            //     secret: FormSecret(props.stored_raw_password.url.clone()),
+            //     max_width: "".to_string(),
+            // }
             }
 
             // Column 2: Password (visualizzazione sicura con toggle)
-            td { class: "pwd-table__cell-content",
-                SecretDisplay {
-                    secret: FormSecret(store_raw_password_clone.password.clone()),
-                    max_width: "".to_string(),
-                }
-            }
+            // td { class: "pwd-table__cell-content",
+            //     SecretDisplay {
+            //         secret: FormSecret(store_raw_password_clone.password.clone()),
+            //         max_width: "".to_string(),
+            //     }
+            // }
 
-            // Column 3: Score (using StrengthAnalyzer without bar) - nascosto su mobile
-            td { class: "pwd-table__col-strength",
-                StrengthAnalyzer {
-                    strength,
-                    reasons: vec![], // No reasons tooltip in table view
-                    is_evaluating: false,
-                    score: store_raw_password_clone.score,
-                    show_bar: false,
-                }
-            }
-
-            // Column 4: Burger button (tooltip for notes and created_at) - nascosto su mobile
+            // Column 3: Burger button (tooltip for notes and created_at) - nascosto su mobile
             td { class: "pwd-table__col-info",
                 div { class: "relative",
                     button {
@@ -84,6 +74,18 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                     }
                 }
             }
+            td { class: "pwd-table__col-strength",
+                StrengthAnalyzer {
+                    strength,
+                    reasons: vec![], // No reasons tooltip in table view
+                    is_evaluating: false,
+                    score: store_raw_password_clone.score,
+                    show_bar: false,
+                }
+            }
+
+            // Column 4: Score (using StrengthAnalyzer without bar) - nascosto su mobile
+
 
             // Column 5: Edit button (gear icon, yellow warning background)
             td { class: "pwd-table__col-actions",

@@ -47,10 +47,9 @@ pub fn StoredRawPasswordsTable(
                     table { class: "pwd-table",
                         thead {
                             tr {
-                                th { class: "", "url" }
-                                th { class: "", "Password" }
-                                th { class: "pwd-table__col-strength", "Strength" }
+                                th { class: "", "Name" }
                                 th { class: "pwd-table__col-info", "Info" }
+                                th { class: "pwd-table__col-strength", "Strength" }
                                 th { class: "pwd-table__col-actions", "Edit" }
                                 th { class: "pwd-table__col-actions", "Delete" }
                             }
