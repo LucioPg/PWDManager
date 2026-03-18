@@ -1,6 +1,6 @@
 ﻿#![allow(dead_code)]
 use crate::backend::init_queries::QUERIES;
-use crate::backend::settings_types::UserSettings;
+use crate::backend::settings_types::{DicewareGenerationSettings, DicewareLanguage, UserSettings};
 use crate::backend::utils::verify_password;
 use custom_errors::{AuthError, DBError};
 use dioxus::prelude::*;
@@ -433,6 +433,18 @@ pub async fn register_user_with_settings(
     .map_err(|e| {
         DBError::new_registration_error(format!("Failed to insert gen_settings: {}", e))
     })?;
+
+    // 5b. Insert default Diceware generation settings
+    let default_language = crate::backend::password_utils::detect_system_language();
+    sqlx::query(
+        "INSERT INTO diceware_generation_settings (settings_id, word_count, special_chars, force_special_chars, numbers, language)
+         VALUES (?, 6, 0, 0, 0, ?)"
+    )
+    .bind(settings_id)
+    .bind(default_language)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| DBError::new_registration_error(format!("Failed to insert diceware settings: {}", e)))?;
 
     // 6. Commit - solo se tutto è andato bene
     tx.commit().await.map_err(|e| {
@@ -1046,6 +1058,37 @@ WHERE us.user_id = ?
     })?;
 
     Ok(row)
+}
+
+/// Fetch Diceware generation settings for a user.
+pub async fn fetch_diceware_settings(
+    pool: &SqlitePool,
+    user_id: i64,
+) -> Result<DicewareGenerationSettings, DBError> {
+    let result = sqlx::query_as::<_, DicewareGenerationSettings>(
+        "SELECT dgs.id, dgs.settings_id, dgs.word_count, dgs.special_chars,
+                dgs.force_special_chars, dgs.numbers, dgs.language
+         FROM diceware_generation_settings dgs
+         JOIN user_settings us ON dgs.settings_id = us.id
+         WHERE us.user_id = ?"
+    )
+    .bind(user_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| DBError::DBSelectError(e.to_string()))?;
+
+    Ok(result)
+}
+
+/// Save or update Diceware generation settings.
+pub async fn upsert_diceware_settings(
+    pool: &SqlitePool,
+    settings: DicewareGenerationSettings,
+) -> Result<(), DBError> {
+    DicewareGenerationSettings::upsert_by_id(&settings, pool)
+        .await
+        .map_err(|e| DBError::DBSaveError(e.to_string()))?;
+    Ok(())
 }
 
 /// Upsert batch di StoredPassword usando una transazione.
