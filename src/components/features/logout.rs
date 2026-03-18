@@ -2,6 +2,7 @@
 #![allow(unused)]
 
 use crate::components::globals::LogoutIcon;
+use crate::backend::settings_types::Theme;
 use crate::Route;
 use dioxus::prelude::*;
 use sqlx::SqlitePool;
@@ -13,9 +14,11 @@ pub fn Logout() -> Element {
     let pool = use_context::<SqlitePool>(); // questo non serve perché non ci serve il database
     let auth_state = use_context::<crate::auth::AuthState>();
     let mut auth_state_logout = auth_state.clone();
+    let mut app_theme = use_context::<Signal<Theme>>();
     let nav = use_navigator();
     let on_submit = move |_| {
         auth_state_logout.logout();
+        app_theme.set(Theme::Light);
         nav.push(Route::LandingPage);
     };
     let cancel_logout = move |_| {

@@ -1981,7 +1981,7 @@ button[class*="btn-"] {
     }
 
     .text-error {
-        @apply text-error-content;
+        color: lab(55 80 50);
     }
 
     .form-label {
@@ -2037,11 +2037,6 @@ button[class*="btn-"] {
     }
     .btn-ghost:hover {
         @apply hover:bg-base-200;
-    }
-
-    /* ---- Danger button ---- */
-    .btn-danger {
-        color: lab(40 73.39 37.18);
     }
 
     /* ---- Row action buttons ---- */
