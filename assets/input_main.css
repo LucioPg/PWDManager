@@ -2039,6 +2039,17 @@ button[class*="btn-"] {
         @apply hover:bg-base-200;
     }
 
+    /* ---- Danger button ---- */
+    .btn-danger {
+        @apply bg-error text-error-content;
+    }
+    .btn-danger:hover {
+        @apply hover:bg-error/90;
+    }
+    .btn-danger:disabled {
+        @apply bg-base-200 text-base-content/40;
+    }
+
     /* ---- Row action buttons ---- */
     .pwd-burger-btn {
         @apply text-base-content/50;
