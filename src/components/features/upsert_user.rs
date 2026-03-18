@@ -392,7 +392,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                             button_type: ButtonType::Button,
                             size: ButtonSize::Normal,
                             on_click: on_delete_click,
-                            additional_class: "text-error-600 hover:bg-error-50 hover:text-error-700",
+                            additional_class: "text-error hover:bg-error/10",
                         }
                     } else {
                         ActionButton {

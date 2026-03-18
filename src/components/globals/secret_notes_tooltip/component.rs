@@ -21,16 +21,16 @@ pub fn SecretNotesTooltip(
             if let Some(notes) = &notes {
                 if !notes.is_empty() {
                     div { class: "mb-3",
-                        h4 { class: "font-bold text-xs mb-1 text-gray-600", "Notes" }
+                        h4 { class: "font-bold text-xs mb-1 text-base-content/60", "Notes" }
 
                         // Toggle reveal button
                         div { class: "flex items-start gap-2",
                             if notes_visible() {
-                                p { class: "text-xs text-gray-700 break-words whitespace-pre-wrap flex-1",
+                                p { class: "text-xs text-base-content/80 break-words whitespace-pre-wrap flex-1",
                                     "{notes}"
                                 }
                             } else {
-                                p { class: "text-xs text-gray-500 italic flex-1",
+                                p { class: "text-xs text-base-content/50 italic flex-1",
                                     "•••••••• (click to reveal)"
                                 }
                             }
@@ -50,14 +50,14 @@ pub fn SecretNotesTooltip(
             // Created at section
             if let Some(created_at) = &created_at {
                 div {
-                    h4 { class: "font-bold text-xs mb-1 text-gray-600", "Created" }
-                    p { class: "text-xs text-gray-700", "{created_at}" }
+                    h4 { class: "font-bold text-xs mb-1 text-base-content/60", "Created" }
+                    p { class: "text-xs text-base-content/80", "{created_at}" }
                 }
             }
 
             // Show placeholder if no info available
             if (notes.is_none() || notes.as_ref().is_some_and(|n| n.is_empty())) && created_at.is_none() {
-                p { class: "text-xs text-gray-500 italic", "No additional info" }
+                p { class: "text-xs text-base-content/50 italic", "No additional info" }
             }
         }
     }

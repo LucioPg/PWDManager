@@ -60,7 +60,7 @@ pub fn UserDeletionDialog(
             }
 
             p {
-                class: "text-error-600 py-2",
+                class: "text-error py-2",
                 strong { "Attention: " }
                 "Your data will be permanently deleted. This action cannot be undone."
             }
@@ -85,7 +85,7 @@ pub fn UserDeletionDialog(
                     variant: ButtonVariant::Ghost,
                     button_type: ButtonType::Button,
                     size: ButtonSize::Normal,
-                    additional_class: "text-error-600 hover:bg-error-50".to_string(),
+                    additional_class: "text-error hover:bg-error/10".to_string(),
                     on_click: move |_| {
                         on_confirm.call(());
                         open_clone.set(false);

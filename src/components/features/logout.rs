@@ -26,7 +26,7 @@ pub fn Logout() -> Element {
         div { class: "page-centered animate-scale-in",
             div { class: "auth-form-centered",
                 LogoutIcon {
-                    class: Some("w-16 h-16 text-error-600 mx-auto mb-4".to_string()),
+                    class: Some("w-16 h-16 text-error mx-auto mb-4".to_string()),
                 }
                 h2 { class: "text-h2", "Confirm Logout" }
                 p { class: "text-body mb-8", "Are you sure you want to logout from your account?" }
