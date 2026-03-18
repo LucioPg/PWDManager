@@ -159,8 +159,11 @@ il pc
   Passwords migration]
 - [x] aggiungere un "diversificatore" per chiave AES prelevato dalla stringa di creazione dell'utente per evitare il
   KEY-REUSE.
-- [x] creazione funzione di suggerimento di password efficaci sulla base delle preferenze utente. -- MANCA PARTE
-  FRONTEND
+- [x] creazione funzione di suggerimento di password efficaci sulla base delle preferenze utente.
+- [ ] creazione di alternativa per la suggerimento di password, usando diceware:
+    - [ ] creare funzione di generazione di diceware [backend]
+    - [ ] creare menu alla pressione del tasto "suggest"
+    - [ ] creare pagina di settings per la modalità diceware
 - [x] criptare anche location e note. Quindi usare lo stesso campo di visualizzazione per la password per la location,
   ma non per le note.
 - [x] aggiungere due toggles per lo sblocco della visualizzazione di tutte le location e di tutte le passwords.
