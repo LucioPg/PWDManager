@@ -1907,38 +1907,6 @@ button[class*="btn-"] {
 }
 
 /* ============================================================
-   DAISYUI THEME-AWARE CLASSES - Used by dark mode overrides
-   Tailwind generates CSS only for classes found in source files.
-   These classes are used in `[data-theme="dark"]` overrides below.
-   ============================================================ */
-@layer components {
-    .pwd-theme-bg-base-100 { @apply bg-base-100; }
-    .pwd-theme-bg-base-200 { @apply bg-base-200; }
-    .pwd-theme-bg-base-300 { @apply bg-base-300; }
-    .pwd-theme-text-base-content { @apply text-base-content; }
-    .pwd-theme-text-base-content-10 { @apply text-base-content/10; }
-    .pwd-theme-text-base-content-40 { @apply text-base-content/40; }
-    .pwd-theme-text-base-content-50 { @apply text-base-content/50; }
-    .pwd-theme-text-base-content-60 { @apply text-base-content/60; }
-    .pwd-theme-text-base-content-70 { @apply text-base-content/70; }
-    .pwd-theme-text-base-content-80 { @apply text-base-content/80; }
-    .pwd-theme-border-base-200 { @apply border-base-200; }
-    .pwd-theme-border-base-300 { @apply border-base-300; }
-    .pwd-theme-hover-bg-base-200 { @apply hover:bg-base-200; }
-    .pwd-theme-hover-text-base-content { @apply hover:text-base-content; }
-    .pwd-theme-text-error-content { @apply text-error-content; }
-    .pwd-theme-text-error { @apply text-error; }
-    .pwd-theme-text-success { @apply text-success; }
-    .pwd-theme-text-warning { @apply text-warning; }
-    .pwd-theme-text-info { @apply text-info; }
-    .pwd-theme-hover-bg-error-10 { @apply hover:bg-error/10; }
-    .pwd-theme-hover-bg-success-10 { @apply hover:bg-success/10; }
-    .pwd-theme-text-primary-400 { @apply text-primary-400; }
-    .pwd-theme-border-primary-500 { @apply border-primary-500; }
-    .pwd-theme-hover-border-primary-400 { @apply hover:border-primary-400; }
-}
-
-/* ============================================================
    DARK THEME OVERRIDES - [data-theme="dark"]
    Tutti gli stili che hanno colori hardcoded in light mode
    ricevono override per il tema dark tramite variabili DaisyUI.
@@ -1951,16 +1919,16 @@ button[class*="btn-"] {
     .auth-form-lg,
     .auth-form-centered,
     .auth-form-tabbed {
-        @apply pwd-theme-bg-base-100 pwd-theme-border-base-300;
+        @apply bg-base-100 border-base-300;
     }
 
     /* ---- Cards ---- */
     .card {
-        @apply pwd-theme-bg-base-100 pwd-theme-border-base-300;
+        @apply bg-base-100 border-base-300;
     }
 
     .stat-card {
-        @apply pwd-theme-bg-base-100 pwd-theme-border-base-300;
+        @apply bg-base-100 border-base-300;
     }
     .stat-card:hover {
         border-color: var(--color-base-200);
@@ -1968,7 +1936,7 @@ button[class*="btn-"] {
 
     /* ---- Inputs ---- */
     .pwd-input {
-        @apply pwd-theme-bg-base-100 pwd-theme-border-base-300 pwd-theme-text-base-content;
+        @apply bg-base-100 border-base-300 text-base-content;
         --tw-placeholder-opacity: 0.4;
         color: var(--color-base-content);
     }
@@ -1979,7 +1947,7 @@ button[class*="btn-"] {
         border-color: var(--color-base-200);
     }
     .pwd-input:disabled {
-        @apply pwd-theme-bg-base-200 pwd-theme-text-base-content-40;
+        @apply bg-base-200 text-base-content/40;
     }
 
     /* ---- Navbar ---- */
@@ -1988,14 +1956,14 @@ button[class*="btn-"] {
     }
 
     .navbar-brand-text {
-        @apply pwd-theme-text-base-content;
+        @apply text-base-content;
     }
 
     .navbar-link {
-        @apply pwd-theme-text-base-content-70;
+        @apply text-base-content/70;
     }
     .navbar-link:hover {
-        @apply pwd-theme-hover-bg-base-200 pwd-theme-hover-text-base-content;
+        @apply hover:bg-base-200 hover:text-base-content;
     }
 
     .navbar-user {
@@ -2005,23 +1973,23 @@ button[class*="btn-"] {
     /* ---- Typography ---- */
     .text-h2,
     .text-h3 {
-        @apply pwd-theme-text-base-content;
+        @apply text-base-content;
     }
 
     .text-body {
-        @apply pwd-theme-text-base-content-70;
+        @apply text-base-content/70;
     }
 
     .text-error {
-        @apply pwd-theme-text-error-content;
+        @apply text-error-content;
     }
 
     .form-label {
-        @apply pwd-theme-text-base-content;
+        @apply text-base-content;
     }
 
     .form-label-required::after {
-        @apply pwd-theme-text-error-content;
+        @apply text-error-content;
     }
 
     /* ---- Avatar ---- */
@@ -2037,20 +2005,20 @@ button[class*="btn-"] {
 
     /* ---- Slogan ---- */
     .pwd-slogan-text {
-        @apply pwd-theme-text-base-content;
+        @apply text-base-content;
     }
 
     /* ---- Error page ---- */
     .error-code {
-        @apply pwd-theme-text-base-content-10;
+        @apply text-base-content/10;
     }
 
     /* ---- Password visibility toggle ---- */
     .password-visibility-toggle {
-        @apply pwd-theme-text-base-content-50;
+        @apply text-base-content/50;
     }
     .password-visibility-toggle:hover {
-        @apply pwd-theme-text-base-content-80 pwd-theme-hover-bg-base-200;
+        @apply text-base-content/80 hover:bg-base-200;
     }
     .password-visibility-toggle:disabled:hover {
         background: transparent;
@@ -2058,35 +2026,35 @@ button[class*="btn-"] {
 
     /* ---- Buttons ---- */
     .btn-secondary {
-        @apply pwd-theme-bg-base-100 pwd-theme-text-primary-400 pwd-theme-border-primary-500;
+        @apply bg-base-100 text-primary-400 border-primary-500;
     }
     .btn-secondary:hover {
-        @apply pwd-theme-hover-bg-base-200;
+        @apply hover:bg-base-200;
     }
 
     .btn-ghost {
-        @apply pwd-theme-text-primary-400;
+        @apply text-primary-400;
     }
     .btn-ghost:hover {
-        @apply pwd-theme-hover-bg-base-200;
+        @apply hover:bg-base-200;
     }
 
     /* ---- Row action buttons ---- */
     .pwd-burger-btn {
-        @apply pwd-theme-text-base-content-50;
+        @apply text-base-content/50;
     }
     .pwd-burger-btn:hover {
-        @apply pwd-theme-text-base-content-80 pwd-theme-hover-bg-base-200;
+        @apply text-base-content/80 hover:bg-base-200;
     }
     .pwd-burger-btn:focus {
         --tw-ring-color: var(--color-base-content);
     }
 
     .pwd-delete-btn {
-        @apply pwd-theme-text-base-content-50;
+        @apply text-base-content/50;
     }
     .pwd-delete-btn:hover {
-        @apply pwd-theme-text-error pwd-theme-hover-bg-error-10;
+        @apply text-error hover:bg-error/10;
     }
 
     /* ---- Tooltips ---- */
@@ -2127,7 +2095,7 @@ button[class*="btn-"] {
 
     /* ---- Search input ---- */
     .pwd-search-input {
-        @apply pwd-theme-bg-base-100 pwd-theme-border-base-300 pwd-theme-text-base-content;
+        @apply bg-base-100 border-base-300 text-base-content;
     }
     .pwd-search-input::placeholder {
         color: var(--color-base-content);
