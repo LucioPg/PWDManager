@@ -18,13 +18,22 @@ pub fn RouteWrapper() -> Element {
     let slogan_visibility = if is_landing { "pwd-slogan-visible" } else { "pwd-slogan-hidden" };
 
     let mut app_theme = use_context::<Signal<Theme>>();
-    let data_theme = match *app_theme.read() {
-        Theme::Dark => "dark",
-        Theme::Light => "light",
-    };
+
+    // Imposta data-theme sull'elemento <html> per evitare che DaisyUI applichi
+    // uno sfondo opaco al div contenitore (che coprirebbe il logo in z-index: -10)
+    use_effect(move || {
+        let theme = *app_theme.read();
+        let value = match theme {
+            Theme::Dark => "dark",
+            Theme::Light => "light",
+        };
+        document::eval(&format!(
+            "document.documentElement.setAttribute('data-theme', '{value}')"
+        ));
+    });
 
     rsx! {
-        div { class: "relative min-h-screen w-full", "data-theme": data_theme,
+        div { class: "relative min-h-screen w-full",
             // Container fisso per logo + sottotesto (mantengono relazione posizionale)
             div { class: "pwd-bg-container",
                 // Logo con proporzioni corrette (object-contain invece di bg-cover)
