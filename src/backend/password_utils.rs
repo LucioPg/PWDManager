@@ -94,7 +94,7 @@ pub fn generate_diceware_password(config: DicewareGenConfig) -> SecretString {
             .with_words(config.word_count)
             .with_camel_case(true);
 
-        if config.force_special_chars && config.special_chars >= 1 {
+        if config.special_chars >= 1 {
             dw_config = dw_config.with_special_chars(true);
         }
 

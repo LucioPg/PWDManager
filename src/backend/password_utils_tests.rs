@@ -1012,11 +1012,11 @@ mod diceware_tests {
     }
 
     #[test]
-    fn test_generate_diceware_with_force_special_chars() {
+    fn test_generate_diceware_with_special_chars() {
         let config = DicewareGenConfig {
             word_count: 6,
             special_chars: 1,
-            force_special_chars: true,
+            force_special_chars: false,
             numbers: 0,
             language: EmbeddedList::EN,
         };
