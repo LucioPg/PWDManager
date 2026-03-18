@@ -1,4 +1,5 @@
 use crate::components::features::aspect_settings::AspectSettings;
+use crate::components::features::diceware_settings::DicewareSettings;
 use crate::components::{
     StoredPasswordSettings, TabContent, TabList, TabTrigger, Tabs, UpsertUser,
 };
@@ -53,6 +54,7 @@ pub fn SettingsTabContent() -> Element {
                 //     "Security"
                 // }
                 StoredPasswordSettings { user_to_edit: user.clone() }
+                DicewareSettings {}
             }
             TabContent {
                 index: 2usize,

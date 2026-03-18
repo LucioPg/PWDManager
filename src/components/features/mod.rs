@@ -1,6 +1,7 @@
 pub mod aspect_settings;
 pub mod dashboard;
 mod dashboard_menu;
+mod diceware_settings;
 mod export_data;
 mod export_progress;
 mod import_data;
@@ -27,3 +28,4 @@ pub use settings::*;
 pub use storedpassword_settings::*;
 pub use upsert_user::*;
 pub use aspect_settings::*;
+pub use diceware_settings::*;
