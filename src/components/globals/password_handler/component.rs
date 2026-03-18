@@ -4,13 +4,13 @@
 // Questo file mantiene backward compatibility con il resto del progetto
 
 use crate::auth::AuthState;
-use crate::backend::db_backend::fetch_user_passwords_generation_settings;
-use crate::backend::password_utils::generate_suggested_password;
+use crate::backend::db_backend::{fetch_diceware_settings, fetch_user_passwords_generation_settings};
+use crate::backend::password_utils::{generate_diceware_password, generate_suggested_password, DicewareGenConfig};
 use crate::backend::evaluate_password_strength_tx;
 use dioxus::prelude::*;
 use pwd_dioxus::{PasswordHandler as LibPasswordHandler, FormSecret, EvaluationResult};
+use pwd_dioxus::password::GenerationMethod;
 use pwd_types::{PasswordChangeResult, PasswordScore};
-use secrecy::SecretString;
 use sqlx::SqlitePool;
 use std::sync::Arc;
 use tokio::sync::mpsc;
@@ -59,7 +59,7 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
     // Callback per generazione password (chiama DB)
     let auth_for_gen = auth_state.clone();
     let pool_for_gen = pool.clone();
-    let on_suggest = use_callback(move |_| {
+    let on_suggest_method = use_callback(move |method: GenerationMethod| {
         let pool = pool_for_gen.clone();
         let auth = auth_for_gen.clone();
         let mut is_gen = is_generating.clone();
@@ -68,14 +68,36 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
         spawn(async move {
             is_gen.set(true);
 
-            let config = if let Some(user) = auth.get_user() {
-                fetch_user_passwords_generation_settings(&pool, user.id).await.ok()
-            } else {
-                None
-            };
-
-            let pwd = generate_suggested_password(config);
-            gen_pwd.set(Some(FormSecret(pwd)));
+            match method {
+                GenerationMethod::Random => {
+                    let config = if let Some(user) = auth.get_user() {
+                        fetch_user_passwords_generation_settings(&pool, user.id).await.ok()
+                    } else {
+                        None
+                    };
+                    let pwd = generate_suggested_password(config);
+                    gen_pwd.set(Some(FormSecret(pwd)));
+                }
+                GenerationMethod::Diceware => {
+                    let pwd = if let Some(user) = auth.get_user() {
+                        fetch_diceware_settings(&pool, user.id)
+                            .await
+                            .ok()
+                            .map(DicewareGenConfig::from)
+                    } else {
+                        None
+                    };
+                    let config = pwd.unwrap_or(DicewareGenConfig {
+                        word_count: 6,
+                        special_chars: 0,
+                        force_special_chars: false,
+                        numbers: 0,
+                        language: diceware::EmbeddedList::EN,
+                    });
+                    let generated = generate_diceware_password(config);
+                    gen_pwd.set(Some(FormSecret(generated)));
+                }
+            }
 
             is_gen.set(false);
         });
@@ -92,7 +114,7 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
             password_required: props.password_required,
             initial_password: props.initial_password,
             initial_score: props.initial_score,
-            on_suggest: Some(on_suggest),
+            on_suggest_method: Some(on_suggest_method),
             generated_password: Some(generated_pwd),
             is_generating: Some(is_generating),
             on_evaluate: Some(on_evaluate),
