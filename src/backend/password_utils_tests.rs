@@ -1047,3 +1047,38 @@ mod diceware_tests {
         let _lang = crate::backend::password_utils::detect_system_language();
     }
 }
+
+#[tokio::test]
+async fn test_diceware_registration_default_settings() {
+    let pool = setup_test_db().await;
+
+    // Use register_user_with_settings — it creates user + user_settings + passwords_generation_settings + diceware_generation_settings
+    let user_id = crate::backend::db_backend::register_user_with_settings(
+        &pool,
+        format!("diceware_reg_test_{}", std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()),
+        Some(secrecy::SecretString::new("TestPass123!".into())),
+        None,
+        pwd_types::PasswordPreset::God,
+    )
+    .await
+    .expect("Should register user with settings");
+
+    // Fetch diceware settings for the newly registered user
+    let settings = crate::backend::db_backend::fetch_diceware_settings(&pool, user_id)
+        .await
+        .expect("Should fetch diceware settings for new user");
+
+    // Verify defaults
+    assert_eq!(settings.word_count, 6);
+    assert_eq!(settings.special_chars, 0);
+    assert!(!settings.force_special_chars);
+    assert_eq!(settings.numbers, 0);
+    // Language depends on system locale — just verify it's one of the valid variants
+    assert!(matches!(
+        settings.language,
+        crate::backend::settings_types::DicewareLanguage::EN
+            | crate::backend::settings_types::DicewareLanguage::IT
+            | crate::backend::settings_types::DicewareLanguage::FR
+    ));
+}
