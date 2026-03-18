@@ -12,6 +12,7 @@ dependencies = [
  "chrono",
  "csv",
  "custom_errors",
+ "diceware",
  "dioxus",
  "dioxus-primitives",
  "futures",
@@ -29,6 +30,7 @@ dependencies = [
  "serde_json",
  "sqlx",
  "sqlx-template",
+ "sys-locale",
  "tempfile",
  "tokio",
  "tokio-util",
@@ -954,6 +956,14 @@ dependencies = [
  "quote",
  "rustc_version",
  "syn 2.0.117",
+]
+
+[[package]]
+name = "diceware"
+version = "2.0.0"
+dependencies = [
+ "rand 0.8.5",
+ "unicode-segmentation",
 ]
 
 [[package]]
@@ -5235,6 +5245,19 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
+]
+
+[[package]]
+name = "sys-locale"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8a11bd9c338fdba09f7881ab41551932ad42e405f61d01e8406baea71c07aee"
+dependencies = [
+ "js-sys",
+ "libc",
+ "wasm-bindgen",
+ "web-sys",
+ "windows-sys 0.45.0",
 ]
 
 [[package]]
