@@ -2041,13 +2041,7 @@ button[class*="btn-"] {
 
     /* ---- Danger button ---- */
     .btn-danger {
-        @apply bg-error text-error-content;
-    }
-    .btn-danger:hover {
-        @apply hover:bg-error/90;
-    }
-    .btn-danger:disabled {
-        @apply bg-base-200 text-base-content/40;
+        color: lab(40 73.39 37.18);
     }
 
     /* ---- Row action buttons ---- */
