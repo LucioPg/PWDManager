@@ -69,7 +69,7 @@ pub fn ExportWarningDialog(
 
             // Warning
             p {
-                class: "text-warning-600 py-2",
+                class: "text-warning py-2",
                 strong { "Warning: " }
                 "Your passwords will be exported in plaintext. Keep the file secure!"
             }

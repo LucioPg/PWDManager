@@ -33,7 +33,7 @@ pub fn MigrationProgressDialog(
                 "The system is updating your data. Please wait until the process is completed."
             }
 
-            p { class: "text-warning-600 py-2",
+            p { class: "text-warning py-2",
                 strong { "Attention: " }
                 "Do not close the app or shut down the computer until the process is completed "
                 "or you will lose access to your data!"

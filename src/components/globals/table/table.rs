@@ -116,7 +116,7 @@ pub fn StoredRawPasswordsTable(
         }
         _ => {
             rsx! {
-                Spinner { size: SpinnerSize::Large, color_class: "text-blue-500" }
+                Spinner { size: SpinnerSize::Large, color_class: "text-info" }
             }
         }
     }

@@ -63,13 +63,13 @@ pub fn ImportWarningDialog(
             p { class: "text-sm opacity-70 mb-4", "Format: {format}" }
 
             // Warning su duplicati
-            p { class: "text-warning-600 py-2",
+            p { class: "text-warning py-2",
                 strong { "Note: " }
                 "Duplicate passwords (same url and password) in the file will be skipped. "
                 "Passwords that already exist in your database will also be skipped."
             }
 
-            p { class: "text-info-600 py-2",
+            p { class: "text-info py-2",
                 strong { "Info: " }
                 "Passwords with the same url but different password will be imported as new entries."
             }

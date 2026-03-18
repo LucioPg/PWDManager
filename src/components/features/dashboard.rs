@@ -318,7 +318,7 @@ pub fn Dashboard() -> Element {
                     rsx! {
                         div { class: "card card-lg",
                             div { class: "flex justify-center py-8",
-                                Spinner { size: SpinnerSize::Medium, color_class: "text-blue-500" }
+                                Spinner { size: SpinnerSize::Medium, color_class: "text-info" }
                             }
                         }
                     }

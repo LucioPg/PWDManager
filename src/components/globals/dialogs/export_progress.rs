@@ -38,7 +38,7 @@ pub fn ExportProgressDialog(
                 "Your passwords are being exported. Please wait..."
             }
 
-            p { class: "text-warning-600 py-2",
+            p { class: "text-warning py-2",
                 "The dialog will close automatically when the export is complete."
             }
 
