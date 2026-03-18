@@ -84,4 +84,16 @@ pub static QUERIES: &[&str] = &[
                 CHECK (symbols <= length),
                 UNIQUE (settings_id)
     )",
+    "CREATE TABLE IF NOT EXISTS diceware_generation_settings (
+                id INTEGER PRIMARY KEY,
+                settings_id INTEGER NOT NULL,
+                word_count INTEGER NOT NULL DEFAULT 6 CHECK (word_count >= 1 AND word_count <= 20),
+                special_chars INTEGER NOT NULL DEFAULT 0 CHECK (special_chars >= 0),
+                force_special_chars BOOLEAN NOT NULL DEFAULT 0,
+                numbers INTEGER NOT NULL DEFAULT 0 CHECK (numbers >= 0),
+                language TEXT NOT NULL DEFAULT 'EN',
+                FOREIGN KEY(settings_id) REFERENCES user_settings(id) ON DELETE CASCADE,
+                CHECK (language IN ('EN', 'IT', 'FR')),
+                UNIQUE (settings_id)
+    )",
 ];

@@ -72,3 +72,50 @@ impl From<String> for Theme {
         }
     }
 }
+
+/// Supported languages for Diceware passphrase generation.
+/// Stored as TEXT in SQLite: 'EN', 'IT', 'FR'.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(sqlx::Type)]
+#[sqlx(type_name = "TEXT", rename_all = "UPPERCASE")]
+pub enum DicewareLanguage {
+    #[default]
+    EN,
+    FR,
+    IT,
+}
+
+impl From<DicewareLanguage> for diceware::EmbeddedList {
+    fn from(lang: DicewareLanguage) -> Self {
+        match lang {
+            DicewareLanguage::EN => diceware::EmbeddedList::EN,
+            DicewareLanguage::FR => diceware::EmbeddedList::FR,
+            DicewareLanguage::IT => diceware::EmbeddedList::IT,
+        }
+    }
+}
+
+impl From<diceware::EmbeddedList> for DicewareLanguage {
+    fn from(list: diceware::EmbeddedList) -> Self {
+        match list {
+            diceware::EmbeddedList::EN => DicewareLanguage::EN,
+            diceware::EmbeddedList::FR => DicewareLanguage::FR,
+            diceware::EmbeddedList::IT => DicewareLanguage::IT,
+        }
+    }
+}
+
+#[derive(sqlx::FromRow, Debug, Clone, Default, sqlx_template::SqlxTemplate, PartialEq)]
+#[db("sqlite")]
+#[table("diceware_generation_settings")]
+#[tp_upsert(by = "id")]
+#[tp_select_builder]
+pub struct DicewareGenerationSettings {
+    pub id: Option<i64>,
+    pub settings_id: i64,
+    pub word_count: i32,
+    pub special_chars: i32,
+    pub force_special_chars: bool,
+    pub numbers: i32,
+    pub language: DicewareLanguage,
+}
