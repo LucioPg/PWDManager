@@ -21,6 +21,8 @@ pwd-types = { git = "https://github.com/LucioPg/pwd-types", features = ["sqlx", 
 pwd-strength = { git = "https://github.com/LucioPg/pwd-strength", features = ["async", "tracing"] }
 pwd-crypto = { git = "https://github.com/LucioPg/pwd-crypto", features = ["full", "base64", "pwd-types"] }
 pwd-dioxus = { git = "https://github.com/LucioPg/pwd-dioxus", branch = "main", features = ["handler", "secret-display", "modal", "icons-visibility", "icons-action", "icons-alert", "toast", "toggle", "combobox"] }
+diceware = { git = "https://github.com/LucioPg/diceware.git" }
+sys-locale = "0.2"
 
 # Dipendenze esterne
 tracing = "0.1.44"
@@ -76,3 +78,6 @@ pwd-crypto = { path = "../pwd-crypto" }
 
 [patch."https://github.com/LucioPg/pwd-dioxus"]
 pwd-dioxus = { path = "../pwd-dioxus" }
+
+[patch."https://github.com/LucioPg/diceware"]
+diceware = { path = "../diceware/diceware" }
