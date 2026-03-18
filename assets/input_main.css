@@ -1932,7 +1932,7 @@ button[class*="btn-"] {
     .pwd-theme-text-warning { @apply text-warning; }
     .pwd-theme-text-info { @apply text-info; }
     .pwd-theme-hover-bg-error-10 { @apply hover:bg-error/10; }
-    .pwd-theme-hover-bg-success-10 { @apply hover:bg-success-10; }
+    .pwd-theme-hover-bg-success-10 { @apply hover:bg-success/10; }
     .pwd-theme-text-primary-400 { @apply text-primary-400; }
     .pwd-theme-border-primary-500 { @apply border-primary-500; }
     .pwd-theme-hover-border-primary-400 { @apply hover:border-primary-400; }
