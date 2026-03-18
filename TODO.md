@@ -133,7 +133,7 @@ il pc
 - [x] stilizzare i componenti base (pulsanti etc...)
 - [x] aggiungere uno spinner per lo scaling dell'avatar quando selezionato
 - [x] aggiungere uno spinner all'avvio dell'applicazione
-- [ ] aggiungere toggle per tema scuro in settings
+- [x] aggiungere toggle per tema scuro in settings
 - [x] aggiungere toast per errori e informazioni
 - [x] modificare table row perché la password non sia immediatamente visibile
 - [x] modificare table row perché ci siano i pulsanti per copiare location e passwords
