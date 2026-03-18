@@ -1,4 +1,5 @@
 use crate::Route;
+use crate::backend::settings_types::Theme;
 use crate::backend::utils::base64_encode;
 use crate::components::globals::style::LOGO_BYTES;
 use dioxus::prelude::*;
@@ -16,8 +17,14 @@ pub fn RouteWrapper() -> Element {
     // Classe per visibilità sottotesto (opacity + pointer-events per evitare shuttering)
     let slogan_visibility = if is_landing { "pwd-slogan-visible" } else { "pwd-slogan-hidden" };
 
+    let mut app_theme = use_context::<Signal<Theme>>();
+    let data_theme = match *app_theme.read() {
+        Theme::Dark => "dark",
+        Theme::Light => "light",
+    };
+
     rsx! {
-        div { class: "relative min-h-screen w-full",
+        div { class: "relative min-h-screen w-full", "data-theme": data_theme,
             // Container fisso per logo + sottotesto (mantengono relazione posizionale)
             div { class: "pwd-bg-container",
                 // Logo con proporzioni corrette (object-contain invece di bg-cover)

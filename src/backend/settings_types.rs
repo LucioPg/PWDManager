@@ -10,7 +10,7 @@ use std::fmt;
 /// Settings generali utente.
 ///
 /// Mappa la tabella `user_settings` del database.
-#[derive(Debug, Clone, FromRow, SqlxTemplate)]
+#[derive(Debug, Clone, FromRow, SqlxTemplate, PartialEq, Default)]
 #[db("sqlite")]
 #[table("user_settings")]
 #[tp_upsert(by = "id")]
@@ -21,10 +21,16 @@ pub struct UserSettings {
     pub theme: Theme,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub enum Theme {
     Light,
     Dark,
+}
+
+impl Default for Theme {
+    fn default() -> Self {
+        Theme::Light
+    }
 }
 
 // Serve per l'encode

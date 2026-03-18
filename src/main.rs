@@ -12,6 +12,7 @@ use crate::components::{
     show_toast_error, show_toast_success,
 };
 use backend::db_backend::init_db;
+use backend::settings_types::Theme;
 use dioxus::core::Task;
 use dioxus::prelude::*;
 use gui_launcher::launch_desktop;
@@ -37,6 +38,8 @@ static BLACKLIST_ASSET: Asset = asset!(
 fn App() -> Element {
     let auth_state = auth::AuthState::new();
     use_context_provider(move || auth_state);
+    let mut app_theme = use_signal(|| Theme::Light);
+    use_context_provider(move || app_theme);
     use_context_provider(|| Signal::new(ToastHubState::default()));
     // Il resource ora conterrà un Result
     let mut db_resource = use_resource(move || async move { init_db().await });

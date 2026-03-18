@@ -892,32 +892,28 @@ pub async fn fetch_all_passwords_for_user_with_filter(
     };
 
     let results = match (min_score, max_score) {
-        (None, None) => sqlx::query_as::<_, StoredPassword>(
-            &format!(
-                r#"
+        (None, None) => sqlx::query_as::<_, StoredPassword>(&format!(
+            r#"
                 SELECT id, user_id, name, username, username_nonce, url, url_nonce,
                        password, password_nonce, notes, notes_nonce, score, created_at
                 FROM passwords
                 WHERE user_id = ?
                 ORDER BY {order}
                 "#
-            ),
-        )
+        ))
         .bind(user_id)
         .fetch_all(pool)
         .await
         .map_err(|e| DBError::new_list_error(format!("Failed to fetch all passwords: {}", e)))?,
-        (Some(min), Some(max)) => sqlx::query_as::<_, StoredPassword>(
-            &format!(
-                r#"
+        (Some(min), Some(max)) => sqlx::query_as::<_, StoredPassword>(&format!(
+            r#"
                 SELECT id, user_id, name, username, username_nonce, url, url_nonce,
                        password, password_nonce, notes, notes_nonce, score, created_at
                 FROM passwords
                 WHERE user_id = ? AND score >= ? AND score <= ?
                 ORDER BY {order}
                 "#
-            ),
-        )
+        ))
         .bind(user_id)
         .bind(min as i32)
         .bind(max as i32)
@@ -998,16 +994,17 @@ pub async fn fetch_user_settings(
     Ok(user_settings)
 }
 
-pub async fn fetch_all_user_settings(pool: &SqlitePool) -> Result<Vec<UserSettings>, DBError> {
-    let settings = UserSettings::builder_select()
-        .find_all(pool)
-        .await
-        .map_err(|e| {
-            DBError::new_list_error(format!("Failed to fetch all user settings: {}", e))
-        })?;
-
-    Ok(settings)
-}
+// a che serve questa funzione ??
+// pub async fn fetch_all_user_settings(pool: &SqlitePool) -> Result<Vec<UserSettings>, DBError> {
+//     let settings = UserSettings::builder_select()
+//         .find_all(pool)
+//         .await
+//         .map_err(|e| {
+//             DBError::new_list_error(format!("Failed to fetch all user settings: {}", e))
+//         })?;
+//
+//     Ok(settings)
+// }
 
 pub async fn upsert_password_config(
     pool: &SqlitePool,

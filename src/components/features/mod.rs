@@ -1,3 +1,4 @@
+pub mod aspect_settings;
 pub mod dashboard;
 mod dashboard_menu;
 mod export_data;
@@ -25,3 +26,4 @@ pub use progress_migration::*;
 pub use settings::*;
 pub use storedpassword_settings::*;
 pub use upsert_user::*;
+pub use aspect_settings::*;
