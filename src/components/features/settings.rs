@@ -45,16 +45,24 @@ pub fn SettingsTabContent() -> Element {
                 index: 1usize,
                 class: "tabs-content",
                 value: "Security".to_string(),
-                // div {
-                //     width: "100%",
-                //     height: "5rem",
-                //     display: "flex",
-                //     align_items: "center",
-                //     justify_content: "center",
-                //     "Security"
-                // }
-                StoredPasswordSettings { user_to_edit: user.clone() }
-                DicewareSettings {}
+                Tabs { default_value: "Password Casuale".to_string(), horizontal: true,
+                    TabList {
+                        TabTrigger { value: "Password Casuale".to_string(), index: 0usize, "Password Casuale" }
+                        TabTrigger { value: "Diceware".to_string(), index: 1usize, "Diceware" }
+                    }
+                    TabContent {
+                        index: 0usize,
+                        class: "tabs-content",
+                        value: "Password Casuale".to_string(),
+                        StoredPasswordSettings { user_to_edit: user.clone() }
+                    }
+                    TabContent {
+                        index: 1usize,
+                        class: "tabs-content",
+                        value: "Diceware".to_string(),
+                        DicewareSettings {}
+                    }
+                }
             }
             TabContent {
                 index: 2usize,

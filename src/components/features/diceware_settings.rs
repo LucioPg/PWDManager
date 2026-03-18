@@ -27,9 +27,9 @@ pub fn DicewareSettings() -> Element {
     let user_id = auth_state.get_user_id();
     let mut error = use_signal(|| <Option<String>>::None);
     let mut word_count = use_signal(|| PositiveInt(6));
-    let mut special_chars = use_signal(|| PositiveInt(0));
+    let mut special_chars = use_signal(|| "0".to_string());
     let mut force_special_chars = use_signal(|| false);
-    let mut numbers = use_signal(|| PositiveInt(0));
+    let mut numbers = use_signal(|| "0".to_string());
     let mut current_language = use_signal(|| Option::<DicewareLanguage>::None);
     let mut settings_ready = use_signal(|| false);
     let mut settings_id = use_signal(|| -1i64);
@@ -51,9 +51,9 @@ pub fn DicewareSettings() -> Element {
             match fetch_diceware_settings(&pool, user_id).await {
                 Ok(settings) => {
                     word_count.set(PositiveInt(settings.word_count as u32));
-                    special_chars.set(PositiveInt(settings.special_chars as u32));
+                    special_chars.set(settings.special_chars.to_string());
                     force_special_chars.set(settings.force_special_chars);
-                    numbers.set(PositiveInt(settings.numbers as u32));
+                    numbers.set(settings.numbers.to_string());
                     current_language.set(Some(settings.language));
                     settings_id.set(settings.settings_id);
                     settings_ready.set(true);
@@ -79,19 +79,22 @@ pub fn DicewareSettings() -> Element {
 
     let on_submit = move |_| {
         let word_count = word_count();
-        let special_chars = special_chars();
+        let special_chars_str = special_chars();
         let force_special_chars = force_special_chars();
-        let numbers = numbers();
+        let numbers_str = numbers();
         let language = current_language().unwrap_or(DicewareLanguage::EN);
         let sid = settings_id();
+
+        let special_chars_val: i32 = special_chars_str.trim().parse().unwrap_or(0).max(0);
+        let numbers_val: i32 = numbers_str.trim().parse().unwrap_or(0).max(0);
 
         let settings = DicewareGenerationSettings {
             id: Some(sid),
             settings_id: sid,
             word_count: word_count.into(),
-            special_chars: special_chars.into(),
+            special_chars: special_chars_val,
             force_special_chars,
-            numbers: numbers.into(),
+            numbers: numbers_val,
             language,
         };
 
@@ -99,9 +102,7 @@ pub fn DicewareSettings() -> Element {
         let toast = toast.clone();
         spawn(async move {
             match upsert_diceware_settings(&pool, settings).await {
-                Ok(()) => {
-                    // Success feedback handled by toast if needed
-                }
+                Ok(()) => {}
                 Err(e) => {
                     show_toast_error(format!("Error saving diceware settings: {}", e), toast);
                 }
@@ -117,7 +118,7 @@ pub fn DicewareSettings() -> Element {
         };
     }
 
-    let force_disabled: bool = special_chars().0 == 0;
+    let force_disabled: bool = special_chars().trim().parse::<i32>().unwrap_or(0) == 0;
 
     rsx! {
         form { class: "flex flex-col gap-4", onsubmit: on_submit,
@@ -160,7 +161,7 @@ pub fn DicewareSettings() -> Element {
                     }
                     FormField {
                         class: "min-w-[50%]",
-                        input_type: InputType::PositiveInt,
+                        input_type: InputType::Text,
                         value: special_chars,
                         placeholder: String::new(),
                         label: String::new(),
@@ -188,7 +189,7 @@ pub fn DicewareSettings() -> Element {
                     }
                     FormField {
                         class: "min-w-[50%]",
-                        input_type: InputType::PositiveInt,
+                        input_type: InputType::Text,
                         value: numbers,
                         placeholder: String::new(),
                         label: String::new(),
