@@ -14,11 +14,13 @@ use crate::backend::db_backend::{
 };
 use crate::backend::evaluate_password_strength;
 use crate::backend::migration_types::{MigrationStage, ProgressMessage, ProgressSender};
+use crate::backend::settings_types::{DicewareGenerationSettings, DicewareLanguage};
 use aes_gcm::aead::{Aead, Nonce, OsRng};
 use aes_gcm::{Aes256Gcm, KeyInit};
 use argon2::password_hash::{PasswordHash, Salt};
 use chrono::Utc;
 use custom_errors::DBError;
+use diceware::{self, EmbeddedList};
 use pwd_crypto::{
     create_cipher as crypto_create_cipher, create_nonce,
     decrypt_optional_to_string as crypto_decrypt_optional_to_string,
@@ -57,6 +59,118 @@ pub fn generate_suggested_password(custom_config: Option<PasswordGeneratorConfig
         }
     };
     SecretString::new(password.into())
+}
+
+/// Configuration for Diceware passphrase generation.
+pub struct DicewareGenConfig {
+    pub word_count: usize,
+    pub special_chars: u8,
+    pub force_special_chars: bool,
+    pub numbers: u8,
+    pub language: EmbeddedList,
+}
+
+impl From<DicewareGenerationSettings> for DicewareGenConfig {
+    fn from(s: DicewareGenerationSettings) -> Self {
+        Self {
+            word_count: s.word_count as usize,
+            special_chars: s.special_chars as u8,
+            force_special_chars: s.force_special_chars,
+            numbers: s.numbers as u8,
+            language: s.language.into(),
+        }
+    }
+}
+
+const MAX_DICEWARE_RETRIES: usize = 200;
+
+/// Generate a Diceware passphrase using the given configuration.
+/// Retries up to MAX_DICEWARE_RETRIES times to satisfy all criteria.
+pub fn generate_diceware_password(config: DicewareGenConfig) -> SecretString {
+    for _ in 0..MAX_DICEWARE_RETRIES {
+        let lang = config.language.clone();
+        let mut dw_config = diceware::Config::new()
+            .with_embedded(lang)
+            .with_words(config.word_count)
+            .with_camel_case(true);
+
+        if config.force_special_chars && config.special_chars >= 1 {
+            dw_config = dw_config.with_special_chars(true);
+        }
+
+        if let Ok(passphrase) = diceware::make_passphrase(dw_config) {
+            if is_valid_diceware(&passphrase, &config) {
+                return SecretString::new(passphrase.into());
+            }
+        }
+    }
+    panic!(
+        "Failed to generate a valid Diceware passphrase after {} attempts. \
+         Config: word_count={}, special_chars={}, force={}, numbers={}",
+        MAX_DICEWARE_RETRIES, config.word_count, config.special_chars,
+        config.force_special_chars, config.numbers
+    );
+}
+
+/// Validate a Diceware passphrase against the configuration criteria.
+fn is_valid_diceware(passphrase: &str, config: &DicewareGenConfig) -> bool {
+    // Split CamelCase into words
+    let words: Vec<&str> = split_camel_case(passphrase);
+
+    // Count special characters in the entire passphrase
+    let special_count = passphrase.chars().filter(|c| !c.is_alphanumeric()).count();
+
+    // Count purely numeric words
+    let numeric_word_count = words.iter().filter(|w| !w.is_empty() && w.chars().all(|c| c.is_numeric())).count();
+
+    // Validate special chars
+    if config.special_chars == 0 && special_count > 0 {
+        return false;
+    }
+    if config.special_chars >= 1 && special_count < config.special_chars as usize {
+        return false;
+    }
+
+    // Validate numbers
+    if config.numbers == 0 && numeric_word_count > 0 {
+        return false;
+    }
+    if config.numbers >= 1 && numeric_word_count < config.numbers as usize {
+        return false;
+    }
+
+    true
+}
+
+/// Split a CamelCase string into words at uppercase boundaries.
+fn split_camel_case(s: &str) -> Vec<&str> {
+    let mut words = Vec::new();
+    let mut start = 0;
+    let chars: Vec<char> = s.chars().collect();
+
+    for i in 1..chars.len() {
+        if chars[i].is_uppercase() {
+            words.push(&s[start..s.char_indices().nth(i).unwrap().0]);
+            start = s.char_indices().nth(i).unwrap().0;
+        }
+    }
+    if start < s.len() {
+        words.push(&s[start..]);
+    }
+
+    words
+}
+
+/// Detect the system language and return the corresponding Diceware language.
+pub fn detect_system_language() -> DicewareLanguage {
+    let locale = sys_locale::get_locale().unwrap_or_default().to_lowercase();
+    if locale.starts_with("it") {
+        DicewareLanguage::IT
+    } else if locale.starts_with("fr") {
+        DicewareLanguage::FR
+    } else {
+        DicewareLanguage::EN
+    }
 }
 
 /// Estrae il sale da una password hash Argon2.
