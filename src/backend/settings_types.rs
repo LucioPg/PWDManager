@@ -6,6 +6,7 @@
 use sqlx::{FromRow, Sqlite, Type};
 use sqlx_template::SqlxTemplate;
 use std::fmt;
+use std::ops::Deref;
 
 /// Settings generali utente.
 ///
@@ -19,6 +20,36 @@ pub struct UserSettings {
     pub id: Option<i64>,
     pub user_id: i64,
     pub theme: Theme,
+    pub auto_update: AutoUpdate,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, sqlx::Type)]
+#[sqlx(transparent)]
+pub struct AutoUpdate(pub bool);
+
+impl Default for AutoUpdate {
+    fn default() -> Self {
+        AutoUpdate(false)
+    }
+}
+
+impl Deref for AutoUpdate {
+    type Target = bool;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl From<bool> for AutoUpdate {
+    fn from(value: bool) -> Self {
+        AutoUpdate(value)
+    }
+}
+
+impl From<AutoUpdate> for bool {
+    fn from(value: AutoUpdate) -> Self {
+        value.0
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Copy)]
@@ -75,8 +106,7 @@ impl From<String> for Theme {
 
 /// Supported languages for Diceware passphrase generation.
 /// Stored as TEXT in SQLite: 'EN', 'IT', 'FR'.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-#[derive(sqlx::Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, sqlx::Type)]
 #[sqlx(type_name = "TEXT", rename_all = "UPPERCASE")]
 pub enum DicewareLanguage {
     #[default]

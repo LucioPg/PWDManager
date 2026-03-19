@@ -6,6 +6,7 @@ mod components;
 use crate::auth::User;
 use crate::backend::db_backend::list_users_no_avatar;
 use crate::backend::init_blacklist_from_path;
+use crate::backend::settings_types::AutoUpdate;
 use crate::components::{
     AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, RouteWrapper,
     Settings, Spinner, SpinnerSize, Style, ToastContainer, ToastHubState, UpsertUser,
@@ -16,7 +17,6 @@ use backend::settings_types::Theme;
 use dioxus::core::Task;
 use dioxus::prelude::*;
 use gui_launcher::launch_desktop;
-
 // const LOGO_BYTES: &[u8] = include_bytes!("../assets/logo.png");
 //
 // // Asset CSS di Tailwind only in dev
@@ -39,7 +39,9 @@ fn App() -> Element {
     let auth_state = auth::AuthState::new();
     use_context_provider(move || auth_state);
     let mut app_theme = use_signal(|| Theme::Light);
+    let mut auto_update = use_signal(|| AutoUpdate::default());
     use_context_provider(move || app_theme);
+    use_context_provider(|| auto_update);
     use_context_provider(|| Signal::new(ToastHubState::default()));
     // Il resource ora conterrà un Result
     let mut db_resource = use_resource(move || async move { init_db().await });

@@ -69,6 +69,7 @@ pub static QUERIES: &[&str] = &[
                 id INTEGER PRIMARY KEY,
                 user_id INTEGER NOT NULL UNIQUE,
                 theme TEXT NOT NULL DEFAULT 'Light',
+                auto_update BOOLEAN NOT NULL DEFAULT 0,
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     )",
     "CREATE TABLE IF NOT EXISTS passwords_generation_settings (
