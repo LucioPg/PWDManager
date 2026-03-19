@@ -34,7 +34,7 @@ pub fn SettingsTabContent() -> Element {
             }
             TabContent {
                 index: 0usize,
-                class: "tabs-content border-none shadow-none",
+                class: "pwd-tabs-content border-none shadow-none",
                 value: "Account".to_string(),
                 UpsertUser { user_to_edit: user.clone() }
                         // div {class:"flex justify-end",
@@ -43,9 +43,10 @@ pub fn SettingsTabContent() -> Element {
             }
             TabContent {
                 index: 1usize,
-                class: "tabs-content",
+                class: "pwd-tabs-content",
                 value: "Security".to_string(),
                 Tabs {
+                    class: "pwd-tabs-inner".to_string(),
                     default_value: "Password Casuale".to_string(),
                     horizontal: true,
                     TabList {
@@ -58,13 +59,13 @@ pub fn SettingsTabContent() -> Element {
                     }
                     TabContent {
                         index: 0usize,
-                        class: "tabs-content",
+                        class: "pwd-tabs-content",
                         value: "Password Casuale".to_string(),
                         StoredPasswordSettings { user_to_edit: user.clone() }
                     }
                     TabContent {
                         index: 1usize,
-                        class: "tabs-content",
+                        class: "pwd-tabs-content",
                         value: "Diceware".to_string(),
                         DicewareSettings {}
                     }
@@ -72,7 +73,7 @@ pub fn SettingsTabContent() -> Element {
             }
             TabContent {
                 index: 2usize,
-                class: "tabs-content",
+                class: "pwd-tabs-content",
                 value: "General".to_string(),
                 GeneralSettings {}
             }
