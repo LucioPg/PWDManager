@@ -118,7 +118,7 @@ pub fn DicewareSettings() -> Element {
     let force_disabled: bool = special_chars().0 == 0;
 
     rsx! {
-        form { class: "flex flex-col gap-4", onsubmit: on_submit,
+        form { class: "flex flex-col gap-4  mb-[1rem]", onsubmit: on_submit,
 
             div { class: "pwd-diceware-settings flex flex-col gap-4 rounded-box bg-base-200 p-4 w-full",
                 strong {
@@ -128,7 +128,9 @@ pub fn DicewareSettings() -> Element {
                 // Language
                 div { class: "flex flex-row justify-between",
                     label { class: "label cursor-pointer",
-                        strong { span { class: "label-text", "Language" } }
+                        strong {
+                            span { class: "label-text", "Language" }
+                        }
                     }
                     Combobox::<DicewareLanguage> {
                         options: options.clone(),
@@ -140,7 +142,9 @@ pub fn DicewareSettings() -> Element {
                 // Word count
                 div { class: "flex flex-row justify-between",
                     label { class: "label cursor-pointer",
-                        strong { span { class: "label-text", "Word count" } }
+                        strong {
+                            span { class: "label-text", "Word count" }
+                        }
                     }
                     FormField {
                         class: "min-w-[50%]",
@@ -154,7 +158,9 @@ pub fn DicewareSettings() -> Element {
                 // Special chars
                 div { class: "flex flex-row justify-between",
                     label { class: "label cursor-pointer",
-                        strong { span { class: "label-text", "Special chars" } }
+                        strong {
+                            span { class: "label-text", "Special chars" }
+                        }
                     }
                     FormField {
                         class: "min-w-[50%]",
@@ -168,7 +174,9 @@ pub fn DicewareSettings() -> Element {
                 // Force special chars toggle
                 div { class: "flex flex-row justify-between",
                     label { class: "label cursor-pointer",
-                        strong { span { class: "label-text", "Force special chars" } }
+                        strong {
+                            span { class: "label-text", "Force special chars" }
+                        }
                     }
                     Toggle {
                         checked: force_special_chars(),
@@ -182,7 +190,9 @@ pub fn DicewareSettings() -> Element {
                 // Numbers
                 div { class: "flex flex-row justify-between",
                     label { class: "label cursor-pointer",
-                        strong { span { class: "label-text", "Numbers" } }
+                        strong {
+                            span { class: "label-text", "Numbers" }
+                        }
                     }
                     FormField {
                         class: "min-w-[50%]",
@@ -193,13 +203,14 @@ pub fn DicewareSettings() -> Element {
                     }
                 }
             }
-
-            ActionButton {
-                text: "Save".to_string(),
-                variant: ButtonVariant::Primary,
-                button_type: ButtonType::Submit,
-                size: ButtonSize::Normal,
-                on_click: move |_| {},
+            div { class: "flex flex-row justify-end gap-2",
+                ActionButton {
+                    text: "Save".to_string(),
+                    variant: ButtonVariant::Success,
+                    button_type: ButtonType::Submit,
+                    size: ButtonSize::Normal,
+                    on_click: move |_| {},
+                }
             }
         }
     }

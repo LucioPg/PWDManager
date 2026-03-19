@@ -240,10 +240,9 @@ pub fn StoredPasswordUpsertDialog(
 
                     ActionButton {
                         text: "Save".to_string(),
-                        variant: ButtonVariant::Ghost,
+                        variant: ButtonVariant::Success,
                         button_type: ButtonType::Submit,
                         size: ButtonSize::Normal,
-                        additional_class: "text-success hover:bg-success/10".to_string(),
                         on_click: move |_| {},
                     }
                 }

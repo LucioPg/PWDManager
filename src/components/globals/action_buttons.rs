@@ -7,6 +7,7 @@ pub enum ButtonVariant {
     Primary,
     Secondary,
     Ghost,
+    Success,
 }
 
 /// Dimensioni dei pulsanti
@@ -25,6 +26,7 @@ impl ButtonVariant {
             ButtonVariant::Primary => "btn-primary",
             ButtonVariant::Secondary => "btn-secondary",
             ButtonVariant::Ghost => "btn-ghost",
+            ButtonVariant::Success => "btn-success",
         }
     }
 }

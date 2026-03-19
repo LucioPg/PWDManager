@@ -77,21 +77,30 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     let user_id = user_to_edit.as_ref().map(|u| u.id.clone());
     let migration_data_context =
         use_context_provider(|| Signal::new(MigrationData::new(user_id, None)));
-    let (header, paragraph, class_container, submit_btn_text, password_required) = if is_updating {
+    let (
+        header,
+        paragraph,
+        class_container,
+        submit_btn_text,
+        password_required,
+        btn_container_class,
+    ) = if is_updating {
         (
             "Account Settings",
             "Update Your Profile",
-            "auth-form-tabbed futuristic",
+            "auth-form-tabbed futuristic w-full",
             "Update",
             false,
+            "flex flex-col justify-end gap-2",
         )
     } else {
         (
             "Create Account",
             "Sign up to get started",
-            "auth-form-lg futuristic",
+            "auth-form-lg futuristic w-full",
             "Register",
             true,
+            "flex flex-col gap-2 w-full",
         )
     };
     // --- Effetti ---
@@ -370,39 +379,34 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                         },
                         password_required,
                     }
-                    // ActionButtons {
-                    //     primary_text: "{submit_btn_text}",
-                    //     secondary_text: "Login",
-                    //     primary_on_click: move |_| {},
-                    //     secondary_on_click: move |_| { nav.push("/login"); },
-                    //     variant: ActionButtonsVariant::Auth,
-                    // }
-                    ActionButton {
-                        text: "{submit_btn_text}",
-                        variant: ButtonVariant::Primary,
-                        button_type: ButtonType::Submit,
-                        size: ButtonSize::Normal,
-                        on_click: move |_| {},
-                        disabled: is_loading,
-                    }
-                    if is_updating {
+                    div { class: "{btn_container_class}",
                         ActionButton {
-                            text: "Delete Account",
-                            variant: ButtonVariant::Ghost,
-                            button_type: ButtonType::Button,
+                            text: "{submit_btn_text}",
+                            variant: ButtonVariant::Success,
+                            button_type: ButtonType::Submit,
                             size: ButtonSize::Normal,
-                            on_click: on_delete_click,
-                            additional_class: "text-error hover:bg-error/10",
+                            on_click: move |_| {},
+                            disabled: is_loading,
                         }
-                    } else {
-                        ActionButton {
-                            text: "Login",
-                            variant: ButtonVariant::Secondary,
-                            button_type: ButtonType::Button,
-                            size: ButtonSize::Normal,
-                            on_click: move |_| {
-                                nav.push("/login");
-                            },
+                        if is_updating {
+                            ActionButton {
+                                text: "Delete Account",
+                                variant: ButtonVariant::Ghost,
+                                button_type: ButtonType::Button,
+                                size: ButtonSize::Normal,
+                                on_click: on_delete_click,
+                                additional_class: "text-error hover:bg-error/10",
+                            }
+                        } else {
+                            ActionButton {
+                                text: "Login",
+                                variant: ButtonVariant::Secondary,
+                                button_type: ButtonType::Button,
+                                size: ButtonSize::Normal,
+                                on_click: move |_| {
+                                    nav.push("/login");
+                                },
+                            }
                         }
                     }
                 }

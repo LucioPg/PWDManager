@@ -1,10 +1,10 @@
+use crate::auth::AuthState;
 use crate::backend::db_backend::fetch_user_settings;
 use crate::backend::settings_types::{Theme, UserSettings};
-use crate::auth::AuthState;
 use crate::components::{ActionButton, ButtonSize, ButtonType, ButtonVariant};
 use dioxus::prelude::*;
-use pwd_dioxus::{show_toast_error, show_toast_success, use_toast};
 use pwd_dioxus::{Toggle, ToggleColor, ToggleSize};
+use pwd_dioxus::{show_toast_error, show_toast_success, use_toast};
 use sqlx::SqlitePool;
 
 #[component]
@@ -59,7 +59,11 @@ pub fn AspectSettings() -> Element {
 
     // Sincronizza il Signal globale con il toggle locale
     let on_toggle = move |_| {
-        let new_theme = if is_light() { Theme::Dark } else { Theme::Light };
+        let new_theme = if is_light() {
+            Theme::Dark
+        } else {
+            Theme::Light
+        };
         is_light.set(new_theme == Theme::Light);
         app_theme.set(new_theme);
     };
@@ -108,7 +112,7 @@ pub fn AspectSettings() -> Element {
             }
             ActionButton {
                 text: "Save".to_string(),
-                variant: ButtonVariant::Primary,
+                variant: ButtonVariant::Success,
                 button_type: ButtonType::Submit,
                 size: ButtonSize::Normal,
                 on_click: on_save,

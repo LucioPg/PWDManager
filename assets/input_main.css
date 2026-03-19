@@ -465,7 +465,7 @@ body {
 @utility btn-secondary {
     @apply btn;
     @apply bg-white text-primary-600 border-2 border-primary-600;
-    @apply hover:bg-primary-50 hover:border-primary-700;
+    @apply hover:bg-primary-600 hover:border-primary-700 hover:text-white;
     @apply active:scale-[0.98];
     @apply focus:ring-primary-50;
     @apply disabled:border-neutral-300 disabled:text-neutral-400;
@@ -473,6 +473,21 @@ body {
 
 
 .btn-secondary-sm {
+    @apply btn-secondary;
+    @apply px-4 py-2 text-sm;
+}
+
+@utility btn-success {
+    @apply btn;
+    @apply bg-success-600 text-white border-2 border-success-600;
+    @apply hover:bg-success-700 hover:border-success-700;
+    @apply active:scale-[0.98];
+    @apply focus:ring-primary-50;
+    @apply disabled:border-neutral-300 disabled:text-neutral-400;
+}
+
+
+.btn-success-sm {
     @apply btn-secondary;
     @apply px-4 py-2 text-sm;
 }
@@ -865,7 +880,7 @@ input[type="password"]::-webkit-caps-lock-indicator {
     @apply auth-form;
     max-height: calc(80vh - var(--navbar-height) - 5rem);
     @apply w-full max-w-lg mx-auto lg:max-w-xl xl:max-w-2xl;
-    @apply mt-0 mb-0 p-4;
+    @apply mt-0 mb-0 p-5;
 }
 
 /* ============================================================

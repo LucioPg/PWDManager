@@ -142,7 +142,7 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
     }
     rsx! {
 
-        form { class: "flex flex-col gap-4", onsubmit: on_submit,
+        form { class: "flex flex-col gap-4 mb-[1rem]", onsubmit: on_submit,
 
             div { class: "flex  flex-col gap-4 rounded rounded-lg bg-base-200 p-4 rounded-box w-full",
                 strong {
@@ -254,12 +254,14 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
                     }
                 }
             }
-            ActionButton {
-                text: "Save".to_string(),
-                variant: ButtonVariant::Primary,
-                button_type: ButtonType::Submit,
-                size: ButtonSize::Normal,
-                on_click: move |_| {},
+            div { class: "flex flex-row justify-end gap-2",
+                ActionButton {
+                    text: "Save".to_string(),
+                    variant: ButtonVariant::Success,
+                    button_type: ButtonType::Submit,
+                    size: ButtonSize::Normal,
+                    on_click: move |_| {},
+                }
             }
         }
     }
