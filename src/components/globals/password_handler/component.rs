@@ -87,12 +87,12 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
                     } else {
                         None
                     };
-                    let config = pwd.unwrap_or(DicewareGenConfig {
+                    let config = pwd.unwrap_or_else(|| DicewareGenConfig {
                         word_count: 6,
                         special_chars: 0,
                         force_special_chars: false,
                         numbers: 0,
-                        language: diceware::EmbeddedList::EN,
+                        language: crate::backend::password_utils::detect_system_language().into(),
                     });
                     let generated = generate_diceware_password(config);
                     gen_pwd.set(Some(FormSecret(generated)));
