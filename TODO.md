@@ -238,3 +238,5 @@ il pc
 - [ ] spostare import_data.rs e export_data.rs dal frontend al backend
 - [ ] forzare spinner al caricamendo della dashboard o aumentare la velocità dell'animaizione (bug di rallentamento
   quando un utente fa il login con il dark mode attivo)
+- [ ] la disinstallazione deve chiedere all'utente se vuole eliminare anche il database, cosa che non deve succedere se
+  la disinstallazione avviene per un update.
