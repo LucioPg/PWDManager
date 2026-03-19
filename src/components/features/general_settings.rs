@@ -100,7 +100,7 @@ pub fn GeneralSettings() -> Element {
             div { class: "flex flex-row justify-between mb-2",
                 label { class: "label cursor-pointer",
                     strong {
-                        span { class: "label-text", "Light Theme: " }
+                        span { class: "label-text", "Light Theme" }
                     }
                 }
                 Toggle {

@@ -666,7 +666,7 @@ textarea.pwd-input {
 }
 
 @utility navbar-brand-text {
-    @apply text-xl font-bold text-neutral-800;
+    @apply text-xl font-bold text-neutral-800 hover:text-blue-500;
     font-family: 'pwd-futuristic';
 }
 
@@ -1964,7 +1964,7 @@ button[class*="btn-"] {
     .stat-card:hover {
         border-color: var(--color-base-200);
     }
-    
+
 
     /* ---- Inputs ---- */
 
@@ -1993,7 +1993,7 @@ button[class*="btn-"] {
     }
 
     .navbar-brand-text {
-        @apply text-base-content;
+        @apply text-base-content hover:text-blue-500;
     }
 
     .navbar-link {

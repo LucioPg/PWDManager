@@ -7,7 +7,7 @@
 - [x] in edit non è possibile salvare il form perché la password risulta vuota
 - [x] la prima volta che si apre il form per l'edit il campo password è vuoto
 - [x] created_at non salvato nel database
-- [ ] diceware non rileva la lingua di sistema per i nuovi utenti, usa inglese come default
+- [x] diceware non rileva la lingua di sistema per i nuovi utenti, usa inglese come default
 
 ## Generali
 
