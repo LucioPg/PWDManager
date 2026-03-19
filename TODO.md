@@ -160,10 +160,10 @@ il pc
 - [x] aggiungere un "diversificatore" per chiave AES prelevato dalla stringa di creazione dell'utente per evitare il
   KEY-REUSE.
 - [x] creazione funzione di suggerimento di password efficaci sulla base delle preferenze utente.
-- [ ] creazione di alternativa per la suggerimento di password, usando diceware:
-    - [ ] creare funzione di generazione di diceware [backend]
-    - [ ] creare menu alla pressione del tasto "suggest"
-    - [ ] creare pagina di settings per la modalità diceware
+- [x] creazione di alternativa per la suggerimento di password, usando diceware:
+    - [x] creare funzione di generazione di diceware [backend]
+    - [x] creare menu alla pressione del tasto "suggest"
+    - [x] creare pagina di settings per la modalità diceware
 - [x] criptare anche location e note. Quindi usare lo stesso campo di visualizzazione per la password per la location,
   ma non per le note.
 - [x] aggiungere due toggles per lo sblocco della visualizzazione di tutte le location e di tutte le passwords.
@@ -219,3 +219,4 @@ il pc
 #### Import/Export
 
 - [x] Creare funzione di import/export in vari formati (csv, json, xml)
+- [ ] spostare import_data.rs e export_data.rs dal frontend al backend
