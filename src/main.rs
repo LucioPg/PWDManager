@@ -165,7 +165,9 @@ fn App() -> Element {
 }
 fn main() {
     // Nota: il logging viene inizializzato automaticamente nel launcher
-    launch_desktop!(App);
+    const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
+    println!("PWDManager v{}", APP_VERSION);
+    launch_desktop!(App, APP_VERSION);
 }
 
 #[derive(Routable, PartialEq, Clone)]
