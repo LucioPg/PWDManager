@@ -223,7 +223,6 @@ il pc
 #### Import/Export
 
 - [x] Creare funzione di import/export in vari formati (csv, json, xml)
-- [ ] spostare import_data.rs e export_data.rs dal frontend al backend
 
 ### Instruction
 
@@ -233,3 +232,9 @@ il pc
 ### Automatic Updates
 
 - [ ] creare sistema di aggiornamento automatico
+
+### FIXES
+
+- [ ] spostare import_data.rs e export_data.rs dal frontend al backend
+- [ ] forzare spinner al caricamendo della dashboard o aumentare la velocità dell'animaizione (bug di rallentamento
+  quando un utente fa il login con il dark mode attivo)
