@@ -97,12 +97,11 @@ pub fn GeneralSettings() -> Element {
 
     rsx! {
         div { class: "auth-form-tabbed rounded-box w-full",
-            div { class: "flex flex-row justify-between",
+            div { class: "flex flex-row justify-between mb-2",
                 label { class: "label cursor-pointer",
                     strong {
                         span { class: "label-text", "Light Theme: " }
                     }
-                
                 }
                 Toggle {
                     checked: is_light(),
@@ -111,7 +110,7 @@ pub fn GeneralSettings() -> Element {
                     color: ToggleColor::Success,
                 }
             }
-            div { class: "flex flex-row justify-end gap-2",
+            div { class: "flex flex-row justify-end gap-2 mt-2",
                 ActionButton {
                     text: "Save".to_string(),
                     variant: ButtonVariant::Success,
