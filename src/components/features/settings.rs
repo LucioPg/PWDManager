@@ -91,7 +91,7 @@ pub fn Settings() -> Element {
                     p { class: "text-body", "Manage your account settings and preferences." }
                 }
             }
-            div { class: "",
+            div { class: "w-full",
                 div { class: "settings-container", SettingsTabContent {} }
             }
         }

@@ -919,6 +919,12 @@ input[type="password"]::-webkit-caps-lock-indicator {
     @apply flex items-center justify-center flex-col;
 }
 
+.settings-container {
+    width: 100%;
+    max-width: 48rem;
+    margin: 0 auto;
+}
+
 /* ============================================================
    ERROR PAGES
    ============================================================ */
