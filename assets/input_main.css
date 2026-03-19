@@ -171,11 +171,6 @@
     --animate-notification-in: notification-in 0.3s cubic-bezier(0.19, 1, 0.22, 1);
     --animate-notification-out: notification-out 0.3s cubic-bezier(0.19, 1, 0.22, 1);
 
-    --tab-shadow-light: 0 5px 13px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
-    --tab-shadow-light-active: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
-    --tab-shadow-dark: 0 5px 13px -5px rgba(255, 255, 255, 0.05), 0 8px 10px -6px rgba(255, 255, 255, 0.05);
-    --tab-shadow-dark-active: 0 10px 25px -5px rgba(255, 255, 255, 0.05), 0 8px 10px -6px rgba(255, 255, 255, 0.05);
-
     /* ============================================================
        DAISYUI CONFIGURATION - Disable focus ring on buttons
        ============================================================ */
@@ -1028,77 +1023,78 @@ input[type="password"]::-webkit-caps-lock-indicator {
 }
 
 
-.tabs {
+/* ---- pwd-tabs: main container ---- */
+
+.pwd-tabs {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    width: 90vw;
-    align-items: center;
-}
-
-.tabs-list {
-    display: flex;
-    width: fit-content;
-    box-sizing: border-box;
-    flex: 1;
-    flex-direction: row;
-    padding: 0.25rem;
-    border: none;
-    border-radius: 0.5rem;
-    gap: 0.25rem;
-}
-
-[data-variant="default"] .tabs-list {
-    background: var(--light, var(--primary-color-3)) var(--dark, var(--primary-color-5));
-}
-
-.tabs-trigger {
-    padding: 4px 8px;
-    border: 1px solid darkgray;
-    border-radius: calc(0.5rem - 0.25rem);
-    background: var(--color-primary-50);
-    color: var(--secondary-color-5);
-    cursor: pointer;
-    box-shadow: var(--dark, inset 0 0 0 1px var(--primary-color-7)), var(--light, 0 1px 2px rgb(0 0 0 / 18%));
-    transition: box-shadow 0.3s ease-in-out, background-color 0.3s ease-in-out;
-}
-
-[data-variant="default"] .tabs-trigger[data-state="active"] {
-    background-color: var(--light, var(--primary-color)), var(--dark, var(--primary-color-6));
-    box-shadow: var(--tab-shadow-light-active);
-    transition: box-shadow 0.3s ease-in-out, background-color 0.3s ease-in-out;
-}
-
-[data-theme="dark"] [data-variant="default"] .tabs-trigger[data-state="active"] {
-    background-color: var(--light, var(--primary-color)), var(--dark, var(--primary-color-6));
-    box-shadow: var(--tab-shadow-dark-active);
-    transition: box-shadow 0.3s ease-in-out;
-}
-
-
-.tabs-trigger[data-state="active"] {
-    color: var(--secondary-color-1);
-}
-
-.tabs-trigger[data-disabled="true"] {
-    color: var(--secondary-color-5);
-    cursor: not-allowed;
-}
-
-.tabs-trigger:hover:not([data-disabled="true"]),
-.tabs-trigger:focus-visible {
-    color: var(--secondary-color-3);
-}
-
-.tabs-content {
     width: 100%;
-    box-sizing: border-box;
-    /*padding: 0.25rem;*/
 }
 
+/* ---- pwd-tabs-list: navigation bar ---- */
 
-.tabs-content[data-state="inactive"] {
+.pwd-tabs-list {
+    display: flex;
+    flex-direction: row;
+    border-bottom: 1px solid var(--color-base-300);
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1rem 0;
+}
+
+/* ---- pwd-tabs-trigger: individual tab button ---- */
+
+.pwd-tabs-trigger {
+    flex-grow: 1;
+    text-align: center;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-base-content);
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -1px;
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s;
+}
+
+.pwd-tabs-trigger:hover:not([data-disabled="true"]),
+.pwd-tabs-trigger:focus-visible {
+    color: var(--color-base-content);
+    border-bottom-color: var(--color-base-300);
+}
+
+.pwd-tabs-trigger[data-state="active"] {
+    color: var(--color-primary);
+    border-bottom-color: var(--color-primary);
+    font-weight: 600;
+}
+
+.pwd-tabs-trigger[data-disabled="true"] {
+    color: var(--color-base-300);
+    pointer-events: none;
+}
+
+/* ---- pwd-tabs-content: tab panels ---- */
+
+.pwd-tabs-content {
+    width: 100%;
+}
+
+.pwd-tabs-content[data-state="inactive"] {
     display: none;
+}
+
+/* ---- pwd-tabs-inner: nested (inner) tabs ---- */
+
+.pwd-tabs-inner .pwd-tabs-list {
+    margin-bottom: 0.75rem;
+}
+
+.pwd-tabs-inner .pwd-tabs-trigger {
+    font-size: 0.8125rem;
+    padding: 0.5rem 1rem;
 }
 
 /* ============================================================
@@ -2135,20 +2131,6 @@ button[class*="btn-"] {
         background-color: var(--color-base-200);
         border-color: var(--color-base-content);
         border-color: color-mix(in srgb, var(--color-base-content) 40%, transparent);
-    }
-
-    /* ---- Tabs trigger (non-active) ---- */
-
-    .tabs-trigger {
-        background: var(--color-base-200);
-        color: var(--color-base-content);
-        border-color: var(--color-base-300);
-    }
-
-    /* ---- Tab shadow ---- */
-
-    [data-variant="default"] .tabs-list {
-        background: var(--color-base-300);
     }
 
     /* ---- Search input ---- */
