@@ -1,6 +1,6 @@
 //! Componente per mostrare il progresso dell'import.
 
-use crate::backend::import::{import_passwords_pipeline_with_progress, ImportResult};
+use crate::backend::import::{ImportResult, import_passwords_pipeline_with_progress};
 use crate::backend::migration_types::{MigrationStage, ProgressMessage};
 use crate::components::ImportData;
 use crate::components::{show_toast_error, show_toast_success, use_toast};
@@ -62,7 +62,11 @@ pub fn ImportProgressChn(
         spawn(async move {
             tracing::info!("Import progress receiver task started");
             while let Some(msg) = rx.recv().await {
-                tracing::info!("Import progress received: stage={:?}, progress={}%", msg.stage, msg.percentage());
+                tracing::info!(
+                    "Import progress received: stage={:?}, progress={}%",
+                    msg.stage,
+                    msg.percentage()
+                );
                 stage.set(msg.stage.clone());
                 progress.set(msg.percentage());
                 status_message.set(format_import_stage_message(&msg.stage));
@@ -81,7 +85,12 @@ pub fn ImportProgressChn(
             let input_path = context_for_progress.read().input_path.clone();
             let format = context_for_progress.read().format;
 
-            tracing::info!("Import data: user_id={}, path={:?}, format={:?}", user_id, input_path, format);
+            tracing::info!(
+                "Import data: user_id={}, path={:?}, format={:?}",
+                user_id,
+                input_path,
+                format
+            );
 
             let progress_tx: Option<Arc<mpsc::Sender<ProgressMessage>>> = Some(Arc::new(tx));
 
@@ -95,15 +104,17 @@ pub fn ImportProgressChn(
             )
             .await;
 
-            tracing::info!("Import pipeline completed with result: {:?}", result.is_ok());
+            tracing::info!(
+                "Import pipeline completed with result: {:?}",
+                result.is_ok()
+            );
 
             match result {
                 Ok(import_res) => {
                     show_toast_success(
                         format!(
                             "Import completed: {} passwords imported, {} skipped (duplicates)",
-                            import_res.imported_count,
-                            import_res.skipped_duplicates
+                            import_res.imported_count, import_res.skipped_duplicates
                         ),
                         toast,
                     );
@@ -118,11 +129,9 @@ pub fn ImportProgressChn(
     });
 
     rsx! {
-        div { class: "flex flex-col gap-4 w-full",
+        div { class: "flex flex-col gap-4 w-full futuristic",
             // Messaggio stato
-            p { class: "text-center font-medium text-base-content",
-                "{status_message}"
-            }
+            p { class: "text-center font-medium text-base-content", "{status_message}" }
 
             // Progress bar DaisyUI
             progress {
@@ -132,9 +141,7 @@ pub fn ImportProgressChn(
             }
 
             // Percentuale
-            p { class: "text-center text-sm opacity-70",
-                "{progress}%"
-            }
+            p { class: "text-center text-sm opacity-70", "{progress}%" }
         }
     }
 }

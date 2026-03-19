@@ -37,7 +37,7 @@ pub fn ProgressMigrationChn(
     let mut stage = use_signal(|| MigrationStage::Idle);
     let mut progress = use_signal(|| 0usize);
     let mut status_message = use_signal(|| String::new());
-    let mut migration_started = use_signal(|| false);  // Flag per evitare doppi avvii
+    let mut migration_started = use_signal(|| false); // Flag per evitare doppi avvii
     let context = use_context::<Signal<MigrationData>>();
     let pool = use_context::<SqlitePool>();
     let toast = use_toast();
@@ -88,10 +88,7 @@ pub fn ProgressMigrationChn(
 
                     if let Err(e) = result {
                         // Mostra toast errore
-                        show_toast_error(
-                            format!("Migration failed: {}", e),
-                            toast,
-                        );
+                        show_toast_error(format!("Migration failed: {}", e), toast);
 
                         // Rollback password
                         let _ = restore_old_password(&pool, uid).await;
@@ -106,10 +103,7 @@ pub fn ProgressMigrationChn(
                     if let Some(uid) = user_id {
                         let _ = restore_old_password(&pool, uid).await;
                     }
-                    show_toast_error(
-                        "Migration failed: missing user data".to_string(),
-                        toast,
-                    );
+                    show_toast_error("Migration failed: missing user data".to_string(), toast);
                     stage.set(MigrationStage::Failed);
                     on_failed.set(true);
                 }
@@ -118,23 +112,19 @@ pub fn ProgressMigrationChn(
     });
 
     rsx! {
-        div { class: "flex flex-col gap-4 w-full",
+        div { class: "flex flex-col gap-4 w-full futuristic",
             // Messaggio stato
-            p { class: "text-center font-medium text-base-content",
-                "{status_message}"
-            }
+            p { class: "text-center font-medium text-base-content", "{status_message}" }
 
             // Progress bar DaisyUI
             progress {
-                class: "progress progress-primary w-full",
+                class: "progress progress-primary w-full futuristic",
                 value: "{progress}",
                 max: "100",
             }
 
             // Percentuale
-            p { class: "text-center text-sm opacity-70",
-                "{progress}%"
-            }
+            p { class: "text-center text-sm opacity-70", "{progress}%" }
         }
     }
 }

@@ -28,12 +28,13 @@ pub fn ExportWarningDialog(
 
     rsx! {
         crate::components::globals::dialogs::BaseModal {
-            open: open,
+            open,
             on_close: move |_| {
                 on_cancel.call(());
                 open_clone.set(false);
             },
             variant: ModalVariant::Middle,
+            class: "futuristic",
 
             // Close button "X" in alto a destra
             button {
@@ -46,37 +47,28 @@ pub fn ExportWarningDialog(
             }
 
             // Icona warning
-            div {
-                class: "alert alert-warning mb-4 flex items-center justify-center mx-10",
-                WarningIcon {
-                    class: Some("w-6 h-6".to_string()),
-                }
+            div { class: "alert alert-warning mb-4 flex items-center justify-center mx-10",
+                WarningIcon { class: Some("w-6 h-6".to_string()) }
             }
 
             // Titolo
             h3 { class: "font-bold text-lg mb-2", "Export Passwords" }
 
             // Dettagli export
-            p { class: "py-2",
-                "You are about to export your passwords to:"
-            }
+            p { class: "py-2", "You are about to export your passwords to:" }
             p { class: "font-mono text-sm bg-base-200 p-2 rounded mb-2 break-all",
                 "{output_path}"
             }
-            p { class: "text-sm opacity-70 mb-4",
-                "Format: {format}"
-            }
+            p { class: "text-sm opacity-70 mb-4", "Format: {format}" }
 
             // Warning
-            p {
-                class: "text-warning py-2",
+            p { class: "text-warning py-2",
                 strong { "Warning: " }
                 "Your passwords will be exported in plaintext. Keep the file secure!"
             }
 
             // Action buttons
-            div {
-                class: "modal-action",
+            div { class: "modal-action",
 
                 ActionButton {
                     text: "Export".to_string(),

@@ -81,7 +81,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         (
             "Account Settings",
             "Update Your Profile",
-            "auth-form-tabbed",
+            "auth-form-tabbed futuristic",
             "Update",
             false,
         )
@@ -89,7 +89,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         (
             "Create Account",
             "Sign up to get started",
-            "auth-form-lg",
+            "auth-form-lg futuristic",
             "Register",
             true,
         )

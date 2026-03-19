@@ -20,12 +20,13 @@ pub fn MigrationWarningDialog(
 
     rsx! {
         crate::components::globals::dialogs::BaseModal {
-            open: open,
+            open,
             on_close: move |_| {
                 on_cancel.call(());
                 open_clone.set(false);
             },
             variant: ModalVariant::Middle,
+            class: "futuristic",
 
             // Close button "X" in alto a destra
             button {
@@ -38,32 +39,24 @@ pub fn MigrationWarningDialog(
             }
 
             // Icona di warning
-            div {
-                class: "alert alert-warning mb-4 flex items-center justify-center mx-10",
-                WarningIcon {
-                    class: Some("w-6 h-6".to_string()),
-                }
+            div { class: "alert alert-warning mb-4 flex items-center justify-center mx-10",
+                WarningIcon { class: Some("w-6 h-6".to_string()) }
             }
 
             // Titolo
             h3 { class: "font-bold text-lg mb-2", "Password migration" }
 
             // Messaggio di conferma
-            p {
-                class: "py-4",
-                "Are you sure you want to change your account password ?"
-            }
+            p { class: "py-4", "Are you sure you want to change your account password ?" }
 
-            p {
-                class: "text-error py-2",
+            p { class: "text-error py-2",
                 strong { "Attention: " }
                 "Changing your password implies that all your stored passwords must be recalculated."
                 "This action can take some time to be completed."
             }
 
             // Action buttons
-            div {
-                class: "modal-action",
+            div { class: "modal-action",
 
                 ActionButton {
                     text: "Start migration".to_string(),
@@ -86,7 +79,7 @@ pub fn MigrationWarningDialog(
                         open_clone.set(false);
                     },
                 }
-
+            
 
             }
         }

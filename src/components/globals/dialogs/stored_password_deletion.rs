@@ -20,12 +20,13 @@ pub fn StoredPasswordDeletionDialog(
 
     rsx! {
         crate::components::globals::dialogs::BaseModal {
-            open: open,
+            open,
             on_close: move |_| {
                 on_cancel.call(());
                 open_clone.set(false);
             },
             variant: ModalVariant::Middle,
+            class: "futuristic",
 
             // Close button "X" in alto a destra
             button {
@@ -38,32 +39,26 @@ pub fn StoredPasswordDeletionDialog(
             }
 
             // Icona di warning
-            div {
-                class: "alert alert-error mb-4 flex items-center justify-center mx-10",
-                WarningIcon {
-                    class: Some("w-6 h-6".to_string()),
-                }
+            div { class: "alert alert-error mb-4 flex items-center justify-center mx-10",
+                WarningIcon { class: Some("w-6 h-6".to_string()) }
             }
 
             // Titolo
             h3 { class: "font-bold text-lg mb-2", "Delete Stored Password" }
 
             // Messaggio di conferma
-            p {
-                class: "py-4",
+            p { class: "py-4",
                 "Are you sure you want to delete this stored password?"
-                strong {"This action cannot be undone."}
+                strong { "This action cannot be undone." }
             }
 
-            p {
-                class: "text-error py-2",
+            p { class: "text-error py-2",
                 strong { "Attention: " }
                 "Your data will be permanently deleted. This action cannot be undone."
             }
 
             // Action buttons
-            div {
-                class: "modal-action",
+            div { class: "modal-action",
                 ActionButton {
                     text: "Delete".to_string(),
                     variant: ButtonVariant::Ghost,
@@ -85,7 +80,7 @@ pub fn StoredPasswordDeletionDialog(
                         open_clone.set(false);
                     },
                 }
-
+            
 
             }
         }

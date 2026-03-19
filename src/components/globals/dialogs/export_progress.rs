@@ -23,10 +23,10 @@ pub fn ExportProgressDialog(
             open,
             on_close: move |_| {},
             variant: ModalVariant::Middle,
+            class: "futuristic",
 
             // Icona warning
-            div {
-                class: "alert alert-warning mb-4 flex items-center justify-center mx-10",
+            div { class: "alert alert-warning mb-4 flex items-center justify-center mx-10",
                 WarningIcon { class: Some("w-6 h-6".to_string()) }
             }
 
@@ -34,9 +34,7 @@ pub fn ExportProgressDialog(
             h3 { class: "font-bold text-lg mb-2", "Exporting Passwords" }
 
             // Messaggio
-            p { class: "py-4",
-                "Your passwords are being exported. Please wait..."
-            }
+            p { class: "py-4", "Your passwords are being exported. Please wait..." }
 
             p { class: "text-warning py-2",
                 "The dialog will close automatically when the export is complete."

@@ -36,6 +36,7 @@ pub fn ImportWarningDialog(
                 open_clone.set(false);
             },
             variant: ModalVariant::Middle,
+            class: "futuristic",
 
             // Close button "X" in alto a destra
             button {

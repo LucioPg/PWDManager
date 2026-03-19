@@ -68,7 +68,7 @@ impl TabsVariant {
 pub fn Tabs(props: TabsProps) -> Element {
     rsx! {
         tabs::Tabs {
-            class: props.class + " tabs",
+            class: props.class + " tabs" + " futuristic",
             "data-variant": props.variant.to_class(),
             value: props.value,
             default_value: props.default_value,
@@ -85,7 +85,7 @@ pub fn Tabs(props: TabsProps) -> Element {
 #[component]
 pub fn TabList(props: TabListProps) -> Element {
     rsx! {
-        tabs::TabList { class: "tabs-list", attributes: props.attributes, {props.children} }
+        tabs::TabList { class: "tabs-list futuristic", attributes: props.attributes, {props.children} }
     }
 }
 
@@ -108,7 +108,7 @@ pub fn TabTrigger(props: TabTriggerProps) -> Element {
 pub fn TabContent(props: TabContentProps) -> Element {
     rsx! {
         tabs::TabContent {
-            class: props.class.unwrap_or_default() + " tabs-content",
+            class: props.class.unwrap_or_default() + " tabs-content" + " futuristic",
             value: props.value,
             id: props.id,
             index: props.index,

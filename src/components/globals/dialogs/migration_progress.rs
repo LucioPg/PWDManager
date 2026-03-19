@@ -18,7 +18,11 @@ pub fn MigrationProgressDialog(
     #[props(default)] on_cancel: EventHandler<()>,
 ) -> Element {
     rsx! {
-        crate::components::globals::dialogs::BaseModal { open, on_close: move |_| {}, variant: ModalVariant::Middle,
+        crate::components::globals::dialogs::BaseModal {
+            open,
+            on_close: move |_| {},
+            variant: ModalVariant::Middle,
+            class: "futuristic",
 
             // Icona di warning
             div { class: "alert alert-warning mb-4 flex items-center justify-center mx-10",

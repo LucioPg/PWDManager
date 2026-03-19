@@ -48,7 +48,7 @@ pub fn Login() -> Element {
     };
     rsx! {
         div { class: "page-centered",
-            div { class: "auth-form animate-scale-in",
+            div { class: "auth-form futuristic animate-scale-in",
                 h1 { class: "text-h2 text-center", "Welcome Back" }
                 p { class: "text-body mb-4 text-center", "Sign in to your account to continue" }
                 form { onsubmit: on_submit, class: "flex flex-col gap-3 w-full",
@@ -75,7 +75,9 @@ pub fn Login() -> Element {
                         primary_text: "Login".to_string(),
                         secondary_text: "Register".to_string(),
                         primary_on_click: move |_| {}, // Gestito dal form onsubmit
-                        secondary_on_click: move |_| { nav.push("/register"); },
+                        secondary_on_click: move |_| {
+                            nav.push("/register");
+                        },
                         variant: ActionButtonsVariant::Auth,
                     }
                 }
