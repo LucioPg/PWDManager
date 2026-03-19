@@ -149,7 +149,10 @@ il pc
     - [x] le card stat sono troppo grandi e prominenti rispetto la tabella
     - [x] c'è un problema di overflow con tablerow
     - [x] verificare comportamento tabella quando sono presenti migliaia di password.
-- ## Gestione password registrate
+- [ ] migliorare le tabs dei settings
+    - [ ] creare tabs verticali per le preferenze per le password
+
+## Gestione password registrate
 
 - [x] creare tabella password
 - [x] creare form di inserimento password
