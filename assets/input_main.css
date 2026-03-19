@@ -1962,12 +1962,7 @@ button[class*="btn-"] {
     .stat-card:hover {
         border-color: var(--color-base-200);
     }
-
-    /* ---- Diceware Settings ---- */
-
-    .pwd-diceware-settings {
-        @apply bg-base-200 border-base-300;
-    }
+    
 
     /* ---- Inputs ---- */
 

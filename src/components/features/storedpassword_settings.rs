@@ -144,11 +144,12 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
 
         form { class: "flex flex-col gap-4 mb-[1rem]", onsubmit: on_submit,
 
-            div { class: "flex  flex-col gap-4 rounded rounded-lg bg-base-200 p-4 rounded-box w-full",
+            // div { class: "flex  flex-col gap-4 rounded rounded-lg bg-base-200 p-4 rounded-box w-full",
+            div { class: "auth-form-tabbed rounded-box w-full",
                 strong {
-                    h2 { class: "text-center", "Generation Stored Password Settings " }
+                    h2 { class: "text-center mb-1", "Generation Stored Password Settings " }
                 }
-                div { class: "flex flex-row justify-between",
+                div { class: "flex flex-row justify-between mb-2",
                     label { class: "label cursor-pointer",
                         strong {
                             span { class: "label-text", "Presets" }
@@ -162,7 +163,7 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
                 }
 
 
-                div { class: "flex flex-row justify-between",
+                div { class: "flex flex-row justify-between mb-2",
                     label { class: "label cursor-pointer",
                         strong {
                             span { class: "label-text", "Include numbers" }
@@ -177,7 +178,7 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
                         disabled: readonly(),
                     }
                 }
-                div { class: "flex flex-row justify-between",
+                div { class: "flex flex-row justify-between mb-2",
                     label { class: "label cursor-pointer",
                         strong {
                             span { class: "label-text strong", "Include lowercase" }
@@ -192,7 +193,7 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
                         disabled: readonly(),
                     }
                 }
-                div { class: "flex flex-row justify-between",
+                div { class: "flex flex-row justify-between mb-2",
                     label { class: "label cursor-pointer",
                         strong {
                             span { class: "label-text strong", "Include uppercase" }
@@ -207,7 +208,7 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
                         disabled: readonly(),
                     }
                 }
-                div { class: "flex flex-row justify-between",
+                div { class: "flex flex-row justify-between mb-2",
                     label { class: "label cursor-pointer",
                         strong {
                             span { class: "label-text strong", "Password length" }
@@ -222,7 +223,7 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
                         readonly: readonly(),
                     }
                 }
-                div { class: "flex flex-row justify-between",
+                div { class: "flex flex-row justify-between mb-2",
                     label { class: "label cursor-pointer",
                         strong {
                             span { class: "label-text strong", "Symbols amount" }
@@ -237,7 +238,7 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
                         readonly: readonly(),
                     }
                 }
-                div { class: "flex flex-row justify-between",
+                div { class: "flex flex-row justify-between mb-2",
                     label { class: "label cursor-pointer",
                         strong {
                             span { class: "label-text strong", "Excluded symbols" }
@@ -253,16 +254,17 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
                         readonly: readonly(),
                     }
                 }
-            }
-            div { class: "flex flex-row justify-end gap-2",
-                ActionButton {
-                    text: "Save".to_string(),
-                    variant: ButtonVariant::Success,
-                    button_type: ButtonType::Submit,
-                    size: ButtonSize::Normal,
-                    on_click: move |_| {},
+                div { class: "flex flex-row justify-end gap-2",
+                    ActionButton {
+                        text: "Save".to_string(),
+                        variant: ButtonVariant::Success,
+                        button_type: ButtonType::Submit,
+                        size: ButtonSize::Normal,
+                        on_click: move |_| {},
+                    }
                 }
             }
+        
         }
     }
 }

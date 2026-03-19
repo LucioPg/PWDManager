@@ -120,13 +120,14 @@ pub fn DicewareSettings() -> Element {
     rsx! {
         form { class: "flex flex-col gap-4  mb-[1rem]", onsubmit: on_submit,
 
-            div { class: "pwd-diceware-settings flex flex-col gap-4 rounded-box bg-base-200 p-4 w-full",
+            // div { class: "pwd-diceware-settings flex flex-col gap-4 rounded-box bg-base-200 p-4 w-full",
+            div { class: "auth-form-tabbed rounded-box w-full",
                 strong {
-                    h2 { class: "text-center", "Diceware Settings" }
+                    h2 { class: "text-center mb-1", "Diceware Settings" }
                 }
 
                 // Language
-                div { class: "flex flex-row justify-between",
+                div { class: "flex flex-row justify-between mb-2",
                     label { class: "label cursor-pointer",
                         strong {
                             span { class: "label-text", "Language" }
@@ -140,7 +141,7 @@ pub fn DicewareSettings() -> Element {
                 }
 
                 // Word count
-                div { class: "flex flex-row justify-between",
+                div { class: "flex flex-row justify-between mb-2",
                     label { class: "label cursor-pointer",
                         strong {
                             span { class: "label-text", "Word count" }
@@ -156,7 +157,7 @@ pub fn DicewareSettings() -> Element {
                 }
 
                 // Special chars
-                div { class: "flex flex-row justify-between",
+                div { class: "flex flex-row justify-between mb-2",
                     label { class: "label cursor-pointer",
                         strong {
                             span { class: "label-text", "Special chars" }
@@ -172,7 +173,7 @@ pub fn DicewareSettings() -> Element {
                 }
 
                 // Force special chars toggle
-                div { class: "flex flex-row justify-between",
+                div { class: "flex flex-row justify-between mb-2",
                     label { class: "label cursor-pointer",
                         strong {
                             span { class: "label-text", "Force special chars" }
@@ -188,7 +189,7 @@ pub fn DicewareSettings() -> Element {
                 }
 
                 // Numbers
-                div { class: "flex flex-row justify-between",
+                div { class: "flex flex-row justify-between mb-2",
                     label { class: "label cursor-pointer",
                         strong {
                             span { class: "label-text", "Numbers" }
@@ -202,16 +203,17 @@ pub fn DicewareSettings() -> Element {
                         label: String::new(),
                     }
                 }
-            }
-            div { class: "flex flex-row justify-end gap-2",
-                ActionButton {
-                    text: "Save".to_string(),
-                    variant: ButtonVariant::Success,
-                    button_type: ButtonType::Submit,
-                    size: ButtonSize::Normal,
-                    on_click: move |_| {},
+                div { class: "flex flex-row justify-end gap-2",
+                    ActionButton {
+                        text: "Save".to_string(),
+                        variant: ButtonVariant::Success,
+                        button_type: ButtonType::Submit,
+                        size: ButtonSize::Normal,
+                        on_click: move |_| {},
+                    }
                 }
             }
+        
         }
     }
 }
