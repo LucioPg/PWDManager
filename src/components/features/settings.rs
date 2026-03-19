@@ -1,5 +1,5 @@
-use crate::components::features::aspect_settings::AspectSettings;
 use crate::components::features::diceware_settings::DicewareSettings;
+use crate::components::features::general_settings::GeneralSettings;
 use crate::components::{
     StoredPasswordSettings, TabContent, TabList, TabTrigger, Tabs, UpsertUser,
 };
@@ -30,7 +30,7 @@ pub fn SettingsTabContent() -> Element {
             TabList {
                 TabTrigger { value: "Account".to_string(), index: 0usize, "Account" }
                 TabTrigger { value: "Security".to_string(), index: 1usize, "Security" }
-                TabTrigger { value: "Aspect".to_string(), index: 2usize, "Aspect" }
+                TabTrigger { value: "General".to_string(), index: 2usize, "General" }
             }
             TabContent {
                 index: 0usize,
@@ -45,9 +45,15 @@ pub fn SettingsTabContent() -> Element {
                 index: 1usize,
                 class: "tabs-content",
                 value: "Security".to_string(),
-                Tabs { default_value: "Password Casuale".to_string(), horizontal: true,
+                Tabs {
+                    default_value: "Password Casuale".to_string(),
+                    horizontal: true,
                     TabList {
-                        TabTrigger { value: "Password Casuale".to_string(), index: 0usize, "Password Casuale" }
+                        TabTrigger {
+                            value: "Password Casuale".to_string(),
+                            index: 0usize,
+                            "Password Casuale"
+                        }
                         TabTrigger { value: "Diceware".to_string(), index: 1usize, "Diceware" }
                     }
                     TabContent {
@@ -67,8 +73,8 @@ pub fn SettingsTabContent() -> Element {
             TabContent {
                 index: 2usize,
                 class: "tabs-content",
-                value: "Aspect".to_string(),
-                AspectSettings {}
+                value: "General".to_string(),
+                GeneralSettings {}
             }
         }
     }

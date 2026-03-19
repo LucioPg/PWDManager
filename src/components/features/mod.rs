@@ -1,9 +1,9 @@
-pub mod aspect_settings;
 pub mod dashboard;
 mod dashboard_menu;
 mod diceware_settings;
 mod export_data;
 mod export_progress;
+pub mod general_settings;
 mod import_data;
 mod import_progress;
 mod landing;
@@ -16,8 +16,10 @@ pub mod upsert_user;
 
 pub use dashboard::*;
 pub use dashboard_menu::*;
+pub use diceware_settings::*;
 pub use export_data::*;
 pub use export_progress::*;
+pub use general_settings::*;
 pub use import_data::*;
 pub use import_progress::*;
 pub use landing::*;
@@ -27,5 +29,3 @@ pub use progress_migration::*;
 pub use settings::*;
 pub use storedpassword_settings::*;
 pub use upsert_user::*;
-pub use aspect_settings::*;
-pub use diceware_settings::*;

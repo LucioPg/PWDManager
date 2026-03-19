@@ -8,7 +8,7 @@ use pwd_dioxus::{show_toast_error, show_toast_success, use_toast};
 use sqlx::SqlitePool;
 
 #[component]
-pub fn AspectSettings() -> Element {
+pub fn GeneralSettings() -> Element {
     let auth_state = use_context::<AuthState>();
     let pool = use_context::<SqlitePool>();
     let pool_for_resource = pool.clone();
