@@ -184,6 +184,29 @@
     --btn-focus-ring: 0 0 0 0 transparent;
 }
 
+/* ============================================================
+   FONTS
+   ============================================================ */
+@font-face {
+    font-family: 'pwd-common';
+    src: url('Lexend-VariableFont_wght.ttf') format('woff2'),
+    url('Lexend-VariableFont_wght.ttf') format('woff'),
+    url('Lexend-VariableFont_wght.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'pwd-futuristic';
+    src: url('BrunoAceSC-Regular.ttf') format('woff2'),
+    url('BrunoAceSC-Regular.ttf') format('woff'),
+    url('BrunoAceSC-Regular.ttf') format('truetype');
+}
+
+@font-face {
+    font-family: 'pwd-futuristic-common';
+    src: url('BrunoAce-Regular.ttf') format('woff2'),
+    url('BrunoAce-Regular.ttf') format('woff'),
+    url('BrunoAce-Regular.ttf') format('truetype');
+}
 
 /* ============================================================
    KEYFRAMES - Migrated from tailwind.config.js
@@ -573,46 +596,6 @@ textarea.pwd-input {
     border-radius: 50%;
 }
 
-/*.spinner {*/
-/*    transform: translate(-50%, -50%);*/
-/*    height: 56px;*/
-/*    width: 56px;*/
-/*    box-sizing: border-box;*/
-/*    background: conic-gradient(*/
-/*            from 90deg at 50% 50%,*/
-/*            rgba(39, 174, 96, 0) 0deg,*/
-/*            rgba(31, 144, 255, 0) 0.04deg,*/
-/*            currentColor 360deg*/
-/*    );*/
-/*    border-radius: 56px;*/
-/*    !* previous code *!*/
-/*    animation: 1s rotate infinite linear;*/
-/*}*/
-
-/*.spinner::before {*/
-/*    content: "";*/
-/*    position: absolute;*/
-/*    left: 50%;*/
-/*    top: 50%;*/
-/*    transform: translate(-50%, -50%);*/
-/*    height: 40px;*/
-/*    width: 40px;*/
-/*    background: var(--primary-color, #fff);*/
-/*    border-radius: 48px;*/
-/*}*/
-
-/*.spinner::after {*/
-/*    content: "";*/
-/*    position: absolute;*/
-/*    right: 0;*/
-/*    top: 50%;*/
-/*    transform: translateY(-50%);*/
-/*    height: 8px;*/
-/*    width: 8px;*/
-/*    background: currentColor;*/
-/*    border-radius: 8px;*/
-/*}*/
-
 /* Spinner color variants */
 .spinner-success.spinner {
     @apply text-success-500;
@@ -621,23 +604,6 @@ textarea.pwd-input {
 .spinner-error.spinner {
     @apply text-error-500;
 }
-
-/*.spinner-sm {*/
-/*    @apply w-4 h-4 border-2;*/
-/*}*/
-
-/*.spinner-md {*/
-/*    @apply w-5 h-5 border-2;*/
-/*}*/
-
-/*.spinner-lg {*/
-/*    @apply w-8 h-8 border-4;*/
-/*}*/
-
-/*.spinner-xl {*/
-/*    @apply w-12 h-12 border-4;*/
-/*}*/
-
 
 /* ============================================================
    NAVIGATION
@@ -655,6 +621,7 @@ textarea.pwd-input {
 
 @utility navbar-brand-text {
     @apply text-xl font-bold text-neutral-800;
+    font-family: 'pwd-futuristic';
 }
 
 
@@ -845,6 +812,7 @@ input[type="password"]::-webkit-caps-lock-indicator {
     @apply mt-12 mb-5;
     max-height: calc(100vh - var(--navbar-height) - 5rem);
     @apply overflow-y-auto;
+    font-family: pwd-futuristic;
 }
 
 .auth-form-lg {
@@ -956,6 +924,7 @@ input[type="password"]::-webkit-caps-lock-indicator {
 /* Stile del testo slogan */
 .pwd-slogan-text {
     @apply text-xl font-medium text-neutral-800 drop-shadow-md whitespace-nowrap;
+    font-family: 'pwd-futuristic';
 }
 
 /* Container per contenuto futuro della landing page */
@@ -1710,6 +1679,7 @@ button[class*="btn-"] {
     }
 
     /* Badge colors - slightly brighter in dark mode */
+
     .pwd-stats-aside__badge--total {
         color: #94a3b8; /* slate-400 */
     }
@@ -1920,6 +1890,7 @@ button[class*="btn-"] {
 [data-theme="dark"] {
 
     /* ---- Auth Form ---- */
+
     .auth-form,
     .auth-form-lg,
     .auth-form-centered,
@@ -1928,6 +1899,7 @@ button[class*="btn-"] {
     }
 
     /* ---- Cards ---- */
+
     .card {
         @apply bg-base-100 border-base-300;
     }
@@ -1935,32 +1907,39 @@ button[class*="btn-"] {
     .stat-card {
         @apply bg-base-100 border-base-300;
     }
+
     .stat-card:hover {
         border-color: var(--color-base-200);
     }
 
     /* ---- Diceware Settings ---- */
+
     .pwd-diceware-settings {
         @apply bg-base-200 border-base-300;
     }
 
     /* ---- Inputs ---- */
+
     .pwd-input {
         @apply bg-base-100 border-base-300 text-base-content;
         --tw-placeholder-opacity: 0.4;
         color: var(--color-base-content);
     }
+
     .pwd-input::placeholder {
         color: var(--color-base-content);
     }
+
     .pwd-input:hover {
         border-color: var(--color-base-200);
     }
+
     .pwd-input:disabled {
         @apply bg-base-200 text-base-content/40;
     }
 
     /* ---- Navbar ---- */
+
     .navbar {
         border-color: var(--color-base-300);
     }
@@ -1972,6 +1951,7 @@ button[class*="btn-"] {
     .navbar-link {
         @apply text-base-content/70;
     }
+
     .navbar-link:hover {
         @apply hover:bg-base-200 hover:text-base-content;
     }
@@ -1981,6 +1961,7 @@ button[class*="btn-"] {
     }
 
     /* ---- Typography ---- */
+
     .text-h2,
     .text-h3 {
         @apply text-base-content;
@@ -2003,41 +1984,51 @@ button[class*="btn-"] {
     }
 
     /* ---- Avatar ---- */
+
     .avatar-bordered {
         border-color: var(--color-base-200);
     }
+
     .avatar-hover {
         border-color: var(--color-base-200);
     }
+
     .avatar-hover:hover {
         border-color: var(--color-primary);
     }
 
     /* ---- Slogan ---- */
+
     .pwd-slogan-text {
         @apply text-base-content;
     }
 
     /* ---- Error page ---- */
+
     .error-code {
         @apply text-base-content/10;
     }
 
     /* ---- Password visibility toggle ---- */
+
     .password-visibility-toggle {
         @apply text-base-content/50;
     }
+
     .password-visibility-toggle:hover {
         @apply text-base-content/80 hover:bg-base-200;
     }
+
     .password-visibility-toggle:disabled:hover {
         background: transparent;
     }
 
     /* ---- Buttons ---- */
+
     .btn-secondary {
         @apply bg-base-100 text-primary-400 border-primary-500;
     }
+
     .btn-secondary:hover {
         @apply hover:bg-base-200;
     }
@@ -2045,17 +2036,21 @@ button[class*="btn-"] {
     .btn-ghost {
         @apply text-primary-400;
     }
+
     .btn-ghost:hover {
         @apply hover:bg-base-200;
     }
 
     /* ---- Row action buttons ---- */
+
     .pwd-burger-btn {
         @apply text-base-content/50;
     }
+
     .pwd-burger-btn:hover {
         @apply text-base-content/80 hover:bg-base-200;
     }
+
     .pwd-burger-btn:focus {
         --tw-ring-color: var(--color-base-content);
     }
@@ -2063,14 +2058,17 @@ button[class*="btn-"] {
     .pwd-delete-btn {
         @apply text-base-content/50;
     }
+
     .pwd-delete-btn:hover {
         @apply text-error hover:bg-error/10;
     }
 
     /* ---- Tooltips ---- */
+
     .pwd-row-tooltip h4 {
         color: var(--color-base-content);
     }
+
     .pwd-row-tooltip p {
         color: var(--color-base-content);
         opacity: 0.8;
@@ -2079,12 +2077,14 @@ button[class*="btn-"] {
     .strength-reasons-tooltip h4 {
         color: var(--color-base-content);
     }
+
     .strength-reasons-tooltip li {
         color: var(--color-base-content);
         opacity: 0.8;
     }
 
     /* ---- Strength cursor ---- */
+
     .strength-cursor {
         background-color: var(--color-base-200);
         border-color: var(--color-base-content);
@@ -2092,6 +2092,7 @@ button[class*="btn-"] {
     }
 
     /* ---- Tabs trigger (non-active) ---- */
+
     .tabs-trigger {
         background: var(--color-base-200);
         color: var(--color-base-content);
@@ -2099,18 +2100,22 @@ button[class*="btn-"] {
     }
 
     /* ---- Tab shadow ---- */
+
     [data-variant="default"] .tabs-list {
         background: var(--color-base-300);
     }
 
     /* ---- Search input ---- */
+
     .pwd-search-input {
         @apply bg-base-100 border-base-300 text-base-content;
     }
+
     .pwd-search-input::placeholder {
         color: var(--color-base-content);
         opacity: 0.4;
     }
+
     .pwd-search-input:focus {
         outline-color: var(--color-primary);
         box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
