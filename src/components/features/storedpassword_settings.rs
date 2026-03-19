@@ -147,7 +147,7 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
             // div { class: "flex  flex-col gap-4 rounded rounded-lg bg-base-200 p-4 rounded-box w-full",
             div { class: "auth-form-tabbed rounded-box w-full",
                 strong {
-                    h2 { class: "text-center mb-1", "Generation Stored Password Settings " }
+                    h2 { class: "text-center mb-4", "Generation Stored Password Settings " }
                 }
                 div { class: "flex flex-row justify-between mb-2",
                     label { class: "label cursor-pointer",

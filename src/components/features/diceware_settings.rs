@@ -123,7 +123,7 @@ pub fn DicewareSettings() -> Element {
             // div { class: "pwd-diceware-settings flex flex-col gap-4 rounded-box bg-base-200 p-4 w-full",
             div { class: "auth-form-tabbed rounded-box w-full",
                 strong {
-                    h2 { class: "text-center mb-1", "Diceware Settings" }
+                    h2 { class: "text-center mb-4", "Diceware Settings" }
                 }
 
                 // Language
