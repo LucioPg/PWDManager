@@ -31,10 +31,6 @@ pub struct TabsProps {
     #[props(default = ReadSignal::new(Signal::new(true)))]
     pub roving_loop: ReadSignal<bool>,
 
-    /// The variant of the tabs component.
-    #[props(default)]
-    pub variant: TabsVariant,
-
     /// Additional attributes to apply to the tabs element.
     #[props(extends = GlobalAttributes)]
     pub attributes: Vec<Attribute>,
@@ -43,33 +39,11 @@ pub struct TabsProps {
     pub children: Element,
 }
 
-/// The variant of the tabs component.
-#[derive(Clone, Copy, PartialEq, Default)]
-pub enum TabsVariant {
-    /// The default variant.
-    #[default]
-    Default,
-    #[allow(dead_code)]
-    /// The ghost variant.
-    Ghost,
-}
-
-impl TabsVariant {
-    /// Convert the variant to a string for use in class names
-    fn to_class(self) -> &'static str {
-        match self {
-            TabsVariant::Default => "default",
-            TabsVariant::Ghost => "ghost",
-        }
-    }
-}
-
 #[component]
 pub fn Tabs(props: TabsProps) -> Element {
     rsx! {
         tabs::Tabs {
-            class: props.class + " tabs" + " futuristic",
-            "data-variant": props.variant.to_class(),
+            class: props.class + " pwd-tabs" + " futuristic",
             value: props.value,
             default_value: props.default_value,
             on_value_change: props.on_value_change,
@@ -85,7 +59,7 @@ pub fn Tabs(props: TabsProps) -> Element {
 #[component]
 pub fn TabList(props: TabListProps) -> Element {
     rsx! {
-        tabs::TabList { class: "tabs-list futuristic", attributes: props.attributes, {props.children} }
+        tabs::TabList { class: "pwd-tabs-list futuristic", attributes: props.attributes, {props.children} }
     }
 }
 
@@ -93,7 +67,7 @@ pub fn TabList(props: TabListProps) -> Element {
 pub fn TabTrigger(props: TabTriggerProps) -> Element {
     rsx! {
         tabs::TabTrigger {
-            class: "tabs-trigger",
+            class: "pwd-tabs-trigger",
             id: props.id,
             value: props.value,
             index: props.index,
@@ -108,7 +82,7 @@ pub fn TabTrigger(props: TabTriggerProps) -> Element {
 pub fn TabContent(props: TabContentProps) -> Element {
     rsx! {
         tabs::TabContent {
-            class: props.class.unwrap_or_default() + " tabs-content" + " futuristic",
+            class: props.class.unwrap_or_default() + " pwd-tabs-content" + " futuristic",
             value: props.value,
             id: props.id,
             index: props.index,
