@@ -7,6 +7,7 @@
 - [x] in edit non è possibile salvare il form perché la password risulta vuota
 - [x] la prima volta che si apre il form per l'edit il campo password è vuoto
 - [x] created_at non salvato nel database
+- [ ] diceware non rileva la lingua di sistema per i nuovi utenti, usa inglese come default
 
 ## Generali
 
@@ -220,3 +221,8 @@ il pc
 
 - [x] Creare funzione di import/export in vari formati (csv, json, xml)
 - [ ] spostare import_data.rs e export_data.rs dal frontend al backend
+
+### Instruction
+
+- [ ] creare README.md
+- [ ] creare istruzioni
