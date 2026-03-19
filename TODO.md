@@ -226,3 +226,7 @@ il pc
 
 - [ ] creare README.md
 - [ ] creare istruzioni
+
+### Automatic Updates
+
+- [ ] creare sistema di aggiornamento automatico
