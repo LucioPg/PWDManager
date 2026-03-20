@@ -101,6 +101,10 @@ pub fn load_window_icon() -> Option<dioxus::desktop::tao::window::Icon> {
     }
 }
 
+/// Impostare a `true` per forzare l'abilitazione del devtools, anche in release.
+/// Da impostare a `false` per la release finale.
+const FORCE_ENABLE_DEVTOOLS: bool = false;
+
 /// Creates a desktop configuration with custom window settings
 pub fn create_desktop_config(app_version: &str) -> Config {
     let window_icon = load_window_icon();
@@ -129,6 +133,14 @@ pub fn create_desktop_config(app_version: &str) -> Config {
     if let Some(dir) = data_dir {
         tracing::info!("Setting WebView2 data directory to: {:?}", dir);
         config = config.with_data_directory(dir);
+    }
+
+    // In release mode (a meno che FORCE_ENABLE_DEVTOOLS non sia true):
+    // - disabilita devtools e context menu (click destro)
+    // - rimuove il menu bar (Window, Edit, Help)
+    if !cfg!(debug_assertions) && !FORCE_ENABLE_DEVTOOLS {
+        config = config.with_disable_context_menu(true);
+        config = config.with_menu(None);
     }
 
     config
