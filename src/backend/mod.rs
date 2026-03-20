@@ -11,6 +11,7 @@ pub mod ui_utils;
 pub mod utils;
 pub mod avatar_utils;
 pub mod updater_types;
+pub mod updater;
 
 #[cfg(test)]
 mod password_utils_tests;
