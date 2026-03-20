@@ -5,7 +5,8 @@ Stato: Approved
 
 ## Obiettivo
 
-Implementare l'auto-update per PWDManager (Dioxus 0.7.3 desktop) che controlla GitHub Releases, scarica l'aggiornamento firmato, e lancia il NSIS installer silenzioso. L'utente vede una notifica overlay con changelog e progress bar.
+Implementare l'auto-update per PWDManager (Dioxus 0.7.3 desktop) che controlla GitHub Releases, scarica l'aggiornamento
+firmato, e lancia il NSIS installer silenzioso. L'utente vede una notifica overlay con changelog e progress bar.
 
 ## Scope
 
@@ -31,8 +32,8 @@ AuthWrapper (trigger)              App (consumer)
 │ update() e aggiorna │           │                      │
 │ lo Signal           │           │ Renderizza           │
 └─────────────────────┘           │ UpdateNotification   │
-                                 │ (overlay fisso)      │
-                                 └──────────────────────┘
+                                  │ (overlay fisso)      │
+                                  └──────────────────────┘
 ```
 
 - **`AuthWrapper`**: sa quando `AutoUpdate` e `true` dal DB, triggera il check e aggiorna `Signal<UpdateState>`
@@ -42,7 +43,8 @@ AuthWrapper (trigger)              App (consumer)
 
 1. `App()` crea `Signal<UpdateState>` (default `Idle`) e lo fornisce come context
 2. `AuthWrapper` legge `Signal<AutoUpdate>` dal DB, se `true` avvia `check_for_update()` dopo 3s
-3. `check_for_update()` → GET `latest.json` → parse `UpdateManifest` → strip `v` prefix dalla versione → confronto `semver`
+3. `check_for_update()` → GET `latest.json` → parse `UpdateManifest` → strip `v` prefix dalla versione → confronto
+   `semver`
 4. Se disponibile → setta `UpdateState::Available { version, notes }`
 5. `UpdateNotification` (in `App()`) reagisce al cambio di stato e mostra l'overlay
 6. Utente clicca "Aggiorna" → `download_and_install()` con callback progress
@@ -84,15 +86,15 @@ keys/update-public.key              # Public key minisign (committato)
 
 ## File Modificati
 
-| File | Modifica |
-|------|----------|
-| `Cargo.toml` | Aggiunta dipendenze runtime + build-dependencies |
-| `Dioxus.toml` | Sync versione da `0.1.0` a `0.2.0` (per allinearsi a `Cargo.toml`). Nota: non esiste `create_updater_artifacts`, si usa `--package-types "updater"` al build |
-| `build.rs` | Aggiunta `dotenvy::dotenv().ok()` dopo le direttive `cargo:rerun-if-changed` (per evitare rebuild su cambio `.env`) |
-| `src/main.rs` | Creazione `Signal<UpdateState>` + provide come context, render `UpdateNotification` |
-| `src/components/globals/auth_wrapper.rs` | `use_effect` per trigger check aggiornamenti |
-| `assets/input_main.css` | Classi `pwd-update-*` per il componente overlay |
-| `.gitignore` | Aggiunta `.env` |
+| File                                     | Modifica                                                                                                                                                     |
+|------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `Cargo.toml`                             | Aggiunta dipendenze runtime + build-dependencies                                                                                                             |
+| `Dioxus.toml`                            | Sync versione da `0.1.0` a `0.2.0` (per allinearsi a `Cargo.toml`). Nota: non esiste `create_updater_artifacts`, si usa `--package-types "updater"` al build |
+| `build.rs`                               | Aggiunta `dotenvy::dotenv().ok()` dopo le direttive `cargo:rerun-if-changed` (per evitare rebuild su cambio `.env`)                                          |
+| `src/main.rs`                            | Creazione `Signal<UpdateState>` + provide come context, render `UpdateNotification`                                                                          |
+| `src/components/globals/auth_wrapper.rs` | `use_effect` per trigger check aggiornamenti                                                                                                                 |
+| `assets/input_main.css`                  | Classi `pwd-update-*` per il componente overlay                                                                                                              |
+| `.gitignore`                             | Aggiunta `.env`                                                                                                                                              |
 
 ## Dipendenze
 
@@ -147,12 +149,12 @@ pub enum UpdateState {
 - **Posizione:** Overlay fisso, alto a destra (`fixed top-4 right-4`)
 - **Non e un toast:** Componente persistente con proprio stato, non auto-dismissable
 - **Contenuto:**
-  - `Checking` → spinner + testo
-  - `Available` → icona, versione, changelog, pulsanti "Aggiorna ora" + "Più tardi"
-  - `Downloading` → progress bar + percentuale
-  - `Installing` → spinner + testo
-  - `Error` → messaggio + pulsante "Chiudi"
-  - `Idle` / `UpToDate` → nessun render
+    - `Checking` → spinner + testo
+    - `Available` → icona, versione, changelog, pulsanti "Aggiorna ora" + "Più tardi"
+    - `Downloading` → progress bar + percentuale
+    - `Installing` → spinner + testo
+    - `Error` → messaggio + pulsante "Chiudi"
+    - `Idle` / `UpToDate` → nessun render
 - **Stili:** Prefisso `pwd-update-*` in `input_main.css`, dark mode via `[data-theme="dark"]`
 
 ## Verifica Firma
@@ -163,8 +165,10 @@ pub enum UpdateState {
 
 ## Note Implementative
 
-- **Platform key in `latest.json`**: La key usata per lookup nel HashMap (es. `"windows-x86_64"`) dipende da cosa `tauri-bundler` genera con `--package-types "updater"`. Da verificare dopo il primo build.
-- **Exit dopo NSIS**: L'app deve chiudersi dopo aver lanciato il NSIS installer. `std::process::exit()` funziona ma bypassa i cleanup di Dioxus. Valutare se usare `std::process::Command::new().spawn()` e poi uscire.
+- **Platform key in `latest.json`**: La key usata per lookup nel HashMap (es. `"windows-x86_64"`) dipende da cosa
+  `tauri-bundler` genera con `--package-types "updater"`. Da verificare dopo il primo build.
+- **Exit dopo NSIS**: L'app deve chiudersi dopo aver lanciato il NSIS installer. `std::process::exit()` funziona ma
+  bypassa i cleanup di Dioxus. Valutare se usare `std::process::Command::new().spawn()` e poi uscire.
 
 ## Endpoint GitHub
 
@@ -181,7 +185,9 @@ https://github.com/LucioPg/PWDManager/releases/latest/download/latest.json
 5. `gh release create v0.x.y --title "..." --notes "..." <artefatti>`
 6. Verificare che `latest.json` sia raggiungibile
 
-> **Nota:** `create_updater_artifacts = true` non esiste in `Dioxus.toml`. Dioxus 0.7 supporta `PackageType::Updater` che si attiva via flag `--package-types "updater"` nel comando `dx bundle`. Questo genera il file `.nsis.zip` e `latest.json` necessari per l'auto-update.
+> **Nota:** `create_updater_artifacts = true` non esiste in `Dioxus.toml`. Dioxus 0.7 supporta `PackageType::Updater`
+> che si attiva via flag `--package-types "updater"` nel comando `dx bundle`. Questo genera il file `.nsis.zip` e
+`latest.json` necessari per l'auto-update.
 
 ## Cose NON incluse (YAGNI)
 
