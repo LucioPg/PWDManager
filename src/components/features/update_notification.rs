@@ -1,10 +1,12 @@
-use crate::backend::updater_types::UpdateState;
+use crate::backend::updater::download_and_install;
+use crate::backend::updater_types::{UpdateManifest, UpdateState};
 use crate::components::{Spinner, SpinnerSize};
 use dioxus::prelude::*;
 
 #[component]
 pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
     let state = update_state.read();
+    let mut update_manifest = use_context::<Signal<Option<UpdateManifest>>>();
 
     match &*state {
         UpdateState::Idle | UpdateState::UpToDate => rsx! {},
@@ -23,7 +25,8 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
             let notes = notes.clone();
             let mut update_state_avail = update_state.clone();
             let mut update_state_dismiss = update_state.clone();
-            let manifest = notes.clone();
+            let update_manifest_click = update_manifest.clone();
+            let changelog = notes.clone();
             rsx! {
                 div { class: "pwd-update-overlay",
                     div { class: "pwd-update-card",
@@ -40,9 +43,9 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
                         div { class: "flex-1 min-w-0",
                             h3 { class: "pwd-update-title", "Aggiornamento disponibile!" }
                             p { class: "pwd-update-version", "Versione {version}" }
-                            if !manifest.is_empty() {
+                            if !changelog.is_empty() {
                                 p { class: "pwd-update-changelog",
-                                    dangerous_inner_html: "{manifest}"
+                                    dangerous_inner_html: "{changelog}"
                                 }
                             }
                         }
@@ -50,9 +53,19 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
                             button {
                                 class: "btn btn-primary btn-sm",
                                 onclick: move |_| {
-                                    // TODO(human): il manifest deve essere passato a download_and_install
-                                    // per ora salviamo lo stato come placeholder
-                                    update_state_avail.set(UpdateState::Downloading { progress: 0 });
+                                    let manifest = update_manifest_click.read().clone();
+                                    if let Some(manifest) = manifest {
+                                        let mut update_state = update_state_avail.clone();
+                                        spawn(async move {
+                                            if let Err(e) = download_and_install(&manifest, update_state).await {
+                                                update_state.set(UpdateState::Error(e));
+                                            }
+                                        });
+                                    } else {
+                                        update_state_avail.set(UpdateState::Error(
+                                            "Manifest non disponibile".to_string(),
+                                        ));
+                                    }
                                 },
                                 "Aggiorna ora"
                             }

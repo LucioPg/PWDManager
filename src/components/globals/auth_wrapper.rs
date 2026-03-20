@@ -2,8 +2,11 @@ use crate::Route;
 use crate::auth::AuthState;
 use crate::backend::db_backend::fetch_user_settings;
 use crate::backend::settings_types::{AutoUpdate, Theme};
+use crate::backend::updater::check_for_update;
+use crate::backend::updater_types::{UpdateManifest, UpdateState};
 use dioxus::prelude::*;
 use sqlx::SqlitePool;
+use std::time::Duration;
 
 #[component]
 pub fn AuthWrapper() -> Element {
@@ -21,6 +24,12 @@ pub fn AuthWrapper() -> Element {
     // Flag per fetch unico dei settings di autoupdate
     #[allow(unused_mut)]
     let mut auto_update_fetched = use_signal(|| false);
+
+    // Leggi Signal<UpdateState> fornito da App() — NON dentro use_effect!
+    let mut update_state = use_context::<Signal<UpdateState>>();
+    let mut update_manifest = use_context::<Signal<Option<UpdateManifest>>>();
+    // Guardia: evita check multipli concorrenti
+    let mut update_check_started = use_signal(|| false);
 
     if !auth_state.is_logged_in() {
         nav.push(Route::LandingPage);
@@ -46,6 +55,47 @@ pub fn AuthWrapper() -> Element {
             theme_fetched.set(true);
             auto_update_fetched.set(true);
         }
+    });
+
+    // Trigger check aggiornamenti quando AutoUpdate viene letto dal DB
+    use_effect(move || {
+        let auto_update_enabled = auto_update.read().0;
+        if !auto_update_enabled || update_check_started() {
+            return;
+        }
+
+        update_check_started.set(true);
+        let mut update_state_clone = update_state.clone();
+        let mut update_manifest_clone = update_manifest.clone();
+
+        spawn(async move {
+            // Attendi 3 secondi dopo il login
+            tokio::time::sleep(Duration::from_secs(3)).await;
+
+            update_state_clone.set(UpdateState::Checking);
+
+            match check_for_update().await {
+                Ok(Some(manifest)) => {
+                    let version = manifest.version.clone();
+                    let notes = manifest.notes.clone();
+                    // Salva il manifest per il download
+                    update_manifest_clone.set(Some(manifest));
+                    update_state_clone.set(UpdateState::Available { version, notes });
+                }
+                Ok(None) => {
+                    update_state_clone.set(UpdateState::UpToDate);
+                    // Auto-clear dopo 1 secondo come da spec
+                    let mut state_for_clear = update_state_clone.clone();
+                    spawn(async move {
+                        tokio::time::sleep(Duration::from_secs(1)).await;
+                        state_for_clear.set(UpdateState::Idle);
+                    });
+                }
+                Err(e) => {
+                    update_state_clone.set(UpdateState::Error(e));
+                }
+            }
+        });
     });
 
     rsx! {

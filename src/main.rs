@@ -7,10 +7,11 @@ use crate::auth::User;
 use crate::backend::db_backend::list_users_no_avatar;
 use crate::backend::init_blacklist_from_path;
 use crate::backend::settings_types::AutoUpdate;
+use crate::backend::updater_types::{UpdateManifest, UpdateState};
 use crate::components::{
     AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, RouteWrapper,
-    Settings, Spinner, SpinnerSize, Style, ToastContainer, ToastHubState, UpsertUser,
-    show_toast_error, show_toast_success,
+    Settings, Spinner, SpinnerSize, Style, ToastContainer, ToastHubState, UpdateNotification,
+    UpsertUser, show_toast_error, show_toast_success,
 };
 use backend::db_backend::init_db;
 use backend::settings_types::Theme;
@@ -42,6 +43,10 @@ fn App() -> Element {
     let mut auto_update = use_signal(|| AutoUpdate::default());
     use_context_provider(move || app_theme);
     use_context_provider(|| auto_update);
+    let mut update_state = use_signal(|| UpdateState::Idle);
+    use_context_provider(|| update_state);
+    let mut update_manifest = use_signal(|| None::<UpdateManifest>);
+    use_context_provider(|| update_manifest);
     use_context_provider(|| Signal::new(ToastHubState::default()));
     // Il resource ora conterrà un Result
     let mut db_resource = use_resource(move || async move { init_db().await });
@@ -136,6 +141,7 @@ fn App() -> Element {
                 // Carica il CSS di Tailwind globalmente
                 Style {}
                 ToastContainer {}
+                UpdateNotification { update_state }
                 Router::<Route> {}
             }
         }
