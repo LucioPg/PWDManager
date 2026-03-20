@@ -181,3 +181,191 @@ fn find_exe_in_dir(dir: &Path) -> Result<PathBuf, String> {
         .map(|entry| entry.path())
         .ok_or_else(|| "No .exe installer found in archive".to_string())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::backend::updater_types::{UpdateManifest, UpdateState};
+    use std::fs;
+    use std::io::Write;
+    use std::path::PathBuf;
+
+    // ================================================================
+    // find_exe_in_dir
+    // ================================================================
+
+    #[test]
+    fn finds_exe_in_dir() {
+        let dir = tempfile();
+        create_file(&dir, "readme.txt", "docs");
+        create_file(&dir, "PWDManager-Setup.exe", "binary");
+        create_file(&dir, "config.ini", "settings");
+
+        let result = find_exe_in_dir(&dir);
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap().file_name().unwrap().to_str().unwrap(),
+            "PWDManager-Setup.exe"
+        );
+    }
+
+    #[test]
+    fn finds_first_exe_when_multiple() {
+        let dir = tempfile();
+        create_file(&dir, "alpha.exe", "a");
+        create_file(&dir, "beta.exe", "b");
+
+        let result = find_exe_in_dir(&dir).unwrap();
+        assert!(result.file_name().unwrap().to_str().unwrap().contains("alpha"));
+    }
+
+    #[test]
+    fn errors_when_no_exe() {
+        let dir = tempfile();
+        create_file(&dir, "notes.md", "# notes");
+        create_file(&dir, "data.json", "{}");
+
+        let result = find_exe_in_dir(&dir);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("No .exe"));
+    }
+
+    #[test]
+    fn errors_on_nonexistent_dir() {
+        let dir = PathBuf::from("/tmp/nonexistent_dir_xyz_12345");
+        let result = find_exe_in_dir(&dir);
+        assert!(result.is_err());
+    }
+
+    // ================================================================
+    // UpdateManifest deserialization
+    // ================================================================
+
+    #[test]
+    fn deserializes_valid_json() {
+        let json = r#"{
+            "version": "0.3.0",
+            "notes": "Bug fixes and improvements",
+            "pub_date": "2026-03-20T10:00:00Z",
+            "platforms": {
+                "windows-x86_64": {
+                    "signature": "dGVzdA==",
+                    "url": "https://example.com/update.zip"
+                }
+            }
+        }"#;
+
+        let manifest: UpdateManifest = serde_json::from_str(json).unwrap();
+        assert_eq!(manifest.version, "0.3.0");
+        assert_eq!(manifest.notes, "Bug fixes and improvements");
+        assert_eq!(manifest.pub_date, "2026-03-20T10:00:00Z");
+
+        let platform = manifest.platforms.get("windows-x86_64").unwrap();
+        assert_eq!(platform.signature, "dGVzdA==");
+        assert_eq!(platform.url, "https://example.com/update.zip");
+    }
+
+    #[test]
+    fn deserializes_with_v_prefix() {
+        let json = r#"{
+            "version": "v0.3.0",
+            "notes": "Release",
+            "pub_date": "2026-01-01T00:00:00Z",
+            "platforms": {}
+        }"#;
+
+        let manifest: UpdateManifest = serde_json::from_str(json).unwrap();
+        // La deserializzazione non trimma la "v" — lo fa check_for_update()
+        assert_eq!(manifest.version, "v0.3.0");
+    }
+
+    #[test]
+    fn errors_on_missing_required_fields() {
+        let json = r#"{
+            "version": "0.3.0"
+        }"#;
+
+        let result = serde_json::from_str::<UpdateManifest>(json);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn deserializes_empty_notes_and_platforms() {
+        let json = r#"{
+            "version": "1.0.0",
+            "notes": "",
+            "pub_date": "2026-01-01T00:00:00Z",
+            "platforms": {}
+        }"#;
+
+        let manifest: UpdateManifest = serde_json::from_str(json).unwrap();
+        assert!(manifest.notes.is_empty());
+        assert!(manifest.platforms.is_empty());
+    }
+
+    // ================================================================
+    // UpdateState
+    // ================================================================
+
+    #[test]
+    fn equality_between_variants() {
+        assert_eq!(UpdateState::Idle, UpdateState::Idle);
+        assert_eq!(UpdateState::Checking, UpdateState::Checking);
+        assert_eq!(UpdateState::Installing, UpdateState::Installing);
+        assert_eq!(UpdateState::UpToDate, UpdateState::UpToDate);
+
+        assert_ne!(UpdateState::Idle, UpdateState::Checking);
+        assert_ne!(
+            UpdateState::Downloading { progress: 50 },
+            UpdateState::Downloading { progress: 51 }
+        );
+
+        assert_eq!(
+            UpdateState::Available {
+                version: "0.3.0".to_string(),
+                notes: "fix".to_string()
+            },
+            UpdateState::Available {
+                version: "0.3.0".to_string(),
+                notes: "fix".to_string()
+            }
+        );
+    }
+
+    #[test]
+    fn finds_exe_with_uppercase_extension() {
+        let dir = tempfile();
+        create_file(&dir, "Setup.EXE", "binary");
+        create_file(&dir, "changelog.md", "# changes");
+
+        let result = find_exe_in_dir(&dir);
+        assert!(result.is_ok());
+        assert_eq!(
+            result.unwrap().file_name().unwrap().to_str().unwrap(),
+            "Setup.EXE"
+        );
+    }
+
+    // ================================================================
+    // Helpers
+    // ================================================================
+
+    fn tempfile() -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "pwdmanager_test_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let _ = fs::create_dir_all(&dir);
+        dir
+    }
+
+    fn create_file(dir: &PathBuf, name: &str, content: &str) {
+        let path = dir.join(name);
+        let mut f = fs::File::create(path).unwrap();
+        f.write_all(content.as_bytes()).unwrap();
+    }
+}
