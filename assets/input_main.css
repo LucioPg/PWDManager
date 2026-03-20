@@ -850,6 +850,51 @@ input[type="password"]::-webkit-caps-lock-indicator {
     @apply pwd-toast-base bg-blue-100 border-blue-500 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400;
 }
 
+/* ============================================================
+   UPDATE NOTIFICATION (overlay fisso)
+   ============================================================ */
+@utility pwd-update-overlay {
+    @apply fixed top-4 right-4 z-50 w-96 max-w-[calc(100vw-2rem)];
+}
+
+.pwd-update-card {
+    @apply rounded-xl shadow-xl border p-5 backdrop-blur-sm;
+    background-color: rgba(255, 255, 255, 0.95);
+    border-color: var(--color-base-300);
+    color: var(--color-base-content);
+}
+
+.pwd-update-title {
+    @apply text-base font-bold;
+}
+
+.pwd-update-version {
+    @apply text-sm text-base-content/70 mt-1;
+}
+
+.pwd-update-changelog {
+    @apply text-xs text-base-content/60 mt-2 max-h-32 overflow-y-auto leading-relaxed;
+}
+
+.pwd-update-progress-bar {
+    @apply w-full bg-base-300 rounded-full h-2.5 mt-3;
+}
+
+.pwd-update-progress-fill {
+    @apply h-2.5 rounded-full bg-primary transition-all duration-300;
+}
+
+.pwd-update-actions {
+    @apply flex gap-2 mt-4;
+}
+
+.pwd-update-error-text {
+    @apply text-sm text-error mt-2;
+}
+
+.pwd-update-spinner {
+    @apply flex items-center gap-3;
+}
 
 /* Auth forms */
 @utility auth-form {
@@ -2006,6 +2051,14 @@ button[class*="btn-"] {
 
     .navbar-user {
         border-color: var(--color-base-300);
+    }
+
+    /* ---- Update Notification ---- */
+
+    .pwd-update-card {
+        background-color: rgba(30, 30, 46, 0.95);
+        border-color: var(--color-base-300);
+        color: var(--color-base-content);
     }
 
     /* ---- Typography ---- */
