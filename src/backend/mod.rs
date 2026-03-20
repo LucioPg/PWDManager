@@ -13,6 +13,9 @@ pub mod avatar_utils;
 pub mod updater_types;
 pub mod updater;
 
+#[cfg(feature = "desktop")]
+pub mod db_key;
+
 #[cfg(test)]
 mod password_utils_tests;
 
