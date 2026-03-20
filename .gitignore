@@ -26,3 +26,6 @@ test_import.json
 /assets/pwd-dioxus-classes.rs
 /assets/pwd-dioxus-components.css
 /.cargo/config.toml
+
+# Chiavi di firma updater (MAI committare)
+.env
