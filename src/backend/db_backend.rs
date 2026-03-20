@@ -9,11 +9,13 @@ use pwd_types::{
     UserAuth,
 };
 use secrecy::{ExposeSecret, SecretString};
-use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqliteRow};
+use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions, SqliteRow};
 use sqlx::{Row, query};
 use std::str::FromStr;
 #[cfg(feature = "desktop")]
-use tracing::{debug, instrument, warn};
+use tracing::{debug, info, instrument, warn};
+#[cfg(feature = "desktop")]
+use crate::backend::db_key;
 
 /// Struct per rappresentare un aggiornamento utente con field opzionali
 #[derive(Debug, Clone)]
@@ -56,39 +58,161 @@ impl UserUpdate {
     }
 }
 
-/// Inizializza il database SQLite con le tabelle necessarie.
+/// Checks if a SQLite file is unencrypted by reading its magic header.
+/// Regular SQLite files start with `"SQLite format 3\0"`.
+/// SQLCipher encrypted files start with random bytes.
+#[cfg(feature = "desktop")]
+fn is_database_unencrypted(path: &str) -> bool {
+    match std::fs::File::open(path) {
+        Ok(mut file) => {
+            let mut header = [0u8; 16];
+            match std::io::Read::read_exact(&mut file, &mut header) {
+                Ok(()) => header == *b"SQLite format 3\0",
+                Err(_) => false,
+            }
+        }
+        Err(_) => false,
+    }
+}
+
+/// Migrates an unencrypted SQLite database to SQLCipher format.
 ///
-/// # Parametri
+/// Flow:
+/// 1. Backup original file to `database.db.pre-encryption-backup`
+/// 2. Open the unencrypted DB without a key (plaintext mode in SQLCipher)
+/// 3. Acquire a **single connection** (ATTACH is per-connection, not per-pool)
+/// 4. Attach a new encrypted temp DB with the keyring key
+/// 5. Use `sqlcipher_export` to copy all data
+/// 6. Replace the original file with the encrypted version
+/// 7. Clean up backup and old WAL/SHM files on success
+#[cfg(feature = "desktop")]
+async fn migrate_to_encrypted(path: &str, key: &str) -> Result<(), DBError> {
+    let backup_path = format!("{}.pre-encryption-backup", path);
+    let temp_path = format!("{}.encrypted_tmp", path);
+
+    // Backup original
+    std::fs::copy(path, &backup_path)
+        .map_err(|e| DBError::new_general_error(format!("Backup failed: {}", e)))?;
+
+    // Remove stale temp file if present
+    let _ = std::fs::remove_file(&temp_path);
+
+    // Open unencrypted source DB (no PRAGMA key = plaintext mode in SQLCipher)
+    let source_opts = SqliteConnectOptions::from_str(&format!("sqlite:{}", path))
+        .map_err(|e| DBError::new_general_error(e.to_string()))?;
+    let pool = SqlitePool::connect_with(source_opts)
+        .await
+        .map_err(|e| DBError::new_general_error(format!("Cannot open source DB: {}", e)))?;
+
+    // CRITICAL: acquire a single connection — ATTACH/DETACH/sqlcipher_export
+    // are all per-connection operations and MUST run on the same connection.
+    let mut conn = pool.acquire()
+        .await
+        .map_err(|e| DBError::new_general_error(format!("Cannot acquire connection: {}", e)))?;
+
+    // Attach encrypted target DB
+    let attach_sql = format!(
+        "ATTACH DATABASE '{}' AS encrypted KEY \"x'{}'\"",
+        temp_path, key
+    );
+    sqlx::query(&attach_sql)
+        .execute(&mut *conn)
+        .await
+        .map_err(|e| {
+            let _ = std::fs::remove_file(&temp_path);
+            DBError::new_general_error(format!("ATTACH failed: {}", e))
+        })?;
+
+    // Export all data from unencrypted source to encrypted target
+    sqlx::query("SELECT sqlcipher_export('encrypted')")
+        .execute(&mut *conn)
+        .await
+        .map_err(|e| {
+            let _ = std::fs::remove_file(&temp_path);
+            DBError::new_general_error(format!("sqlcipher_export failed: {}", e))
+        })?;
+
+    // Detach
+    sqlx::query("DETACH DATABASE encrypted")
+        .execute(&mut *conn)
+        .await
+        .map_err(|e| DBError::new_general_error(format!("DETACH failed: {}", e)))?;
+
+    // Release connection and close pool (release file locks)
+    drop(conn);
+    pool.close().await;
+
+    // Replace original with encrypted version
+    std::fs::rename(&temp_path, path)
+        .map_err(|e| {
+            // Try to restore backup on failure
+            let _ = std::fs::copy(&backup_path, path);
+            DBError::new_general_error(format!("Replace failed: {}", e))
+        })?;
+
+    // Remove backup on success
+    let _ = std::fs::remove_file(&backup_path);
+
+    // Remove old WAL/SHM files from the unencrypted database
+    let _ = std::fs::remove_file(&format!("{}-wal", path));
+    let _ = std::fs::remove_file(&format!("{}-shm", path));
+
+    Ok(())
+}
+
+/// Initializes the encrypted SQLite database using SQLCipher with the OS keyring key.
 ///
-/// * `pool` - Il pool SQLite restituito (inizializzato e con WAL mode)
+/// On first run (or after migration), the database is encrypted at rest using a key
+/// stored in the OS keyring (Windows Credential Manager). If an unencrypted database
+/// is detected, it is automatically migrated to SQLCipher format.
 ///
-/// # Valòre Restituito
-///
-/// Return [`SqlitePool`](sqlx::SqlitePool) se l'inizializzazione ha successo.
-///
-/// # Errori
-///
-/// - `DBError::new_general_error` - Fallisce la connessione al database
-/// - `DBError::new_general_error` con messaggio specifico per fallimento creazione tabelle
-///
-/// # Comportamento
-///
-/// 1. Configura il database in modalità WAL (Write-Ahead Logging) per concorrenza
-/// 2. Abilita le foreign keys per l'integrità referenziale
-/// 3. Crea le tabelle mancanti se necessario (`.create_if_missing(true)`)
-/// 4. Esegue tutte le query di inizializzazione definite in `QUERIES`
+/// Returns a `SqlitePool` ready for use with all tables created.
 #[cfg(feature = "desktop")]
 pub async fn init_db() -> Result<SqlitePool, DBError> {
-    let options = SqliteConnectOptions::from_str("sqlite:database.db")
+    let db_key = db_key::get_or_create_db_key()
+        .map_err(|e| DBError::new_general_error(format!("Keyring error: {}", e)))?;
+
+    let db_path = "database.db";
+
+    // Migrate existing unencrypted database if detected
+    if is_database_unencrypted(db_path) {
+        warn!("Detected unencrypted database — migrating to SQLCipher");
+        migrate_to_encrypted(db_path, &db_key).await?;
+        info!("Database migration to SQLCipher complete");
+    }
+
+    // Build PRAGMA key command using raw hex key material
+    let pragma_key = format!("PRAGMA key = \"x'{}'\"", db_key);
+
+    let connect_options = SqliteConnectOptions::from_str(&format!("sqlite:{}", db_path))
         .map_err(|e| DBError::new_general_error(e.to_string()))?
         .pragma("foreign_keys", "ON")
-        .journal_mode(SqliteJournalMode::Wal) //fondamentale per la concorrenza
+        .journal_mode(SqliteJournalMode::Wal)
         .foreign_keys(true)
         .create_if_missing(true);
 
-    let pool = SqlitePool::connect_with(options)
+    let pool = SqlitePoolOptions::new()
+        .after_connect(move |conn, _meta| {
+            let pragma = pragma_key.clone();
+            Box::pin(async move {
+                sqlx::query(&pragma)
+                    .execute(&mut *conn)
+                    .await?;
+                // Verify decryption works (PRAGMA key itself never fails)
+                sqlx::query("SELECT count(*) FROM sqlite_master")
+                    .execute(&mut *conn)
+                    .await?;
+                Ok(())
+            })
+        })
+        .connect_with(connect_options)
         .await
-        .map_err(|e| DBError::new_general_error(e.to_string()))?;
+        .map_err(|e| DBError::new_general_error(
+            format!("Failed to open encrypted database. \
+                     If you reinstalled the app without exporting passwords first, \
+                     the database is unrecoverable. ({})", e)
+        ))?;
+
     for init_query in QUERIES {
         query(init_query)
             .execute(&pool)
