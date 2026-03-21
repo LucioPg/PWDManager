@@ -87,18 +87,26 @@ fn is_database_unencrypted(path: &str) -> bool {
 /// 7. Clean up backup and old WAL/SHM files on success
 #[cfg(feature = "desktop")]
 async fn migrate_to_encrypted(path: &str, key: &str) -> Result<(), DBError> {
-    let backup_path = format!("{}.pre-encryption-backup", path);
-    let temp_path = format!("{}.encrypted_tmp", path);
+    // Resolve to absolute path — ATTACH DATABASE resolves relative paths
+    // differently than std::fs (may differ from process CWD in desktop apps)
+    let abs_path = std::env::current_dir()
+        .unwrap_or_default()
+        .join(path);
+    let abs_path = abs_path.to_str()
+        .ok_or_else(|| DBError::new_general_error("Invalid DB path".into()))?;
+
+    let backup_path = format!("{}.pre-encryption-backup", abs_path);
+    let temp_path = format!("{}.encrypted_tmp", abs_path);
 
     // Backup original
-    std::fs::copy(path, &backup_path)
+    std::fs::copy(abs_path, &backup_path)
         .map_err(|e| DBError::new_general_error(format!("Backup failed: {}", e)))?;
 
     // Remove stale temp file if present
     let _ = std::fs::remove_file(&temp_path);
 
     // Open unencrypted source DB (no PRAGMA key = plaintext mode in SQLCipher)
-    let source_opts = SqliteConnectOptions::from_str(&format!("sqlite:{}", path))
+    let source_opts = SqliteConnectOptions::from_str(&format!("sqlite:{}", abs_path))
         .map_err(|e| DBError::new_general_error(e.to_string()))?;
     let pool = SqlitePool::connect_with(source_opts)
         .await
@@ -143,10 +151,10 @@ async fn migrate_to_encrypted(path: &str, key: &str) -> Result<(), DBError> {
     pool.close().await;
 
     // Replace original with encrypted version
-    std::fs::rename(&temp_path, path)
+    std::fs::rename(&temp_path, abs_path)
         .map_err(|e| {
             // Try to restore backup on failure
-            let _ = std::fs::copy(&backup_path, path);
+            let _ = std::fs::copy(&backup_path, abs_path);
             DBError::new_general_error(format!("Replace failed: {}", e))
         })?;
 
@@ -154,8 +162,8 @@ async fn migrate_to_encrypted(path: &str, key: &str) -> Result<(), DBError> {
     let _ = std::fs::remove_file(&backup_path);
 
     // Remove old WAL/SHM files from the unencrypted database
-    let _ = std::fs::remove_file(&format!("{}-wal", path));
-    let _ = std::fs::remove_file(&format!("{}-shm", path));
+    let _ = std::fs::remove_file(&format!("{}-wal", abs_path));
+    let _ = std::fs::remove_file(&format!("{}-shm", abs_path));
 
     Ok(())
 }
@@ -172,7 +180,11 @@ pub async fn init_db() -> Result<SqlitePool, DBError> {
     let db_key = db_key::get_or_create_db_key()
         .map_err(|e| DBError::new_general_error(format!("Keyring error: {}", e)))?;
 
-    let db_path = "database.db";
+    let db_path = std::env::current_dir()
+        .unwrap_or_default()
+        .join("database.db");
+    let db_path = db_path.to_str()
+        .ok_or_else(|| DBError::new_general_error("Invalid DB path".into()))?;
 
     // Migrate existing unencrypted database if detected
     if is_database_unencrypted(db_path) {
