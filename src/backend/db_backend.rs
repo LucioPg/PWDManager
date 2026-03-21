@@ -15,7 +15,7 @@ use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqliteRo
 use sqlx::{Row, query};
 use std::str::FromStr;
 #[cfg(feature = "desktop")]
-use tracing::{debug, info, instrument, warn};
+use tracing::{debug, instrument, warn};
 
 /// Struct per rappresentare un aggiornamento utente con field opzionali
 #[derive(Debug, Clone)]
@@ -58,129 +58,29 @@ impl UserUpdate {
     }
 }
 
-/// Checks if a SQLite file is unencrypted by reading its magic header.
-/// Regular SQLite files start with `"SQLite format 3\0"`.
-/// SQLCipher encrypted files start with random bytes.
+/// Result of database initialization.
 #[cfg(feature = "desktop")]
-fn is_database_unencrypted(path: &str) -> bool {
-    match std::fs::File::open(path) {
-        Ok(mut file) => {
-            let mut header = [0u8; 16];
-            match std::io::Read::read_exact(&mut file, &mut header) {
-                Ok(()) => header == *b"SQLite format 3\0",
-                Err(_) => false,
-            }
-        }
-        Err(_) => false,
-    }
-}
-
-/// Migrates an unencrypted SQLite database to SQLCipher format.
-///
-/// Flow:
-/// 1. Backup original file to `database.db.pre-encryption-backup`
-/// 2. Open the unencrypted DB without a key (plaintext mode in SQLCipher)
-/// 3. Acquire a **single connection** (ATTACH is per-connection, not per-pool)
-/// 4. Attach a new encrypted temp DB with the keyring key
-/// 5. Use `sqlcipher_export` to copy all data
-/// 6. Replace the original file with the encrypted version
-/// 7. Clean up backup and old WAL/SHM files on success
-#[cfg(feature = "desktop")]
-async fn migrate_to_encrypted(path: &str, key: &str) -> Result<(), DBError> {
-    // Resolve to absolute path — ATTACH DATABASE resolves relative paths
-    // differently than std::fs (may differ from process CWD in desktop apps)
-    let abs_path = std::env::current_dir().unwrap_or_default().join(path);
-    let abs_path = abs_path
-        .to_str()
-        .ok_or_else(|| DBError::new_general_error("Invalid DB path".into()))?;
-
-    let backup_path = format!("{}.pre-encryption-backup", abs_path);
-    let temp_path = format!("{}.encrypted_tmp", abs_path);
-
-    // Backup original
-    std::fs::copy(abs_path, &backup_path)
-        .map_err(|e| DBError::new_general_error(format!("Backup failed: {}", e)))?;
-
-    // Remove stale temp file if present
-    let _ = std::fs::remove_file(&temp_path);
-
-    // Pre-create the temp file — on Windows, ATTACH DATABASE cannot create
-    // new files; it can only open existing ones
-    std::fs::File::create(&temp_path)
-        .map_err(|e| DBError::new_general_error(format!("Cannot create temp DB: {}", e)))?;
-
-    // Open unencrypted source DB (no PRAGMA key = plaintext mode in SQLCipher)
-    let source_opts = SqliteConnectOptions::from_str(&format!("sqlite:{}", abs_path))
-        .map_err(|e| DBError::new_general_error(e.to_string()))?;
-    let pool = SqlitePool::connect_with(source_opts)
-        .await
-        .map_err(|e| DBError::new_general_error(format!("Cannot open source DB: {}", e)))?;
-
-    // CRITICAL: acquire a single connection — ATTACH/DETACH/sqlcipher_export
-    // are all per-connection operations and MUST run on the same connection.
-    let mut conn = pool
-        .acquire()
-        .await
-        .map_err(|e| DBError::new_general_error(format!("Cannot acquire connection: {}", e)))?;
-
-    // Attach encrypted target DB
-    let attach_sql = format!(
-        "ATTACH DATABASE '{}' AS encrypted KEY \"x'{}'\"",
-        temp_path, key
-    );
-    sqlx::query(&attach_sql)
-        .execute(&mut *conn)
-        .await
-        .map_err(|e| {
-            let _ = std::fs::remove_file(&temp_path);
-            DBError::new_general_error(format!("ATTACH failed: {}", e))
-        })?;
-
-    // Export all data from unencrypted source to encrypted target
-    sqlx::query("SELECT sqlcipher_export('encrypted')")
-        .execute(&mut *conn)
-        .await
-        .map_err(|e| {
-            let _ = std::fs::remove_file(&temp_path);
-            DBError::new_general_error(format!("sqlcipher_export failed: {}", e))
-        })?;
-
-    // Detach
-    sqlx::query("DETACH DATABASE encrypted")
-        .execute(&mut *conn)
-        .await
-        .map_err(|e| DBError::new_general_error(format!("DETACH failed: {}", e)))?;
-
-    // Release connection and close pool (release file locks)
-    drop(conn);
-    pool.close().await;
-
-    // Replace original with encrypted version
-    std::fs::rename(&temp_path, abs_path).map_err(|e| {
-        // Try to restore backup on failure
-        let _ = std::fs::copy(&backup_path, abs_path);
-        DBError::new_general_error(format!("Replace failed: {}", e))
-    })?;
-
-    // Remove backup on success
-    let _ = std::fs::remove_file(&backup_path);
-
-    // Remove old WAL/SHM files from the unencrypted database
-    let _ = std::fs::remove_file(&format!("{}-wal", abs_path));
-    let _ = std::fs::remove_file(&format!("{}-shm", abs_path));
-
-    Ok(())
+pub enum InitResult {
+    /// Normal startup or recovery completed successfully.
+    Ready(SqlitePool),
+    /// First setup: DB created, passphrase generated, show to user.
+    FirstSetup {
+        pool: SqlitePool,
+        recovery_phrase: SecretString,
+    },
 }
 
 /// Initializes the encrypted SQLite database using SQLCipher with the OS keyring key.
 ///
-/// On first run (or after migration), the database is encrypted at rest using a key
-/// stored in the OS keyring (Windows Credential Manager). If an unencrypted database
-/// is detected, it is automatically migrated to SQLCipher format.
+/// On first run, generates a diceware recovery passphrase, derives a key via Argon2id,
+/// stores it in the OS keyring, creates the encrypted DB, and returns `InitResult::FirstSetup`
+/// so the UI can show the passphrase to the user.
 ///
-/// Returns a `SqlitePool` ready for use with all tables created.
+/// On subsequent runs, tries to open the DB with the key from the OS keyring.
+/// If the keyring key doesn't work, returns `DBError::DBKeyMissingWithDb` so the UI
+/// can show the recovery dialog.
 #[cfg(feature = "desktop")]
-pub async fn init_db() -> Result<SqlitePool, DBError> {
+pub async fn init_db() -> Result<InitResult, DBError> {
     let db_path = std::env::current_dir()
         .unwrap_or_default()
         .join("database.db");
@@ -188,38 +88,82 @@ pub async fn init_db() -> Result<SqlitePool, DBError> {
         .to_str()
         .ok_or_else(|| DBError::new_general_error("Invalid DB path".into()))?;
 
-    let db_key = db_key::get_or_create_db_key(db_path)
-        .map_err(|e| DBError::new_general_error(format!("Keyring error: {}", e)))?;
+    let db_exists = std::path::Path::new(db_path).exists();
+    let salt_path = db_key::salt_file_path(db_path);
+    let salt_exists = std::path::Path::new(&salt_path).exists();
 
-    // Migrate existing unencrypted database if detected
-    if is_database_unencrypted(db_path) {
-        warn!("Detected unencrypted database — migrating to SQLCipher");
-        migrate_to_encrypted(db_path, &db_key).await?;
-        info!("Database migration to SQLCipher complete");
-    }
+    if !db_exists && !salt_exists {
+        // FIRST SETUP
+        debug!("First setup: generating recovery key and creating database");
 
-    let pragma_key_value = format!("\"x'{}'\"", db_key);
+        let passphrase = db_key::generate_recovery_passphrase()
+            .map_err(|e| DBError::new_general_error(format!("Passphrase generation: {}", e)))?;
 
-    let connect_options = SqliteConnectOptions::from_str(&format!("sqlite:{}", db_path))
-        .map_err(|e| DBError::new_general_error(e.to_string()))?
-        .pragma("key", pragma_key_value)
-        .pragma("foreign_keys", "ON")
-        .journal_mode(SqliteJournalMode::Wal)
-        .foreign_keys(true)
-        .create_if_missing(true);
+        let passphrase_secret = SecretString::new(passphrase.clone().into());
 
-    let pool = SqlitePool::connect_with(connect_options)
+        let db_key = tokio::task::spawn_blocking({
+            let passphrase = passphrase.clone();
+            let db_path = db_path.to_string();
+            move || db_key::generate_and_store_key(&passphrase, &db_path)
+        })
         .await
-        .map_err(|e| DBError::new_general_error(format!("Failed to open database: {}", e)))?;
+        .map_err(|e| DBError::new_general_error(format!("Key derivation task failed: {}", e)))?
+        .map_err(|e| DBError::new_general_error(format!("Key setup failed: {}", e)))?;
 
-    for init_query in QUERIES {
-        query(init_query)
-            .execute(&pool)
+        let pragma_key_value = format!("\"x'{}'\"", db_key);
+
+        let connect_options = SqliteConnectOptions::from_str(&format!("sqlite:{}", db_path))
+            .map_err(|e| DBError::new_general_error(e.to_string()))?
+            .pragma("key", pragma_key_value)
+            .pragma("foreign_keys", "ON")
+            .journal_mode(SqliteJournalMode::Wal)
+            .foreign_keys(true);
+
+        let pool = SqlitePool::connect_with(connect_options)
             .await
-            .map_err(|e| DBError::new_general_error(format!("Failed to create table: {}", e)))?;
+            .map_err(|e| DBError::new_general_error(format!("Failed to create database: {}", e)))?;
+
+        for init_query in QUERIES {
+            query(init_query)
+                .execute(&pool)
+                .await
+                .map_err(|e| DBError::new_general_error(format!("Failed to create table: {}", e)))?;
+        }
+
+        return Ok(InitResult::FirstSetup {
+            pool,
+            recovery_phrase: passphrase_secret,
+        });
     }
 
-    Ok(pool)
+    // DB exists or salt exists → try normal startup
+    if !salt_exists {
+        return Err(DBError::new_salt_file_error(
+            "Salt file missing or corrupted. Database reset is required.".into(),
+        ));
+    }
+
+    // Try to get key from keyring
+    let keyring_result = db_key::retrieve_db_key(db_key::SERVICE_NAME, db_key::KEY_USERNAME);
+
+    match keyring_result {
+        Ok(key) => {
+            // Try to open DB with keyring key
+            let pragma_key_value = format!("\"x'{}'\"", key);
+            let connect_options = SqliteConnectOptions::from_str(&format!("sqlite:{}", db_path))
+                .map_err(|e| DBError::new_general_error(e.to_string()))?
+                .pragma("key", pragma_key_value)
+                .pragma("foreign_keys", "ON")
+                .journal_mode(SqliteJournalMode::Wal)
+                .foreign_keys(true);
+
+            match SqlitePool::connect_with(connect_options).await {
+                Ok(pool) => Ok(InitResult::Ready(pool)),
+                Err(_) => Err(DBError::new_key_missing_with_db()),
+            }
+        }
+        Err(_) => Err(DBError::new_key_missing_with_db()),
+    }
 }
 
 /// Prepara l'aggiornamento utente recuperando la vecchia password se necessario.
