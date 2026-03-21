@@ -144,45 +144,66 @@ pub fn generate_recovery_passphrase() -> Result<String, DBKeyError> {
         .map_err(|e| DBKeyError::KeyringError(format!("Failed to generate passphrase: {}", e)))
 }
 
-/// Gets the existing key from keyring, or generates and stores a new one.
-/// This is the main entry point called by `init_db()`.
-///
-/// Handles the DB ↔ keyring state consistency:
-/// - Both exist → use existing key
-/// - Neither exists → generate and store new key
-/// - DB exists, keyring empty → error (encrypted DB with lost key)
-/// - Keyring has key, no DB → clean up orphaned key, generate new one
-pub fn get_or_create_db_key(db_path: &str) -> Result<String, DBKeyError> {
-    let db_exists = std::path::Path::new(db_path).exists();
-    let key_result = retrieve_db_key(SERVICE_NAME, KEY_USERNAME);
+/// Derives the DB key from a user-entered recovery passphrase.
+/// Reads the salt file automatically. MUST be called via `spawn_blocking`.
+pub fn derive_key_from_passphrase(passphrase: &str, db_path: &str) -> Result<String, DBKeyError> {
+    let salt = read_salt(db_path)?;
+    derive_key(passphrase, &salt)
+}
 
-    match (db_exists, key_result) {
-        // Normal case: DB and key both exist
-        (true, Ok(key)) => Ok(key),
+/// Generates a new salt, derives key from passphrase, stores in keyring.
+/// Returns the derived key hex string.
+pub fn generate_and_store_key(
+    passphrase: &str,
+    db_path: &str,
+) -> Result<String, DBKeyError> {
+    let salt = generate_db_salt();
+    write_salt(db_path, &salt)?;
+    let key = derive_key(passphrase, &salt)?;
+    store_db_key(SERVICE_NAME, KEY_USERNAME, &key)?;
+    Ok(key)
+}
 
-        // Fresh install: neither DB nor key
-        (false, Err(DBKeyError::NoEntry)) => {
-            let key = generate_key();
-            store_db_key(SERVICE_NAME, KEY_USERNAME, &key)?;
-            Ok(key)
+/// Deletes the database file and salt file for a fresh start.
+pub fn reset_database(db_path: &str) -> Result<(), DBKeyError> {
+    let salt_path = salt_file_path(db_path);
+    let mut errors = Vec::new();
+
+    if std::path::Path::new(db_path).exists() {
+        if let Err(e) = std::fs::remove_file(db_path) {
+            errors.push(format!("Failed to delete DB: {}", e));
         }
-
-        // Orphaned keyring entry: no DB but key exists → clean up and regenerate
-        (false, Ok(_)) => {
-            delete_db_key(SERVICE_NAME, KEY_USERNAME);
-            let key = generate_key();
-            store_db_key(SERVICE_NAME, KEY_USERNAME, &key)?;
-            Ok(key)
+    }
+    // Remove WAL/SHM files if present
+    for suffix in &["-wal", "-shm"] {
+        let path = format!("{}{}", db_path, suffix);
+        if std::path::Path::new(&path).exists() {
+            let _ = std::fs::remove_file(&path);
         }
+    }
+    if std::path::Path::new(&salt_path).exists() {
+        if let Err(e) = std::fs::remove_file(&salt_path) {
+            errors.push(format!("Failed to delete salt: {}", e));
+        }
+    }
+    // delete_db_key returns () — just call it, ignore any error
+    delete_db_key(SERVICE_NAME, KEY_USERNAME);
 
-        // Dangerous: encrypted DB exists but key is missing → data loss risk
-        (true, Err(DBKeyError::NoEntry)) => Err(DBKeyError::KeyringError(
-            "Encrypted database found but keyring entry is missing. \
-             The database cannot be decrypted.".into(),
-        )),
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(DBKeyError::SaltFileError(errors.join("; ")))
+    }
+}
 
-        // Keyring system error (e.g., access denied)
-        (_, Err(e)) => Err(e),
+/// @deprecated: Replaced by the recovery key flow in init_db().
+/// Kept temporarily for compilation. Will be removed in the init_db rewrite.
+#[allow(dead_code)]
+pub fn get_or_create_db_key(_db_path: &str) -> Result<String, DBKeyError> {
+    match retrieve_db_key(SERVICE_NAME, KEY_USERNAME) {
+        Ok(key) => Ok(key),
+        Err(DBKeyError::NoEntry) => Err(DBKeyError::MissingKeyWithDb),
+        Err(e) => Err(e),
     }
 }
 
@@ -301,5 +322,48 @@ mod tests {
         let p1 = generate_recovery_passphrase().unwrap();
         let p2 = generate_recovery_passphrase().unwrap();
         assert_ne!(p1, p2);
+    }
+
+    #[test]
+    fn test_reset_database_removes_files() {
+        let dir = std::env::temp_dir().join("pwd_test_reset");
+        let _ = std::fs::create_dir_all(&dir);
+        let db_path = dir.join("database.db").to_str().unwrap().to_string();
+        let salt = generate_db_salt();
+
+        // Create files
+        std::fs::write(&db_path, "test data").unwrap();
+        write_salt(&db_path, &salt).unwrap();
+
+        assert!(std::path::Path::new(&db_path).exists());
+
+        reset_database(&db_path).unwrap();
+
+        assert!(!std::path::Path::new(&db_path).exists());
+        assert!(!std::path::Path::new(&salt_file_path(&db_path)).exists());
+
+        let _ = std::fs::remove_dir(&dir);
+    }
+
+    #[test]
+    fn test_generate_and_store_key() {
+        cleanup();
+        let dir = std::env::temp_dir().join("pwd_test_gen_store");
+        let _ = std::fs::create_dir_all(&dir);
+        let db_path = dir.join("database.db").to_str().unwrap().to_string();
+
+        let key = generate_and_store_key("MyTestPassphrase123", &db_path).unwrap();
+
+        assert_eq!(key.len(), 64);
+        assert!(std::path::Path::new(&salt_file_path(&db_path)).exists());
+
+        // Verify the stored key matches what derive_key produces
+        let salt = read_salt(&db_path).unwrap();
+        let derived = derive_key("MyTestPassphrase123", &salt).unwrap();
+        assert_eq!(key, derived);
+
+        cleanup();
+        let _ = std::fs::remove_file(salt_file_path(&db_path));
+        let _ = std::fs::remove_dir(&dir);
     }
 }
