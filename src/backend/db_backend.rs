@@ -1,4 +1,6 @@
 ﻿#![allow(dead_code)]
+#[cfg(feature = "desktop")]
+use crate::backend::db_key;
 use crate::backend::init_queries::QUERIES;
 use crate::backend::settings_types::{DicewareGenerationSettings, DicewareLanguage, UserSettings};
 use crate::backend::utils::verify_password;
@@ -9,13 +11,11 @@ use pwd_types::{
     UserAuth,
 };
 use secrecy::{ExposeSecret, SecretString};
-use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqlitePoolOptions, SqliteRow};
+use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool, SqliteRow};
 use sqlx::{Row, query};
 use std::str::FromStr;
 #[cfg(feature = "desktop")]
 use tracing::{debug, info, instrument, warn};
-#[cfg(feature = "desktop")]
-use crate::backend::db_key;
 
 /// Struct per rappresentare un aggiornamento utente con field opzionali
 #[derive(Debug, Clone)]
@@ -89,10 +89,9 @@ fn is_database_unencrypted(path: &str) -> bool {
 async fn migrate_to_encrypted(path: &str, key: &str) -> Result<(), DBError> {
     // Resolve to absolute path — ATTACH DATABASE resolves relative paths
     // differently than std::fs (may differ from process CWD in desktop apps)
-    let abs_path = std::env::current_dir()
-        .unwrap_or_default()
-        .join(path);
-    let abs_path = abs_path.to_str()
+    let abs_path = std::env::current_dir().unwrap_or_default().join(path);
+    let abs_path = abs_path
+        .to_str()
         .ok_or_else(|| DBError::new_general_error("Invalid DB path".into()))?;
 
     let backup_path = format!("{}.pre-encryption-backup", abs_path);
@@ -119,7 +118,8 @@ async fn migrate_to_encrypted(path: &str, key: &str) -> Result<(), DBError> {
 
     // CRITICAL: acquire a single connection — ATTACH/DETACH/sqlcipher_export
     // are all per-connection operations and MUST run on the same connection.
-    let mut conn = pool.acquire()
+    let mut conn = pool
+        .acquire()
         .await
         .map_err(|e| DBError::new_general_error(format!("Cannot acquire connection: {}", e)))?;
 
@@ -156,12 +156,11 @@ async fn migrate_to_encrypted(path: &str, key: &str) -> Result<(), DBError> {
     pool.close().await;
 
     // Replace original with encrypted version
-    std::fs::rename(&temp_path, abs_path)
-        .map_err(|e| {
-            // Try to restore backup on failure
-            let _ = std::fs::copy(&backup_path, abs_path);
-            DBError::new_general_error(format!("Replace failed: {}", e))
-        })?;
+    std::fs::rename(&temp_path, abs_path).map_err(|e| {
+        // Try to restore backup on failure
+        let _ = std::fs::copy(&backup_path, abs_path);
+        DBError::new_general_error(format!("Replace failed: {}", e))
+    })?;
 
     // Remove backup on success
     let _ = std::fs::remove_file(&backup_path);
@@ -185,7 +184,8 @@ pub async fn init_db() -> Result<SqlitePool, DBError> {
     let db_path = std::env::current_dir()
         .unwrap_or_default()
         .join("database.db");
-    let db_path = db_path.to_str()
+    let db_path = db_path
+        .to_str()
         .ok_or_else(|| DBError::new_general_error("Invalid DB path".into()))?;
 
     let db_key = db_key::get_or_create_db_key(db_path)
@@ -198,29 +198,19 @@ pub async fn init_db() -> Result<SqlitePool, DBError> {
         info!("Database migration to SQLCipher complete");
     }
 
-    // Build PRAGMA key command using raw hex key material
-    let pragma_key = format!("PRAGMA key = \"x'{}'\"", db_key);
+    let pragma_key_value = format!("\"x'{}'\"", db_key);
 
     let connect_options = SqliteConnectOptions::from_str(&format!("sqlite:{}", db_path))
         .map_err(|e| DBError::new_general_error(e.to_string()))?
+        .pragma("key", pragma_key_value)
         .pragma("foreign_keys", "ON")
         .journal_mode(SqliteJournalMode::Wal)
         .foreign_keys(true)
         .create_if_missing(true);
 
-    let pool = SqlitePoolOptions::new()
-        .after_connect(move |conn, _meta| {
-            let pragma = pragma_key.clone();
-            Box::pin(async move {
-                sqlx::query(&pragma).execute(&mut *conn).await?;
-                Ok(())
-            })
-        })
-        .connect_with(connect_options)
+    let pool = SqlitePool::connect_with(connect_options)
         .await
-        .map_err(|e| DBError::new_general_error(
-            format!("Failed to open database: {}", e)
-        ))?;
+        .map_err(|e| DBError::new_general_error(format!("Failed to open database: {}", e)))?;
 
     for init_query in QUERIES {
         query(init_query)
@@ -1203,7 +1193,7 @@ pub async fn fetch_diceware_settings(
                 dgs.force_special_chars, dgs.numbers, dgs.language
          FROM diceware_generation_settings dgs
          JOIN user_settings us ON dgs.settings_id = us.id
-         WHERE us.user_id = ?"
+         WHERE us.user_id = ?",
     )
     .bind(user_id)
     .fetch_one(pool)
