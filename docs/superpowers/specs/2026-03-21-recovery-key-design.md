@@ -23,6 +23,7 @@ The recovery passphrase is a 6-word diceware phrase in CamelCase. The actual enc
 - **Output:** 32 bytes (256 bits), hex-encoded to 64 characters
 - **Usage:** Raw key via `PRAGMA key = "x'...'"` (same as current)
 - **Parameters:** `m=19456, t=2, p=1` (Argon2id defaults)
+- **Performance:** ~50ms per derivation on modern hardware. All derivation calls MUST run via `tokio::task::spawn_blocking` to avoid blocking the Dioxus UI thread (Argon2id is CPU-bound).
 
 ### Salt File Format
 
@@ -37,14 +38,15 @@ a3f1b2c4d5e6f789012345678abcdef0
 
 - **Format:** 6 diceware words, CamelCase (e.g., `Word1Word2Word3Word4Word5Word6`)
 - **Language:** System language via `sys-locale`, defaults to EN
-- **Generation:** `diceware::make_passphrase()` with `Config::new().with_embedded(lang).with_words(6).with_camel_case(true)`
+- **Generation:** Uses `detect_system_language()` → `DicewareLanguage` → `EmbeddedList` (existing `From` impl in `settings_types.rs`), then `diceware::make_passphrase()`. Note: `make_passphrase()` returns `Result<String>`, errors should be mapped to `DBKeyError::KeyringError` since word lists are embedded at compile time and failures indicate corruption.
+- **Entropy:** ~77 bits (6 words from 7776-word list), making brute-force impractical.
 
 ### First Setup Flow
 
 ```
 1. Generate salt (16 random bytes) → save to database.db.salt
 2. Generate diceware passphrase (6 words, system language, CamelCase)
-3. Derive key: Argon2id(passphrase, salt) → [u8; 32] → hex 64 char
+3. Derive key: Argon2id(passphrase, salt) → [u8; 32] → hex 64 char  [spawn_blocking]
 4. Store hex key in keyring (cache for daily use)
 5. Open new DB with key, create tables
 6. Return InitResult::FirstSetup { pool, recovery_phrase }
@@ -54,6 +56,7 @@ a3f1b2c4d5e6f789012345678abcdef0
 
 ```
 1. Read salt from database.db.salt
+   - If salt file missing → return Err(DBError::DBSaltFileError) → DB reset required
 2. Retrieve key from keyring
 3. Try to open DB with keyring key
 4. Success → return InitResult::Ready(pool)
@@ -66,23 +69,50 @@ a3f1b2c4d5e6f789012345678abcdef0
 1. Read salt from database.db.salt
 2. UI shows RecoveryKeyInputDialog
 3. User enters passphrase
-4. Derive key: Argon2id(passphrase, salt)
+4. Derive key: Argon2id(passphrase, salt)  [spawn_blocking]
 5. Try to open DB with derived key
-6. Success → store key in keyring → return InitResult::Ready(pool)
+6. Success → store key in keyring → return pool to UI
 7. Failure → return Err(DBKeyError::RecoveryKeyInvalid) → retry (infinite)
 ```
 
+**Security note:** No rate limiting is applied because the recovery flow requires physical access to the machine. The 6-word diceware passphrase provides ~77 bits of entropy, making brute-force impractical.
+
 ### Regeneration Flow (from Settings)
+
+Uses the same backup-restore pattern as `migrate_to_encrypted()` to ensure atomicity.
 
 ```
 1. User clicks "Rigenera recovery key" in settings
-2. Confirmation dialog
+2. Confirmation dialog (RecoveryKeyRegenerateDialog)
 3. Generate new salt + new diceware passphrase
-4. Re-encrypt DB with new derived key (ATTACH + sqlcipher_export + replace)
-5. Update keyring with new derived key
-6. Update database.db.salt with new salt
-7. Show RecoveryKeyRegeneratedDialog with new passphrase
+4. Create backup of database.db (as migrate_to_encrypted does)
+5. Re-encrypt DB with new derived key (ATTACH + sqlcipher_export + replace)
+6. On failure at any point after step 5 → restore from backup
+7. On success:
+   a. Update keyring with new derived key
+   b. Update database.db.salt with new salt
+   c. Clean up backup
+8. Show RecoveryKeyRegeneratedDialog with new passphrase
 ```
+
+**Crash recovery matrix:**
+
+| State after crash | Result |
+|-------------------|--------|
+| Before step 5 (backup exists, DB unchanged) | Old setup still works |
+| After step 5, before step 7a (DB re-encrypted, keyring/salt unchanged) | User recovers via new passphrase + new salt shown in dialog |
+| After step 7a, before step 7b (keyring updated, salt unchanged) | User recovers via new passphrase + new salt shown in dialog |
+| After step 7b (all updated) | New setup works normally |
+
+The new passphrase is shown to the user only AFTER all writes succeed (step 8), ensuring the user always has a working recovery path.
+
+### Salt File Missing — Edge Case
+
+If `database.db` exists but `database.db.salt` is missing or corrupted:
+- Cannot derive any key from a passphrase without the salt
+- `init_db()` returns `Err(DBError::DBSaltFileError)`
+- UI shows error: "File salt corrotto o mancante. Il database deve essere ripristinato."
+- Only option: database reset (same as Database Reset Flow)
 
 ### Database Reset Flow
 
@@ -90,7 +120,8 @@ a3f1b2c4d5e6f789012345678abcdef0
 1. User clicks "Ripristina database" from RecoveryKeyInputDialog
 2. Confirmation dialog (DatabaseResetDialog)
 3. Delete database.db + database.db.salt
-4. Restart init_db() → triggers First Setup flow
+4. Reset db_init_notified flag (so success toast shows after fresh setup)
+5. Restart init_db() via db_resource.restart() → triggers First Setup flow
 ```
 
 ## Data Types
@@ -100,9 +131,11 @@ a3f1b2c4d5e6f789012345678abcdef0
 ```rust
 pub enum InitResult {
     Ready(SqlitePool),
-    FirstSetup { pool: SqlitePool, recovery_phrase: String },
+    FirstSetup { pool: SqlitePool, recovery_phrase: SecretString },
 }
 ```
+
+The passphrase uses `SecretString` (from the `secrecy` crate, already used throughout the project) for defense-in-depth. The UI component calls `.expose_secret()` only when rendering.
 
 ### DBKeyError (modified)
 
@@ -134,7 +167,7 @@ db_key.rs                  db_backend.rs                main.rs (UI)
 ─────────                  ─────────────                ──────────
 MissingKeyWithDb ───────→ DBError::DBKeyMissingWithDb ──match──→ RecoveryKeyInputDialog
 RecoveryKeyInvalid ─────→ DBError::DBRecoveryKeyInvalid─match──→ Error + retry in dialog
-SaltFileError(msg) ─────→ DBError::DBSaltFileError(msg)─match──→ Generic error + retry
+SaltFileError(msg) ─────→ DBError::DBSaltFileError(msg)─match──→ "Salt corrotto" + reset
 ```
 
 ## UI Components
@@ -146,6 +179,8 @@ All dialogs follow the existing `BaseModal` + `ActionButton` pattern.
 Shown on first setup. Displays the generated passphrase.
 
 **Props:** `open: Signal<bool>`, `passphrase: String`, `on_confirm: EventHandler<()>`
+
+**Behavior:** Non-dismissable — no X button, no cancel. The user MUST acknowledge the recovery phrase before proceeding. Dismissing without saving the phrase is equivalent to data loss.
 
 **Content:**
 - Title: "Recovery Key"
@@ -195,7 +230,7 @@ Confirmation dialog for passphrase regeneration (triggered from Settings).
 
 ### 5. RecoveryKeyRegeneratedDialog
 
-Shown after successful regeneration. Same layout as RecoveryKeySetupDialog but for the new passphrase.
+Shown after successful regeneration. Same layout as RecoveryKeySetupDialog but for the new passphrase. Also non-dismissable.
 
 **Props:** `open: Signal<bool>`, `passphrase: String`, `on_confirm: EventHandler<()>`
 
@@ -211,6 +246,8 @@ match db_resource.value() {
         // First setup: provide pool context, render Router, show RecoveryKeySetupDialog
     Some(Err(DBError::DBKeyMissingWithDb)) =>
         // Show RecoveryKeyInputDialog
+    Some(Err(DBError::DBSaltFileError(_))) =>
+        // Show error "Salt file corrotto o mancante" + show DatabaseResetDialog
     Some(Err(_)) =>
         // Generic error + retry button (unchanged)
     None =>
@@ -219,12 +256,14 @@ match db_resource.value() {
 ```
 
 **RecoveryKeyInputDialog callbacks:**
-- `on_recover(passphrase)` → async: derive key → try open DB → on success: close dialog, provide pool, render app; on failure: set error signal
-- `on_reset()` → show DatabaseResetDialog → on confirm: delete files → `db_resource.restart()`
+- `on_recover(passphrase)` → async via `spawn_blocking`: derive key → try open DB → on success: close dialog, provide pool, render app; on failure: set error signal
+- `on_reset()` → show DatabaseResetDialog → on confirm: delete files → reset `db_init_notified` → `db_resource.restart()`
 
 ## Module Changes
 
 ### `db_key.rs` — Rework
+
+All new functions remain `#[cfg(feature = "desktop")]`, consistent with the existing module gate in `src/backend/mod.rs`.
 
 | Before | After |
 |--------|-------|
@@ -233,15 +272,16 @@ match db_resource.value() {
 | `store_db_key()` | Unchanged |
 | `retrieve_db_key()` | Simplified, renamed |
 | `delete_db_key()` | Unchanged |
-| — | `derive_key(passphrase, salt) -> String` — Argon2id → hex |
-| — | `derive_key_from_passphrase(passphrase, db_path) -> String` — reads salt file |
-| — | `generate_recovery_passphrase() -> String` — 6 diceware words |
-| — | `generate_and_store_key(passphrase, salt) -> String` — derive + store in keyring |
+| — | `derive_key(passphrase, salt) -> Result<String, DBKeyError>` — Argon2id → hex |
+| — | `derive_key_from_passphrase(passphrase, db_path) -> Result<String, DBKeyError>` — reads salt file |
+| — | `generate_recovery_passphrase() -> Result<String, DBKeyError>` — 6 diceware words |
+| — | `generate_and_store_key(passphrase, salt) -> Result<String, DBKeyError>` — derive + store in keyring |
 | — | `recover_db_key(passphrase, db_path) -> Result<String, DBKeyError>` — full recovery |
 | — | `reset_database(db_path)` — delete DB + salt file |
 
 ### `db_backend.rs` — `init_db()` rewritten
 
+All changes remain `#[cfg(feature = "desktop")]`.
 - Returns `Result<InitResult, DBError>` instead of `Result<SqlitePool, DBError>`
 - Removes `create_if_missing(true)` (TOCTOU risk from edge cases plan)
 - DB creation only happens in the First Setup branch
