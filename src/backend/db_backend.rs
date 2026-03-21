@@ -105,6 +105,11 @@ async fn migrate_to_encrypted(path: &str, key: &str) -> Result<(), DBError> {
     // Remove stale temp file if present
     let _ = std::fs::remove_file(&temp_path);
 
+    // Pre-create the temp file — on Windows, ATTACH DATABASE cannot create
+    // new files; it can only open existing ones
+    std::fs::File::create(&temp_path)
+        .map_err(|e| DBError::new_general_error(format!("Cannot create temp DB: {}", e)))?;
+
     // Open unencrypted source DB (no PRAGMA key = plaintext mode in SQLCipher)
     let source_opts = SqliteConnectOptions::from_str(&format!("sqlite:{}", abs_path))
         .map_err(|e| DBError::new_general_error(e.to_string()))?;
@@ -177,14 +182,14 @@ async fn migrate_to_encrypted(path: &str, key: &str) -> Result<(), DBError> {
 /// Returns a `SqlitePool` ready for use with all tables created.
 #[cfg(feature = "desktop")]
 pub async fn init_db() -> Result<SqlitePool, DBError> {
-    let db_key = db_key::get_or_create_db_key()
-        .map_err(|e| DBError::new_general_error(format!("Keyring error: {}", e)))?;
-
     let db_path = std::env::current_dir()
         .unwrap_or_default()
         .join("database.db");
     let db_path = db_path.to_str()
         .ok_or_else(|| DBError::new_general_error("Invalid DB path".into()))?;
+
+    let db_key = db_key::get_or_create_db_key(db_path)
+        .map_err(|e| DBError::new_general_error(format!("Keyring error: {}", e)))?;
 
     // Migrate existing unencrypted database if detected
     if is_database_unencrypted(db_path) {
@@ -207,22 +212,14 @@ pub async fn init_db() -> Result<SqlitePool, DBError> {
         .after_connect(move |conn, _meta| {
             let pragma = pragma_key.clone();
             Box::pin(async move {
-                sqlx::query(&pragma)
-                    .execute(&mut *conn)
-                    .await?;
-                // Verify decryption works (PRAGMA key itself never fails)
-                sqlx::query("SELECT count(*) FROM sqlite_master")
-                    .execute(&mut *conn)
-                    .await?;
+                sqlx::query(&pragma).execute(&mut *conn).await?;
                 Ok(())
             })
         })
         .connect_with(connect_options)
         .await
         .map_err(|e| DBError::new_general_error(
-            format!("Failed to open encrypted database. \
-                     If you reinstalled the app without exporting passwords first, \
-                     the database is unrecoverable. ({})", e)
+            format!("Failed to open database: {}", e)
         ))?;
 
     for init_query in QUERIES {

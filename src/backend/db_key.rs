@@ -53,21 +53,52 @@ fn retrieve_db_key(service: &str, username: &str) -> Result<String, DBKeyError> 
     })
 }
 
+/// Deletes the keyring entry if it exists. Used for cleanup.
+fn delete_db_key(service: &str, username: &str) {
+    if let Ok(entry) = Entry::new(service, username) {
+        let _ = entry.delete_credential();
+    }
+}
+
 /// Gets the existing key from keyring, or generates and stores a new one.
 /// This is the main entry point called by `init_db()`.
 ///
-/// - `Ok(key)` if a key exists or was successfully created
-/// - `Err(DBKeyError::NoEntry)` is never returned (we create on miss)
-/// - `Err(DBKeyError::KeyringError)` if the keyring is unavailable
-pub fn get_or_create_db_key() -> Result<String, DBKeyError> {
-    match retrieve_db_key(SERVICE_NAME, KEY_USERNAME) {
-        Ok(key) => Ok(key),
-        Err(DBKeyError::NoEntry) => {
+/// Handles the DB ↔ keyring state consistency:
+/// - Both exist → use existing key
+/// - Neither exists → generate and store new key
+/// - DB exists, keyring empty → error (encrypted DB with lost key)
+/// - Keyring has key, no DB → clean up orphaned key, generate new one
+pub fn get_or_create_db_key(db_path: &str) -> Result<String, DBKeyError> {
+    let db_exists = std::path::Path::new(db_path).exists();
+    let key_result = retrieve_db_key(SERVICE_NAME, KEY_USERNAME);
+
+    match (db_exists, key_result) {
+        // Normal case: DB and key both exist
+        (true, Ok(key)) => Ok(key),
+
+        // Fresh install: neither DB nor key
+        (false, Err(DBKeyError::NoEntry)) => {
             let key = generate_key();
             store_db_key(SERVICE_NAME, KEY_USERNAME, &key)?;
             Ok(key)
         }
-        Err(e) => Err(e),
+
+        // Orphaned keyring entry: no DB but key exists → clean up and regenerate
+        (false, Ok(_)) => {
+            delete_db_key(SERVICE_NAME, KEY_USERNAME);
+            let key = generate_key();
+            store_db_key(SERVICE_NAME, KEY_USERNAME, &key)?;
+            Ok(key)
+        }
+
+        // Dangerous: encrypted DB exists but key is missing → data loss risk
+        (true, Err(DBKeyError::NoEntry)) => Err(DBKeyError::KeyringError(
+            "Encrypted database found but keyring entry is missing. \
+             The database cannot be decrypted.".into(),
+        )),
+
+        // Keyring system error (e.g., access denied)
+        (_, Err(e)) => Err(e),
     }
 }
 
@@ -119,10 +150,12 @@ mod tests {
     #[test]
     fn test_get_or_create_always_returns_valid_key() {
         // get_or_create_db_key uses the real SERVICE_NAME/KEY_USERNAME.
-        // It should always succeed (create if missing).
-        let result = get_or_create_db_key();
+        // It should always succeed (create if missing) when no DB exists.
+        let result = get_or_create_db_key("nonexistent_database.db");
         assert!(result.is_ok());
         let key = result.unwrap();
         assert_eq!(key.len(), 64);
+        // Cleanup: remove the key we just created
+        delete_db_key(SERVICE_NAME, KEY_USERNAME);
     }
 }
