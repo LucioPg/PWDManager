@@ -1,10 +1,14 @@
 pub mod base_modal;
+mod database_reset;
 mod export_progress;
 mod export_warning;
 mod import_progress;
 mod import_warning;
 mod migration_progress;
 mod migration_warning;
+mod recovery_key_input;
+mod recovery_key_regenerate;
+mod recovery_key_setup;
 mod stored_all_passwords_deletion;
 mod stored_password_deletion;
 mod stored_password_show;
@@ -12,6 +16,10 @@ mod stored_password_upsert;
 pub mod user_deletion;
 
 pub use base_modal::*;
+pub use database_reset::*;
+pub use recovery_key_input::*;
+pub use recovery_key_regenerate::*;
+pub use recovery_key_setup::*;
 pub use stored_password_deletion::*;
 pub use user_deletion::*;
 
