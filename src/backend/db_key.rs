@@ -24,6 +24,10 @@ pub enum DBKeyError {
     RecoveryKeyInvalid,
     /// Error reading/writing salt file
     SaltFileError(String),
+    /// CPU-bound derivation failure (Argon2, diceware) — not a keyring error
+    DerivationError(String),
+    /// File deletion failure during database reset
+    DatabaseCleanupError(String),
 }
 
 impl std::fmt::Display for DBKeyError {
@@ -34,6 +38,8 @@ impl std::fmt::Display for DBKeyError {
             DBKeyError::MissingKeyWithDb => write!(f, "Database encryption key missing or invalid"),
             DBKeyError::RecoveryKeyInvalid => write!(f, "Invalid recovery key"),
             DBKeyError::SaltFileError(msg) => write!(f, "Salt file error: {}", msg),
+            DBKeyError::DerivationError(msg) => write!(f, "Derivation error: {}", msg),
+            DBKeyError::DatabaseCleanupError(msg) => write!(f, "Database cleanup error: {}", msg),
         }
     }
 }
@@ -85,7 +91,7 @@ pub fn derive_key(passphrase: &str, salt: &[u8]) -> Result<String, DBKeyError> {
     let mut output = [0u8; 32];
     argon2
         .hash_password_into(passphrase.as_bytes(), salt, &mut output)
-        .map_err(|e| DBKeyError::KeyringError(format!("Key derivation failed: {}", e)))?;
+        .map_err(|e| DBKeyError::DerivationError(format!("Key derivation failed: {}", e)))?;
     Ok(output.iter().map(|b| format!("{:02x}", b)).collect())
 }
 
@@ -141,7 +147,7 @@ pub fn generate_recovery_passphrase() -> Result<String, DBKeyError> {
         .with_words(6)
         .with_camel_case(true);
     diceware::make_passphrase(config)
-        .map_err(|e| DBKeyError::KeyringError(format!("Failed to generate passphrase: {}", e)))
+        .map_err(|e| DBKeyError::DerivationError(format!("Failed to generate passphrase: {}", e)))
 }
 
 /// Derives the DB key from a user-entered recovery passphrase.
@@ -167,11 +173,12 @@ pub fn generate_and_store_key(
 /// Deletes the database file and salt file for a fresh start.
 pub fn reset_database(db_path: &str) -> Result<(), DBKeyError> {
     let salt_path = salt_file_path(db_path);
-    let mut errors = Vec::new();
+    let mut db_errors = Vec::new();
+    let mut salt_errors = Vec::new();
 
     if std::path::Path::new(db_path).exists() {
         if let Err(e) = std::fs::remove_file(db_path) {
-            errors.push(format!("Failed to delete DB: {}", e));
+            db_errors.push(format!("Failed to delete DB: {}", e));
         }
     }
     // Remove WAL/SHM files if present
@@ -183,16 +190,18 @@ pub fn reset_database(db_path: &str) -> Result<(), DBKeyError> {
     }
     if std::path::Path::new(&salt_path).exists() {
         if let Err(e) = std::fs::remove_file(&salt_path) {
-            errors.push(format!("Failed to delete salt: {}", e));
+            salt_errors.push(format!("Failed to delete salt: {}", e));
         }
     }
     // delete_db_key returns () — just call it, ignore any error
     delete_db_key(SERVICE_NAME, KEY_USERNAME);
 
-    if errors.is_empty() {
-        Ok(())
+    if !db_errors.is_empty() {
+        Err(DBKeyError::DatabaseCleanupError(db_errors.join("; ")))
+    } else if !salt_errors.is_empty() {
+        Err(DBKeyError::SaltFileError(salt_errors.join("; ")))
     } else {
-        Err(DBKeyError::SaltFileError(errors.join("; ")))
+        Ok(())
     }
 }
 
