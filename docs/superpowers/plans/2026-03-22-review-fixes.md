@@ -289,7 +289,7 @@ git commit -m "fix: use #[deprecated] attribute instead of @deprecated doc comme
 - [ ] **Step 1: Check if `tempfile` is in Cargo.toml dependencies**
 
 Run: `grep tempfile Cargo.toml`
-If not present, add `tempfile = "3"` to `[dev-dependencies]`.
+Note: `tempfile = "3"` should already be in `[dev-dependencies]`. If not, add it.
 
 - [ ] **Step 2: Fix `test_salt_file_roundtrip` to use tempdir (Task 2 M-1)**
 
@@ -871,7 +871,43 @@ fn render_salt_error_ui(
 ) -> Element {
 ```
 
-Replace its `handle_reset` (lines 346-357) with the same pattern as step 5.
+Replace its `handle_reset` (lines 346-357) from:
+```rust
+    let handle_reset = move |_: ()| {
+        let db_path = std::env::current_dir()
+            .unwrap_or_default()
+            .join("database.db")
+            .to_str()
+            .unwrap()
+            .to_string();
+
+        let _ = crate::backend::db_key::reset_database(&db_path);
+        db_init_notified.set(false);
+        db_resource.restart();
+    };
+```
+to:
+```rust
+    let handle_reset = move |_: ()| {
+        let db_path = match get_db_path() {
+            Ok(p) => p,
+            Err(_) => return,
+        };
+
+        match crate::backend::db_key::reset_database(&db_path) {
+            Ok(()) => {
+                db_init_notified.set(false);
+                db_resource.restart();
+            }
+            Err(e) => {
+                show_toast_error(
+                    format!("Failed to reset database: {}", e),
+                    toast_state,
+                );
+            }
+        }
+    };
+```
 
 Update the call site (line 192-194):
 ```rust
@@ -880,17 +916,59 @@ Update the call site (line 192-194):
         }
 ```
 
-- [ ] **Step 7: Run `cargo check --features desktop`**
+- [ ] **Step 7: Add `<ToastContainer />` to recovery and salt error UI RSX (prerequisite for toast errors)**
+
+In `render_recovery_ui`, add `ToastContainer {}` to the RSX (inside the outer `rsx!` block, before the closing):
+```rust
+    rsx! {
+        Style {}
+        ToastContainer {}
+        div { class: "flex gap-4 justify-center items-center h-screen",
+```
+
+In `render_salt_error_ui`, add `ToastContainer {}` to the RSX similarly:
+```rust
+    rsx! {
+        Style {}
+        ToastContainer {}
+        div { class: "error-container",
+```
+
+Without this, `show_toast_error` calls in the reset handlers have no visible effect because `ToastContainer` is only rendered in `render_app_with_setup` (which is NOT active during recovery/salt error states).
+
+- [ ] **Step 8: Add DBKeyMissingWithDb toast guard (Task 6 I-1)**
+
+Replace lines 117-120 from:
+```rust
+            Some(Err(custom_errors::DBError::DBKeyMissingWithDb)) => {
+                show_recovery_dialog.set(true);
+                show_toast_error("Recovery key required".into(), toast_state);
+            }
+```
+to:
+```rust
+            Some(Err(custom_errors::DBError::DBKeyMissingWithDb)) => {
+                if !db_init_notified() {
+                    show_toast_error("Recovery key required".into(), toast_state);
+                    db_init_notified.set(true);
+                }
+                show_recovery_dialog.set(true);
+            }
+```
+
+This prevents the toast from firing on every effect re-trigger, while still allowing the dialog to re-open if needed.
+
+- [ ] **Step 9: Run `cargo check --features desktop`**
 
 Run: `cargo check --features desktop`
 Expected: Compilation succeeds (this also resolves Task 4 I-1 — main.rs now compiles)
 
-- [ ] **Step 8: Run all tests**
+- [ ] **Step 10: Run all tests**
 
 Run: `cargo test --features desktop`
 Expected: All tests pass
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 11: Commit**
 
 ```bash
 git add src/main.rs
@@ -904,11 +982,13 @@ git commit -m "fix: main.rs — guard FirstSetup, handle JoinError/reset errors,
 **Files:**
 - Verify: `src/main.rs:99-126`
 
-- [ ] **Step 1: Verify `db_init_notified` signal correctly prevents toast spam**
+- [ ] **Step 1: Verify toast spam is prevented**
 
-The existing code at lines 106-109 and 112-115 already guards with `if !db_init_notified()`. The DBKeyMissingWithDb arm at line 117-120 intentionally does NOT have this guard (the dialog should always re-open if init fails). This is correct behavior.
+All three arms now have proper guards:
+- `Ready` / `FirstSetup`: guarded by `if !db_init_notified()` (existing)
+- `DBKeyMissingWithDb`: guarded by `if !db_init_notified()` (added in Task 9 Step 8), while `show_recovery_dialog.set(true)` remains unguarded (dialog should always re-open)
 
-No code changes needed — this was a verification task.
+No additional code changes needed — this was a verification task.
 
 - [ ] **Step 2: Run full test suite as final verification**
 
