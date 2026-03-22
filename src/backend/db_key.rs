@@ -162,15 +162,31 @@ pub fn derive_key_from_passphrase(passphrase: &str, db_path: &str) -> Result<Str
 
 /// Generates a new salt, derives key from passphrase, stores in keyring.
 /// Returns the derived key hex string.
+/// CPU-bound: call via `spawn_blocking`.
 pub fn generate_and_store_key(
     passphrase: &str,
     db_path: &str,
 ) -> Result<String, DBKeyError> {
     let salt = generate_db_salt();
     write_salt(db_path, &salt)?;
-    let key = derive_key(passphrase, &salt)?;
-    store_db_key(SERVICE_NAME, KEY_USERNAME, &key)?;
-    Ok(key)
+
+    let result = derive_key(passphrase, &salt)
+        .and_then(|key| {
+            store_db_key(SERVICE_NAME, KEY_USERNAME, &key)?;
+            Ok(key)
+        });
+
+    match result {
+        Ok(key) => Ok(key),
+        Err(e) => {
+            // Cleanup orphaned salt file on failure
+            let salt_path = salt_file_path(db_path);
+            if let Err(cleanup_err) = std::fs::remove_file(&salt_path) {
+                tracing::warn!("Failed to clean up orphaned salt file {}: {}", salt_path, cleanup_err);
+            }
+            Err(e)
+        }
+    }
 }
 
 /// Deletes the database file and salt file for a fresh start.
