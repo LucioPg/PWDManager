@@ -11,17 +11,17 @@ pub fn RecoveryKeyInputDialog(
     on_reset: EventHandler<()>,
 ) -> Element {
     let mut input_value = use_signal(|| String::new());
-    let mut open_clone = open.clone();
 
     let on_recover_clone = on_recover.clone();
     let mut input_value_clone = input_value.clone();
 
+    let on_recover_clone2 = on_recover.clone();
+    let mut input_value_clone2 = input_value.clone();
+
     rsx! {
         crate::components::globals::dialogs::BaseModal {
             open,
-            on_close: move |_| {
-                open_clone.set(false);
-            },
+            on_close: move |_| {},
             variant: ModalVariant::Middle,
             class: "futuristic",
 
@@ -40,6 +40,8 @@ pub fn RecoveryKeyInputDialog(
             input {
                 class: "input input-bordered w-full my-4 font-mono",
                 r#type: "text",
+                autocomplete: "off",
+                aria_label: "Recovery key",
                 placeholder: "Enter your recovery key...",
                 value: "{input_value}",
                 oninput: move |e| {
@@ -84,10 +86,10 @@ pub fn RecoveryKeyInputDialog(
                     button_type: ButtonType::Button,
                     size: ButtonSize::Normal,
                     on_click: move |_| {
-                        let passphrase = input_value.read().clone();
+                        let passphrase = input_value_clone2.read().clone();
                         if !passphrase.trim().is_empty() {
-                            on_recover.call(passphrase);
-                            input_value.set(String::new());
+                            on_recover_clone2.call(passphrase);
+                            input_value_clone2.set(String::new());
                         }
                     },
                 }
