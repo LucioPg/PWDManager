@@ -226,9 +226,10 @@ pub fn reset_database(db_path: &str) -> Result<(), DBKeyError> {
     }
 }
 
-/// @deprecated: Replaced by the recovery key flow in init_db().
+/// Replaced by the recovery key flow in init_db().
 /// Kept temporarily for compilation. Will be removed in the init_db rewrite.
 #[allow(dead_code)]
+#[deprecated = "Replaced by the recovery key flow in init_db()"]
 pub fn get_or_create_db_key(_db_path: &str) -> Result<String, DBKeyError> {
     match retrieve_db_key(SERVICE_NAME, KEY_USERNAME) {
         Ok(key) => Ok(key),
