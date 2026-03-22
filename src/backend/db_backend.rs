@@ -70,6 +70,17 @@ pub enum InitResult {
     },
 }
 
+/// Returns the database file path (CWD-relative).
+#[cfg(feature = "desktop")]
+pub fn get_db_path() -> Result<String, DBError> {
+    std::env::current_dir()
+        .unwrap_or_default()
+        .join("database.db")
+        .to_str()
+        .ok_or_else(|| DBError::new_general_error("Invalid DB path".into()))
+        .map(|s| s.to_string())
+}
+
 /// Initializes the encrypted SQLite database using SQLCipher with the OS keyring key.
 ///
 /// On first run, generates a diceware recovery passphrase, derives a key via Argon2id,
@@ -81,15 +92,10 @@ pub enum InitResult {
 /// can show the recovery dialog.
 #[cfg(feature = "desktop")]
 pub async fn init_db() -> Result<InitResult, DBError> {
-    let db_path = std::env::current_dir()
-        .unwrap_or_default()
-        .join("database.db");
-    let db_path = db_path
-        .to_str()
-        .ok_or_else(|| DBError::new_general_error("Invalid DB path".into()))?;
+    let db_path = get_db_path()?;
 
-    let db_exists = std::path::Path::new(db_path).exists();
-    let salt_path = db_key::salt_file_path(db_path);
+    let db_exists = std::path::Path::new(&db_path).exists();
+    let salt_path = db_key::salt_file_path(&db_path);
     let salt_exists = std::path::Path::new(&salt_path).exists();
 
     if !db_exists && !salt_exists {
@@ -101,7 +107,7 @@ pub async fn init_db() -> Result<InitResult, DBError> {
 
         let passphrase_secret = SecretString::new(passphrase.clone().into());
 
-        let db_key = tokio::task::spawn_blocking({
+        let db_key_value = tokio::task::spawn_blocking({
             let passphrase = passphrase.clone();
             let db_path = db_path.to_string();
             move || db_key::generate_and_store_key(&passphrase, &db_path)
@@ -110,7 +116,7 @@ pub async fn init_db() -> Result<InitResult, DBError> {
         .map_err(|e| DBError::new_general_error(format!("Key derivation task failed: {}", e)))?
         .map_err(|e| DBError::new_general_error(format!("Key setup failed: {}", e)))?;
 
-        let pragma_key_value = format!("\"x'{}'\"", db_key);
+        let pragma_key_value = format!("\"x'{}'\"", db_key_value);
 
         let connect_options = SqliteConnectOptions::from_str(&format!("sqlite:{}", db_path))
             .map_err(|e| DBError::new_general_error(e.to_string()))?
@@ -159,10 +165,14 @@ pub async fn init_db() -> Result<InitResult, DBError> {
 
             match SqlitePool::connect_with(connect_options).await {
                 Ok(pool) => Ok(InitResult::Ready(pool)),
-                Err(_) => Err(DBError::new_key_missing_with_db()),
+                Err(e) => {
+                    tracing::warn!("DB open failed with keyring key: {}", e);
+                    Err(DBError::new_key_missing_with_db())
+                }
             }
         }
-        Err(_) => Err(DBError::new_key_missing_with_db()),
+        Err(db_key::DBKeyError::NoEntry) => Err(DBError::new_key_missing_with_db()),
+        Err(e) => Err(DBError::new_general_error(format!("Keyring error: {}", e))),
     }
 }
 
