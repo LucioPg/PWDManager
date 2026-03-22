@@ -70,6 +70,33 @@ pub enum InitResult {
     },
 }
 
+/// Builds SQLCipher connect options with pinned cipher parameters.
+///
+/// Pinning these ensures the DB remains readable across dependency updates.
+/// Defaults match SQLCipher 4.x:
+/// - `cipher_page_size`: 4096 (disk page layout)
+/// - `cipher_hmac_algorithm`: HMAC_SHA512 (integrity check)
+/// - `kdf_iter`: 256000 (only matters for passphrase-derived keys, pinned for defense-in-depth)
+///
+/// The `key` pragma MUST be set first — sqlx applies pragmas in chain order.
+#[cfg(feature = "desktop")]
+pub fn build_sqlcipher_options(
+    db_path: &str,
+    key_hex: &str,
+) -> Result<SqliteConnectOptions, DBError> {
+    let pragma_key = format!("\"x'{}'\"", key_hex);
+    let connect_options = SqliteConnectOptions::from_str(&format!("sqlite:{}", db_path))
+        .map_err(|e| DBError::new_general_error(e.to_string()))?
+        .pragma("key", pragma_key)
+        .pragma("cipher_page_size", "4096")
+        .pragma("cipher_hmac_algorithm", "HMAC_SHA512")
+        .pragma("kdf_iter", "256000")
+        .pragma("foreign_keys", "ON")
+        .journal_mode(SqliteJournalMode::Wal)
+        .foreign_keys(true);
+    Ok(connect_options)
+}
+
 /// Returns the database file path (CWD-relative).
 #[cfg(feature = "desktop")]
 pub fn get_db_path() -> Result<String, DBError> {
@@ -116,14 +143,7 @@ pub async fn init_db() -> Result<InitResult, DBError> {
         .map_err(|e| DBError::new_general_error(format!("Key derivation task failed: {}", e)))?
         .map_err(|e| DBError::new_general_error(format!("Key setup failed: {}", e)))?;
 
-        let pragma_key_value = format!("\"x'{}'\"", db_key_value);
-
-        let connect_options = SqliteConnectOptions::from_str(&format!("sqlite:{}", db_path))
-            .map_err(|e| DBError::new_general_error(e.to_string()))?
-            .pragma("key", pragma_key_value)
-            .pragma("foreign_keys", "ON")
-            .journal_mode(SqliteJournalMode::Wal)
-            .foreign_keys(true);
+        let connect_options = build_sqlcipher_options(&db_path, &db_key_value)?;
 
         let pool = SqlitePool::connect_with(connect_options)
             .await
@@ -154,14 +174,7 @@ pub async fn init_db() -> Result<InitResult, DBError> {
 
     match keyring_result {
         Ok(key) => {
-            // Try to open DB with keyring key
-            let pragma_key_value = format!("\"x'{}'\"", key);
-            let connect_options = SqliteConnectOptions::from_str(&format!("sqlite:{}", db_path))
-                .map_err(|e| DBError::new_general_error(e.to_string()))?
-                .pragma("key", pragma_key_value)
-                .pragma("foreign_keys", "ON")
-                .journal_mode(SqliteJournalMode::Wal)
-                .foreign_keys(true);
+            let connect_options = build_sqlcipher_options(&db_path, &key)?;
 
             match SqlitePool::connect_with(connect_options).await {
                 Ok(pool) => Ok(InitResult::Ready(pool)),

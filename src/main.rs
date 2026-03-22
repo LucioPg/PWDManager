@@ -17,15 +17,14 @@ use crate::components::{
 use crate::components::{
     DatabaseResetDialog, RecoveryKeyInputDialog, RecoveryKeySetupDialog,
 };
-use backend::db_backend::get_db_path;
+use backend::db_backend::{build_sqlcipher_options, get_db_path};
 use backend::db_backend::init_db;
 use backend::settings_types::Theme;
 use dioxus::core::Task;
 use dioxus::prelude::*;
 use gui_launcher::launch_desktop;
 use secrecy::ExposeSecret;
-use sqlx::sqlite::SqliteConnectOptions;
-use sqlx::sqlite::SqliteJournalMode;
+
 use std::str::FromStr;
 // const LOGO_BYTES: &[u8] = include_bytes!("../assets/logo.png");
 //
@@ -282,18 +281,13 @@ fn render_recovery_ui(
             };
 
             // Try to open DB with derived key
-            let pragma = format!("\"x'{}'\"", key);
-            let opts = match SqliteConnectOptions::from_str(&format!("sqlite:{}", db_path)) {
+            let opts = match build_sqlcipher_options(&db_path, &key) {
                 Ok(o) => o,
                 Err(_) => {
                     recovery_error.set(true);
                     return;
                 }
-            }
-            .pragma("key", pragma)
-            .pragma("foreign_keys", "ON")
-            .journal_mode(SqliteJournalMode::Wal)
-            .foreign_keys(true);
+            };
 
             match sqlx::SqlitePool::connect_with(opts).await {
                 Ok(_pool) => {
