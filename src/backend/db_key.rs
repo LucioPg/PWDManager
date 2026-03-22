@@ -100,8 +100,8 @@ pub fn salt_file_path(db_path: &str) -> String {
     format!("{}.salt", db_path)
 }
 
-/// Reads 16 bytes from the salt file and returns them.
-pub fn read_salt(db_path: &str) -> Result<Vec<u8>, DBKeyError> {
+/// Reads 16 bytes from the salt file and returns them as a fixed-size array.
+pub fn read_salt(db_path: &str) -> Result<[u8; 16], DBKeyError> {
     let salt_path = salt_file_path(db_path);
     let hex = std::fs::read_to_string(&salt_path).map_err(|e| {
         DBKeyError::SaltFileError(format!("Cannot read salt file '{}': {}", salt_path, e))
@@ -113,13 +113,16 @@ pub fn read_salt(db_path: &str) -> Result<Vec<u8>, DBKeyError> {
             hex.len()
         )));
     }
-    (0..16)
+    let bytes: Vec<u8> = (0..16)
         .map(|i| {
             u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).map_err(|e| {
                 DBKeyError::SaltFileError(format!("Invalid hex in salt file: {}", e))
             })
         })
-        .collect()
+        .collect::<Result<Vec<u8>, _>>()?;
+
+    bytes.try_into()
+        .map_err(|_| DBKeyError::SaltFileError("Salt must be exactly 16 bytes".into()))
 }
 
 /// Writes 16 salt bytes to the salt file as 32 hex characters.
@@ -293,7 +296,7 @@ mod tests {
 
         write_salt(&db_path, &salt).unwrap();
         let read_back = read_salt(&db_path).unwrap();
-        assert_eq!(salt.to_vec(), read_back);
+        assert_eq!(salt, read_back);
 
         let _ = std::fs::remove_file(salt_file_path(&db_path));
         let _ = std::fs::remove_dir(&dir);
