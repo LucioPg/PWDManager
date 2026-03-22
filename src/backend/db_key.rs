@@ -200,7 +200,9 @@ pub fn reset_database(db_path: &str) -> Result<(), DBKeyError> {
             db_errors.push(format!("Failed to delete DB: {}", e));
         }
     }
-    // Remove WAL/SHM files if present
+    // WAL/SHM files are intentionally ignored on failure:
+    // they are transient SQLite files that may or may not exist,
+    // and failing to delete them is not a critical error.
     for suffix in &["-wal", "-shm"] {
         let path = format!("{}{}", db_path, suffix);
         if std::path::Path::new(&path).exists() {
