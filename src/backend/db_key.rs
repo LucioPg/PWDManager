@@ -308,17 +308,13 @@ mod tests {
 
     #[test]
     fn test_salt_file_roundtrip() {
-        let dir = std::env::temp_dir().join("pwd_test_salt");
-        let _ = std::fs::create_dir_all(&dir);
-        let db_path = dir.join("test.db").to_str().unwrap().to_string();
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("test.db").to_str().unwrap().to_string();
         let salt = generate_db_salt();
 
         write_salt(&db_path, &salt).unwrap();
         let read_back = read_salt(&db_path).unwrap();
         assert_eq!(salt, read_back);
-
-        let _ = std::fs::remove_file(salt_file_path(&db_path));
-        let _ = std::fs::remove_dir(&dir);
     }
 
     #[test]
@@ -357,9 +353,8 @@ mod tests {
 
     #[test]
     fn test_reset_database_removes_files() {
-        let dir = std::env::temp_dir().join("pwd_test_reset");
-        let _ = std::fs::create_dir_all(&dir);
-        let db_path = dir.join("database.db").to_str().unwrap().to_string();
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("database.db").to_str().unwrap().to_string();
         let salt = generate_db_salt();
 
         // Create files
@@ -372,16 +367,13 @@ mod tests {
 
         assert!(!std::path::Path::new(&db_path).exists());
         assert!(!std::path::Path::new(&salt_file_path(&db_path)).exists());
-
-        let _ = std::fs::remove_dir(&dir);
     }
 
     #[test]
     fn test_generate_and_store_key() {
         cleanup();
-        let dir = std::env::temp_dir().join("pwd_test_gen_store");
-        let _ = std::fs::create_dir_all(&dir);
-        let db_path = dir.join("database.db").to_str().unwrap().to_string();
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("database.db").to_str().unwrap().to_string();
 
         let key = generate_and_store_key("MyTestPassphrase123", &db_path).unwrap();
 
@@ -393,8 +385,7 @@ mod tests {
         let derived = derive_key("MyTestPassphrase123", &salt).unwrap();
         assert_eq!(key, derived);
 
-        cleanup();
-        let _ = std::fs::remove_file(salt_file_path(&db_path));
-        let _ = std::fs::remove_dir(&dir);
+        // Cleanup: the test writes to SERVICE_NAME (real keyring), not TEST_SERVICE
+        delete_db_key(SERVICE_NAME, KEY_USERNAME);
     }
 }
