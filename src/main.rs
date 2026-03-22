@@ -17,6 +17,7 @@ use crate::components::{
 use crate::components::{
     DatabaseResetDialog, RecoveryKeyInputDialog, RecoveryKeySetupDialog,
 };
+use backend::db_backend::get_db_path;
 use backend::db_backend::init_db;
 use backend::settings_types::Theme;
 use dioxus::core::Task;
@@ -115,8 +116,11 @@ fn App() -> Element {
                 }
             }
             Some(Err(custom_errors::DBError::DBKeyMissingWithDb)) => {
+                if !db_init_notified() {
+                    show_toast_error("Recovery key required".into(), toast_state);
+                    db_init_notified.set(true);
+                }
                 show_recovery_dialog.set(true);
-                show_toast_error("Recovery key required".into(), toast_state);
             }
             Some(Err(_)) => {
                 show_toast_error("Database Loading failed!".into(), toast_state);
@@ -166,17 +170,15 @@ fn App() -> Element {
     use_effect(move || {
         let resource = db_resource.read();
         if let Some(Ok(InitResult::FirstSetup { recovery_phrase, .. })) = &*resource {
-            setup_passphrase.set(recovery_phrase.expose_secret().to_string());
-            show_setup_dialog.set(true);
+            if !show_setup_dialog() {
+                setup_passphrase.set(recovery_phrase.expose_secret().to_string());
+                show_setup_dialog.set(true);
+            }
         }
     });
 
     match &*db_resource.read() {
-        Some(Ok(InitResult::Ready(pool))) => {
-            use_context_provider(|| pool.clone());
-            render_app_with_setup(pool, show_setup_dialog, setup_passphrase, update_state)
-        }
-        Some(Ok(InitResult::FirstSetup { pool, .. })) => {
+        Some(Ok(InitResult::Ready(pool))) | Some(Ok(InitResult::FirstSetup { pool, .. })) => {
             use_context_provider(|| pool.clone());
             render_app_with_setup(pool, show_setup_dialog, setup_passphrase, update_state)
         }
@@ -187,10 +189,11 @@ fn App() -> Element {
                 recovery_error,
                 show_reset_dialog,
                 db_init_notified,
+                toast_state,
             )
         }
         Some(Err(custom_errors::DBError::DBSaltFileError(msg))) => {
-            render_salt_error_ui(db_resource, show_reset_dialog, msg.clone(), db_init_notified)
+            render_salt_error_ui(db_resource, show_reset_dialog, msg.clone(), db_init_notified, toast_state)
         }
         Some(Err(e)) => {
             rsx! {
@@ -242,16 +245,18 @@ fn render_recovery_ui(
     mut recovery_error: Signal<bool>,
     mut show_reset_dialog: Signal<bool>,
     mut db_init_notified: Signal<bool>,
+    mut toast_state: Signal<ToastHubState>,
 ) -> Element {
     let handle_recover = move |passphrase: String| {
         let passphrase = passphrase.clone();
         spawn(async move {
-            let db_path = std::env::current_dir()
-                .unwrap_or_default()
-                .join("database.db")
-                .to_str()
-                .unwrap()
-                .to_string();
+            let db_path = match get_db_path() {
+                Ok(p) => p,
+                Err(_) => {
+                    recovery_error.set(true);
+                    return;
+                }
+            };
 
             let derive_result = tokio::task::spawn_blocking({
                 let p = passphrase.clone();
@@ -265,7 +270,12 @@ fn render_recovery_ui(
 
             let key = match derive_result {
                 Ok(Ok(key)) => key,
-                _ => {
+                Ok(Err(_)) => {
+                    recovery_error.set(true);
+                    return;
+                }
+                Err(join_err) => {
+                    tracing::error!("Recovery derivation panicked: {}", join_err);
                     recovery_error.set(true);
                     return;
                 }
@@ -273,12 +283,17 @@ fn render_recovery_ui(
 
             // Try to open DB with derived key
             let pragma = format!("\"x'{}'\"", key);
-            let opts = SqliteConnectOptions::from_str(&format!("sqlite:{}", db_path))
-                .unwrap()
-                .pragma("key", pragma)
-                .pragma("foreign_keys", "ON")
-                .journal_mode(SqliteJournalMode::Wal)
-                .foreign_keys(true);
+            let opts = match SqliteConnectOptions::from_str(&format!("sqlite:{}", db_path)) {
+                Ok(o) => o,
+                Err(_) => {
+                    recovery_error.set(true);
+                    return;
+                }
+            }
+            .pragma("key", pragma)
+            .pragma("foreign_keys", "ON")
+            .journal_mode(SqliteJournalMode::Wal)
+            .foreign_keys(true);
 
             match sqlx::SqlitePool::connect_with(opts).await {
                 Ok(_pool) => {
@@ -291,7 +306,6 @@ fn render_recovery_ui(
                     recovery_error.set(false);
                     show_recovery_dialog.set(false);
                     db_init_notified.set(false);
-                    // Restart will re-init normally with the key now in keyring
                     db_resource.restart();
                 }
                 Err(_) => {
@@ -302,20 +316,28 @@ fn render_recovery_ui(
     };
 
     let handle_reset = move |_: ()| {
-        let db_path = std::env::current_dir()
-            .unwrap_or_default()
-            .join("database.db")
-            .to_str()
-            .unwrap()
-            .to_string();
+        let db_path = match get_db_path() {
+            Ok(p) => p,
+            Err(_) => return,
+        };
 
-        let _ = crate::backend::db_key::reset_database(&db_path);
-        db_init_notified.set(false);
-        db_resource.restart();
+        match crate::backend::db_key::reset_database(&db_path) {
+            Ok(()) => {
+                db_init_notified.set(false);
+                db_resource.restart();
+            }
+            Err(e) => {
+                show_toast_error(
+                    format!("Failed to reset database: {}", e),
+                    toast_state,
+                );
+            }
+        }
     };
 
     rsx! {
         Style {}
+        ToastContainer {}
         div { class: "flex gap-4 justify-center items-center h-screen",
             Spinner {
                 size: SpinnerSize::XXXXLarge,
@@ -342,22 +364,31 @@ fn render_salt_error_ui(
     mut show_reset_dialog: Signal<bool>,
     error_msg: String,
     mut db_init_notified: Signal<bool>,
+    mut toast_state: Signal<ToastHubState>,
 ) -> Element {
     let handle_reset = move |_: ()| {
-        let db_path = std::env::current_dir()
-            .unwrap_or_default()
-            .join("database.db")
-            .to_str()
-            .unwrap()
-            .to_string();
+        let db_path = match get_db_path() {
+            Ok(p) => p,
+            Err(_) => return,
+        };
 
-        let _ = crate::backend::db_key::reset_database(&db_path);
-        db_init_notified.set(false);
-        db_resource.restart();
+        match crate::backend::db_key::reset_database(&db_path) {
+            Ok(()) => {
+                db_init_notified.set(false);
+                db_resource.restart();
+            }
+            Err(e) => {
+                show_toast_error(
+                    format!("Failed to reset database: {}", e),
+                    toast_state,
+                );
+            }
+        }
     };
 
     rsx! {
         Style {}
+        ToastContainer {}
         div { class: "error-container",
             h1 { "Critical Database Error" }
             p { "{error_msg}" }
