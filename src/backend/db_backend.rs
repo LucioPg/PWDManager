@@ -143,7 +143,8 @@ pub async fn init_db() -> Result<InitResult, DBError> {
         .map_err(|e| DBError::new_general_error(format!("Key derivation task failed: {}", e)))?
         .map_err(|e| DBError::new_general_error(format!("Key setup failed: {}", e)))?;
 
-        let connect_options = build_sqlcipher_options(&db_path, &db_key_value)?;
+        let connect_options = build_sqlcipher_options(&db_path, &db_key_value)?
+            .create_if_missing(true);
 
         let pool = SqlitePool::connect_with(connect_options)
             .await
