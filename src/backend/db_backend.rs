@@ -108,6 +108,56 @@ pub fn get_db_path() -> Result<String, DBError> {
         .map(|s| s.to_string())
 }
 
+/// Runs all initialization queries (table creation) on the given pool.
+/// Extracted as shared helper for `init_db()` and `perform_setup()`.
+#[cfg(feature = "desktop")]
+async fn run_init_queries(pool: &SqlitePool) -> Result<(), DBError> {
+    for init_query in QUERIES {
+        query(init_query)
+            .execute(pool)
+            .await
+            .map_err(|e| DBError::new_general_error(format!("Failed to create table: {}", e)))?;
+    }
+    Ok(())
+}
+
+/// Shared setup logic: derives key from passphrase, stores in keyring, creates DB with all tables.
+/// Used by both `init_db()` (app startup) and `run_setup()` (NSIS installer).
+///
+/// Parameters:
+/// - `passphrase`: the recovery passphrase (random in prod, fixed in dev)
+/// - `service_name`: the keyring service name (from `keyring_service_name()` or `SERVICE_NAME`)
+///
+/// Returns: `(recovery_phrase as SecretString, SqlitePool)`
+#[cfg(feature = "desktop")]
+async fn perform_setup(
+    passphrase: &str,
+    service_name: &str,
+) -> Result<(SecretString, SqlitePool), DBError> {
+    let db_path = get_db_path()?;
+
+    let db_key_value = tokio::task::spawn_blocking({
+        let passphrase = passphrase.to_string();
+        let db_path = db_path.clone();
+        let service_name = service_name.to_string();
+        move || db_key::generate_and_store_key(&passphrase, &service_name, &db_path)
+    })
+    .await
+    .map_err(|e| DBError::new_general_error(format!("Key derivation task failed: {}", e)))?
+    .map_err(|e| DBError::new_general_error(format!("Key setup failed: {}", e)))?;
+
+    let connect_options = build_sqlcipher_options(&db_path, &db_key_value)?
+        .create_if_missing(true);
+
+    let pool = SqlitePool::connect_with(connect_options)
+        .await
+        .map_err(|e| DBError::new_general_error(format!("Failed to create database: {}", e)))?;
+
+    run_init_queries(&pool).await?;
+
+    Ok((SecretString::new(passphrase.to_string().into()), pool))
+}
+
 /// Initializes the encrypted SQLite database using SQLCipher with the OS keyring key.
 ///
 /// On first run, generates a diceware recovery passphrase, derives a key via Argon2id,
@@ -132,34 +182,14 @@ pub async fn init_db() -> Result<InitResult, DBError> {
         let passphrase = db_key::generate_recovery_passphrase()
             .map_err(|e| DBError::new_general_error(format!("Passphrase generation: {}", e)))?;
 
-        let passphrase_secret = SecretString::new(passphrase.clone().into());
-
-        let db_key_value = tokio::task::spawn_blocking({
-            let passphrase = passphrase.clone();
-            let db_path = db_path.to_string();
-            move || db_key::generate_and_store_key(&passphrase, db_key::keyring_service_name(), &db_path)
-        })
-        .await
-        .map_err(|e| DBError::new_general_error(format!("Key derivation task failed: {}", e)))?
-        .map_err(|e| DBError::new_general_error(format!("Key setup failed: {}", e)))?;
-
-        let connect_options = build_sqlcipher_options(&db_path, &db_key_value)?
-            .create_if_missing(true);
-
-        let pool = SqlitePool::connect_with(connect_options)
-            .await
-            .map_err(|e| DBError::new_general_error(format!("Failed to create database: {}", e)))?;
-
-        for init_query in QUERIES {
-            query(init_query)
-                .execute(&pool)
-                .await
-                .map_err(|e| DBError::new_general_error(format!("Failed to create table: {}", e)))?;
-        }
+        let (recovery_phrase, pool) = perform_setup(
+            &passphrase,
+            db_key::keyring_service_name(),
+        ).await?;
 
         return Ok(InitResult::FirstSetup {
             pool,
-            recovery_phrase: passphrase_secret,
+            recovery_phrase,
         });
     }
 
