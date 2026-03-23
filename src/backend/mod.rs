@@ -16,6 +16,9 @@ pub mod updater;
 #[cfg(feature = "desktop")]
 pub mod db_key;
 
+#[cfg(feature = "desktop")]
+pub mod setup;
+
 #[cfg(test)]
 mod password_utils_tests;
 

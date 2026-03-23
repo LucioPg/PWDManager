@@ -397,6 +397,31 @@ fn render_salt_error_ui(
 }
 
 fn main() {
+    let args: Vec<String> = std::env::args().collect();
+
+    if args.contains(&"--setup".to_string()) {
+        if cfg!(debug_assertions) {
+            eprintln!("Error: --setup is not available in debug builds");
+            std::process::exit(1);
+        }
+
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("Failed to create tokio runtime");
+
+        match rt.block_on(crate::backend::setup::run_setup()) {
+            Ok(passphrase) => {
+                println!("{}", passphrase.expose_secret());
+                std::process::exit(0);
+            }
+            Err(e) => {
+                eprintln!("Setup failed: {}", e);
+                std::process::exit(1);
+            }
+        }
+    }
+
     // Nota: il logging viene inizializzato automaticamente nel launcher
     const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
     println!("PWDManager v{}", APP_VERSION);

@@ -130,7 +130,7 @@ async fn run_init_queries(pool: &SqlitePool) -> Result<(), DBError> {
 ///
 /// Returns: `(recovery_phrase as SecretString, SqlitePool)`
 #[cfg(feature = "desktop")]
-async fn perform_setup(
+pub(crate) async fn perform_setup(
     passphrase: &str,
     service_name: &str,
 ) -> Result<(SecretString, SqlitePool), DBError> {
