@@ -137,7 +137,7 @@ pub async fn init_db() -> Result<InitResult, DBError> {
         let db_key_value = tokio::task::spawn_blocking({
             let passphrase = passphrase.clone();
             let db_path = db_path.to_string();
-            move || db_key::generate_and_store_key(&passphrase, &db_path)
+            move || db_key::generate_and_store_key(&passphrase, db_key::keyring_service_name(), &db_path)
         })
         .await
         .map_err(|e| DBError::new_general_error(format!("Key derivation task failed: {}", e)))?

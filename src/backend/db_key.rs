@@ -184,6 +184,7 @@ pub fn derive_key_from_passphrase(passphrase: &str, db_path: &str) -> Result<Str
 /// CPU-bound: call via `spawn_blocking`.
 pub fn generate_and_store_key(
     passphrase: &str,
+    service_name: &str,
     db_path: &str,
 ) -> Result<String, DBKeyError> {
     let salt = generate_db_salt();
@@ -191,7 +192,7 @@ pub fn generate_and_store_key(
 
     let result = derive_key(passphrase, &salt)
         .and_then(|key| {
-            store_db_key(SERVICE_NAME, KEY_USERNAME, &key)?;
+            store_db_key(service_name, KEY_USERNAME, &key)?;
             Ok(key)
         });
 
@@ -404,7 +405,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let db_path = dir.path().join("database.db").to_str().unwrap().to_string();
 
-        let key = generate_and_store_key("MyTestPassphrase123", &db_path).unwrap();
+        let key = generate_and_store_key("MyTestPassphrase123", TEST_SERVICE, &db_path).unwrap();
 
         assert_eq!(key.len(), 64);
         assert!(std::path::Path::new(&salt_file_path(&db_path)).exists());
@@ -414,7 +415,7 @@ mod tests {
         let derived = derive_key("MyTestPassphrase123", &salt).unwrap();
         assert_eq!(key, derived);
 
-        // Cleanup: the test writes to SERVICE_NAME (real keyring), not TEST_SERVICE
-        delete_db_key(SERVICE_NAME, KEY_USERNAME);
+        // Cleanup: the test now uses TEST_SERVICE, not SERVICE_NAME
+        delete_db_key(TEST_SERVICE, KEY_USERNAME);
     }
 }
