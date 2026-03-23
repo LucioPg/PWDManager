@@ -19,9 +19,12 @@ icon = [
 icon_path = "icons/icon.ico"
 # Digest algorithm for signing
 digest_algorithm = "sha256"
-# WebView2 installation mode
+
 [webview_install_mode.EmbedBootstrapper]
 silent = true
+
+[bundle.windows.nsis]
+installer_hooks = "installer/nsis-hooks.nsh"
 
 [web.app]
 
