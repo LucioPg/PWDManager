@@ -32,19 +32,21 @@ In dev, a fixed diceware passphrase is used (hard-coded constant) with a separat
 pub const SERVICE_NAME: &str = "PWDManager";
 pub const KEY_USERNAME: &str = "db_encryption_key";
 
-// Dev-only
+// Dev-only (compile-time gated — not accessible in release builds)
 #[cfg(debug_assertions)]
 pub const DEV_SERVICE_NAME: &str = "PWDManager-dev";
 #[cfg(debug_assertions)]
 pub const DEV_RECOVERY_PASSPHRASE: &str = "CorrectHorseBatteryStaple";
 ```
 
+> **Note on format:** `DEV_RECOVERY_PASSPHRASE` uses CamelCase to match the diceware format (`Word1Word2...`), but is a human-readable English phrase rather than random diceware words. This is intentional — it makes the passphrase memorable during development while keeping the format consistent.
+
 ### Helper Function
 
 ```rust
 pub fn keyring_service_name() -> &'static str {
     if cfg!(debug_assertions) {
-        DEV_SERVICE_NAME
+        DEV_SERVICE_NAME  // compile-time guaranteed to exist in debug
     } else {
         SERVICE_NAME
     }
@@ -92,6 +94,8 @@ pwdmanager.exe --setup
 
 **Exit codes:** `0` = success (passphrase printed on stdout), `1` = failure (error on stderr)
 
+**No other arguments are expected or supported.**
+
 **Behavior:**
 1. Generate random diceware passphrase (language detection)
 2. Generate random salt (16 bytes), write to `{db_path}.salt`
@@ -101,7 +105,26 @@ pwdmanager.exe --setup
 6. Print passphrase to stdout (NSIS captures this)
 7. Exit with code 0
 
-**Important:** This command always uses production keyring (`SERVICE_NAME`), regardless of build configuration. It is only invoked from the release installer.
+**Important:** This command always uses production keyring (`SERVICE_NAME`), regardless of build configuration. It is only invoked from the release installer. To prevent accidental invocation in debug builds (which would create a prod keyring entry), a runtime guard should be added:
+
+```rust
+if args.contains(&"--setup".to_string()) {
+    if cfg!(debug_assertions) {
+        eprintln!("Error: --setup is not available in debug builds");
+        std::process::exit(1);
+    }
+    // ... proceed with setup
+}
+```
+
+**Tokio runtime:** Since `--setup` exits before `launch_desktop!` (which provides the Dioxus/tokio runtime), `run_setup()` must create its own tokio runtime. Use a current-thread runtime:
+
+```rust
+let rt = tokio::runtime::Builder::new_current_thread()
+    .enable_all()
+    .build()?;
+let result = rt.block_on(run_setup());
+```
 
 ### Recovery Flow (Both Environments)
 
@@ -119,14 +142,19 @@ Derivation logic is identical: passphrase + salt → Argon2id → hex key.
 
 ### `src/main.rs`
 
-Add CLI argument parsing before `launch_desktop!`:
+Add CLI argument parsing before `launch_desktop!`. The `--setup` branch must create its own tokio runtime since `launch_desktop!` is not yet invoked:
 
 ```rust
 fn main() {
     let args: Vec<String> = std::env::args().collect();
 
     if args.contains(&"--setup".to_string()) {
-        match run_setup() {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("Failed to create tokio runtime");
+
+        match rt.block_on(run_setup()) {
             Ok(passphrase) => {
                 println!("{}", passphrase.expose_secret());
                 std::process::exit(0);
@@ -142,18 +170,32 @@ fn main() {
 }
 ```
 
+### `src/main.rs` — Recovery Flow
+
+Update `store_db_key` calls in the recovery UI handler (around line 295-298) to use `keyring_service_name()`:
+
+```rust
+// Before:
+store_db_key(crate::backend::db_key::SERVICE_NAME, ...)
+
+// After:
+store_db_key(keyring_service_name(), ...)
+```
+
 ### `src/backend/db_key.rs`
 
-1. Add dev constants (`DEV_SERVICE_NAME`, `DEV_RECOVERY_PASSPHRASE`)
+1. Add dev constants (`DEV_SERVICE_NAME`, `DEV_RECOVERY_PASSPHRASE`) with `#[cfg(debug_assertions)]`
 2. Add `keyring_service_name()` helper
 3. Replace all direct `SERVICE_NAME` usage with `keyring_service_name()`
-4. Extract shared setup logic into `perform_setup()` function (used by both `init_db()` dev/prod branch and `run_setup()`)
+4. **Modify `generate_and_store_key()` to accept a `service_name: &str` parameter** instead of hardcoding `SERVICE_NAME`. Currently the function internally calls `store_db_key(SERVICE_NAME, KEY_USERNAME, &key)` — this must become `store_db_key(service_name, KEY_USERNAME, &key)`. All callers must pass `keyring_service_name()` (except `run_setup()` which passes `SERVICE_NAME` explicitly).
+5. Extract shared setup logic into `perform_setup()` function (used by both `init_db()` dev/prod branch and `run_setup()`)
 
 ### `src/backend/db_backend.rs`
 
 1. In `init_db()` FirstSetup branch: use `DEV_RECOVERY_PASSPHRASE` in dev, generate random passphrase in prod
 2. All keyring operations use `keyring_service_name()`
-3. The `perform_setup()` logic (generate passphrase, salt, derive key, create DB) is extracted and shared
+3. Extract `run_init_queries(pool)` helper from the existing `for init_query in QUERIES` loop (lines 153-158)
+4. The `perform_setup()` logic (generate passphrase, salt, derive key, create DB) is extracted and shared
 
 ### `run_setup()` Function
 
@@ -163,22 +205,27 @@ New function (in `db_key.rs` or a new module) that encapsulates the setup logic:
 pub async fn run_setup() -> Result<SecretString, DBError> {
     // 1. Generate diceware passphrase (random, system language)
     let passphrase = generate_recovery_passphrase()?;
-    let passphrase_secret = SecretString::new(passphrase.into());
 
     // 2. Derive and store key (spawn_blocking)
     let db_path = get_db_path();
-    let key = tokio::task::spawn_blocking(move || {
-        generate_and_store_key(&passphrase_secret, &db_path)
+    let key = tokio::task::spawn_blocking({
+        let passphrase = passphrase.clone();
+        move || {
+            // Always uses production keyring for --setup
+            generate_and_store_key(&passphrase, SERVICE_NAME, &db_path)
+        }
     }).await.map_err(|e| DBError::new_general_error(e.to_string()))??;
 
     // 3. Create DB with tables
     let options = build_sqlcipher_options(&db_path, &key)?;
-    let pool = SqlitePool::connect_with(options.with_create_if_missing(true)).await?;
+    let pool = SqlitePool::connect_with(options.create_if_missing(true)).await?;
     run_init_queries(&pool).await?;
 
-    Ok(passphrase_secret)
+    Ok(SecretString::new(passphrase.into()))
 }
 ```
+
+> **Note:** `generate_and_store_key()` takes `&str`, not `&SecretString`. The passphrase string is cloned into the `spawn_blocking` closure and exposed. This is acceptable because `spawn_blocking` runs synchronously on a separate thread and the string is not logged or persisted.
 
 ## NSIS Installer Modifications
 
@@ -190,34 +237,48 @@ Add `installer_hooks` to the `[bundle.windows.nsis]` section:
 [bundle.windows]
 icon_path = "icons/icon.ico"
 digest_algorithm = "sha256"
+# IMPORTANT: preserve existing [webview_install_mode.EmbedBootstrapper] section
+[webview_install_mode.EmbedBootstrapper]
+silent = true
 
 [bundle.windows.nsis]
 installer_hooks = "installer/nsis-hooks.nsh"
 ```
 
+### Hook Timing: Two-Phase Approach
+
+The NSIS hook must use a **two-phase** approach because `--setup` requires the exe to be on disk:
+
+1. **PRE_INSTALL hook** (`NSIS_HOOK_PRE_INST`): Show the privacy notice / acceptance page. If the user declines, abort.
+2. **POST_INSTALL hook** (`NSIS_HOOK_POST_INST`): After files are extracted to `$INSTDIR`, invoke `pwdmanager.exe --setup`, capture stdout, show the passphrase page.
+
+> **Note:** The exact macro names (`NSIS_HOOK_PRE_INST`, `NSIS_HOOK_POST_INST`) must be verified against the Dioxus bundler source (`dioxus-packager` crate) before implementation. Tauri uses `PRE_INST`/`POST_INST` naming — Dioxus may differ.
+
 ### Hook Script (`installer/nsis-hooks.nsh`)
 
-Custom NSIS script that:
-1. Shows a privacy notice / acceptance page after the license page
-2. On acceptance, invokes `pwdmanager.exe --setup`
-3. Captures stdout (the recovery passphrase)
-4. Shows a custom page displaying the passphrase with a warning
-5. User must click "I have saved the recovery key" to continue
-6. If `--setup` fails, shows an error and aborts installation
+Custom NSIS script:
 
 ```
 ; installer/nsis-hooks.nsh (pseudocode structure)
 
-!macro NSIS_HOOK_PRE_INSTALL
+!macro NSIS_HOOK_PRE_INST
     ; Show privacy notice page
-    ; On accept:
-    ;   nsExec::ExecToLog '"$INSTDIR\pwdmanager.exe" --setup'
-    ;   Pop $0 (exit code)
-    ;   If $0 != 0: Abort "Setup failed"
-    ;   Show passphrase display page (from captured output)
-    ;   Wait for user confirmation
+    ; If user declines: Abort
+!macroend
+
+!macro NSIS_HOOK_POST_INST
+    ; Run --setup and capture stdout into variable
+    ;   nsExec::ExecToStack '"$INSTDIR\pwdmanager.exe" --setup'
+    ;   Pop $0  ; exit code
+    ;   Pop $1  ; stdout output (the passphrase)
+    ;
+    ; If $0 != 0: Abort "Setup failed"
+    ; Show passphrase display page (from $1)
+    ; Wait for user confirmation ("I have saved the recovery key")
 !macroend
 ```
+
+> **Important:** `nsExec::ExecToStack` (not `ExecToLog`) is used to capture stdout. `ExecToStack` pushes both the exit code and stdout onto the NSIS stack. `ExecToLog` sends output to the log window only and cannot be captured into a variable.
 
 ### Placeholder Pages
 
@@ -228,5 +289,5 @@ For the initial implementation:
 ## Security Considerations
 
 - The fixed dev passphrase (`DEV_RECOVERY_PASSPHRASE`) is compiled into the debug binary. This is acceptable because debug builds are never distributed and the dev DB contains no real data.
-- The `--setup` command prints the passphrase to stdout. The NSIS installer captures this internally — it is never written to disk or logged.
+- The `--setup` command prints the passphrase to stdout. The NSIS installer captures this internally via `ExecToStack` — it is never written to disk or logged.
 - The recovery passphrase is only shown once: during setup (installer or FirstSetup dialog). If lost, the DB must be reset.
