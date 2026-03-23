@@ -1,23 +1,30 @@
 ; PWDManager NSIS Installer Hooks
-; Two-phase approach: privacy notice before install, DB setup after install.
+;
+; Supported macro names (defined by tauri-bundler):
+;   NSIS_HOOK_PREINSTALL   — runs before file copy, registry, shortcuts
+;   NSIS_HOOK_POSTINSTALL  — runs after file copy, registry, shortcuts
+;   NSIS_HOOK_PREUNINSTALL — runs before file removal
+;   NSIS_HOOK_POSTUNINSTALL — runs after file removal
 
-!macro NSIS_HOOK_PRE_INST
-    ; TODO: Show privacy notice / acceptance page
-    ; If user declines: Abort
-    !insertmacro MUI_HEADER_TEXT "Privacy Notice" "Please read and accept"
+!macro NSIS_HOOK_PREINSTALL
+    MessageBox MB_YESNO|MB_ICONQUESTION "This application is provided 'as is' without warranty. The developer assumes no liability for damages or data loss. Passwords are stored locally with AES-256 encryption. No data is transmitted to any external server. A recovery key will be generated during setup. You are solely responsible for storing it safely. Without it, your data cannot be recovered. Do you accept these terms?" IDYES +2
+    Quit
 !macroend
 
-!macro NSIS_HOOK_POST_INST
-    ; Run --setup and capture stdout (passphrase)
-    nsExec::ExecToStack '"$INSTDIR\pwdmanager.exe" --setup'
-    Pop $0  ; exit code
-    Pop $1  ; stdout (recovery passphrase)
+!macro NSIS_HOOK_POSTINSTALL
+    nsExec::ExecToStack '"$INSTDIR\PWDManager.exe" --setup'
+    Pop $R0
+    Pop $R1
 
-    ${If} $0 != 0
-        MessageBox MB_ICONSTOP "Database setup failed. Installation cannot continue.$\n$\nExit code: $0" /SD IDOK
-        Abort "Database setup failed"
+    ${If} $R0 != 0
+        MessageBox MB_ICONSTOP "Database setup failed. Exit code: $R0"
+        Quit
     ${EndIf}
 
-    ; TODO: Show passphrase display page with $1
-    ; User must click "I have saved the recovery key" to continue
+    ; Save recovery key to file for copy/paste
+    FileOpen $0 "$INSTDIR\recovery_key.txt" w
+    FileWrite $0 $R1
+    FileClose $0
+
+    MessageBox MB_OK|MB_ICONINFORMATION "Your recovery key has been saved to $INSTDIR\recovery_key.txt - Save it in a safe place. Without it, your data cannot be recovered."
 !macroend

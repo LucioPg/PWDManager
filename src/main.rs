@@ -69,8 +69,12 @@ fn App() -> Element {
     let mut show_recovery_dialog = use_signal(|| false);
     let mut recovery_error = use_signal(|| false);
     let mut show_reset_dialog = use_signal(|| false);
+    #[cfg(debug_assertions)]
     let mut show_setup_dialog = use_signal(|| false);
+    #[cfg(debug_assertions)]
     let mut setup_passphrase = use_signal(|| String::new());
+    #[cfg(debug_assertions)]
+    let mut has_shown_setup = use_signal(|| false);
 
     // Cleanup del pool quando il componente viene smontato o l'app si chiude
     use_drop(move || {
@@ -165,12 +169,14 @@ fn App() -> Element {
         }
     });
 
-    // Effect: detect FirstSetup and show dialog
+    // Effect: detect FirstSetup and show dialog (dev only — release uses --setup via NSIS)
+    #[cfg(debug_assertions)]
     use_effect(move || {
         let resource = db_resource.read();
         if let Some(Ok(InitResult::FirstSetup { recovery_phrase, .. })) = &*resource {
-            if !show_setup_dialog() {
+            if !has_shown_setup() {
                 setup_passphrase.set(recovery_phrase.expose_secret().to_string());
+                has_shown_setup.set(true);
                 show_setup_dialog.set(true);
             }
         }
@@ -179,7 +185,14 @@ fn App() -> Element {
     match &*db_resource.read() {
         Some(Ok(InitResult::Ready(pool))) | Some(Ok(InitResult::FirstSetup { pool, .. })) => {
             use_context_provider(|| pool.clone());
-            render_app_with_setup(pool, show_setup_dialog, setup_passphrase, update_state)
+            #[cfg(debug_assertions)]
+            {
+                render_app_with_setup(pool, show_setup_dialog, setup_passphrase, update_state)
+            }
+            #[cfg(not(debug_assertions))]
+            {
+                render_app(pool, update_state)
+            }
         }
         Some(Err(custom_errors::DBError::DBKeyMissingWithDb)) => {
             render_recovery_ui(
@@ -235,6 +248,18 @@ fn render_app_with_setup(
             passphrase: setup_passphrase.read().clone(),
             on_confirm: move |_| {},
         }
+    }
+}
+
+fn render_app(
+    pool: &sqlx::SqlitePool,
+    update_state: Signal<UpdateState>,
+) -> Element {
+    rsx! {
+        Style {}
+        ToastContainer {}
+        UpdateNotification { update_state }
+        Router::<Route> {}
     }
 }
 

@@ -176,25 +176,30 @@ pub async fn init_db() -> Result<InitResult, DBError> {
     let salt_exists = std::path::Path::new(&salt_path).exists();
 
     if !db_exists && !salt_exists {
-        // FIRST SETUP
-        debug!("First setup: generating recovery key and creating database");
+        // FIRST SETUP — dev only: auto-create DB with fixed passphrase.
+        // Release builds use --setup (NSIS installer) to create the DB and
+        // display the recovery passphrase before the app launches.
+        #[cfg(debug_assertions)]
+        {
+            debug!("First setup: generating recovery key and creating database (dev)");
+            let passphrase = db_key::DEV_RECOVERY_PASSPHRASE.to_string();
+            let (recovery_phrase, pool) = perform_setup(
+                &passphrase,
+                db_key::keyring_service_name(),
+            )
+            .await?;
+            return Ok(InitResult::FirstSetup {
+                pool,
+                recovery_phrase,
+            });
+        }
 
-        let passphrase = if cfg!(debug_assertions) {
-            db_key::DEV_RECOVERY_PASSPHRASE.to_string()
-        } else {
-            db_key::generate_recovery_passphrase()
-                .map_err(|e| DBError::new_general_error(format!("Passphrase generation: {}", e)))?
-        };
-
-        let (recovery_phrase, pool) = perform_setup(
-            &passphrase,
-            db_key::keyring_service_name(),
-        ).await?;
-
-        return Ok(InitResult::FirstSetup {
-            pool,
-            recovery_phrase,
-        });
+        #[cfg(not(debug_assertions))]
+        {
+            return Err(DBError::new_general_error(
+                "Database not initialized. Run with --setup to initialize.".into(),
+            ));
+        }
     }
 
     // DB exists or salt exists → try normal startup

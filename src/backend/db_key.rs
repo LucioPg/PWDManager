@@ -23,9 +23,12 @@ pub const DEV_RECOVERY_PASSPHRASE: &str = "CorrectHorseBatteryStaple";
 /// Returns the correct keyring service name based on build configuration.
 /// Dev builds use a separate keyring entry to avoid conflicts with prod.
 pub fn keyring_service_name() -> &'static str {
-    if cfg!(debug_assertions) {
+    #[cfg(debug_assertions)]
+    {
         DEV_SERVICE_NAME
-    } else {
+    }
+    #[cfg(not(debug_assertions))]
+    {
         SERVICE_NAME
     }
 }
@@ -75,16 +78,17 @@ pub(crate) fn generate_key() -> String {
 
 /// Stores a key in the OS keyring under the given service/username.
 pub(crate) fn store_db_key(service: &str, username: &str, key: &str) -> Result<(), DBKeyError> {
-    let entry = Entry::new(service, username)
-        .map_err(|e| DBKeyError::KeyringError(e.to_string()))?;
-    entry.set_password(key)
+    let entry =
+        Entry::new(service, username).map_err(|e| DBKeyError::KeyringError(e.to_string()))?;
+    entry
+        .set_password(key)
         .map_err(|e| DBKeyError::KeyringError(e.to_string()))
 }
 
 /// Retrieves a key from the OS keyring.
 pub(crate) fn retrieve_db_key(service: &str, username: &str) -> Result<String, DBKeyError> {
-    let entry = Entry::new(service, username)
-        .map_err(|e| DBKeyError::KeyringError(e.to_string()))?;
+    let entry =
+        Entry::new(service, username).map_err(|e| DBKeyError::KeyringError(e.to_string()))?;
     entry.get_password().map_err(|e| match e {
         KeyringError::NoEntry => DBKeyError::NoEntry,
         _ => DBKeyError::KeyringError(e.to_string()),
@@ -102,9 +106,10 @@ pub(crate) fn delete_db_key(service: &str, username: &str) {
 /// MUST be called via `spawn_blocking` — CPU-bound operation (~50ms).
 pub fn derive_key(passphrase: &str, salt: &[u8]) -> Result<String, DBKeyError> {
     if salt.len() != 16 {
-        return Err(DBKeyError::SaltFileError(
-            format!("Salt must be 16 bytes, got {}", salt.len()),
-        ));
+        return Err(DBKeyError::SaltFileError(format!(
+            "Salt must be 16 bytes, got {}",
+            salt.len()
+        )));
     }
     let argon2 = Argon2::default();
     let mut output = [0u8; 32];
@@ -134,13 +139,13 @@ pub fn read_salt(db_path: &str) -> Result<[u8; 16], DBKeyError> {
     }
     let bytes: Vec<u8> = (0..16)
         .map(|i| {
-            u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).map_err(|e| {
-                DBKeyError::SaltFileError(format!("Invalid hex in salt file: {}", e))
-            })
+            u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16)
+                .map_err(|e| DBKeyError::SaltFileError(format!("Invalid hex in salt file: {}", e)))
         })
         .collect::<Result<Vec<u8>, _>>()?;
 
-    bytes.try_into()
+    bytes
+        .try_into()
         .map_err(|_| DBKeyError::SaltFileError("Salt must be exactly 16 bytes".into()))
 }
 
@@ -190,11 +195,10 @@ pub fn generate_and_store_key(
     let salt = generate_db_salt();
     write_salt(db_path, &salt)?;
 
-    let result = derive_key(passphrase, &salt)
-        .and_then(|key| {
-            store_db_key(service_name, KEY_USERNAME, &key)?;
-            Ok(key)
-        });
+    let result = derive_key(passphrase, &salt).and_then(|key| {
+        store_db_key(service_name, KEY_USERNAME, &key)?;
+        Ok(key)
+    });
 
     match result {
         Ok(key) => Ok(key),
@@ -202,7 +206,11 @@ pub fn generate_and_store_key(
             // Cleanup orphaned salt file on failure
             let salt_path = salt_file_path(db_path);
             if let Err(cleanup_err) = std::fs::remove_file(&salt_path) {
-                tracing::warn!("Failed to clean up orphaned salt file {}: {}", salt_path, cleanup_err);
+                tracing::warn!(
+                    "Failed to clean up orphaned salt file {}: {}",
+                    salt_path,
+                    cleanup_err
+                );
             }
             Err(e)
         }
@@ -361,7 +369,10 @@ mod tests {
         );
         // Should have multiple words (CamelCase boundaries)
         let word_count = passphrase.chars().filter(|c| c.is_uppercase()).count();
-        assert!(word_count >= 6, "Should have at least 6 uppercase chars (6 words)");
+        assert!(
+            word_count >= 6,
+            "Should have at least 6 uppercase chars (6 words)"
+        );
     }
 
     #[test]
