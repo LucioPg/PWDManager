@@ -179,8 +179,12 @@ pub async fn init_db() -> Result<InitResult, DBError> {
         // FIRST SETUP
         debug!("First setup: generating recovery key and creating database");
 
-        let passphrase = db_key::generate_recovery_passphrase()
-            .map_err(|e| DBError::new_general_error(format!("Passphrase generation: {}", e)))?;
+        let passphrase = if cfg!(debug_assertions) {
+            db_key::DEV_RECOVERY_PASSPHRASE.to_string()
+        } else {
+            db_key::generate_recovery_passphrase()
+                .map_err(|e| DBError::new_general_error(format!("Passphrase generation: {}", e)))?
+        };
 
         let (recovery_phrase, pool) = perform_setup(
             &passphrase,
@@ -201,7 +205,7 @@ pub async fn init_db() -> Result<InitResult, DBError> {
     }
 
     // Try to get key from keyring
-    let keyring_result = db_key::retrieve_db_key(db_key::SERVICE_NAME, db_key::KEY_USERNAME);
+    let keyring_result = db_key::retrieve_db_key(db_key::keyring_service_name(), db_key::KEY_USERNAME);
 
     match keyring_result {
         Ok(key) => {
