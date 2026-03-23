@@ -293,7 +293,7 @@ fn render_recovery_ui(
                 Ok(_pool) => {
                     // Store key in keyring
                     let _ = crate::backend::db_key::store_db_key(
-                        crate::backend::db_key::SERVICE_NAME,
+                        crate::backend::db_key::keyring_service_name(),
                         crate::backend::db_key::KEY_USERNAME,
                         &key,
                     );
