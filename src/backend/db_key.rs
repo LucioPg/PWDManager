@@ -235,7 +235,7 @@ pub fn reset_database(db_path: &str) -> Result<(), DBKeyError> {
         }
     }
     // delete_db_key returns () — just call it, ignore any error
-    delete_db_key(SERVICE_NAME, KEY_USERNAME);
+    delete_db_key(keyring_service_name(), KEY_USERNAME);
 
     if !db_errors.is_empty() {
         Err(DBKeyError::DatabaseCleanupError(db_errors.join("; ")))
@@ -251,7 +251,7 @@ pub fn reset_database(db_path: &str) -> Result<(), DBKeyError> {
 #[allow(dead_code)]
 #[deprecated = "Replaced by the recovery key flow in init_db()"]
 pub fn get_or_create_db_key(_db_path: &str) -> Result<String, DBKeyError> {
-    match retrieve_db_key(SERVICE_NAME, KEY_USERNAME) {
+    match retrieve_db_key(keyring_service_name(), KEY_USERNAME) {
         Ok(key) => Ok(key),
         Err(DBKeyError::NoEntry) => Err(DBKeyError::MissingKeyWithDb),
         Err(e) => Err(e),
