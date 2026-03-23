@@ -11,6 +11,25 @@ pub const SERVICE_NAME: &str = "PWDManager";
 /// Username/identifier for the DB encryption key in the keyring.
 pub const KEY_USERNAME: &str = "db_encryption_key";
 
+/// Dev-only keyring service name — separate from prod to avoid conflicts.
+#[cfg(debug_assertions)]
+pub const DEV_SERVICE_NAME: &str = "PWDManager-dev";
+
+/// Dev-only fixed recovery passphrase (hard-coded, CamelCase to match diceware format).
+/// Acceptable because debug builds are never distributed and dev DB contains no real data.
+#[cfg(debug_assertions)]
+pub const DEV_RECOVERY_PASSPHRASE: &str = "CorrectHorseBatteryStaple";
+
+/// Returns the correct keyring service name based on build configuration.
+/// Dev builds use a separate keyring entry to avoid conflicts with prod.
+pub fn keyring_service_name() -> &'static str {
+    if cfg!(debug_assertions) {
+        DEV_SERVICE_NAME
+    } else {
+        SERVICE_NAME
+    }
+}
+
 /// Error type for keyring operations.
 #[derive(Debug)]
 pub enum DBKeyError {
@@ -367,6 +386,16 @@ mod tests {
 
         assert!(!std::path::Path::new(&db_path).exists());
         assert!(!std::path::Path::new(&salt_file_path(&db_path)).exists());
+    }
+
+    #[test]
+    fn test_keyring_service_name_returns_string() {
+        let name = keyring_service_name();
+        assert!(!name.is_empty());
+        assert!(name.contains("PWDManager"));
+        // Note: this only tests the debug path (DEV_SERVICE_NAME) because
+        // tests always compile with debug assertions. The release path
+        // (SERVICE_NAME) is verified by the cfg!(debug_assertions) branch.
     }
 
     #[test]
