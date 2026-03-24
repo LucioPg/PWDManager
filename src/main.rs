@@ -4,8 +4,8 @@ mod backend;
 mod components;
 
 use crate::auth::User;
-use crate::backend::db_backend::list_users_no_avatar;
 use crate::backend::db_backend::InitResult;
+use crate::backend::db_backend::list_users_no_avatar;
 use crate::backend::init_blacklist_from_path;
 use crate::backend::settings_types::AutoUpdate;
 use crate::backend::updater_types::{UpdateManifest, UpdateState};
@@ -14,11 +14,9 @@ use crate::components::{
     Settings, Spinner, SpinnerSize, Style, ToastContainer, ToastHubState, UpdateNotification,
     UpsertUser, show_toast_error, show_toast_success,
 };
-use crate::components::{
-    DatabaseResetDialog, RecoveryKeyInputDialog, RecoveryKeySetupDialog,
-};
-use backend::db_backend::{build_sqlcipher_options, get_db_path};
+use crate::components::{DatabaseResetDialog, RecoveryKeyInputDialog, RecoveryKeySetupDialog};
 use backend::db_backend::init_db;
+use backend::db_backend::{build_sqlcipher_options, get_db_path};
 use backend::settings_types::Theme;
 use dioxus::core::Task;
 use dioxus::prelude::*;
@@ -173,7 +171,10 @@ fn App() -> Element {
     #[cfg(debug_assertions)]
     use_effect(move || {
         let resource = db_resource.read();
-        if let Some(Ok(InitResult::FirstSetup { recovery_phrase, .. })) = &*resource {
+        if let Some(Ok(InitResult::FirstSetup {
+            recovery_phrase, ..
+        })) = &*resource
+        {
             if !has_shown_setup() {
                 setup_passphrase.set(recovery_phrase.expose_secret().to_string());
                 has_shown_setup.set(true);
@@ -187,26 +188,33 @@ fn App() -> Element {
             use_context_provider(|| pool.clone());
             #[cfg(debug_assertions)]
             {
-                render_app_with_setup(pool, show_setup_dialog, setup_passphrase, update_state)
+                return render_app_with_setup(
+                    pool,
+                    show_setup_dialog,
+                    setup_passphrase,
+                    update_state,
+                );
             }
             #[cfg(not(debug_assertions))]
             {
                 render_app(pool, update_state)
             }
         }
-        Some(Err(custom_errors::DBError::DBKeyMissingWithDb)) => {
-            render_recovery_ui(
-                db_resource,
-                show_recovery_dialog,
-                recovery_error,
-                show_reset_dialog,
-                db_init_notified,
-                toast_state,
-            )
-        }
-        Some(Err(custom_errors::DBError::DBSaltFileError(msg))) => {
-            render_salt_error_ui(db_resource, show_reset_dialog, msg.clone(), db_init_notified, toast_state)
-        }
+        Some(Err(custom_errors::DBError::DBKeyMissingWithDb)) => render_recovery_ui(
+            db_resource,
+            show_recovery_dialog,
+            recovery_error,
+            show_reset_dialog,
+            db_init_notified,
+            toast_state,
+        ),
+        Some(Err(custom_errors::DBError::DBSaltFileError(msg))) => render_salt_error_ui(
+            db_resource,
+            show_reset_dialog,
+            msg.clone(),
+            db_init_notified,
+            toast_state,
+        ),
         Some(Err(e)) => {
             rsx! {
                 Style {}
@@ -251,10 +259,7 @@ fn render_app_with_setup(
     }
 }
 
-fn render_app(
-    pool: &sqlx::SqlitePool,
-    update_state: Signal<UpdateState>,
-) -> Element {
+fn render_app(pool: &sqlx::SqlitePool, update_state: Signal<UpdateState>) -> Element {
     rsx! {
         Style {}
         ToastContainer {}
@@ -324,7 +329,8 @@ fn render_recovery_ui(
                     );
                     recovery_error.set(false);
                     show_recovery_dialog.set(false);
-                    db_init_notified.set(false);
+                    show_toast_success("Database online!".into(), toast_state);
+                    db_init_notified.set(true);
                     db_resource.restart();
                 }
                 Err(_) => {
@@ -346,10 +352,7 @@ fn render_recovery_ui(
                 db_resource.restart();
             }
             Err(e) => {
-                show_toast_error(
-                    format!("Failed to reset database: {}", e),
-                    toast_state,
-                );
+                show_toast_error(format!("Failed to reset database: {}", e), toast_state);
             }
         }
     };
@@ -358,10 +361,7 @@ fn render_recovery_ui(
         Style {}
         ToastContainer {}
         div { class: "flex gap-4 justify-center items-center h-screen",
-            Spinner {
-                size: SpinnerSize::XXXXLarge,
-                color_class: "text-blue-500",
-            }
+            Spinner { size: SpinnerSize::XXXXLarge, color_class: "text-blue-500" }
         }
 
         RecoveryKeyInputDialog {
@@ -371,10 +371,7 @@ fn render_recovery_ui(
             on_reset: move |_| show_reset_dialog.set(true),
         }
 
-        DatabaseResetDialog {
-            open: show_reset_dialog,
-            on_confirm: handle_reset,
-        }
+        DatabaseResetDialog { open: show_reset_dialog, on_confirm: handle_reset }
     }
 }
 
@@ -397,10 +394,7 @@ fn render_salt_error_ui(
                 db_resource.restart();
             }
             Err(e) => {
-                show_toast_error(
-                    format!("Failed to reset database: {}", e),
-                    toast_state,
-                );
+                show_toast_error(format!("Failed to reset database: {}", e), toast_state);
             }
         }
     };
@@ -414,10 +408,7 @@ fn render_salt_error_ui(
             button { onclick: move |_| show_reset_dialog.set(true), "Reset database" }
         }
 
-        DatabaseResetDialog {
-            open: show_reset_dialog,
-            on_confirm: handle_reset,
-        }
+        DatabaseResetDialog { open: show_reset_dialog, on_confirm: handle_reset }
     }
 }
 

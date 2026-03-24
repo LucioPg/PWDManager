@@ -59,8 +59,8 @@
     - [x] le card stat sono troppo grandi e prominenti rispetto la tabella
     - [x] c'è un problema di overflow con tablerow
     - [x] verificare comportamento tabella quando sono presenti migliaia di password.
-- [ ] migliorare le tabs dei settings
-    - [ ] creare tabs verticali per le preferenze per le password
+- [x] migliorare le tabs dei settings
+    - [ x] ~~creare tabs verticali per le preferenze per le password~~
 
 ## Gestione password registrate
 
@@ -141,7 +141,7 @@
 
 ### Automatic Updates
 
-- [ ] creare sistema di aggiornamento automatico
+- [x] creare sistema di aggiornamento automatico
 
 ### FIXES
 
