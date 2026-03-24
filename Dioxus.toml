@@ -24,6 +24,7 @@ digest_algorithm = "sha256"
 silent = true
 
 [bundle.windows.nsis]
+template = "installer/custom-installer.nsi"
 installer_hooks = "installer/nsis-hooks.nsh"
 
 [web.app]
