@@ -5,20 +5,17 @@ use crate::components::{
 };
 use dioxus::prelude::*;
 use pwd_dioxus::{show_toast_error, use_toast};
-use sqlx::SqlitePool;
 
 #[component]
 pub fn SettingsTabContent() -> Element {
-    let pool = use_context::<SqlitePool>();
     let auth_state = use_context::<crate::auth::AuthState>();
     let toast = use_toast();
     let user = auth_state.get_user();
-    let user_id = auth_state.get_user_id();
-    let mut error = use_signal(|| None::<String>);
+    let error = use_signal(|| None::<String>);
 
     use_effect(move || {
-        let mut this_error = error.clone();
-        let toast = toast.clone();
+        let mut this_error = error;
+        let toast = toast;
         if let Some(msg) = this_error() {
             show_toast_error(format!("Error fetching password settings: {}", msg), toast);
             this_error.set(None);
