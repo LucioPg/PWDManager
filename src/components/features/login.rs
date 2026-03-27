@@ -12,7 +12,7 @@ use tracing::{debug, instrument};
 #[component]
 #[instrument]
 pub fn Login() -> Element {
-    #[allow(unused_mut)]
+    #[allow(unused_mut, clippy::redundant_closure)]
     let mut username = use_signal(|| String::new());
     #[allow(unused_mut)]
     let mut password = use_signal(|| FormSecret(SecretString::new("".into())));
@@ -25,7 +25,7 @@ pub fn Login() -> Element {
         let u = username.read().clone();
         let p = password.read().clone();
         let mut auth_state = auth_state.clone();
-        let toast = toast.clone();
+        let toast = toast;
         spawn(async move {
             // La tua funzione check_user ora ha il pool!
             match check_user(&pool, &u, &p).await {
@@ -36,7 +36,7 @@ pub fn Login() -> Element {
                         Ok((id, username, created_at, avatar)) => {
                             debug!("Login {id} {username} {created_at}");
                             auth_state.login(id, username, created_at, avatar);
-                            let nav_dashboard = nav.clone();
+                            let nav_dashboard = nav;
                             nav_dashboard.push("/dashboard");
                         }
                         Err(e) => show_toast_error(format!("Errore: {}", e), toast),
