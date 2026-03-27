@@ -36,6 +36,7 @@ pub fn ProgressMigrationChn(
 ) -> Element {
     let mut stage = use_signal(|| MigrationStage::Idle);
     let mut progress = use_signal(|| 0usize);
+    #[allow(clippy::redundant_closure)]
     let mut status_message = use_signal(|| String::new());
     let mut migration_started = use_signal(|| false); // Flag per evitare doppi avvii
     let context = use_context::<Signal<MigrationData>>();
@@ -50,11 +51,11 @@ pub fn ProgressMigrationChn(
         }
         migration_started.set(true);
 
-        let context = context.clone();
+        let context = context;
         let pool = pool.clone();
-        let mut on_completed = on_completed.clone();
-        let mut on_failed = on_failed.clone();
-        let toast = toast.clone();
+        let mut on_completed = on_completed;
+        let mut on_failed = on_failed;
+        let toast = toast;
 
         let (tx, mut rx) = mpsc::channel::<ProgressMessage>(100);
 
