@@ -15,30 +15,19 @@ static FUTURISTIC_COMMON_FONT: Asset = asset!(
     "/assets/fonts/BrunoAce-Regular.ttf",
     AssetOptions::builder().with_hash_suffix(false)
 );
-// Asset CSS di Tailwind only in dev
-// #[cfg(debug_assertions)]
-// static TAILWIND_CSS: &str = include_str!("../assets/tailwind.css");
-// static TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
-// #[cfg(debug_assertions)]
-// static MAIN_CSS: &str = include_str!("../assets/main.css");
-// static MAIN_CSS: Asset = asset!("/assets/main.css");
 #[component]
 pub fn Style() -> Element {
     // assets need to be used to be exported as files
     let _ = format!("{FUTURISTIC_COMMON_FONT}");
     let _ = format!("{FUTURISTIC_FONT}");
     let _ = format!("{COMMON_FONT}");
-    // let fonts_css_content = format!(
-    //     "@font-face {{
-    //         font-family: 'pwd-futuristic';
-    //         src: url('{FUTURISTIC_FONT}');
-    //     }};
-    //     @font-face {{
-    //         font-family: 'pwd-common';
-    //         src: url('{COMMON_FONT}');
-    //     }}
-    //     "
-    // );
+
+    let fonts_css = format!(
+        "@font-face {{ font-family: 'pwd-common'; src: url('{COMMON_FONT}') format('truetype'); }} \
+         @font-face {{ font-family: 'pwd-futuristic'; src: url('{FUTURISTIC_FONT}') format('truetype'); }} \
+         @font-face {{ font-family: 'pwd-futuristic-common'; src: url('{FUTURISTIC_COMMON_FONT}') format('truetype'); }}"
+    );
+
     rsx! {
         if cfg!(debug_assertions) {
             document::Stylesheet { href: asset!("/assets/tailwind.css") }
@@ -46,6 +35,7 @@ pub fn Style() -> Element {
         } else {
             document::Style { {include_str!("../../../assets/tailwind.css")} }
             document::Style { {include_str!("../../../assets/main.css")} }
+            document::Style { {fonts_css} }
         }
     }
 }
