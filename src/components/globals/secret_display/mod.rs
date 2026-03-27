@@ -2,4 +2,4 @@
 //!
 //! Re-exported from pwd-dioxus for backward compatibility.
 
-pub use pwd_dioxus::secret::{SecretDisplay, copy_to_clipboard};
+pub use pwd_dioxus::secret::copy_to_clipboard;

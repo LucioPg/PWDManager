@@ -1,15 +1,13 @@
 use super::base_modal::{BaseModal, ModalVariant};
 use crate::components::globals::secret_display::copy_to_clipboard;
 use crate::components::{
-    ActionButton, ButtonSize, ButtonType, ButtonVariant, PasswordHandler,
-    StoredPasswordShowDialogState, show_toast_error, use_toast,
+    ActionButton, ButtonSize, ButtonType, ButtonVariant, StoredPasswordShowDialogState,
 };
 use dioxus::prelude::*;
+use pwd_dioxus::InputType;
 use pwd_dioxus::form::FormField;
 use pwd_dioxus::icons::ClipboardIcon;
-use pwd_dioxus::{FormSecret, InputType};
-use pwd_types::StoredRawPassword;
-use secrecy::{ExposeSecret, SecretString};
+use secrecy::ExposeSecret;
 
 #[component]
 pub fn StoredPasswordShowDialog(
