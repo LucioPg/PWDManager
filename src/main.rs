@@ -5,7 +5,6 @@ mod components;
 
 use crate::auth::User;
 use crate::backend::db_backend::InitResult;
-use crate::backend::db_backend::list_users_no_avatar;
 use crate::backend::init_blacklist_from_path;
 use crate::backend::settings_types::AutoUpdate;
 use crate::backend::updater_types::{UpdateManifest, UpdateState};
@@ -23,7 +22,6 @@ use dioxus::prelude::*;
 use gui_launcher::launch_desktop;
 use secrecy::ExposeSecret;
 
-use std::str::FromStr;
 // const LOGO_BYTES: &[u8] = include_bytes!("../assets/logo.png");
 //
 // // Asset CSS di Tailwind only in dev
@@ -45,28 +43,26 @@ static BLACKLIST_ASSET: Asset = asset!(
 fn App() -> Element {
     let auth_state = auth::AuthState::new();
     use_context_provider(move || auth_state);
-    let mut app_theme = use_signal(|| Theme::Light);
-    let mut auto_update = use_signal(|| AutoUpdate::default());
+    let app_theme = use_signal(|| Theme::Light);
+    let auto_update = use_signal(|| AutoUpdate::default());
     use_context_provider(move || app_theme);
     use_context_provider(|| auto_update);
-    let mut update_state = use_signal(|| UpdateState::Idle);
+    let update_state = use_signal(|| UpdateState::Idle);
     use_context_provider(|| update_state);
-    let mut update_manifest = use_signal(|| None::<UpdateManifest>);
+    let update_manifest = use_signal(|| None::<UpdateManifest>);
     use_context_provider(|| update_manifest);
     use_context_provider(|| Signal::new(ToastHubState::default()));
 
     let mut db_resource = use_resource(move || async move { init_db().await });
     let db_resource_clone_drop = db_resource.clone();
-    #[allow(unused_mut)]
-    let mut spawn_handle = use_signal(|| Option::<Task>::None);
-    let mut toast_state = use_context::<Signal<ToastHubState>>();
+    let spawn_handle = use_signal(|| Option::<Task>::None);
+    let toast_state = use_context::<Signal<ToastHubState>>();
     let mut db_init_notified = use_signal(|| false);
-    let mut users_list_printed = use_signal(|| false);
 
     // Recovery dialog state
     let mut show_recovery_dialog = use_signal(|| false);
-    let mut recovery_error = use_signal(|| false);
-    let mut show_reset_dialog = use_signal(|| false);
+    let recovery_error = use_signal(|| false);
+    let show_reset_dialog = use_signal(|| false);
     #[cfg(debug_assertions)]
     let mut show_setup_dialog = use_signal(|| false);
     #[cfg(debug_assertions)]
@@ -93,7 +89,7 @@ fn App() -> Element {
         let blacklist_path = BLACKLIST_ASSET.to_string();
         let blacklist_path = blacklist_path.trim_start_matches('/');
         if let Err(e) = init_blacklist_from_path(blacklist_path) {
-            let error = format!("BLACKLIST Loading is Failed!: {}", e.to_string());
+            let error = format!("BLACKLIST Loading is Failed!: {}", e);
             show_toast_error(error, toast_state);
         }
     });
@@ -136,31 +132,9 @@ fn App() -> Element {
 
         match &*db_resource_clone.read() {
             Some(Ok(InitResult::Ready(pool))) | Some(Ok(InitResult::FirstSetup { pool, .. })) => {
-                let mut spawn_handle = spawn_handle.clone();
+                let mut spawn_handle = spawn_handle;
                 if let Some(new_handle) = spawn_handle.take() {
                     new_handle.cancel();
-                }
-                if cfg!(debug_assertions) {
-                    if !users_list_printed() {
-                        let pool_clone = pool.clone();
-                        let handle = spawn(async move {
-                            match list_users_no_avatar(&pool_clone).await {
-                                Ok(users) => {
-                                    println!("=== LISTA UTENTI ===");
-                                    println!("ID  --  Username  --  Creation Date");
-                                    for (id, username, password) in users {
-                                        println!("{}\t{}\t{}", id, username, password);
-                                    }
-                                    println!("===================");
-                                    users_list_printed.set(true);
-                                }
-                                Err(e) => {
-                                    println!("Errore nel recupero utenti: {:?}", e);
-                                }
-                            }
-                        });
-                        spawn_handle.set(Some(handle));
-                    }
                 }
             }
             _ => {}
@@ -174,12 +148,11 @@ fn App() -> Element {
         if let Some(Ok(InitResult::FirstSetup {
             recovery_phrase, ..
         })) = &*resource
+            && !has_shown_setup()
         {
-            if !has_shown_setup() {
-                setup_passphrase.set(recovery_phrase.expose_secret().to_string());
-                has_shown_setup.set(true);
-                show_setup_dialog.set(true);
-            }
+            setup_passphrase.set(recovery_phrase.expose_secret().to_string());
+            has_shown_setup.set(true);
+            show_setup_dialog.set(true);
         }
     });
 
@@ -188,16 +161,11 @@ fn App() -> Element {
             use_context_provider(|| pool.clone());
             #[cfg(debug_assertions)]
             {
-                return render_app_with_setup(
-                    pool,
-                    show_setup_dialog,
-                    setup_passphrase,
-                    update_state,
-                );
+                return render_app_with_setup(show_setup_dialog, setup_passphrase, update_state);
             }
             #[cfg(not(debug_assertions))]
             {
-                render_app(pool, update_state)
+                render_app(update_state)
             }
         }
         Some(Err(custom_errors::DBError::DBKeyMissingWithDb)) => render_recovery_ui(
@@ -240,7 +208,6 @@ fn App() -> Element {
 }
 
 fn render_app_with_setup(
-    pool: &sqlx::SqlitePool,
     show_setup_dialog: Signal<bool>,
     setup_passphrase: Signal<String>,
     update_state: Signal<UpdateState>,
@@ -259,7 +226,7 @@ fn render_app_with_setup(
     }
 }
 
-fn render_app(pool: &sqlx::SqlitePool, update_state: Signal<UpdateState>) -> Element {
+fn render_app(update_state: Signal<UpdateState>) -> Element {
     rsx! {
         Style {}
         ToastContainer {}
@@ -274,7 +241,7 @@ fn render_recovery_ui(
     mut recovery_error: Signal<bool>,
     mut show_reset_dialog: Signal<bool>,
     mut db_init_notified: Signal<bool>,
-    mut toast_state: Signal<ToastHubState>,
+    toast_state: Signal<ToastHubState>,
 ) -> Element {
     let handle_recover = move |passphrase: String| {
         let passphrase = passphrase.clone();
@@ -340,22 +307,8 @@ fn render_recovery_ui(
         });
     };
 
-    let handle_reset = move |_: ()| {
-        let db_path = match get_db_path() {
-            Ok(p) => p,
-            Err(_) => return,
-        };
-
-        match crate::backend::db_key::reset_database(&db_path) {
-            Ok(()) => {
-                db_init_notified.set(false);
-                db_resource.restart();
-            }
-            Err(e) => {
-                show_toast_error(format!("Failed to reset database: {}", e), toast_state);
-            }
-        }
-    };
+    let handle_reset =
+        move |_: ()| handle_reset_callback(db_init_notified, db_resource, toast_state);
 
     rsx! {
         Style {}
@@ -376,28 +329,14 @@ fn render_recovery_ui(
 }
 
 fn render_salt_error_ui(
-    mut db_resource: Resource<Result<InitResult, custom_errors::DBError>>,
+    db_resource: Resource<Result<InitResult, custom_errors::DBError>>,
     mut show_reset_dialog: Signal<bool>,
     error_msg: String,
-    mut db_init_notified: Signal<bool>,
-    mut toast_state: Signal<ToastHubState>,
+    db_init_notified: Signal<bool>,
+    toast_state: Signal<ToastHubState>,
 ) -> Element {
-    let handle_reset = move |_: ()| {
-        let db_path = match get_db_path() {
-            Ok(p) => p,
-            Err(_) => return,
-        };
-
-        match crate::backend::db_key::reset_database(&db_path) {
-            Ok(()) => {
-                db_init_notified.set(false);
-                db_resource.restart();
-            }
-            Err(e) => {
-                show_toast_error(format!("Failed to reset database: {}", e), toast_state);
-            }
-        }
-    };
+    let handle_reset =
+        move |_: ()| handle_reset_callback(db_init_notified, db_resource, toast_state);
 
     rsx! {
         Style {}
@@ -409,6 +348,27 @@ fn render_salt_error_ui(
         }
 
         DatabaseResetDialog { open: show_reset_dialog, on_confirm: handle_reset }
+    }
+}
+
+fn handle_reset_callback(
+    mut db_init_notified: Signal<bool>,
+    mut db_resource: Resource<Result<InitResult, custom_errors::DBError>>,
+    toast_state: Signal<ToastHubState>,
+) {
+    let db_path = match get_db_path() {
+        Ok(p) => p,
+        Err(_) => return,
+    };
+
+    match crate::backend::db_key::reset_database(&db_path) {
+        Ok(()) => {
+            db_init_notified.set(false);
+            db_resource.restart();
+        }
+        Err(e) => {
+            show_toast_error(format!("Failed to reset database: {}", e), toast_state);
+        }
     }
 }
 
