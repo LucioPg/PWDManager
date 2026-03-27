@@ -1,4 +1,3 @@
-use pwd_types::PasswordStrength;
 use dioxus::prelude::*;
 
 /// Variante di colore per la statistica
@@ -6,7 +5,9 @@ use dioxus::prelude::*;
 pub enum StatVariant {
     #[default]
     Primary,
+    #[allow(dead_code)]
     Success,
+    #[allow(dead_code)]
     Warning,
     #[allow(dead_code)]
     Info,
@@ -14,6 +15,7 @@ pub enum StatVariant {
     Error,
 }
 
+#[allow(dead_code)]
 impl StatVariant {
     pub fn as_css_class(&self) -> &'static str {
         match self {
@@ -51,8 +53,7 @@ pub fn StatCard(
     on_click: EventHandler<MouseEvent>,
 ) -> Element {
     rsx! {
-        div { class: "stat-card",
-            onclick: move |evt| on_click.call(evt),
+        div { class: "stat-card", onclick: move |evt| on_click.call(evt),
             p { class: "stat-value {variant.as_css_class()}", "{value}" }
             p { class: "stat-label", "{label}" }
         }
