@@ -157,12 +157,18 @@ fn App() -> Element {
         }
     });
 
-    match &*db_resource.read() {
-        Some(Ok(InitResult::Ready(pool))) | Some(Ok(InitResult::FirstSetup { pool, .. })) => {
-            use_context_provider(|| pool.clone());
+    // Provide pool context before rendering (must happen within the component)
+    if let Some(Ok(InitResult::Ready(pool))) | Some(Ok(InitResult::FirstSetup { pool, .. })) =
+        &*db_resource.read()
+    {
+        use_context_provider(|| pool.clone());
+    }
+
+    let content: Element = match &*db_resource.read() {
+        Some(Ok(InitResult::Ready(_))) | Some(Ok(InitResult::FirstSetup { .. })) => {
             #[cfg(debug_assertions)]
             {
-                return render_app_with_setup(show_setup_dialog, setup_passphrase, update_state);
+                render_app_with_setup(show_setup_dialog, setup_passphrase, update_state)
             }
             #[cfg(not(debug_assertions))]
             {
@@ -184,27 +190,26 @@ fn App() -> Element {
             db_init_notified,
             toast_state,
         ),
-        Some(Err(e)) => {
-            rsx! {
-                Style {}
-                div { class: "error-container",
-                    h1 { "Critical Database Error" }
-                    p { "{e}" }
-                    button { onclick: move |_| db_resource.restart(), "Retry" }
+        Some(Err(e)) => rsx! {
+            div { class: "error-container",
+                h1 { "Critical Database Error" }
+                p { "{e}" }
+                button { onclick: move |_| db_resource.restart(), "Retry" }
+            }
+        },
+        None => rsx! {
+            div { class: "flex gap-4 justify-center items-center h-screen",
+                Spinner {
+                    size: SpinnerSize::XXXXLarge,
+                    color_class: "text-blue-500",
                 }
             }
-        }
-        None => {
-            rsx! {
-                Style {}
-                div { class: "flex gap-4 justify-center items-center h-screen",
-                    Spinner {
-                        size: SpinnerSize::XXXXLarge,
-                        color_class: "text-blue-500",
-                    }
-                }
-            }
-        }
+        },
+    };
+
+    rsx! {
+        Style {}
+        {content}
     }
 }
 
@@ -214,7 +219,6 @@ fn render_app_with_setup(
     update_state: Signal<UpdateState>,
 ) -> Element {
     rsx! {
-        Style {}
         ToastContainer {}
         UpdateNotification { update_state }
         Router::<Route> {}
@@ -224,6 +228,15 @@ fn render_app_with_setup(
             passphrase: setup_passphrase.read().clone(),
             on_confirm: move |_| {},
         }
+    }
+}
+
+#[cfg(not(debug_assertions))]
+fn render_app(update_state: Signal<UpdateState>) -> Element {
+    rsx! {
+        ToastContainer {}
+        UpdateNotification { update_state }
+        Router::<Route> {}
     }
 }
 
@@ -291,8 +304,7 @@ fn render_recovery_ui(
                     db_resource.restart();
                 }
                 Err(_) => {
-                    let err =
-                        crate::backend::db_key::DBKeyError::RecoveryKeyInvalid.to_string();
+                    let err = crate::backend::db_key::DBKeyError::RecoveryKeyInvalid.to_string();
                     tracing::warn!("Recovery key invalid: {}", err);
                     recovery_error.set(Some(err));
                 }
@@ -304,7 +316,6 @@ fn render_recovery_ui(
         move |_: ()| handle_reset_callback(db_init_notified, db_resource, toast_state);
 
     rsx! {
-        Style {}
         ToastContainer {}
         div { class: "flex gap-4 justify-center items-center h-screen",
             Spinner { size: SpinnerSize::XXXXLarge, color_class: "text-blue-500" }
@@ -332,7 +343,6 @@ fn render_salt_error_ui(
         move |_: ()| handle_reset_callback(db_init_notified, db_resource, toast_state);
 
     rsx! {
-        Style {}
         ToastContainer {}
         div { class: "error-container",
             h1 { "Critical Database Error" }
