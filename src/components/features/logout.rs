@@ -10,6 +10,7 @@ use tracing::instrument;
 #[component]
 #[instrument]
 pub fn Logout() -> Element {
+    #[allow(clippy::redundant_closure)]
     let user_id = use_signal(|| String::new()); // Deve essere prelevato l'id dell'utente loggato va usato lo state non il signal
     let pool = use_context::<SqlitePool>(); // questo non serve perché non ci serve il database
     let auth_state = use_context::<crate::auth::AuthState>();
