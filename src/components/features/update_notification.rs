@@ -6,7 +6,7 @@ use dioxus::prelude::*;
 #[component]
 pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
     let state = update_state.read();
-    let mut update_manifest = use_context::<Signal<Option<UpdateManifest>>>();
+    let update_manifest = use_context::<Signal<Option<UpdateManifest>>>();
 
     match &*state {
         UpdateState::Idle | UpdateState::UpToDate => rsx! {},
@@ -14,7 +14,10 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
             div { class: "pwd-update-overlay",
                 div { class: "pwd-update-card",
                     div { class: "pwd-update-spinner",
-                        Spinner { size: SpinnerSize::Medium, color_class: "text-primary" }
+                        Spinner {
+                            size: SpinnerSize::Medium,
+                            color_class: "text-primary",
+                        }
                         span { class: "pwd-update-version", "Verifica aggiornamenti..." }
                     }
                 }
@@ -23,9 +26,9 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
         UpdateState::Available { version, notes } => {
             let version = version.clone();
             let notes = notes.clone();
-            let mut update_state_avail = update_state.clone();
-            let mut update_state_dismiss = update_state.clone();
-            let update_manifest_click = update_manifest.clone();
+            let mut update_state_avail = update_state;
+            let mut update_state_dismiss = update_state;
+            let update_manifest_click = update_manifest;
             let changelog = notes.clone();
             rsx! {
                 div { class: "pwd-update-overlay",
@@ -44,8 +47,9 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
                             h3 { class: "pwd-update-title", "Aggiornamento disponibile!" }
                             p { class: "pwd-update-version", "Versione {version}" }
                             if !changelog.is_empty() {
-                                p { class: "pwd-update-changelog",
-                                    dangerous_inner_html: "{changelog}"
+                                p {
+                                    class: "pwd-update-changelog",
+                                    dangerous_inner_html: "{changelog}",
                                 }
                             }
                         }
@@ -55,16 +59,15 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
                                 onclick: move |_| {
                                     let manifest = update_manifest_click.read().clone();
                                     if let Some(manifest) = manifest {
-                                        let mut update_state = update_state_avail.clone();
+                                        let mut update_state = update_state_avail;
                                         spawn(async move {
                                             if let Err(e) = download_and_install(&manifest, update_state).await {
                                                 update_state.set(UpdateState::Error(e));
                                             }
                                         });
                                     } else {
-                                        update_state_avail.set(UpdateState::Error(
-                                            "Manifest non disponibile".to_string(),
-                                        ));
+                                        update_state_avail
+                                            .set(UpdateState::Error("Manifest non disponibile".to_string()));
                                     }
                                 },
                                 "Aggiorna ora"
@@ -78,7 +81,7 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
                     }
                 }
             }
-        },
+        }
         UpdateState::Downloading { progress } => {
             let progress_val = *progress;
             rsx! {
@@ -95,20 +98,25 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
                     }
                 }
             }
-        },
+        }
         UpdateState::Installing => rsx! {
             div { class: "pwd-update-overlay",
                 div { class: "pwd-update-card",
                     div { class: "pwd-update-spinner",
-                        Spinner { size: SpinnerSize::Medium, color_class: "text-primary" }
-                        span { class: "pwd-update-version", "Installazione in corso, l'app si riavviera..." }
+                        Spinner {
+                            size: SpinnerSize::Medium,
+                            color_class: "text-primary",
+                        }
+                        span { class: "pwd-update-version",
+                            "Installazione in corso, l'app si riavviera..."
+                        }
                     }
                 }
             }
         },
         UpdateState::Error(e) => {
             let error_msg = e.clone();
-            let mut update_state_err = update_state.clone();
+            let mut update_state_err = update_state;
             rsx! {
                 div { class: "pwd-update-overlay",
                     div { class: "pwd-update-card",
@@ -123,6 +131,6 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
                     }
                 }
             }
-        },
+        }
     }
 }
