@@ -57,6 +57,7 @@ impl AuthState {
             None => "".to_string(),
         }
     }
+
     #[allow(dead_code)]
     pub fn set_username(&mut self, username: String) {
         match &mut *self.user.write() {
@@ -74,5 +75,11 @@ impl AuthState {
             Some(user) => user.id.clone(),
             None => -1,
         }
+    }
+}
+
+impl Default for AuthState {
+    fn default() -> Self {
+        Self::new()
     }
 }
