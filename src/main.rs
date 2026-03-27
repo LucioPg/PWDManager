@@ -40,6 +40,7 @@ static BLACKLIST_ASSET: Asset = asset!(
 );
 
 #[component]
+#[allow(clippy::redundant_closure)]
 fn App() -> Element {
     let auth_state = auth::AuthState::new();
     use_context_provider(move || auth_state);
@@ -54,7 +55,7 @@ fn App() -> Element {
     use_context_provider(|| Signal::new(ToastHubState::default()));
 
     let mut db_resource = use_resource(move || async move { init_db().await });
-    let db_resource_clone_drop = db_resource.clone();
+    let db_resource_clone_drop = db_resource;
     let spawn_handle = use_signal(|| Option::<Task>::None);
     let toast_state = use_context::<Signal<ToastHubState>>();
     let mut db_init_notified = use_signal(|| false);
@@ -72,7 +73,7 @@ fn App() -> Element {
 
     // Cleanup del pool quando il componente viene smontato o l'app si chiude
     use_drop(move || {
-        let db_resource_clone = db_resource_clone_drop.clone();
+        let db_resource_clone = db_resource_clone_drop;
         match &*db_resource_clone.read() {
             Some(Ok(InitResult::Ready(pool))) | Some(Ok(InitResult::FirstSetup { pool, .. })) => {
                 println!("Cleanup: chiudo connessioni DB prima dell'uscita");
@@ -96,7 +97,7 @@ fn App() -> Element {
 
     // Effect: handle DB resource changes
     use_effect(move || {
-        let db_resource_clone = db_resource.clone();
+        let db_resource_clone = db_resource;
         let resource = db_resource_clone.read();
 
         match &*resource {
@@ -128,8 +129,8 @@ fn App() -> Element {
 
     // Effect: debug user list
     use_effect(move || {
-        let db_resource_clone = db_resource.clone();
-
+        let db_resource_clone = db_resource;
+        #[allow(unused_variables)]
         match &*db_resource_clone.read() {
             Some(Ok(InitResult::Ready(pool))) | Some(Ok(InitResult::FirstSetup { pool, .. })) => {
                 let mut spawn_handle = spawn_handle;
