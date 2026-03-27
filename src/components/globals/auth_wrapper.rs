@@ -39,11 +39,11 @@ pub fn AuthWrapper() -> Element {
 
     use_resource(move || {
         let pool = pool.clone();
-        let mut app_theme = app_theme.clone();
-        let mut theme_fetched = theme_fetched.clone();
-        let mut auto_update_fetched = auto_update_fetched.clone();
-        let mut auto_update = auto_update.clone();
-        let user_id = user_id.clone();
+        let mut app_theme = app_theme;
+        let mut theme_fetched = theme_fetched;
+        let mut auto_update_fetched = auto_update_fetched;
+        let mut auto_update = auto_update;
+        let user_id = user_id;
         async move {
             if (theme_fetched() && auto_update_fetched()) || user_id <= 0 {
                 return;
@@ -65,8 +65,8 @@ pub fn AuthWrapper() -> Element {
         }
 
         update_check_started.set(true);
-        let mut update_state_clone = update_state.clone();
-        let mut update_manifest_clone = update_manifest.clone();
+        let mut update_state_clone = update_state;
+        let mut update_manifest_clone = update_manifest;
 
         spawn(async move {
             // Attendi 3 secondi dopo il login
@@ -85,7 +85,7 @@ pub fn AuthWrapper() -> Element {
                 Ok(None) => {
                     update_state_clone.set(UpdateState::UpToDate);
                     // Auto-clear dopo 1 secondo come da spec
-                    let mut state_for_clear = update_state_clone.clone();
+                    let mut state_for_clear = update_state_clone;
                     spawn(async move {
                         tokio::time::sleep(Duration::from_secs(1)).await;
                         state_for_clear.set(UpdateState::Idle);
