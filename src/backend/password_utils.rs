@@ -493,7 +493,7 @@ pub async fn decrypt_bulk_stored_data(
                     (Some(enc_notes), Some(nn)) => {
                         let notes_nonce = get_nonce_from_vec(nn)?;
                         decrypt_optional_to_string(
-                            Some(enc_notes.expose_secret().as_ref()),
+                            Some(enc_notes.expose_secret()),
                             Some(&notes_nonce),
                             &cipher,
                         )?
