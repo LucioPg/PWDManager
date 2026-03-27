@@ -1,6 +1,6 @@
 //! Componente per mostrare il progresso dell'import.
 
-use crate::backend::import::{ImportResult, import_passwords_pipeline_with_progress};
+use crate::backend::import::import_passwords_pipeline_with_progress;
 use crate::backend::migration_types::{MigrationStage, ProgressMessage};
 use crate::components::ImportData;
 use crate::components::{show_toast_error, show_toast_success, use_toast};
@@ -35,6 +35,7 @@ pub fn ImportProgressChn(
 ) -> Element {
     let mut stage = use_signal(|| MigrationStage::Idle);
     let mut progress = use_signal(|| 0usize);
+    #[allow(clippy::redundant_closure)]
     let mut status_message = use_signal(|| String::new());
     let mut import_started = use_signal(|| false);
 
@@ -50,11 +51,11 @@ pub fn ImportProgressChn(
         }
         import_started.set(true);
 
-        let context_for_progress = context.clone();
+        let context_for_progress = context;
         let pool_for_progress = pool.clone();
-        let mut on_completed_progress = on_completed.clone();
-        let mut on_failed_progress = on_failed.clone();
-        let toast = toast.clone();
+        let mut on_completed_progress = on_completed;
+        let mut on_failed_progress = on_failed;
+        let toast = toast;
 
         let (tx, mut rx) = mpsc::channel::<ProgressMessage>(100);
 
