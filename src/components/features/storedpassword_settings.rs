@@ -1,5 +1,7 @@
 use crate::auth::{AuthState, User};
-use crate::backend::db_backend::{fetch_user_passwords_generation_settings, upsert_password_config};
+use crate::backend::db_backend::{
+    fetch_user_passwords_generation_settings, upsert_password_config,
+};
 use crate::backend::password_types_helper::{PasswordGeneratorConfig, PasswordPreset};
 use crate::components::globals::toggle::{Toggle, ToggleColor, ToggleSize};
 use crate::components::{ActionButton, ButtonSize, ButtonType, ButtonVariant};
@@ -28,33 +30,34 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
     let pool_for_submit = pool.clone();
     let toast = use_toast();
     let user_id = auth_state.get_user_id();
-    let mut error = use_signal(|| <Option<String>>::None);
+    let error = use_signal(|| <Option<String>>::None);
     let mut with_numbers = use_signal(|| true);
     let mut with_uppercase = use_signal(|| true);
     let mut with_lowercase = use_signal(|| true);
     let mut with_symbols = use_signal(|| PositiveInt(2));
+    #[allow(clippy::redundant_closure)]
     let mut with_excluded_symbols = use_signal(|| String::new());
     let mut with_length = use_signal(|| PositiveInt(26));
-    let mut readonly = use_signal(|| true);
+    let readonly = use_signal(|| true);
     let options = preset_options();
     let mut current_preset = use_signal(|| Option::<AnyPreset>::None);
-    let mut settings_ready = use_signal(|| false);
-    let mut settings_id = use_signal(|| -1);
-    let mut current_settings = use_resource(move || {
-        let user_id = user_id.clone();
+    let settings_ready = use_signal(|| false);
+    let settings_id = use_signal(|| -1);
+    let _current_settings = use_resource(move || {
+        let user_id = user_id;
         let pool = pool.clone();
-        let mut with_numbers = with_numbers.clone();
-        let mut with_uppercase = with_uppercase.clone();
-        let mut with_lowercase = with_lowercase.clone();
-        let mut with_symbols = with_symbols.clone();
-        let mut with_excluded_symbols = with_excluded_symbols.clone();
-        let mut with_length = with_length.clone();
-        let mut settings_id = settings_id.clone();
-        let mut settings_ready = settings_ready.clone();
-        let mut error = error.clone();
-        let mut readonly = readonly.clone();
+        let mut with_numbers = with_numbers;
+        let mut with_uppercase = with_uppercase;
+        let mut with_lowercase = with_lowercase;
+        let mut with_symbols = with_symbols;
+        let mut with_excluded_symbols = with_excluded_symbols;
+        let mut with_length = with_length;
+        let mut settings_id = settings_id;
+        let mut settings_ready = settings_ready;
+        let mut error = error;
+        let mut readonly = readonly;
         async move {
-            let user_id = user_id.clone();
+            let user_id = user_id;
             match fetch_user_passwords_generation_settings(&pool, user_id).await {
                 Ok(settings) => {
                     let s = settings.clone();
@@ -81,8 +84,8 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
     });
 
     use_effect(move || {
-        let mut this_error = error.clone();
-        let toast = toast.clone();
+        let mut this_error = error;
+        let toast = toast;
         if let Some(msg) = this_error() {
             show_toast_error(format!("Error fetching password settings: {}", msg), toast);
             this_error.set(None);
@@ -90,8 +93,8 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
     });
 
     use_effect(move || {
-        let custom_preset = current_preset.clone();
-        let mut readonly = readonly.clone();
+        let custom_preset = current_preset;
+        let mut readonly = readonly;
         if let Some(preset) = custom_preset() {
             match preset {
                 AnyPreset::Standard(preset) => {
@@ -134,7 +137,7 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
         };
 
         let pool = pool_for_submit.clone();
-        let toast = toast.clone();
+        let toast = toast;
         spawn(async move {
             match upsert_password_config(&pool, config).await {
                 Ok(()) => {
