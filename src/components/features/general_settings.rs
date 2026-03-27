@@ -21,16 +21,16 @@ pub fn GeneralSettings() -> Element {
     let mut is_light = use_signal(|| *app_theme.read() == Theme::Light);
     let mut auto_update_sig = use_signal(|| *auto_update.read() == AutoUpdate(true));
     // Fetch settings per ottenere l'id (necessario per upsert)
-    let mut settings_id = use_signal(|| Option::<i64>::None);
-    let mut error = use_signal(|| None::<String>);
-    let mut ready = use_signal(|| false);
+    let settings_id = use_signal(|| Option::<i64>::None);
+    let error = use_signal(|| None::<String>);
+    let ready = use_signal(|| false);
 
     let _settings_resource = use_resource(move || {
         let pool = pool_for_resource.clone();
-        let user_id = user_id.clone();
-        let mut settings_id = settings_id.clone();
-        let mut ready = ready.clone();
-        let mut error = error.clone();
+        let user_id = user_id;
+        let mut settings_id = settings_id;
+        let mut ready = ready;
+        let mut error = error;
         async move {
             match fetch_user_settings(&pool, user_id).await {
                 Ok(Some(settings)) => {
@@ -50,8 +50,8 @@ pub fn GeneralSettings() -> Element {
     });
 
     use_effect(move || {
-        let mut this_error = error.clone();
-        let toast = toast.clone();
+        let mut this_error = error;
+        let toast = toast;
         if let Some(msg) = this_error() {
             show_toast_error(format!("Error fetching settings: {}", msg), toast);
             this_error.set(None);
@@ -81,9 +81,9 @@ pub fn GeneralSettings() -> Element {
 
     let on_save = move |_| {
         let pool = pool.clone();
-        let toast = toast.clone();
-        let app_theme = app_theme.clone();
-        let settings_id = settings_id.clone();
+        let toast = toast;
+        let app_theme = app_theme;
+        let settings_id = settings_id;
         spawn(async move {
             let theme = *app_theme.read();
             let auto_update = *auto_update.read();
