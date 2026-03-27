@@ -78,9 +78,14 @@ pub fn AuthWrapper() -> Element {
                 Ok(Some(manifest)) => {
                     let version = manifest.version.clone();
                     let notes = manifest.notes.clone();
+                    let pub_date = manifest.pub_date.clone();
                     // Salva il manifest per il download
                     update_manifest_clone.set(Some(manifest));
-                    update_state_clone.set(UpdateState::Available { version, notes });
+                    update_state_clone.set(UpdateState::Available {
+                        version,
+                        notes,
+                        pub_date,
+                    });
                 }
                 Ok(None) => {
                     update_state_clone.set(UpdateState::UpToDate);

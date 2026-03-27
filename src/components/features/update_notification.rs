@@ -23,9 +23,14 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
                 }
             }
         },
-        UpdateState::Available { version, notes } => {
+        UpdateState::Available {
+            version,
+            notes,
+            pub_date,
+        } => {
             let version = version.clone();
             let notes = notes.clone();
+            let pub_date = pub_date.clone();
             let mut update_state_avail = update_state;
             let mut update_state_dismiss = update_state;
             let update_manifest_click = update_manifest;
@@ -46,6 +51,7 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
                         div { class: "flex-1 min-w-0",
                             h3 { class: "pwd-update-title", "Aggiornamento disponibile!" }
                             p { class: "pwd-update-version", "Versione {version}" }
+                            p { class: "pwd-update-version", "{pub_date}" }
                             if !changelog.is_empty() {
                                 p {
                                     class: "pwd-update-changelog",

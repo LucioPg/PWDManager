@@ -327,11 +327,13 @@ mod tests {
         assert_eq!(
             UpdateState::Available {
                 version: "0.3.0".to_string(),
-                notes: "fix".to_string()
+                notes: "fix".to_string(),
+                pub_date: "2026-03-20T10:00:00Z".to_string()
             },
             UpdateState::Available {
                 version: "0.3.0".to_string(),
-                notes: "fix".to_string()
+                notes: "fix".to_string(),
+                pub_date: "2026-03-20T10:00:00Z".to_string()
             }
         );
     }

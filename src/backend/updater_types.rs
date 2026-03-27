@@ -22,7 +22,11 @@ pub struct PlatformInfo {
 pub enum UpdateState {
     Idle,
     Checking,
-    Available { version: String, notes: String },
+    Available {
+        version: String,
+        notes: String,
+        pub_date: String,
+    },
     Downloading { progress: u8 },
     Installing,
     UpToDate,
