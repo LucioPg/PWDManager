@@ -90,7 +90,7 @@ pub fn ActionButton(
             class: "{classes}",
             r#type: "{button_type.as_str()}",
             onclick: on_click,
-            disabled: if *disabled.read() { true } else { false },
+            disabled: *disabled.read(),
             "{text}"
         }
     }
