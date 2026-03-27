@@ -23,9 +23,7 @@ use gui_launcher::launch_desktop;
 use secrecy::ExposeSecret;
 
 use dioxus::desktop::trayicon::init_tray_icon;
-use dioxus::desktop::use_tray_menu_event_handler;
-use dioxus::desktop::use_window;
-use tray_icon::menu::{Menu, MenuItem, PredefinedMenuItem};
+use tray_icon::menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem};
 
 // const LOGO_BYTES: &[u8] = include_bytes!("../assets/logo.png");
 //
@@ -48,7 +46,7 @@ static BLACKLIST_ASSET: Asset = asset!(
 #[allow(clippy::redundant_closure)]
 fn App() -> Element {
     let auth_state = auth::AuthState::new();
-    let mut auth_state_tray = auth_state.clone();
+    let auth_state_tray = auth_state.clone();
     use_context_provider(move || auth_state);
     let app_theme = use_signal(|| Theme::Light);
     let auto_update = use_signal(|| AutoUpdate::default());
@@ -99,28 +97,36 @@ fn App() -> Element {
         };
 
         init_tray_icon(tray_menu, icon_rgba);
-    });
 
-    // Handle tray menu events
-    let desktop = use_window();
-    use_tray_menu_event_handler(move |event: &tray_icon::menu::MenuEvent| {
-        match event.id().as_ref() {
-            "open" => {
-                // Re-show la finestra quando l'utente clicca "Apri" nel menu.
-                // Il ri-show automatico funziona solo per il click diretto sulla tray icon,
-                // non per i MenuItem custom — quindi questo handler e necessario.
-                desktop.set_visible(true);
-                desktop.set_focus();
+        // Handle tray menu events.
+        // Dioxus's init_tray_icon() sets its own MenuEvent handler that doesn't
+        // dispatch to Dioxus hooks. We replace it with our own handler that forwards
+        // events to a tokio mpsc channel, then consume them in an async loop.
+        let (tray_tx, mut tray_rx) = tokio::sync::mpsc::channel::<MenuEvent>(16);
+        MenuEvent::set_event_handler::<fn(MenuEvent)>(None);
+        MenuEvent::set_event_handler(Some(move |event: MenuEvent| {
+            let _ = tray_tx.blocking_send(event);
+        }));
+        let mut auth_for_tray = auth_state_tray.clone();
+        spawn(async move {
+            while let Some(event) = tray_rx.recv().await {
+                match event.id.0.as_str() {
+                    "open" => {
+                        use dioxus::desktop::window;
+                        window().set_visible(true);
+                        window().set_focus();
+                    }
+                    "logout" => {
+                        println!("Logout from tray");
+                        auth_for_tray.logout();
+                        use dioxus::desktop::window;
+                        window().set_visible(true);
+                        window().set_focus();
+                    }
+                    _ => {}
+                }
             }
-            "logout" => {
-                auth_state_tray.logout();
-                // AuthWrapper reindirizza automaticamente alla LandingPage quando
-                // auth_state.user diventa None (non serve navigator qui).
-                desktop.set_visible(true);
-                desktop.set_focus();
-            }
-            _ => {} // altri eventi gestiti dal framework (es. quit)
-        }
+        });
     });
 
     let mut db_resource = use_resource(move || async move { init_db().await });

@@ -12,7 +12,7 @@ use secrecy::ExposeSecret;
 pub fn RecoveryKeySettings() -> Element {
     let mut show_confirm_dialog = use_signal(|| false);
     let mut show_new_passphrase = use_signal(|| false);
-    let mut new_passphrase = use_signal(|| String::new());
+    let mut new_passphrase = use_signal(String::new);
     let mut is_rekeying = use_signal(|| false);
 
     let handle_confirm = move |_| {

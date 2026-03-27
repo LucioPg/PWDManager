@@ -22,14 +22,6 @@ impl ExportFormat {
         }
     }
 
-    /// Restituisce il MIME type per il formato.
-    pub fn mime_type(&self) -> &'static str {
-        match self {
-            ExportFormat::Json => "application/json",
-            ExportFormat::Csv => "text/csv",
-            ExportFormat::Xml => "application/xml",
-        }
-    }
 }
 
 /// DTO per la serializzazione di una password in export.

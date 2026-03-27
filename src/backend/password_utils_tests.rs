@@ -1,17 +1,18 @@
 use crate::backend::db_backend::{
-    create_user_settings, fetch_all_stored_passwords_for_user, fetch_user_data,
-    fetch_user_passwords_generation_settings, fetch_user_temp_old_password, save_or_update_user,
+    create_user_settings, fetch_all_stored_passwords_for_user, fetch_user_auth_from_id,
+    fetch_user_data, fetch_user_passwords_generation_settings, fetch_user_temp_old_password,
+    save_or_update_user,
 };
 use crate::backend::evaluate_password_strength;
 use crate::backend::password_utils::{
-    create_cipher, create_stored_data_pipeline_bulk, create_stored_data_records,
-    decrypt_stored_password, generate_suggested_password, get_stored_raw_passwords,
-    stored_passwords_migration_pipeline,
+    create_stored_data_pipeline_bulk, decrypt_bulk_stored_data,
+    generate_suggested_password, get_stored_raw_passwords,
+    stored_passwords_migration_pipeline_with_progress,
 };
 use crate::backend::test_helpers::setup_test_db;
 use pwd_types::{
-    DbSecretString, ExcludedSymbolSet, PasswordGeneratorConfig, PasswordPreset, PasswordScore,
-    PasswordStrength, StoredPassword, StoredRawPassword, UserAuth,
+    ExcludedSymbolSet, PasswordGeneratorConfig, PasswordPreset, PasswordScore,
+    PasswordStrength, StoredRawPassword,
 };
 use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;
@@ -156,9 +157,11 @@ async fn test_encrypt_decrypt_password() {
     }
 
     // Test 3: Decifra la password
-    let decrypted_password = decrypt_stored_password(&pool, stored_password)
+    let user_auth = fetch_user_auth_from_id(&pool, user_id).await.unwrap();
+    let decrypted_raw = decrypt_bulk_stored_data(user_auth, vec![stored_password.clone()], None)
         .await
         .expect("Failed to decrypt password");
+    let decrypted_password = decrypted_raw[0].password.expose_secret().to_string();
 
     assert_eq!(
         decrypted_password,
@@ -379,7 +382,8 @@ async fn test_decrypt_invalid_nonce() {
     // Corrompi il nonce (lunghezza errata)
     stored_password.password_nonce = vec![1, 2, 3]; // Solo 3 byte invece di 12
 
-    let result = decrypt_stored_password(&pool, &stored_password).await;
+    let user_auth = fetch_user_auth_from_id(&pool, user_id).await.unwrap();
+    let result = decrypt_bulk_stored_data(user_auth, vec![stored_password], None).await;
     assert!(result.is_err(), "Should fail with invalid nonce length");
 
     if let Err(custom_errors::DBError::DBNonceCorruptionError(_)) = result {
@@ -390,28 +394,39 @@ async fn test_decrypt_invalid_nonce() {
 }
 
 #[tokio::test]
-async fn test_decrypt_nonexistent_user() {
+async fn test_decrypt_with_wrong_key() {
     let pool = setup_test_db().await;
 
-    // Crea una stored password con un user_id inesistente
-    let stored_password = StoredPassword::new(
-        None,
-        99999,         // User ID inesistente
-        String::new(), // name
-        SecretBox::new(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].into()), // encrypted username
-        vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], // username_nonce
-        SecretBox::new(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].into()), // encrypted url
-        vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], // url_nonce
-        SecretBox::new(vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].into()), // password
-        None,          // notes
-        None,          // notes_nonce
-        PasswordScore::new(38),
-        None,
-        vec![1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], // password_nonce
-    );
+    // Crea un utente e cripta una password con la sua chiave
+    let user_id = create_test_user(&pool, "wrongkey_test", "CorrectPassword123!").await;
 
-    let result = decrypt_stored_password(&pool, &stored_password).await;
-    assert!(result.is_err(), "Should fail with nonexistent user");
+    let stored_raw_password = StoredRawPassword {
+        uuid: Uuid::new_v4(),
+        id: None,
+        user_id,
+        name: String::new(),
+        username: secrecy::SecretString::new(String::new().into()),
+        url: secrecy::SecretString::new("https://example.com".to_string().into()),
+        password: secrecy::SecretString::new("secret".into()),
+        notes: None,
+        score: None,
+        created_at: None,
+    };
+    create_stored_data_pipeline_bulk(&pool, user_id, vec![stored_raw_password])
+        .await
+        .expect("Failed to encrypt");
+
+    let stored_passwords = fetch_all_stored_passwords_for_user(&pool, user_id)
+        .await
+        .expect("Failed to fetch");
+
+    // Crea un altro utente con password diversa — il salt derivato sarà diverso
+    let other_user_id = create_test_user(&pool, "other_user", "DifferentPassword456!").await;
+    let wrong_auth = fetch_user_auth_from_id(&pool, other_user_id).await.unwrap();
+
+    // Tentativo di decifrare con la chiave sbagliata
+    let result = decrypt_bulk_stored_data(wrong_auth, stored_passwords, None).await;
+    assert!(result.is_err(), "Should fail with wrong decryption key");
 }
 
 #[tokio::test]
@@ -452,22 +467,20 @@ async fn test_multiple_passwords_for_same_user() {
 
     assert_eq!(stored_passwords.len(), 3, "Should have 3 stored passwords");
 
-    // Verifica che ogni password possa essere decifrata correttamente
-    // Nota: url è crittografato, quindi non confrontiamo direttamente
+    // Verifica che ogni password possa essere decifrata correttamente usando decrypt_bulk_stored_data
+    let user_auth = fetch_user_auth_from_id(&pool, user_id).await.unwrap();
+    let decrypted = decrypt_bulk_stored_data(user_auth, stored_passwords, None)
+        .await
+        .expect("Failed to decrypt passwords");
     for (i, (_expected_url, expected_password)) in passwords.iter().enumerate() {
-        let stored = &stored_passwords[i];
-
-        let decrypted = decrypt_stored_password(&pool, stored)
-            .await
-            .expect("Failed to decrypt password");
-        assert_eq!(decrypted, *expected_password);
+        assert_eq!(decrypted[i].password.expose_secret(), *expected_password);
     }
 }
 
 #[tokio::test]
 async fn test_multiple_passwords_for_same_user_with_predefined_strength() {
     // Initialize blacklist for accurate password evaluation
-    let _ = crate::backend::init_blacklist();
+    let _ = pwd_strength::init_blacklist();
 
     let pool = setup_test_db().await;
 
@@ -521,16 +534,15 @@ async fn test_multiple_passwords_for_same_user_with_predefined_strength() {
 
     assert_eq!(stored_passwords.len(), 3, "Should have 3 stored passwords");
 
-    // Verifica che ogni password possa essere decifrata correttamente
-    // Nota: url è crittografato, quindi non confrontiamo direttamente
+    // Verifica che ogni password possa essere decifrata correttamente usando decrypt_bulk_stored_data
+    let user_auth = fetch_user_auth_from_id(&pool, user_id).await.unwrap();
+    let decrypted = decrypt_bulk_stored_data(user_auth, stored_passwords, None)
+        .await
+        .expect("Failed to decrypt passwords");
     for (i, (_expected_url, expected_password, expected_strength)) in passwords.iter().enumerate() {
-        let stored = &stored_passwords[i];
         let expected_strength_score = expected_strength.score.map(|s| s.value()).unwrap_or(0);
-        assert_eq!(stored.score.value(), expected_strength_score);
-        let decrypted = decrypt_stored_password(&pool, stored)
-            .await
-            .expect("Failed to decrypt password");
-        assert_eq!(decrypted, *expected_password);
+        assert_eq!(decrypted[i].score.map(|s| s.value()), Some(expected_strength_score));
+        assert_eq!(decrypted[i].password.expose_secret(), *expected_password);
     }
 }
 
@@ -573,10 +585,11 @@ async fn test_encrypted_password_is_different_from_original() {
     );
 
     // Ma dopo la decifrazione dovrebbe essere uguale
-    let decrypted = decrypt_stored_password(&pool, stored_password)
+    let user_auth = fetch_user_auth_from_id(&pool, user_id).await.unwrap();
+    let decrypted = decrypt_bulk_stored_data(user_auth, stored_passwords, None)
         .await
         .expect("Failed to decrypt password");
-    assert_eq!(decrypted, raw_password);
+    assert_eq!(decrypted[0].password.expose_secret(), raw_password);
 }
 
 #[tokio::test]
@@ -679,13 +692,13 @@ async fn test_decrypt_url_and_notes_roundtrip() {
     );
 }
 
-// ============ Test per stored_passwords_migration_pipeline ============
+// ============ Test per stored_passwords_migration_pipeline_with_progress ============
 // Flusso corretto:
 // 1. Creare utente → password viene hashata
 // 2. Salvare StoredPassword (criptate con la vecchia master)
 // 3. Cambiare password → vecchio HASH salvato in temp_old_password
 // 4. Recuperare temp_old_password (è già un hash Argon2)
-// 5. Passare quell'hash a stored_passwords_migration_pipeline
+// 5. Passare quell'hash a stored_passwords_migration_pipeline_with_progress
 
 #[tokio::test]
 async fn test_password_migration_single_password() {
@@ -734,7 +747,7 @@ async fn test_password_migration_single_password() {
         .expect("temp_old_password should exist");
 
     // 5. Esegui migration passando l'HASH
-    let result = stored_passwords_migration_pipeline(&pool, user_id, temp_old_hash).await;
+    let result = stored_passwords_migration_pipeline_with_progress(&pool, user_id, temp_old_hash, None).await;
     assert!(result.is_ok(), "Migration should succeed: {:?}", result);
 
     // 6. Verifica temp_old_password rimosso
@@ -812,7 +825,7 @@ async fn test_password_migration_multiple_passwords() {
         .expect("Failed to fetch temp_old_password")
         .expect("temp_old_password should exist");
 
-    let result = stored_passwords_migration_pipeline(&pool, user_id, temp_old_hash).await;
+    let result = stored_passwords_migration_pipeline_with_progress(&pool, user_id, temp_old_hash, None).await;
     assert!(result.is_ok(), "Migration should succeed: {:?}", result);
 
     // 5. Verifica tutte le password
@@ -858,7 +871,7 @@ async fn test_password_migration_empty_passwords() {
         .expect("Failed to fetch temp_old_password")
         .expect("temp_old_password should exist");
 
-    let result = stored_passwords_migration_pipeline(&pool, user_id, temp_old_hash).await;
+    let result = stored_passwords_migration_pipeline_with_progress(&pool, user_id, temp_old_hash, None).await;
     assert!(
         result.is_ok(),
         "Migration with no passwords should succeed: {:?}",

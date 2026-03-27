@@ -38,6 +38,5 @@ mod import_tests;
 
 // Re-export pwd-strength for backward compatibility
 pub use pwd_strength::{
-    evaluate_password_strength, evaluate_password_strength_tx, init_blacklist,
-    init_blacklist_from_path,
+    evaluate_password_strength, evaluate_password_strength_tx, init_blacklist_from_path,
 };

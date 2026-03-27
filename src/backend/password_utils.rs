@@ -8,9 +8,10 @@
 
 use crate::backend::db_backend::{
     fetch_all_passwords_for_user_with_filter, fetch_all_stored_passwords_for_user,
-    fetch_passwords_paginated, fetch_user_auth_from_id, remove_temp_old_password,
-    upsert_stored_passwords_batch,
+    fetch_user_auth_from_id, remove_temp_old_password, upsert_stored_passwords_batch,
 };
+#[cfg(test)]
+use crate::backend::db_backend::fetch_passwords_paginated;
 use crate::backend::evaluate_password_strength;
 use crate::backend::migration_types::{MigrationStage, ProgressMessage, ProgressSender};
 use crate::backend::settings_types::{DicewareGenerationSettings, DicewareLanguage};
@@ -362,6 +363,7 @@ pub async fn create_stored_data_records(
     .map_err(|e| DBError::new_password_save_error(format!("Join error: {}", e)))?
 }
 
+#[cfg(test)]
 pub async fn get_stored_raw_passwords(
     pool: &SqlitePool,
     user_id: i64,
@@ -423,6 +425,7 @@ pub async fn get_all_stored_raw_passwords_with_filter(
 ///
 /// # Returns
 /// * `Ok((Vec<StoredRawPassword>, u64))` - Password decifrate e totale count
+#[cfg(test)]
 pub async fn get_stored_raw_passwords_paginated(
     pool: &SqlitePool,
     user_id: i64,
@@ -539,48 +542,6 @@ pub async fn decrypt_bulk_stored_data(
         tracing::error!("decrypt_bulk_stored_data: task failed with error: {}", e);
         DBError::new_password_conversion_error(format!("Join error: {}", e))
     })?
-}
-
-/// Deprecated: Use `decrypt_bulk_stored_data` instead
-pub async fn decrypt_bulk_stored_passwords(
-    user_auth: UserAuth,
-    stored_passwords: Vec<StoredPassword>,
-) -> Result<Vec<StoredRawPassword>, DBError> {
-    decrypt_bulk_stored_data(user_auth, stored_passwords, None).await
-}
-
-/// Decripta una password salvata nel database.
-pub async fn decrypt_stored_password(
-    pool: &SqlitePool,
-    stored_password: &StoredPassword,
-) -> Result<String, DBError> {
-    let user_auth: UserAuth = fetch_user_auth_from_id(pool, stored_password.user_id).await?;
-    let salt = get_salt(&user_auth.password);
-    let nonce = get_nonce_from_vec(&stored_password.password_nonce)?;
-    let cipher = create_cipher(&salt, &user_auth)?;
-    let plaintext_bytes = cipher
-        .decrypt(&nonce, stored_password.password.expose_secret().as_ref())
-        .map_err(|e| DBError::new_password_fetch_error(e.to_string()))?;
-    let plaintext = String::from_utf8(plaintext_bytes)
-        .map_err(|e| DBError::new_password_conversion_error(e.to_string()))?;
-    Ok(plaintext)
-}
-
-pub async fn stored_passwords_migration_pipeline(
-    pool: &SqlitePool,
-    user_id: i64,
-    old_password: String,
-) -> Result<(), DBError> {
-    let data = fetch_all_stored_passwords_for_user(pool, user_id).await?;
-    let old_password = SecretString::new(old_password.into());
-    let user_auth: UserAuth = UserAuth {
-        id: user_id,
-        password: old_password.into(),
-    };
-    let decrypted_data = decrypt_bulk_stored_data(user_auth, data, None).await?;
-    create_stored_data_pipeline_bulk(pool, user_id, decrypted_data).await?;
-    remove_temp_old_password(pool, user_id).await?;
-    Ok(())
 }
 
 /// Pipeline di migrazione password con feedback di progresso.

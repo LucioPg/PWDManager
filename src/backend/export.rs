@@ -219,49 +219,6 @@ fn convert_to_exportable_with_progress(
     })
 }
 
-use std::path::PathBuf;
-
-/// Genera un path di export default nella directory specificata.
-///
-/// # Arguments
-/// * `directory` - Directory di destinazione
-/// * `format` - Formato di export
-///
-/// # Returns
-/// Path completo con nome file generato (es. pwdmanager_export_20260306_143022.json)
-pub fn generate_export_path(directory: &Path, format: ExportFormat) -> PathBuf {
-    let timestamp = chrono::Local::now().format("%Y%m%d_%H%M%S");
-    let filename = format!("pwdmanager_export_{}.{}", timestamp, format.extension());
-    directory.join(filename)
-}
-
-/// Valida che il path di export sia scrivibile.
-///
-/// # Arguments
-/// * `path` - Path da validare
-///
-/// # Returns
-/// * `Ok(())` se il path è valido
-/// * `Err(String)` con descrizione del problema
-pub fn validate_export_path(path: &Path) -> Result<(), String> {
-    // Verifica che la directory padre esista
-    if let Some(parent) = path.parent()
-        && !parent.exists()
-    {
-        return Err(format!("Directory does not exist: {}", parent.display()));
-    }
-
-    // Verifica che non sia una directory
-    if path.exists() && path.is_dir() {
-        return Err(format!(
-            "Path is a directory, not a file: {}",
-            path.display()
-        ));
-    }
-
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

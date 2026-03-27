@@ -2,9 +2,8 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::backend::export::{serialize_passwords, validate_export_path};
+    use crate::backend::export::serialize_passwords;
     use crate::backend::export_types::{ExportFormat, ExportablePassword};
-    use std::path::PathBuf;
 
     fn create_test_passwords() -> Vec<ExportablePassword> {
         vec![
@@ -74,37 +73,5 @@ mod tests {
         assert_eq!(ExportFormat::Json.extension(), "json");
         assert_eq!(ExportFormat::Csv.extension(), "csv");
         assert_eq!(ExportFormat::Xml.extension(), "xml");
-    }
-
-    #[test]
-    fn test_export_format_mime_type() {
-        assert_eq!(ExportFormat::Json.mime_type(), "application/json");
-        assert_eq!(ExportFormat::Csv.mime_type(), "text/csv");
-        assert_eq!(ExportFormat::Xml.mime_type(), "application/xml");
-    }
-
-    #[test]
-    fn test_validate_export_path_directory_not_exists() {
-        let path = PathBuf::from("/nonexistent/directory/file.json");
-        let result = validate_export_path(&path);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Directory does not exist"));
-    }
-
-    #[test]
-    fn test_validate_export_path_is_directory() {
-        // Test con una directory esistente come target (dovrebbe fallire)
-        let path = std::env::current_dir().unwrap();
-        let result = validate_export_path(&path);
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("is a directory"));
-    }
-
-    #[test]
-    fn test_validate_export_path_valid() {
-        // Test con un path valido nella directory corrente
-        let path = std::env::current_dir().unwrap().join("test_export.json");
-        let result = validate_export_path(&path);
-        assert!(result.is_ok());
     }
 }

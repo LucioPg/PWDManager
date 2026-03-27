@@ -1,3 +1,4 @@
+#![allow(clippy::needless_question_mark, clippy::len_without_is_empty)]
 //! Tipi per la gestione dei settings utente.
 //!
 //! Contiene il preset per la generazione password e le struct
@@ -11,6 +12,7 @@ use std::ops::Deref;
 /// Settings generali utente.
 ///
 /// Mappa la tabella `user_settings` del database.
+#[allow(clippy::needless_question_mark, clippy::len_without_is_empty)]
 #[derive(Debug, Clone, FromRow, SqlxTemplate, PartialEq, Default)]
 #[db("sqlite")]
 #[table("user_settings")]
@@ -124,7 +126,7 @@ impl From<diceware::EmbeddedList> for DicewareLanguage {
     }
 }
 
-#[allow(clippy::needless_question_mark)]
+#[allow(clippy::needless_question_mark, clippy::len_without_is_empty)]
 #[derive(sqlx::FromRow, Debug, Clone, Default, sqlx_template::SqlxTemplate, PartialEq)]
 #[db("sqlite")]
 #[table("diceware_generation_settings")]
