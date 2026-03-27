@@ -23,7 +23,7 @@ use crate::backend::migration_types::{MigrationStage, ProgressMessage, ProgressS
 use crate::backend::password_utils::{
     create_cipher, create_stored_data_records, decrypt_bulk_stored_data, get_salt,
 };
-use pwd_types::{StoredPassword, StoredRawPassword};
+use pwd_types::StoredRawPassword;
 use secrecy::ExposeSecret;
 use sqlx::SqlitePool;
 use std::path::Path;
@@ -136,7 +136,8 @@ pub struct ImportResult {
 }
 
 /// Patch the imported StoredPasswords for forcing score recalculation
-fn storedRawPasswords_score_patch(stored_passwords: &mut Vec<StoredRawPassword>) {
+#[allow(non_snake_case)]
+fn storedRawPasswords_score_patch(stored_passwords: &mut [StoredRawPassword]) {
     stored_passwords.iter_mut().for_each(|sp| {
         sp.score = None;
     })

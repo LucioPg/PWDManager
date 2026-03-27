@@ -114,8 +114,10 @@ pub fn ImportProgressChn(
                 Ok(import_res) => {
                     show_toast_success(
                         format!(
-                            "Import completed: {} passwords imported, {} skipped (duplicates)",
-                            import_res.imported_count, import_res.skipped_duplicates
+                            "Import completed: {} passwords imported, {} skipped (duplicates), {} total in files",
+                            import_res.imported_count,
+                            import_res.skipped_duplicates,
+                            import_res.total_in_file
                         ),
                         toast,
                     );
