@@ -69,7 +69,7 @@ impl std::fmt::Display for DBKeyError {
 impl std::error::Error for DBKeyError {}
 
 /// Generates a 64-character hex string (32 random bytes, hex-encoded).
-/// Used as raw key material via `PRAGMA key = "x'...'"`.
+/// Used as raw key material via `PRAGMA key = "x'...'"`. Used for testing purposes
 pub(crate) fn generate_key() -> String {
     let mut key_bytes = [0u8; 32];
     rand::rng().fill(&mut key_bytes);
@@ -223,10 +223,10 @@ pub fn reset_database(db_path: &str) -> Result<(), DBKeyError> {
     let mut db_errors = Vec::new();
     let mut salt_errors = Vec::new();
 
-    if std::path::Path::new(db_path).exists() {
-        if let Err(e) = std::fs::remove_file(db_path) {
-            db_errors.push(format!("Failed to delete DB: {}", e));
-        }
+    if std::path::Path::new(db_path).exists()
+        && let Err(e) = std::fs::remove_file(db_path)
+    {
+        db_errors.push(format!("Failed to delete DB: {}", e));
     }
     // WAL/SHM files are intentionally ignored on failure:
     // they are transient SQLite files that may or may not exist,
@@ -237,10 +237,10 @@ pub fn reset_database(db_path: &str) -> Result<(), DBKeyError> {
             let _ = std::fs::remove_file(&path);
         }
     }
-    if std::path::Path::new(&salt_path).exists() {
-        if let Err(e) = std::fs::remove_file(&salt_path) {
-            salt_errors.push(format!("Failed to delete salt: {}", e));
-        }
+    if std::path::Path::new(&salt_path).exists()
+        && let Err(e) = std::fs::remove_file(&salt_path)
+    {
+        salt_errors.push(format!("Failed to delete salt: {}", e));
     }
     // delete_db_key returns () — just call it, ignore any error
     delete_db_key(keyring_service_name(), KEY_USERNAME);
