@@ -5,7 +5,6 @@
 //! - Criptare le password con AES-256-GCM usando Argon2 come KDF
 //! - Decriptare le password salvate
 //! - Salvare le password nel database
-#![allow(dead_code)]
 
 use crate::backend::db_backend::{
     fetch_all_passwords_for_user_with_filter, fetch_all_stored_passwords_for_user,
@@ -15,8 +14,8 @@ use crate::backend::db_backend::{
 use crate::backend::evaluate_password_strength;
 use crate::backend::migration_types::{MigrationStage, ProgressMessage, ProgressSender};
 use crate::backend::settings_types::{DicewareGenerationSettings, DicewareLanguage};
-use aes_gcm::aead::{Aead, Nonce, OsRng};
-use aes_gcm::{Aes256Gcm, KeyInit};
+use aes_gcm::Aes256Gcm;
+use aes_gcm::aead::{Aead, Nonce};
 use argon2::password_hash::{PasswordHash, Salt};
 use chrono::Utc;
 use custom_errors::DBError;
@@ -107,8 +106,11 @@ pub fn generate_diceware_password(config: DicewareGenConfig) -> SecretString {
     panic!(
         "Failed to generate a valid Diceware passphrase after {} attempts. \
          Config: word_count={}, special_chars={}, force={}, numbers={}",
-        MAX_DICEWARE_RETRIES, config.word_count, config.special_chars,
-        config.force_special_chars, config.numbers
+        MAX_DICEWARE_RETRIES,
+        config.word_count,
+        config.special_chars,
+        config.force_special_chars,
+        config.numbers
     );
 }
 
@@ -121,7 +123,10 @@ fn is_valid_diceware(passphrase: &str, config: &DicewareGenConfig) -> bool {
     let special_count = passphrase.chars().filter(|c| !c.is_alphanumeric()).count();
 
     // Count purely numeric words
-    let numeric_word_count = words.iter().filter(|w| !w.is_empty() && w.chars().all(|c| c.is_numeric())).count();
+    let numeric_word_count = words
+        .iter()
+        .filter(|w| !w.is_empty() && w.chars().all(|c| c.is_numeric()))
+        .count();
 
     // Validate special chars
     if config.special_chars == 0 && special_count > 0 {
@@ -389,7 +394,8 @@ pub async fn get_all_stored_raw_passwords_with_filter(
     filter: Option<PasswordStrength>,
     order: &str,
 ) -> Result<Vec<StoredRawPassword>, DBError> {
-    let stored_passwords = fetch_all_passwords_for_user_with_filter(pool, user_id, filter, order).await?;
+    let stored_passwords =
+        fetch_all_passwords_for_user_with_filter(pool, user_id, filter, order).await?;
 
     let stored_raw_passwords = decrypt_bulk_stored_data(
         fetch_user_auth_from_id(pool, user_id).await?,
