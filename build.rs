@@ -9,12 +9,11 @@ const PWD_DIOXUS_GITHUB_RAW: &str = "https://raw.githubusercontent.com/LucioPg/p
 /// This prevents unnecessary file modifications that trigger hotreload loops.
 fn write_if_changed(path: &Path, content: &str) -> std::io::Result<bool> {
     // Check if file exists and has same content
-    if path.exists() {
-        if let Ok(existing) = fs::read_to_string(path) {
-            if existing == content {
-                return Ok(false); // No change needed
-            }
-        }
+    if path.exists()
+        && let Ok(existing) = fs::read_to_string(path)
+        && existing == content
+    {
+        return Ok(false); // No change needed
     }
 
     // Write new content
@@ -59,7 +58,10 @@ fn windows_executable_icon() {
 }
 
 /// Download a file from GitHub raw URL (fallback when local cache is not available)
-fn download_from_github(filename: &str, output_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+fn download_from_github(
+    filename: &str,
+    output_path: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
     let url = format!(
         "{}/v{}/{}",
         PWD_DIOXUS_GITHUB_RAW, PWD_DIOXUS_VERSION, filename
@@ -68,15 +70,9 @@ fn download_from_github(filename: &str, output_path: &Path) -> Result<(), Box<dy
     println!("cargo:warning=Downloading {} from GitHub...", url);
 
     // Try curl first, fall back to PowerShell on Windows
-    let output = if cfg!(windows) {
-        Command::new("curl")
-            .args(["-sL", "-o", output_path.to_str().unwrap(), &url])
-            .output()
-    } else {
-        Command::new("curl")
-            .args(["-sL", "-o", output_path.to_str().unwrap(), &url])
-            .output()
-    };
+    let output = Command::new("curl")
+        .args(["-sL", "-o", output_path.to_str().unwrap(), &url])
+        .output();
 
     match output {
         Ok(o) if o.status.success() => {
@@ -99,7 +95,10 @@ fn download_from_github(filename: &str, output_path: &Path) -> Result<(), Box<dy
 
                 match ps_output {
                     Ok(o) if o.status.success() => {
-                        println!("cargo:warning=Successfully downloaded {} via PowerShell", filename);
+                        println!(
+                            "cargo:warning=Successfully downloaded {} via PowerShell",
+                            filename
+                        );
                         Ok(())
                     }
                     _ => Err(format!("Failed to download {} from GitHub", filename).into()),
@@ -133,25 +132,21 @@ fn find_pwd_dioxus_in_cargo_cache() -> Option<std::path::PathBuf> {
     }
 
     // Look for pwd-dioxus-* directory
-    for entry in fs::read_dir(&checkouts_dir).ok()? {
-        if let Ok(entry) = entry {
-            let name = entry.file_name();
-            let name_str = name.to_string_lossy();
-            if name_str.starts_with("pwd-dioxus-") {
-                // Inside there should be hash directories
-                for hash_entry in fs::read_dir(entry.path()).ok()? {
-                    if let Ok(hash_entry) = hash_entry {
-                        let lib_path = hash_entry.path().join("src").join("lib.rs");
-                        let css_path = hash_entry.path().join("assets").join("components.css");
+    for entry in fs::read_dir(&checkouts_dir).ok()?.flatten() {
+        let name = entry.file_name();
+        let name_str = name.to_string_lossy();
+        if name_str.starts_with("pwd-dioxus-") {
+            // Inside there should be hash directories
+            for hash_entry in fs::read_dir(entry.path()).ok()?.flatten() {
+                let lib_path = hash_entry.path().join("src").join("lib.rs");
+                let css_path = hash_entry.path().join("assets").join("components.css");
 
-                        if lib_path.exists() && css_path.exists() {
-                            // Check if this version has COMPONENT_CSS constant
-                            if let Ok(lib_content) = fs::read_to_string(&lib_path) {
-                                if lib_content.contains("COMPONENT_CSS") {
-                                    return Some(hash_entry.path());
-                                }
-                            }
-                        }
+                if lib_path.exists() && css_path.exists() {
+                    // Check if this version has COMPONENT_CSS constant
+                    if let Ok(lib_content) = fs::read_to_string(&lib_path)
+                        && lib_content.contains("COMPONENT_CSS")
+                    {
+                        return Some(hash_entry.path());
                     }
                 }
             }
@@ -187,13 +182,13 @@ fn extract_tailwind_classes(lib_rs_content: &str) -> Vec<String> {
             }
 
             // Extract string literal
-            if let Some(start) = trimmed.find('"') {
-                if let Some(end) = trimmed[start + 1..].find('"') {
-                    let class = &trimmed[start + 1..start + 1 + end];
-                    // Skip section headers (=== ...)
-                    if !class.starts_with("===") && !class.is_empty() {
-                        classes.push(class.to_string());
-                    }
+            if let Some(start) = trimmed.find('"')
+                && let Some(end) = trimmed[start + 1..].find('"')
+            {
+                let class = &trimmed[start + 1..start + 1 + end];
+                // Skip section headers (=== ...)
+                if !class.starts_with("===") && !class.is_empty() {
+                    classes.push(class.to_string());
                 }
             }
         }
@@ -203,7 +198,10 @@ fn extract_tailwind_classes(lib_rs_content: &str) -> Vec<String> {
 }
 
 /// Generate a dummy Rust file containing Tailwind classes for scanning
-fn generate_tailwind_classes_file(classes: &[String], output_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
+fn generate_tailwind_classes_file(
+    classes: &[String],
+    output_path: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut content = String::new();
     content.push_str("// Auto-generated by build.rs - DO NOT EDIT\n");
     content.push_str("// This file contains Tailwind classes used by pwd-dioxus\n");
@@ -219,7 +217,10 @@ fn generate_tailwind_classes_file(classes: &[String], output_path: &Path) -> Res
 
     let changed = write_if_changed(output_path, &content)?;
     if changed {
-        println!("cargo:warning=Generated {} Tailwind classes from pwd-dioxus", classes.len());
+        println!(
+            "cargo:warning=Generated {} Tailwind classes from pwd-dioxus",
+            classes.len()
+        );
     }
     Ok(())
 }
