@@ -7,7 +7,7 @@ use dioxus::prelude::*;
 use pwd_dioxus::combobox::Combobox;
 use pwd_dioxus::form::{FormField, NonNegativeInt, PositiveInt};
 use pwd_dioxus::spinner::{Spinner, SpinnerSize};
-use pwd_dioxus::{InputType, show_toast_error, use_toast};
+use pwd_dioxus::{InputType, show_toast_error, show_toast_success, use_toast};
 use sqlx::SqlitePool;
 
 fn language_options() -> Vec<(&'static str, Option<DicewareLanguage>)> {
@@ -99,7 +99,9 @@ pub fn DicewareSettings() -> Element {
         let toast = toast.clone();
         spawn(async move {
             match upsert_diceware_settings(&pool, settings).await {
-                Ok(()) => {}
+                Ok(()) => {
+                    show_toast_success("Diceware settings saved!".to_string(), toast);
+                }
                 Err(e) => {
                     show_toast_error(format!("Error saving diceware settings: {}", e), toast);
                 }

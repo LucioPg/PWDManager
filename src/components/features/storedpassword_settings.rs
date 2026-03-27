@@ -1,5 +1,5 @@
 use crate::auth::{AuthState, User};
-use crate::backend::db_backend::fetch_user_passwords_generation_settings;
+use crate::backend::db_backend::{fetch_user_passwords_generation_settings, upsert_password_config};
 use crate::backend::password_types_helper::{PasswordGeneratorConfig, PasswordPreset};
 use crate::components::globals::toggle::{Toggle, ToggleColor, ToggleSize};
 use crate::components::{ActionButton, ButtonSize, ButtonType, ButtonVariant};
@@ -7,7 +7,7 @@ use dioxus::prelude::*;
 use pwd_dioxus::combobox::{AnyPreset, Combobox};
 use pwd_dioxus::form::{FormField, PositiveInt};
 use pwd_dioxus::spinner::{Spinner, SpinnerSize};
-use pwd_dioxus::{InputType, show_toast_error, use_toast};
+use pwd_dioxus::{InputType, show_toast_error, show_toast_success, use_toast};
 use pwd_types::ExcludedSymbolSet;
 use sqlx::SqlitePool;
 
@@ -25,6 +25,7 @@ fn preset_options() -> Vec<(&'static str, Option<AnyPreset>)> {
 pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
     let auth_state = use_context::<AuthState>();
     let pool = use_context::<SqlitePool>();
+    let pool_for_submit = pool.clone();
     let toast = use_toast();
     let user_id = auth_state.get_user_id();
     let mut error = use_signal(|| <Option<String>>::None);
@@ -113,25 +114,37 @@ pub fn StoredPasswordSettings(user_to_edit: Option<User>) -> Element {
     });
 
     let on_submit = move |_| {
-        let with_numbers = with_numbers.clone();
-        let with_uppercase = with_uppercase.clone();
-        let with_lowercase = with_lowercase.clone();
-        let with_symbols = with_symbols.clone();
-        let with_excluded_symbols = with_excluded_symbols.clone();
-        let with_length = with_length.clone();
-        let settings_id = settings_id.clone();
+        let with_numbers = with_numbers();
+        let with_uppercase = with_uppercase();
+        let with_lowercase = with_lowercase();
+        let with_symbols = with_symbols();
+        let with_excluded_symbols = with_excluded_symbols();
+        let with_length = with_length();
+        let sid = settings_id();
 
-        let result = PasswordGeneratorConfig {
-            id: Some(settings_id()),
-            settings_id: settings_id(),
-            length: with_length().into(),
-            symbols: with_symbols().into(),
-            numbers: with_numbers(),
-            uppercase: with_uppercase(),
-            lowercase: with_lowercase(),
-            excluded_symbols: ExcludedSymbolSet::from(with_excluded_symbols()),
+        let config = PasswordGeneratorConfig {
+            id: Some(sid),
+            settings_id: sid,
+            length: with_length.into(),
+            symbols: with_symbols.into(),
+            numbers: with_numbers,
+            uppercase: with_uppercase,
+            lowercase: with_lowercase,
+            excluded_symbols: ExcludedSymbolSet::from(with_excluded_symbols),
         };
-        println!("{:#?}", result);
+
+        let pool = pool_for_submit.clone();
+        let toast = toast.clone();
+        spawn(async move {
+            match upsert_password_config(&pool, config).await {
+                Ok(()) => {
+                    show_toast_success("Password settings saved!".to_string(), toast);
+                }
+                Err(e) => {
+                    show_toast_error(format!("Error saving password settings: {}", e), toast);
+                }
+            }
+        });
     };
     if !settings_ready() {
         return rsx! {
