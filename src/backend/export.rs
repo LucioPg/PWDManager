@@ -245,10 +245,10 @@ pub fn generate_export_path(directory: &Path, format: ExportFormat) -> PathBuf {
 /// * `Err(String)` con descrizione del problema
 pub fn validate_export_path(path: &Path) -> Result<(), String> {
     // Verifica che la directory padre esista
-    if let Some(parent) = path.parent() {
-        if !parent.exists() {
-            return Err(format!("Directory does not exist: {}", parent.display()));
-        }
+    if let Some(parent) = path.parent()
+        && !parent.exists()
+    {
+        return Err(format!("Directory does not exist: {}", parent.display()));
     }
 
     // Verifica che non sia una directory

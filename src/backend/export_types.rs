@@ -4,17 +4,12 @@ use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
 
 /// Formato di export supportato.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Default)]
 pub enum ExportFormat {
+    #[default]
     Json,
     Csv,
     Xml,
-}
-
-impl Default for ExportFormat {
-    fn default() -> Self {
-        ExportFormat::Json
-    }
 }
 
 impl ExportFormat {

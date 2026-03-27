@@ -97,10 +97,10 @@ pub fn generate_diceware_password(config: DicewareGenConfig) -> SecretString {
             dw_config = dw_config.with_special_chars(true);
         }
 
-        if let Ok(passphrase) = diceware::make_passphrase(dw_config) {
-            if is_valid_diceware(&passphrase, &config) {
-                return SecretString::new(passphrase.into());
-            }
+        if let Ok(passphrase) = diceware::make_passphrase(dw_config)
+            && is_valid_diceware(&passphrase, &config)
+        {
+            return SecretString::new(passphrase.into());
         }
     }
     panic!(
@@ -208,11 +208,13 @@ fn encrypt_string(
     crypto_encrypt_string(plaintext, cipher).map_err(crypto_error_to_db_error)
 }
 
+type SecretNoteResult = (Option<SecretBox<[u8]>>, Option<Nonce<Aes256Gcm>>);
+
 /// Cripta una stringa opzionale con AES-256-GCM.
-fn encrypt_optional_string(
+fn encrypt_optional_note_string(
     plaintext: Option<&str>,
     cipher: &Aes256Gcm,
-) -> Result<(Option<SecretBox<[u8]>>, Option<Nonce<Aes256Gcm>>), DBError> {
+) -> Result<SecretNoteResult, DBError> {
     crypto_encrypt_optional_string(plaintext, cipher).map_err(crypto_error_to_db_error)
 }
 
@@ -235,7 +237,7 @@ fn decrypt_optional_to_string(
 }
 
 /// Converte un vettore di 12 byte in un [`Nonce<Aes256Gcm>`].
-fn get_nonce_from_vec(nonce_vec: &Vec<u8>) -> Result<Nonce<Aes256Gcm>, DBError> {
+fn get_nonce_from_vec(nonce_vec: &[u8]) -> Result<Nonce<Aes256Gcm>, DBError> {
     nonce_from_vec(nonce_vec).map_err(crypto_error_to_db_error)
 }
 
@@ -269,7 +271,7 @@ pub async fn create_stored_data_pipeline_bulk(
     let stored_passwords =
         create_stored_data_records(cipher, user_auth, stored_raw_passwords, None).await?; // None = no progress
     // 3. Salvataggio in batch
-    upsert_stored_passwords_batch(&pool, stored_passwords).await?;
+    upsert_stored_passwords_batch(pool, stored_passwords).await?;
 
     Ok(())
 }
@@ -313,7 +315,7 @@ pub async fn create_stored_data_records(
                 // Cripta notes
                 let notes_str = srp.notes.as_ref().map(|n| n.expose_secret().to_string());
                 let (encrypted_notes, notes_nonce) =
-                    encrypt_optional_string(notes_str.as_deref(), &cipher)?;
+                    encrypt_optional_note_string(notes_str.as_deref(), &cipher)?;
 
                 // Calcola score
                 let score_evaluation: PasswordScore = srp.score.unwrap_or_else(|| {
@@ -471,20 +473,17 @@ pub async fn decrypt_bulk_stored_data(
             .map(|sp| {
                 // Decripta username
                 let username_nonce = get_nonce_from_vec(&sp.username_nonce)?;
-                let username = decrypt_to_string(
-                    sp.username.expose_secret().as_ref(),
-                    &username_nonce,
-                    &cipher,
-                )?;
+                let username =
+                    decrypt_to_string(sp.username.expose_secret(), &username_nonce, &cipher)?;
 
                 // Decripta url
                 let url_nonce = get_nonce_from_vec(&sp.url_nonce)?;
-                let url = decrypt_to_string(sp.url.expose_secret().as_ref(), &url_nonce, &cipher)?;
+                let url = decrypt_to_string(sp.url.expose_secret(), &url_nonce, &cipher)?;
 
                 // Decripta password
                 let password_nonce = get_nonce_from_vec(&sp.password_nonce)?;
                 let password_bytes = cipher
-                    .decrypt(&password_nonce, sp.password.expose_secret().as_ref())
+                    .decrypt(&password_nonce, sp.password.expose_secret())
                     .map_err(|e| DBError::new_password_conversion_error(e.to_string()))?;
                 let password = String::from_utf8(password_bytes)
                     .map_err(|e| DBError::new_password_conversion_error(e.to_string()))?;
@@ -555,7 +554,7 @@ pub async fn decrypt_stored_password(
     pool: &SqlitePool,
     stored_password: &StoredPassword,
 ) -> Result<String, DBError> {
-    let user_auth: UserAuth = fetch_user_auth_from_id(&pool, stored_password.user_id).await?;
+    let user_auth: UserAuth = fetch_user_auth_from_id(pool, stored_password.user_id).await?;
     let salt = get_salt(&user_auth.password);
     let nonce = get_nonce_from_vec(&stored_password.password_nonce)?;
     let cipher = create_cipher(&salt, &user_auth)?;
@@ -579,8 +578,8 @@ pub async fn stored_passwords_migration_pipeline(
         password: old_password.into(),
     };
     let decrypted_data = decrypt_bulk_stored_data(user_auth, data, None).await?;
-    let _ = create_stored_data_pipeline_bulk(pool, user_id, decrypted_data).await?;
-    let _ = remove_temp_old_password(pool, user_id).await?;
+    create_stored_data_pipeline_bulk(pool, user_id, decrypted_data).await?;
+    remove_temp_old_password(pool, user_id).await?;
     Ok(())
 }
 

@@ -1,6 +1,6 @@
+use crate::backend::updater_types::{UpdateManifest, UpdateState};
 use base64::Engine;
 use dioxus::prelude::*;
-use crate::backend::updater_types::{UpdateManifest, UpdateState};
 use futures::stream::StreamExt;
 use minisign_verify::{PublicKey, Signature};
 use semver::Version;
@@ -40,9 +40,9 @@ pub async fn check_for_update() -> Result<Option<UpdateManifest>, String> {
         .await
         .map_err(|e| format!("JSON parse error: {}", e))?;
 
-    let current = Version::parse(CURRENT_VERSION)
-        .map_err(|e| format!("Invalid current version: {}", e))?;
-    let available = Version::parse(&manifest.version.trim_start_matches('v'))
+    let current =
+        Version::parse(CURRENT_VERSION).map_err(|e| format!("Invalid current version: {}", e))?;
+    let available = Version::parse(manifest.version.trim_start_matches('v'))
         .map_err(|e| format!("Invalid available version: {}", e))?;
 
     if available > current {
@@ -57,22 +57,18 @@ pub async fn check_for_update() -> Result<Option<UpdateManifest>, String> {
 /// Il campo `signature` in latest.json è il contenuto **base64-encoded** del file .sig
 /// generato da minisign (formato multi-riga: untrusted comment + firma + trusted comment).
 /// Quindi servono due passaggi: base64-decode → Signature::decode().
-fn verify_update_signature(
-    signature_b64: &str,
-    file_path: &Path,
-) -> Result<(), String> {
+fn verify_update_signature(signature_b64: &str, file_path: &Path) -> Result<(), String> {
     // PublicKey::decode() accetta il formato file completo (con riga "untrusted comment")
-    let pk = PublicKey::decode(PUBLIC_KEY)
-        .map_err(|e| format!("Invalid public key: {}", e))?;
+    let pk = PublicKey::decode(PUBLIC_KEY).map_err(|e| format!("Invalid public key: {}", e))?;
 
     // Il campo signature in latest.json è base64-encoded: decodifichiamo prima
     let sig_bytes = base64::engine::general_purpose::STANDARD
         .decode(signature_b64)
         .map_err(|e| format!("Invalid signature base64: {}", e))?;
-    let sig_text = String::from_utf8(sig_bytes)
-        .map_err(|e| format!("Signature not valid UTF-8: {}", e))?;
-    let sig = Signature::decode(&sig_text)
-        .map_err(|e| format!("Invalid signature format: {}", e))?;
+    let sig_text =
+        String::from_utf8(sig_bytes).map_err(|e| format!("Signature not valid UTF-8: {}", e))?;
+    let sig =
+        Signature::decode(&sig_text).map_err(|e| format!("Invalid signature format: {}", e))?;
 
     // PublicKey::verify richiede i bytes del file, non il path
     let file_bytes = std::fs::read(file_path)
@@ -100,8 +96,7 @@ pub async fn download_and_install(
         .ok_or_else(|| format!("No update for platform: {}", platform_key))?;
 
     let temp_dir = std::env::temp_dir().join("pwdmanager_update");
-    std::fs::create_dir_all(&temp_dir)
-        .map_err(|e| format!("Cannot create temp dir: {}", e))?;
+    std::fs::create_dir_all(&temp_dir).map_err(|e| format!("Cannot create temp dir: {}", e))?;
 
     let archive_path = temp_dir.join("update.nsis.zip");
 
@@ -128,7 +123,9 @@ pub async fn download_and_install(
         downloaded += chunk.len() as u64;
         if total_size > 0 {
             let pct = (downloaded as f64 / total_size as f64 * 100.0) as u8;
-            update_state.set(UpdateState::Downloading { progress: pct.min(95) });
+            update_state.set(UpdateState::Downloading {
+                progress: pct.min(95),
+            });
         }
     }
     drop(file);
@@ -146,10 +143,10 @@ pub async fn download_and_install(
     std::fs::create_dir_all(&extract_dir)
         .map_err(|e| format!("Cannot create extract dir: {}", e))?;
 
-    let zip_file = std::fs::File::open(&archive_path)
-        .map_err(|e| format!("Cannot open archive: {}", e))?;
-    let mut archive = zip::ZipArchive::new(zip_file)
-        .map_err(|e| format!("Cannot read zip: {}", e))?;
+    let zip_file =
+        std::fs::File::open(&archive_path).map_err(|e| format!("Cannot open archive: {}", e))?;
+    let mut archive =
+        zip::ZipArchive::new(zip_file).map_err(|e| format!("Cannot read zip: {}", e))?;
     archive
         .extract(&extract_dir)
         .map_err(|e| format!("Extract error: {}", e))?;
@@ -216,7 +213,14 @@ mod tests {
         create_file(&dir, "beta.exe", "b");
 
         let result = find_exe_in_dir(&dir).unwrap();
-        assert!(result.file_name().unwrap().to_str().unwrap().contains("alpha"));
+        assert!(
+            result
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .contains("alpha")
+        );
     }
 
     #[test]

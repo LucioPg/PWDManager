@@ -52,16 +52,11 @@ impl From<AutoUpdate> for bool {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Copy)]
+#[derive(Debug, Clone, PartialEq, Copy, Default)]
 pub enum Theme {
+    #[default]
     Light,
     Dark,
-}
-
-impl Default for Theme {
-    fn default() -> Self {
-        Theme::Light
-    }
 }
 
 // Serve per l'encode

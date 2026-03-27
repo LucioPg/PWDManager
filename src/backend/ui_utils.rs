@@ -73,11 +73,8 @@ pub async fn pick_and_process_avatar(
     })
     .await;
 
-    let path;
-    match file_result {
-        Ok(Some(p)) => {
-            path = p;
-        }
+    let path = match file_result {
+        Ok(Some(p)) => p,
         Ok(None) => {
             // Utente ha annullato il dialog
             is_picking_signal.set(false); // Resetta per permettere nuovi tentativi
