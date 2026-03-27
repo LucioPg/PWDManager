@@ -1,5 +1,6 @@
 use crate::components::features::diceware_settings::DicewareSettings;
 use crate::components::features::general_settings::GeneralSettings;
+use crate::components::features::recovery_key_settings::RecoveryKeySettings;
 use crate::components::{
     StoredPasswordSettings, TabContent, TabList, TabTrigger, Tabs, UpsertUser,
 };
@@ -53,6 +54,7 @@ pub fn SettingsTabContent() -> Element {
                             "Password Casuale"
                         }
                         TabTrigger { value: "Diceware".to_string(), index: 1usize, "Diceware" }
+                        TabTrigger { value: "Recovery Key".to_string(), index: 2usize, "Recovery Key" }
                     }
                     TabContent {
                         index: 0usize,
@@ -65,6 +67,12 @@ pub fn SettingsTabContent() -> Element {
                         class: "pwd-tabs-content",
                         value: "Diceware".to_string(),
                         DicewareSettings {}
+                    }
+                    TabContent {
+                        index: 2usize,
+                        class: "pwd-tabs-content",
+                        value: "Recovery Key".to_string(),
+                        RecoveryKeySettings {}
                     }
                 }
             }

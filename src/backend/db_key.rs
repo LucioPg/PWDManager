@@ -40,8 +40,6 @@ pub enum DBKeyError {
     NoEntry,
     /// A keyring system error (service unavailable, access denied, etc.)
     KeyringError(String),
-    /// DB exists but open fails (keyring empty or has wrong key) → recovery needed
-    MissingKeyWithDb,
     /// Passphrase does not open the DB
     RecoveryKeyInvalid,
     /// Error reading/writing salt file
@@ -57,7 +55,6 @@ impl std::fmt::Display for DBKeyError {
         match self {
             DBKeyError::NoEntry => write!(f, "Keyring entry not found"),
             DBKeyError::KeyringError(msg) => write!(f, "Keyring error: {}", msg),
-            DBKeyError::MissingKeyWithDb => write!(f, "Database encryption key missing or invalid"),
             DBKeyError::RecoveryKeyInvalid => write!(f, "Invalid recovery key"),
             DBKeyError::SaltFileError(msg) => write!(f, "Salt file error: {}", msg),
             DBKeyError::DerivationError(msg) => write!(f, "Derivation error: {}", msg),
@@ -69,7 +66,8 @@ impl std::fmt::Display for DBKeyError {
 impl std::error::Error for DBKeyError {}
 
 /// Generates a 64-character hex string (32 random bytes, hex-encoded).
-/// Used as raw key material via `PRAGMA key = "x'...'"`. Used for testing purposes
+/// Used as raw key material via `PRAGMA key = "x'...'"`. Test-only.
+#[cfg(test)]
 pub(crate) fn generate_key() -> String {
     let mut key_bytes = [0u8; 32];
     rand::rng().fill(&mut key_bytes);
@@ -254,17 +252,6 @@ pub fn reset_database(db_path: &str) -> Result<(), DBKeyError> {
     }
 }
 
-/// Replaced by the recovery key flow in init_db().
-/// Kept temporarily for compilation. Will be removed in the init_db rewrite.
-#[allow(dead_code)]
-#[deprecated = "Replaced by the recovery key flow in init_db()"]
-pub fn get_or_create_db_key(_db_path: &str) -> Result<String, DBKeyError> {
-    match retrieve_db_key(keyring_service_name(), KEY_USERNAME) {
-        Ok(key) => Ok(key),
-        Err(DBKeyError::NoEntry) => Err(DBKeyError::MissingKeyWithDb),
-        Err(e) => Err(e),
-    }
-}
 
 #[cfg(test)]
 mod tests {

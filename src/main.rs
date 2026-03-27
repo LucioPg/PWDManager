@@ -62,7 +62,7 @@ fn App() -> Element {
 
     // Recovery dialog state
     let mut show_recovery_dialog = use_signal(|| false);
-    let recovery_error = use_signal(|| false);
+    let recovery_error = use_signal(|| None::<String>);
     let show_reset_dialog = use_signal(|| false);
     #[cfg(debug_assertions)]
     let mut show_setup_dialog = use_signal(|| false);
@@ -230,7 +230,7 @@ fn render_app_with_setup(
 fn render_recovery_ui(
     mut db_resource: Resource<Result<InitResult, custom_errors::DBError>>,
     mut show_recovery_dialog: Signal<bool>,
-    mut recovery_error: Signal<bool>,
+    mut recovery_error: Signal<Option<String>>,
     mut show_reset_dialog: Signal<bool>,
     mut db_init_notified: Signal<bool>,
     toast_state: Signal<ToastHubState>,
@@ -240,8 +240,8 @@ fn render_recovery_ui(
         spawn(async move {
             let db_path = match get_db_path() {
                 Ok(p) => p,
-                Err(_) => {
-                    recovery_error.set(true);
+                Err(e) => {
+                    recovery_error.set(Some(e.to_string()));
                     return;
                 }
             };
@@ -249,22 +249,20 @@ fn render_recovery_ui(
             let derive_result = tokio::task::spawn_blocking({
                 let p = passphrase.clone();
                 let path = db_path.clone();
-                move || {
-                    let salt = crate::backend::db_key::read_salt(&path)?;
-                    crate::backend::db_key::derive_key(&p, &salt)
-                }
+                move || crate::backend::db_key::derive_key_from_passphrase(&p, &path)
             })
             .await;
 
             let key = match derive_result {
                 Ok(Ok(key)) => key,
-                Ok(Err(_)) => {
-                    recovery_error.set(true);
+                Ok(Err(e)) => {
+                    tracing::warn!("Recovery key derivation failed: {}", e);
+                    recovery_error.set(Some(e.to_string()));
                     return;
                 }
                 Err(join_err) => {
                     tracing::error!("Recovery derivation panicked: {}", join_err);
-                    recovery_error.set(true);
+                    recovery_error.set(Some("Key derivation failed unexpectedly".into()));
                     return;
                 }
             };
@@ -272,8 +270,8 @@ fn render_recovery_ui(
             // Try to open DB with derived key
             let opts = match build_sqlcipher_options(&db_path, &key) {
                 Ok(o) => o,
-                Err(_) => {
-                    recovery_error.set(true);
+                Err(e) => {
+                    recovery_error.set(Some(e.to_string()));
                     return;
                 }
             };
@@ -286,14 +284,17 @@ fn render_recovery_ui(
                         crate::backend::db_key::KEY_USERNAME,
                         &key,
                     );
-                    recovery_error.set(false);
+                    recovery_error.set(None);
                     show_recovery_dialog.set(false);
                     show_toast_success("Database online!".into(), toast_state);
                     db_init_notified.set(true);
                     db_resource.restart();
                 }
                 Err(_) => {
-                    recovery_error.set(true);
+                    let err =
+                        crate::backend::db_key::DBKeyError::RecoveryKeyInvalid.to_string();
+                    tracing::warn!("Recovery key invalid: {}", err);
+                    recovery_error.set(Some(err));
                 }
             }
         });

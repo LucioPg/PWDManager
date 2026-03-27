@@ -6,7 +6,7 @@ use dioxus::prelude::*;
 #[component]
 pub fn RecoveryKeyInputDialog(
     open: Signal<bool>,
-    error: Signal<bool>,
+    error: Signal<Option<String>>,
     on_recover: EventHandler<String>,
     on_reset: EventHandler<()>,
 ) -> Element {
@@ -43,7 +43,7 @@ pub fn RecoveryKeyInputDialog(
                 value: "{input_value}",
                 oninput: move |e| {
                     input_value.set(e.value());
-                    error.set(false);
+                    error.set(None);
                 },
                 onkeydown: move |e: KeyboardEvent| {
                     if e.code() == Code::Enter {
@@ -57,8 +57,8 @@ pub fn RecoveryKeyInputDialog(
             }
 
             // Error message (conditional)
-            if error() {
-                p { class: "text-error py-2 text-sm", "Invalid recovery key. Please try again." }
+            if let Some(msg) = error() {
+                p { class: "text-error py-2 text-sm", "{msg}" }
             }
 
             // Action buttons

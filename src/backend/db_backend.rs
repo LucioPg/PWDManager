@@ -226,6 +226,86 @@ pub async fn init_db() -> Result<InitResult, DBError> {
     }
 }
 
+/// Re-encrypts the database with a new key derived from a fresh diceware passphrase.
+///
+/// Flow:
+/// 1. Retrieve current key from keyring (to open the DB with the old key)
+/// 2. Back up current salt (to restore if rekey fails)
+/// 3. Generate new diceware passphrase + salt + derived key (spawn_blocking)
+/// 4. Write new salt file
+/// 5. Open temp connection with old key, execute `PRAGMA rekey` with new key
+/// 6. On failure: restore old salt file
+/// 7. On success: update keyring with new key, return new passphrase
+#[cfg(feature = "desktop")]
+pub async fn rekey_database() -> Result<secrecy::SecretString, DBError> {
+    let db_path = get_db_path()?;
+    let service_name = db_key::keyring_service_name();
+
+    // 1. Get current key from keyring
+    let old_key = db_key::retrieve_db_key(service_name, db_key::KEY_USERNAME)
+        .map_err(|e| DBError::new_general_error(format!("Cannot retrieve current key: {}", e)))?;
+
+    // 2. Back up current salt (to restore if rekey fails)
+    let old_salt = db_key::read_salt(&db_path)
+        .map_err(|e| DBError::new_general_error(format!("Cannot read current salt: {}", e)))?;
+
+    // 3. Generate new passphrase + salt + key (CPU-bound)
+    let (new_passphrase, new_salt, new_key) = tokio::task::spawn_blocking({
+        move || {
+            let passphrase = db_key::generate_recovery_passphrase()?;
+            let salt = db_key::generate_db_salt();
+            let key = db_key::derive_key(&passphrase, &salt)?;
+            Ok::<(String, [u8; 16], String), db_key::DBKeyError>((passphrase, salt, key))
+        }
+    })
+    .await
+    .map_err(|e| DBError::new_general_error(format!("Key derivation panicked: {}", e)))?
+    .map_err(|e| DBError::new_general_error(format!("Key derivation failed: {}", e)))?;
+
+    // 4. Write new salt file
+    db_key::write_salt(&db_path, &new_salt)
+        .map_err(|e| DBError::new_general_error(format!("Cannot write new salt: {}", e)))?;
+
+    // 5. Open temp connection with old key, execute PRAGMA rekey
+    let pragma_rekey = format!("PRAGMA rekey = \"x'{}'\"", new_key);
+    let connect_opts = build_sqlcipher_options(&db_path, &old_key)?;
+
+    let rekey_result = SqlitePool::connect_with(connect_opts).await;
+    match rekey_result {
+        Ok(temp_pool) => match sqlx::query(&pragma_rekey).execute(&temp_pool).await {
+            Ok(_) => {
+                drop(temp_pool);
+                // 7. Update keyring with new key
+                db_key::store_db_key(service_name, db_key::KEY_USERNAME, &new_key)
+                    .map_err(|e| {
+                        DBError::new_general_error(format!(
+                            "Cannot store new key in keyring: {}",
+                            e
+                        ))
+                    })?;
+                Ok(secrecy::SecretString::new(new_passphrase.into()))
+            }
+            Err(e) => {
+                drop(temp_pool);
+                // 6. Restore old salt file on failure
+                let _ = db_key::write_salt(&db_path, &old_salt);
+                Err(DBError::new_general_error(format!(
+                    "PRAGMA rekey failed: {}",
+                    e
+                )))
+            }
+        },
+        Err(e) => {
+            // 6. Restore old salt file on failure
+            let _ = db_key::write_salt(&db_path, &old_salt);
+            Err(DBError::new_general_error(format!(
+                "Failed to connect with old key: {}",
+                e
+            )))
+        }
+    }
+}
+
 /// Prepara l'aggiornamento utente recuperando la vecchia password se necessario.
 ///
 /// Questa funzione gestisce la logica di preparazione per l'aggiornamento utente:
