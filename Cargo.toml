@@ -27,6 +27,7 @@ sys-locale = "0.2"
 # Dipendenze esterne
 tracing = "0.1.44"
 dioxus = { version = "0.7.3", features = ["desktop", "router"] }
+tray-icon = "0.21"
 sqlx = { version = "0.8.6", default-features = false, features = ["runtime-tokio", "sqlite", "macros"] }
 libsqlite3-sys = { version = "0.30", default-features = false, features = ["bundled-sqlcipher"] }
 tokio = { version = "1.49.0", features = ["full", "tracing"] }
