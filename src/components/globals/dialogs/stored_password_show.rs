@@ -19,7 +19,7 @@ pub fn StoredPasswordShowDialog(
 ) -> Element {
     #[allow(unused_mut)]
     let mut stored_password_dialog_state = use_context::<StoredPasswordShowDialogState>();
-    let mut open_clone = stored_password_dialog_state.is_open.clone();
+    let mut open_clone = stored_password_dialog_state.is_open;
     let mut url_sig = use_signal(String::new);
     let mut notes_sig = use_signal(String::new);
     let mut password = use_signal(String::new);
@@ -91,7 +91,6 @@ pub fn StoredPasswordShowDialog(
 
                 label { class: "label",
                     strong { "Username: " }
-                
                 }
                 div { class: "flex flex-row gap-2",
                     button {
@@ -99,7 +98,7 @@ pub fn StoredPasswordShowDialog(
                         r#type: "button",
                         tabindex: "-1",
                         aria_label: "Copy into clipboard",
-                        disabled: username_sig().len() == 0,
+                        disabled: username_sig().is_empty(),
                         onclick: move |_| {
                             copy_to_clipboard(username_sig().clone());
                         },
@@ -116,7 +115,7 @@ pub fn StoredPasswordShowDialog(
                         r#type: "button",
                         tabindex: "-1",
                         aria_label: "Copy into clipboard",
-                        disabled: url_sig().len() == 0,
+                        disabled: url_sig().is_empty(),
                         onclick: move |_| {
                             copy_to_clipboard(url_sig().clone());
                         },
@@ -133,7 +132,7 @@ pub fn StoredPasswordShowDialog(
                         r#type: "button",
                         tabindex: "-1",
                         aria_label: "Copy into clipboard",
-                        disabled: password().len() == 0,
+                        disabled: password().is_empty(),
                         onclick: move |_| {
                             copy_to_clipboard(password().clone());
                         },
@@ -144,7 +143,6 @@ pub fn StoredPasswordShowDialog(
 
                 label { class: "label",
                     strong { "Notes: " }
-                
                 }
                 FormField {
                     label: String::new(),

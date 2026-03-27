@@ -19,7 +19,7 @@ pub fn UserDeletionDialog(
     username: String,
 ) -> Element {
     // Cloni per le closure
-    let mut open_clone = open.clone();
+    let mut open_clone = open;
 
     rsx! {
         crate::components::globals::dialogs::BaseModal {

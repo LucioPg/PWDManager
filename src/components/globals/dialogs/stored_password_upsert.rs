@@ -29,7 +29,7 @@ pub fn StoredPasswordUpsertDialog(
     }
     #[allow(unused_mut)]
     let mut stored_password_dialog_state = use_context::<StoredPasswordUpsertDialogState>();
-    let mut open_clone = stored_password_dialog_state.is_open.clone();
+    let mut open_clone = stored_password_dialog_state.is_open;
     let mut is_new = use_signal(|| false);
     let mut url_sig = use_signal(String::new);
     let mut notes_sig = use_signal(|| None::<String>);
@@ -58,8 +58,8 @@ pub fn StoredPasswordUpsertDialog(
         }
     });
     use_effect(move || {
-        let mut this_error = error.clone();
-        let toast = toast.clone();
+        let mut this_error = error;
+        let toast = toast;
         if let Some(msg) = this_error() {
             show_toast_error(format!("Error saving user: {}", msg), toast);
             this_error.set(None);
@@ -84,18 +84,16 @@ pub fn StoredPasswordUpsertDialog(
             error.set(Some("User not logged in".to_string()));
             return;
         }
-        let current = stored_password_dialog_state
-            .current_stored_raw_password
-            .clone();
+        let current = stored_password_dialog_state.current_stored_raw_password;
         let user_id = user.clone().unwrap().id;
         let stored_password_id = match current() {
             Some(data) => data.id,
             None => None,
         };
-        let name = name_sig.clone();
-        let username = username_sig.clone();
-        let url = url_sig.clone();
-        let note = notes_sig.clone();
+        let name = name_sig;
+        let username = username_sig;
+        let url = url_sig;
+        let note = notes_sig;
         let evaluated_password_reader = evaluated_password.read().clone();
         let (password_to_be_saved, score) = if let Some(ref result) = evaluated_password_reader {
             (result.password.clone(), result.score)

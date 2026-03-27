@@ -1,16 +1,15 @@
 use super::base_modal::ModalVariant;
-use crate::components::{ActionButton, ButtonSize, ButtonType, ButtonVariant};
 use crate::components::globals::WarningIcon;
+use crate::components::{ActionButton, ButtonSize, ButtonType, ButtonVariant};
 use dioxus::prelude::*;
 
 #[component]
 pub fn DatabaseResetDialog(
     open: Signal<bool>,
     on_confirm: EventHandler<()>,
-    #[props(default)]
-    on_cancel: EventHandler<()>,
+    #[props(default)] on_cancel: EventHandler<()>,
 ) -> Element {
-    let mut open_clone = open.clone();
+    let mut open_clone = open;
 
     rsx! {
         crate::components::globals::dialogs::BaseModal {
@@ -37,9 +36,7 @@ pub fn DatabaseResetDialog(
 
             h3 { class: "font-bold text-lg mb-2", "Reset database?" }
 
-            p { class: "py-4",
-                "All data will be permanently deleted."
-            }
+            p { class: "py-4", "All data will be permanently deleted." }
 
             div { class: "modal-action",
 

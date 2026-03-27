@@ -26,7 +26,7 @@ pub fn ImportWarningDialog(
     #[props(default)]
     on_cancel: EventHandler<()>,
 ) -> Element {
-    let mut open_clone = open.clone();
+    let mut open_clone = open;
 
     rsx! {
         crate::components::globals::dialogs::BaseModal {

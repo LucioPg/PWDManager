@@ -10,13 +10,14 @@ pub fn RecoveryKeyInputDialog(
     on_recover: EventHandler<String>,
     on_reset: EventHandler<()>,
 ) -> Element {
+    #[allow(redundant_closure)]
     let mut input_value = use_signal(|| String::new());
 
-    let on_recover_clone = on_recover.clone();
-    let mut input_value_clone = input_value.clone();
+    let on_recover_clone = on_recover;
+    let mut input_value_clone = input_value;
 
-    let on_recover_clone2 = on_recover.clone();
-    let mut input_value_clone2 = input_value.clone();
+    let on_recover_clone2 = on_recover;
+    let mut input_value_clone2 = input_value;
 
     rsx! {
         crate::components::globals::dialogs::BaseModal {
@@ -29,12 +30,8 @@ pub fn RecoveryKeyInputDialog(
             h3 { class: "font-bold text-lg mb-2", "Recovery Key" }
 
             // Info text
-            p { class: "py-2",
-                "The encryption key is not available or invalid."
-            }
-            p { class: "py-2",
-                "Enter your recovery key to restore access."
-            }
+            p { class: "py-2", "The encryption key is not available or invalid." }
+            p { class: "py-2", "Enter your recovery key to restore access." }
 
             // Text input
             input {
@@ -61,9 +58,7 @@ pub fn RecoveryKeyInputDialog(
 
             // Error message (conditional)
             if error() {
-                p { class: "text-error py-2 text-sm",
-                    "Invalid recovery key. Please try again."
-                }
+                p { class: "text-error py-2 text-sm", "Invalid recovery key. Please try again." }
             }
 
             // Action buttons

@@ -16,7 +16,7 @@ pub fn AllStoredPasswordDeletionDialog(
     on_cancel: EventHandler<()>,
 ) -> Element {
     // Cloni per le closure
-    let mut open_clone = open.clone();
+    let mut open_clone = open;
 
     rsx! {
         crate::components::globals::dialogs::BaseModal {
@@ -80,7 +80,6 @@ pub fn AllStoredPasswordDeletionDialog(
                         open_clone.set(false);
                     },
                 }
-            
             }
         }
     }
