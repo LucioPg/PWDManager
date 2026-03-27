@@ -10,7 +10,7 @@ pub fn RecoveryKeyInputDialog(
     on_recover: EventHandler<String>,
     on_reset: EventHandler<()>,
 ) -> Element {
-    #[allow(redundant_closure)]
+    #[allow(clippy::redundant_closure)]
     let mut input_value = use_signal(|| String::new());
 
     let on_recover_clone = on_recover;
