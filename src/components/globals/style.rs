@@ -24,7 +24,7 @@ static FUTURISTIC_COMMON_FONT: Asset = asset!(
 // static MAIN_CSS: Asset = asset!("/assets/main.css");
 #[component]
 pub fn Style() -> Element {
-    /// assets need to be used to be exported as files
+    // assets need to be used to be exported as files
     let _ = format!("{FUTURISTIC_COMMON_FONT}");
     let _ = format!("{FUTURISTIC_FONT}");
     let _ = format!("{COMMON_FONT}");
