@@ -9,15 +9,19 @@ pub fn RouteWrapper() -> Element {
     let route = use_route::<Route>();
 
     // Determiniamo se siamo nella landing page
-    let is_landing = matches!(route, Route::LandingPage {});
+    let is_landing = matches!(route, Route::LandingPage);
 
     let logo_data: String = format!("data:image/png;base64,{}", base64_encode(LOGO_BYTES));
     // Se è landing, opacità 100%, altrimenti 30%
     let bg_opacity = if is_landing { "1.0" } else { "0.3" };
     // Classe per visibilità sottotesto (opacity + pointer-events per evitare shuttering)
-    let slogan_visibility = if is_landing { "pwd-slogan-visible" } else { "pwd-slogan-hidden" };
+    let slogan_visibility = if is_landing {
+        "pwd-slogan-visible"
+    } else {
+        "pwd-slogan-hidden"
+    };
 
-    let mut app_theme = use_context::<Signal<Theme>>();
+    let app_theme = use_context::<Signal<Theme>>();
 
     // Imposta data-theme sull'elemento <html> per evitare che DaisyUI applichi
     // uno sfondo opaco al div contenitore (che coprirebbe il logo in z-index: -10)
@@ -50,9 +54,7 @@ pub fn RouteWrapper() -> Element {
             }
 
             // Contenuto dell'app (le pagine vere e proprie)
-            main { class: "relative z-10",
-                Outlet::<Route> {}
-            }
+            main { class: "relative z-10", Outlet::<Route> {} }
         }
     }
 }
