@@ -2,7 +2,6 @@ use crate::auth::{AuthState, User};
 use crate::backend::db_backend::{
     fetch_user_passwords_generation_settings, upsert_password_config,
 };
-use crate::backend::password_types_helper::{PasswordGeneratorConfig, PasswordPreset};
 use crate::components::globals::toggle::{Toggle, ToggleColor, ToggleSize};
 use crate::components::{ActionButton, ButtonSize, ButtonType, ButtonVariant};
 use dioxus::prelude::*;
@@ -11,6 +10,7 @@ use pwd_dioxus::form::{FormField, PositiveInt};
 use pwd_dioxus::spinner::{Spinner, SpinnerSize};
 use pwd_dioxus::{InputType, show_toast_error, show_toast_success, use_toast};
 use pwd_types::ExcludedSymbolSet;
+use pwd_types::{PasswordGeneratorConfig, PasswordPreset};
 use sqlx::SqlitePool;
 
 fn preset_options() -> Vec<(&'static str, Option<AnyPreset>)> {
