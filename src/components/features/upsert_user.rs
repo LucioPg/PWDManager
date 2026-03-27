@@ -3,11 +3,13 @@ use crate::backend::avatar_utils::get_user_avatar_with_default;
 use crate::backend::db_backend::{delete_user, register_user_with_settings, save_or_update_user};
 use crate::backend::ui_utils::pick_and_process_avatar;
 use crate::components::{
-    ActionButton, AvatarSelector, AvatarSize, ButtonSize, ButtonType, ButtonVariant, FormField,
-    InputType, MigrationProgressDialog, MigrationWarningDialog, PasswordHandler,
-    UserDeletionDialog, schedule_toast_success, show_toast_error, show_toast_success, use_toast,
+    ActionButton, AvatarSelector, AvatarSize, ButtonSize, ButtonType, ButtonVariant,
+    MigrationProgressDialog, MigrationWarningDialog, PasswordHandler, UserDeletionDialog,
+    schedule_toast_success, show_toast_error, show_toast_success, use_toast,
 };
 use dioxus::prelude::*;
+use pwd_dioxus::InputType;
+use pwd_dioxus::form::FormField;
 use secrecy::ExposeSecret;
 use sqlx::SqlitePool;
 

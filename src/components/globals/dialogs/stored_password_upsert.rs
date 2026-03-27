@@ -2,10 +2,12 @@ use super::base_modal::{BaseModal, ModalVariant};
 use crate::backend::password_utils::create_stored_data_pipeline_bulk;
 use crate::components::features::dashboard::StoredPasswordUpsertDialogState;
 use crate::components::{
-    ActionButton, ButtonSize, ButtonType, ButtonVariant, FormField, FormSecret, InputType,
-    PasswordHandler, show_toast_error, use_toast,
+    ActionButton, ButtonSize, ButtonType, ButtonVariant, PasswordHandler, show_toast_error,
+    use_toast,
 };
 use dioxus::prelude::*;
+pub use pwd_dioxus::form::FormField;
+use pwd_dioxus::{FormSecret, InputType};
 use pwd_types::{PasswordChangeResult, StoredRawPassword};
 use secrecy::{ExposeSecret, SecretString};
 use sqlx::SqlitePool;

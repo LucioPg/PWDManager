@@ -1,14 +1,12 @@
 use crate::auth::AuthState;
 use crate::backend::db_backend::{check_user, fetch_user_data};
-use crate::components::{
-    ActionButtons, ActionButtonsVariant, FormField, FormSecret, InputType, show_toast_error,
-    use_toast,
-};
+use crate::components::{ActionButtons, ActionButtonsVariant, show_toast_error, use_toast};
 use dioxus::prelude::*;
+use pwd_dioxus::form::FormField;
+use pwd_dioxus::{FormSecret, InputType};
 use secrecy::SecretString;
 use sqlx::SqlitePool;
 use tracing::{debug, instrument};
-
 #[component]
 #[instrument]
 pub fn Login() -> Element {

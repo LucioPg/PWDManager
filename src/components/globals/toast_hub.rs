@@ -4,6 +4,6 @@
 //! See pwd_dioxus::toast for documentation.
 
 pub use pwd_dioxus::{
-    schedule_toast_success, show_toast_error, show_toast_success,
-    ToastContainer, ToastHubState, ToastMessage, ToastType, use_toast,
+    ToastContainer, ToastHubState, schedule_toast_success, show_toast_error, show_toast_success,
+    use_toast,
 };

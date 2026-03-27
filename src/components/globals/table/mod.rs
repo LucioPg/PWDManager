@@ -4,7 +4,7 @@ mod table_row;
 use pwd_types::StoredRawPassword;
 
 pub use component::*;
-pub use table_row::{StoredRawPasswordRow, StoredRawPasswordRowProps};
+pub use table_row::StoredRawPasswordRow;
 
 /// Stato del tooltip delle note, gestito a livello di tabella.
 /// Contiene i dati della password e le coordinate dove mostrare il tooltip.
