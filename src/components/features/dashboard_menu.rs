@@ -1,10 +1,10 @@
 use crate::backend::db_backend::delete_all_user_stored_passwords;
 use crate::backend::export_types::ExportFormat;
 use crate::backend::import::validate_import_path;
-use crate::components::features::export_data::ExportData;
-use crate::components::{ImportData, ImportWarningDialog, ImportProgressDialog};
-use crate::components::globals::{ExportProgressDialog, ExportWarningDialog};
 use crate::components::AllStoredPasswordDeletionDialog;
+use crate::components::features::export_data::ExportData;
+use crate::components::globals::{ExportProgressDialog, ExportWarningDialog};
+use crate::components::{ImportData, ImportProgressDialog, ImportWarningDialog};
 use dioxus::prelude::*;
 use pwd_dioxus::{show_toast_error, use_toast};
 use rfd::FileDialog;
@@ -19,25 +19,25 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
     let user = auth_state.get_user();
     let toast = use_toast();
     let mut error = use_signal(|| Option::<String>::None);
-    let mut warning_open = use_signal(|| false);
+    let warning_open = use_signal(|| false);
 
     // Export state
     let mut export_warning_open = use_signal(|| false);
     let mut export_progress_open = use_signal(|| false);
-    let mut export_completed = use_signal(|| false);
-    let mut export_failed = use_signal(|| false);
+    let export_completed = use_signal(|| false);
+    let export_failed = use_signal(|| false);
     // Provide ExportData as context for ExportProgressChn
-    let mut export_data = use_context_provider(|| Signal::new(ExportData::default()));
-    let mut export_format = use_signal(|| ExportFormat::Json);
+    let export_data = use_context_provider(|| Signal::new(ExportData::default()));
+    let export_format = use_signal(|| ExportFormat::Json);
 
     // Import state
     let mut import_warning_open = use_signal(|| false);
     let mut import_progress_open = use_signal(|| false);
-    let mut import_completed = use_signal(|| false);
-    let mut import_failed = use_signal(|| false);
+    let import_completed = use_signal(|| false);
+    let import_failed = use_signal(|| false);
     // Provide ImportData as context for ImportProgressChn
-    let mut import_data = use_context_provider(|| Signal::new(ImportData::default()));
-    let mut import_format = use_signal(|| ExportFormat::Json);
+    let import_data = use_context_provider(|| Signal::new(ImportData::default()));
+    let import_format = use_signal(|| ExportFormat::Json);
 
     // Clone user for each closure that needs it
     let user_for_delete = user.clone();
@@ -68,13 +68,13 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
     };
 
     let on_warning_open = move |_| {
-        let mut warning_open = warning_open.clone();
+        let mut warning_open = warning_open;
         warning_open.set(true);
     };
 
     use_effect(move || {
-        let mut this_error = error.clone();
-        let toast = toast.clone();
+        let mut this_error = error;
+        let toast = toast;
         if let Some(msg) = this_error() {
             show_toast_error(format!("Error saving user: {}", msg), toast);
             this_error.set(None);
@@ -82,16 +82,16 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
     });
 
     // Export handler per JSON
-    let toast_json = toast.clone();
-    let export_data_for_json = export_data.clone();
-    let export_format_for_json = export_format.clone();
-    let export_warning_open_for_json = export_warning_open.clone();
+    let toast_json = toast;
+    let export_data_for_json = export_data;
+    let export_format_for_json = export_format;
+    let export_warning_open_for_json = export_warning_open;
     let on_export_json = move |_| {
         let user_clone = user_json.clone();
-        let toast = toast_json.clone();
-        let mut export_data_json = export_data_for_json.clone();
-        let mut export_format_json = export_format_for_json.clone();
-        let mut export_warning_open_json = export_warning_open_for_json.clone();
+        let toast = toast_json;
+        let mut export_data_json = export_data_for_json;
+        let mut export_format_json = export_format_for_json;
+        let mut export_warning_open_json = export_warning_open_for_json;
         let format = ExportFormat::Json;
 
         spawn(async move {
@@ -100,7 +100,7 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
                 let file_result = tokio::task::spawn_blocking(move || {
                     rfd::FileDialog::new()
                         .add_filter("Export File", &[ext.as_str()])
-                        .set_file_name(&format!("pwdmanager_export.{}", ext))
+                        .set_file_name(format!("pwdmanager_export.{}", ext))
                         .save_file()
                 })
                 .await;
@@ -123,16 +123,16 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
     };
 
     // Export handler per CSV
-    let toast_csv = toast.clone();
-    let export_data_for_csv = export_data.clone();
-    let export_format_for_csv = export_format.clone();
-    let export_warning_open_for_csv = export_warning_open.clone();
+    let toast_csv = toast;
+    let export_data_for_csv = export_data;
+    let export_format_for_csv = export_format;
+    let export_warning_open_for_csv = export_warning_open;
     let on_export_csv = move |_| {
         let user_clone = user_csv.clone();
-        let toast = toast_csv.clone();
-        let mut export_data_csv = export_data_for_csv.clone();
-        let mut export_format_csv = export_format_for_csv.clone();
-        let mut export_warning_open_csv = export_warning_open_for_csv.clone();
+        let toast = toast_csv;
+        let mut export_data_csv = export_data_for_csv;
+        let mut export_format_csv = export_format_for_csv;
+        let mut export_warning_open_csv = export_warning_open_for_csv;
         let format = ExportFormat::Csv;
 
         spawn(async move {
@@ -141,7 +141,7 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
                 let file_result = tokio::task::spawn_blocking(move || {
                     rfd::FileDialog::new()
                         .add_filter("Export File", &[ext.as_str()])
-                        .set_file_name(&format!("pwdmanager_export.{}", ext))
+                        .set_file_name(format!("pwdmanager_export.{}", ext))
                         .save_file()
                 })
                 .await;
@@ -164,16 +164,16 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
     };
 
     // Export handler per XML
-    let toast_xml = toast.clone();
-    let export_data_for_xml = export_data.clone();
-    let export_format_for_xml = export_format.clone();
-    let export_warning_open_for_xml = export_warning_open.clone();
+    let toast_xml = toast;
+    let export_data_for_xml = export_data;
+    let export_format_for_xml = export_format;
+    let export_warning_open_for_xml = export_warning_open;
     let on_export_xml = move |_| {
         let user_clone = user_xml.clone();
-        let toast = toast_xml.clone();
-        let mut export_data_xml = export_data_for_xml.clone();
-        let mut export_format_xml = export_format_for_xml.clone();
-        let mut export_warning_open_xml = export_warning_open_for_xml.clone();
+        let toast = toast_xml;
+        let mut export_data_xml = export_data_for_xml;
+        let mut export_format_xml = export_format_for_xml;
+        let mut export_warning_open_xml = export_warning_open_for_xml;
         let format = ExportFormat::Xml;
 
         spawn(async move {
@@ -182,7 +182,7 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
                 let file_result = tokio::task::spawn_blocking(move || {
                     rfd::FileDialog::new()
                         .add_filter("Export File", &[ext.as_str()])
-                        .set_file_name(&format!("pwdmanager_export.{}", ext))
+                        .set_file_name(format!("pwdmanager_export.{}", ext))
                         .save_file()
                 })
                 .await;
@@ -218,16 +218,16 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
     });
 
     // Import handler per JSON
-    let toast_import_json = toast.clone();
-    let import_data_for_json = import_data.clone();
-    let import_format_for_json = import_format.clone();
-    let import_warning_open_for_json = import_warning_open.clone();
+    let toast_import_json = toast;
+    let import_data_for_json = import_data;
+    let import_format_for_json = import_format;
+    let import_warning_open_for_json = import_warning_open;
     let on_import_json = move |_| {
         let user_clone = user_import_json.clone();
-        let toast = toast_import_json.clone();
-        let mut import_data_json = import_data_for_json.clone();
-        let mut import_format_json = import_format_for_json.clone();
-        let mut import_warning_open_json = import_warning_open_for_json.clone();
+        let toast = toast_import_json;
+        let mut import_data_json = import_data_for_json;
+        let mut import_format_json = import_format_for_json;
+        let mut import_warning_open_json = import_warning_open_for_json;
 
         spawn(async move {
             if let Some(user) = user_clone {
@@ -240,18 +240,16 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
                 .await;
 
                 match file_result {
-                    Ok(Some(path)) => {
-                        match validate_import_path(&path) {
-                            Ok(detected_format) => {
-                                import_data_json.set(ImportData::new(user.id, path, detected_format));
-                                import_format_json.set(detected_format);
-                                import_warning_open_json.set(true);
-                            }
-                            Err(e) => {
-                                show_toast_error(format!("Invalid file: {}", e), toast);
-                            }
+                    Ok(Some(path)) => match validate_import_path(&path) {
+                        Ok(detected_format) => {
+                            import_data_json.set(ImportData::new(user.id, path, detected_format));
+                            import_format_json.set(detected_format);
+                            import_warning_open_json.set(true);
                         }
-                    }
+                        Err(e) => {
+                            show_toast_error(format!("Invalid file: {}", e), toast);
+                        }
+                    },
                     Ok(None) => {
                         tracing::info!("Import cancelled by user");
                     }
@@ -264,16 +262,16 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
     };
 
     // Import handler per CSV
-    let toast_import_csv = toast.clone();
-    let import_data_for_csv = import_data.clone();
-    let import_format_for_csv = import_format.clone();
-    let import_warning_open_for_csv = import_warning_open.clone();
+    let toast_import_csv = toast;
+    let import_data_for_csv = import_data;
+    let import_format_for_csv = import_format;
+    let import_warning_open_for_csv = import_warning_open;
     let on_import_csv = move |_| {
         let user_clone = user_import_csv.clone();
-        let toast = toast_import_csv.clone();
-        let mut import_data_csv = import_data_for_csv.clone();
-        let mut import_format_csv = import_format_for_csv.clone();
-        let mut import_warning_open_csv = import_warning_open_for_csv.clone();
+        let toast = toast_import_csv;
+        let mut import_data_csv = import_data_for_csv;
+        let mut import_format_csv = import_format_for_csv;
+        let mut import_warning_open_csv = import_warning_open_for_csv;
 
         spawn(async move {
             if let Some(user) = user_clone {
@@ -286,18 +284,16 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
                 .await;
 
                 match file_result {
-                    Ok(Some(path)) => {
-                        match validate_import_path(&path) {
-                            Ok(detected_format) => {
-                                import_data_csv.set(ImportData::new(user.id, path, detected_format));
-                                import_format_csv.set(detected_format);
-                                import_warning_open_csv.set(true);
-                            }
-                            Err(e) => {
-                                show_toast_error(format!("Invalid file: {}", e), toast);
-                            }
+                    Ok(Some(path)) => match validate_import_path(&path) {
+                        Ok(detected_format) => {
+                            import_data_csv.set(ImportData::new(user.id, path, detected_format));
+                            import_format_csv.set(detected_format);
+                            import_warning_open_csv.set(true);
                         }
-                    }
+                        Err(e) => {
+                            show_toast_error(format!("Invalid file: {}", e), toast);
+                        }
+                    },
                     Ok(None) => {
                         tracing::info!("Import cancelled by user");
                     }
@@ -310,16 +306,16 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
     };
 
     // Import handler per XML
-    let toast_import_xml = toast.clone();
-    let import_data_for_xml = import_data.clone();
-    let import_format_for_xml = import_format.clone();
-    let import_warning_open_for_xml = import_warning_open.clone();
+    let toast_import_xml = toast;
+    let import_data_for_xml = import_data;
+    let import_format_for_xml = import_format;
+    let import_warning_open_for_xml = import_warning_open;
     let on_import_xml = move |_| {
         let user_clone = user_import_xml.clone();
-        let toast = toast_import_xml.clone();
-        let mut import_data_xml = import_data_for_xml.clone();
-        let mut import_format_xml = import_format_for_xml.clone();
-        let mut import_warning_open_xml = import_warning_open_for_xml.clone();
+        let toast = toast_import_xml;
+        let mut import_data_xml = import_data_for_xml;
+        let mut import_format_xml = import_format_for_xml;
+        let mut import_warning_open_xml = import_warning_open_for_xml;
 
         spawn(async move {
             if let Some(user) = user_clone {
@@ -332,18 +328,16 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
                 .await;
 
                 match file_result {
-                    Ok(Some(path)) => {
-                        match validate_import_path(&path) {
-                            Ok(detected_format) => {
-                                import_data_xml.set(ImportData::new(user.id, path, detected_format));
-                                import_format_xml.set(detected_format);
-                                import_warning_open_xml.set(true);
-                            }
-                            Err(e) => {
-                                show_toast_error(format!("Invalid file: {}", e), toast);
-                            }
+                    Ok(Some(path)) => match validate_import_path(&path) {
+                        Ok(detected_format) => {
+                            import_data_xml.set(ImportData::new(user.id, path, detected_format));
+                            import_format_xml.set(detected_format);
+                            import_warning_open_xml.set(true);
                         }
-                    }
+                        Err(e) => {
+                            show_toast_error(format!("Invalid file: {}", e), toast);
+                        }
+                    },
                     Ok(None) => {
                         tracing::info!("Import cancelled by user");
                     }
@@ -393,25 +387,13 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
                         summary { class: "cursor-pointer", "Import" }
                         ul {
                             li {
-                                button {
-                                    r#type: "button",
-                                    onclick: on_import_json,
-                                    "JSON"
-                                }
+                                button { r#type: "button", onclick: on_import_json, "JSON" }
                             }
                             li {
-                                button {
-                                    r#type: "button",
-                                    onclick: on_import_csv,
-                                    "CSV"
-                                }
+                                button { r#type: "button", onclick: on_import_csv, "CSV" }
                             }
                             li {
-                                button {
-                                    r#type: "button",
-                                    onclick: on_import_xml,
-                                    "XML"
-                                }
+                                button { r#type: "button", onclick: on_import_xml, "XML" }
                             }
                         }
                     }
@@ -423,25 +405,13 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
                         summary { class: "cursor-pointer", "Export" }
                         ul {
                             li {
-                                button {
-                                    r#type: "button",
-                                    onclick: on_export_json,
-                                    "JSON"
-                                }
+                                button { r#type: "button", onclick: on_export_json, "JSON" }
                             }
                             li {
-                                button {
-                                    r#type: "button",
-                                    onclick: on_export_csv,
-                                    "CSV"
-                                }
+                                button { r#type: "button", onclick: on_export_csv, "CSV" }
                             }
                             li {
-                                button {
-                                    r#type: "button",
-                                    onclick: on_export_xml,
-                                    "XML"
-                                }
+                                button { r#type: "button", onclick: on_export_xml, "XML" }
                             }
                         }
                     }
@@ -467,7 +437,7 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
             open: warning_open,
             on_confirm: on_delete_all,
             on_cancel: move |_| {
-                let mut warning_open = warning_open.clone();
+                let mut warning_open = warning_open;
                 warning_open.set(false);
             },
         }
