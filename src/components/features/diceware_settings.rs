@@ -25,28 +25,28 @@ pub fn DicewareSettings() -> Element {
     let pool_for_submit = pool.clone();
     let toast = use_toast();
     let user_id = auth_state.get_user_id();
-    let mut error = use_signal(|| <Option<String>>::None);
-    let mut word_count = use_signal(|| PositiveInt(6));
-    let mut special_chars = use_signal(|| NonNegativeInt(0));
+    let error = use_signal(|| <Option<String>>::None);
+    let word_count = use_signal(|| PositiveInt(6));
+    let special_chars = use_signal(|| NonNegativeInt(0));
     let mut force_special_chars = use_signal(|| false);
-    let mut numbers = use_signal(|| NonNegativeInt(0));
+    let numbers = use_signal(|| NonNegativeInt(0));
     let mut current_language = use_signal(|| Option::<DicewareLanguage>::None);
-    let mut settings_ready = use_signal(|| false);
-    let mut settings_id = use_signal(|| -1i64);
+    let settings_ready = use_signal(|| false);
+    let settings_id = use_signal(|| -1i64);
 
     let options = language_options();
 
-    let mut current_settings = use_resource(move || {
-        let user_id = user_id.clone();
+    let _current_settings = use_resource(move || {
+        let user_id = user_id;
         let pool = pool.clone();
-        let mut word_count = word_count.clone();
-        let mut special_chars = special_chars.clone();
-        let mut force_special_chars = force_special_chars.clone();
-        let mut numbers = numbers.clone();
-        let mut current_language = current_language.clone();
-        let mut settings_id = settings_id.clone();
-        let mut settings_ready = settings_ready.clone();
-        let mut error = error.clone();
+        let mut word_count = word_count;
+        let mut special_chars = special_chars;
+        let mut force_special_chars = force_special_chars;
+        let mut numbers = numbers;
+        let mut current_language = current_language;
+        let mut settings_id = settings_id;
+        let mut settings_ready = settings_ready;
+        let mut error = error;
         async move {
             match fetch_diceware_settings(&pool, user_id).await {
                 Ok(settings) => {
@@ -69,8 +69,8 @@ pub fn DicewareSettings() -> Element {
     });
 
     use_effect(move || {
-        let mut this_error = error.clone();
-        let toast = toast.clone();
+        let mut this_error = error;
+        let toast = toast;
         if let Some(msg) = this_error() {
             show_toast_error(format!("Error fetching diceware settings: {}", msg), toast);
             this_error.set(None);
@@ -96,7 +96,7 @@ pub fn DicewareSettings() -> Element {
         };
 
         let pool = pool_for_submit.clone();
-        let toast = toast.clone();
+        let toast = toast;
         spawn(async move {
             match upsert_diceware_settings(&pool, settings).await {
                 Ok(()) => {
@@ -215,7 +215,7 @@ pub fn DicewareSettings() -> Element {
                     }
                 }
             }
-        
+
         }
     }
 }
