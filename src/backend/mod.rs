@@ -38,13 +38,5 @@ mod import_tests;
 
 // Re-export pwd-strength for backward compatibility
 pub use pwd_strength::{
-    evaluate_password_strength, evaluate_password_strength_tx, init_blacklist,
-    init_blacklist_from_path, is_blacklisted,
-};
-
-// Re-export pwd-crypto for backward compatibility
-pub use pwd_crypto::{
-    CryptoError, base64_encode, create_cipher, create_nonce, decrypt_optional_to_string,
-    decrypt_to_string, encrypt, encrypt_optional_string, encrypt_string, generate_salt,
-    nonce_from_vec, verify_password,
+    evaluate_password_strength, evaluate_password_strength_tx, init_blacklist_from_path,
 };

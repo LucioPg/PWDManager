@@ -29,7 +29,6 @@ pub use pagenotfound::*;
 pub use password_handler::*;
 pub use route_wrapper::*;
 pub use spinner::*;
-pub use stat_card::*;
 pub use stats_aside::StatsAside;
 pub use style::*;
 pub use svgs::*;
