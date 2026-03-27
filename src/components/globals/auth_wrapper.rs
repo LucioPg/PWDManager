@@ -26,8 +26,8 @@ pub fn AuthWrapper() -> Element {
     let mut auto_update_fetched = use_signal(|| false);
 
     // Leggi Signal<UpdateState> fornito da App() — NON dentro use_effect!
-    let mut update_state = use_context::<Signal<UpdateState>>();
-    let mut update_manifest = use_context::<Signal<Option<UpdateManifest>>>();
+    let update_state = use_context::<Signal<UpdateState>>();
+    let update_manifest = use_context::<Signal<Option<UpdateManifest>>>();
     // Guardia: evita check multipli concorrenti
     let mut update_check_started = use_signal(|| false);
 
