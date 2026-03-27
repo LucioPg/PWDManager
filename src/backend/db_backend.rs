@@ -2,7 +2,7 @@
 #[cfg(feature = "desktop")]
 use crate::backend::db_key;
 use crate::backend::init_queries::QUERIES;
-use crate::backend::settings_types::{DicewareGenerationSettings, DicewareLanguage, UserSettings};
+use crate::backend::settings_types::{DicewareGenerationSettings, UserSettings};
 use crate::backend::utils::verify_password;
 use custom_errors::{AuthError, DBError};
 use dioxus::prelude::*;
@@ -146,8 +146,7 @@ pub(crate) async fn perform_setup(
     .map_err(|e| DBError::new_general_error(format!("Key derivation task failed: {}", e)))?
     .map_err(|e| DBError::new_general_error(format!("Key setup failed: {}", e)))?;
 
-    let connect_options = build_sqlcipher_options(&db_path, &db_key_value)?
-        .create_if_missing(true);
+    let connect_options = build_sqlcipher_options(&db_path, &db_key_value)?.create_if_missing(true);
 
     let pool = SqlitePool::connect_with(connect_options)
         .await
@@ -183,11 +182,8 @@ pub async fn init_db() -> Result<InitResult, DBError> {
         {
             debug!("First setup: generating recovery key and creating database (dev)");
             let passphrase = db_key::DEV_RECOVERY_PASSPHRASE.to_string();
-            let (recovery_phrase, pool) = perform_setup(
-                &passphrase,
-                db_key::keyring_service_name(),
-            )
-            .await?;
+            let (recovery_phrase, pool) =
+                perform_setup(&passphrase, db_key::keyring_service_name()).await?;
             return Ok(InitResult::FirstSetup {
                 pool,
                 recovery_phrase,
@@ -210,7 +206,8 @@ pub async fn init_db() -> Result<InitResult, DBError> {
     }
 
     // Try to get key from keyring
-    let keyring_result = db_key::retrieve_db_key(db_key::keyring_service_name(), db_key::KEY_USERNAME);
+    let keyring_result =
+        db_key::retrieve_db_key(db_key::keyring_service_name(), db_key::KEY_USERNAME);
 
     match keyring_result {
         Ok(key) => {
@@ -265,30 +262,29 @@ async fn prepare_user_update(
         temp_old_password: None,
     };
 
-    if let Some(psw) = password {
-        if !psw.expose_secret().trim().is_empty() {
-            // Backup della vecchia password hash prima di sovrascriverla
-            match fetch_user_auth_from_id(pool, user_id).await {
-                Ok(user_auth) => {
-                    // Salva la vecchia password nella struct per includerla nell'UPDATE
-                    // password.0 è SecretBox<str>, convertiamo in String
-                    update.temp_old_password =
-                        Some(user_auth.password.0.expose_secret().to_string());
-                }
-                Err(e) => {
-                    // Non bloccare l'aggiornamento, ma logga il problema
-                    warn!(
-                        user_id = user_id,
-                        error = %e,
-                        "Failed to backup old password during user update - recovery may be unavailable"
-                    );
-                }
+    if let Some(psw) = password
+        && !psw.expose_secret().trim().is_empty()
+    {
+        // Backup della vecchia password hash prima di sovrascriverla
+        match fetch_user_auth_from_id(pool, user_id).await {
+            Ok(user_auth) => {
+                // Salva la vecchia password nella struct per includerla nell'UPDATE
+                // password.0 è SecretBox<str>, convertiamo in String
+                update.temp_old_password = Some(user_auth.password.0.expose_secret().to_string());
             }
-
-            let hash_password = crate::backend::utils::encrypt(psw.clone())
-                .map_err(|e| DBError::new_save_error(format!("Failed to encrypt: {}", e)))?;
-            update.password = Some(SecretString::new(hash_password.into()));
+            Err(e) => {
+                // Non bloccare l'aggiornamento, ma logga il problema
+                warn!(
+                    user_id = user_id,
+                    error = %e,
+                    "Failed to backup old password during user update - recovery may be unavailable"
+                );
+            }
         }
+
+        let hash_password = crate::backend::utils::encrypt(psw.clone())
+            .map_err(|e| DBError::new_save_error(format!("Failed to encrypt: {}", e)))?;
+        update.password = Some(SecretString::new(hash_password.into()));
     }
 
     Ok(update)
@@ -639,82 +635,6 @@ fn get_user_row(row: SqliteRow) -> (i64, String, String, Option<Vec<u8>>) {
     )
 }
 
-/// recupera la lista degli utenti (senza avatar).
-///
-/// # Parametri
-///
-/// * `pool` - Pool SQLite per la connessione al database
-///
-/// # Valòre Restituito
-///
-/// Return [`Vec<(i64, String, String, Option<Vec<u8>)>`] - Lista di utenti, ognuno come tupla (ID, username, created_at, avatar)
-///
-/// # Limiti
-///
-/// * Ultimi 10 utenti ordinati per ID decrescente
-///
-/// # Errori
-///
-/// - `DBError::new_list_error` - Errore nel recupero della lista
-///
-/// # Note
-///
-/// - Gli avatar vengono esclusi per ottimizzare le performance
-#[instrument(skip(pool))]
-pub async fn list_users(
-    pool: &SqlitePool,
-) -> Result<Vec<(i64, String, String, Option<Vec<u8>>)>, DBError> {
-    debug!("Fetching list of users from database");
-    let rows =
-        query("SELECT id, username, created_at, avatar FROM users ORDER BY id DESC LIMIT 10")
-            .fetch_all(pool)
-            .await
-            .map_err(|e| DBError::new_list_error(format!("Failed to list users: {}", e)))?;
-    let users = rows.into_iter().map(|row| get_user_row(row)).collect();
-
-    Ok(users)
-}
-
-/// Recupera la lista degli utenti senza avatar.
-///
-/// # Parametri
-///
-/// * `pool` - Pool SQLite per la connessione al database
-///
-/// # Valore Restituito
-///
-/// Return [`Vec<(i64, String, String)>`] - Lista di utenti come tute (ID, username, created_at)
-///
-/// # Limiti
-///
-/// * Ultimi 10 utenti ordinati per ID decrescente
-///
-/// # Note
-///
-/// - Questa versione non recupera l'avatar per ottimizzare le performance
-#[instrument(skip(pool))]
-pub async fn list_users_no_avatar(
-    pool: &SqlitePool,
-) -> Result<Vec<(i64, String, String)>, DBError> {
-    debug!("Fetching list of users from database");
-    let rows = query("SELECT id, username, created_at FROM users ORDER BY id DESC LIMIT 10")
-        .fetch_all(pool)
-        .await
-        .map_err(|e| DBError::new_list_error(format!("Failed to list users: {}", e)))?;
-    let users = rows
-        .into_iter()
-        .map(|row| {
-            (
-                row.get::<i64, _>("id"),
-                row.get::<String, _>("username"),
-                row.get::<String, _>("created_at"),
-            )
-        })
-        .collect();
-
-    Ok(users)
-}
-
 /// Recupera la password hash di un utente dal database.
 ///
 /// # Parametri
@@ -774,6 +694,8 @@ pub async fn fetch_user_auth_from_id(pool: &SqlitePool, user_id: i64) -> Result<
     user_auth.ok_or_else(|| DBError::new_select_error("User not found".into()))
 }
 
+type UserDataResult = (i64, String, String, Option<Vec<u8>>);
+
 /// Recupera tutti i dati di un utente dal database.
 ///
 /// # Parametri
@@ -790,10 +712,7 @@ pub async fn fetch_user_auth_from_id(pool: &SqlitePool, user_id: i64) -> Result<
 /// - `DBError::new_select_error` - Utente non trovato
 /// - `DBError::new_fetch_error` - Errore durante la query
 #[instrument(skip(pool))]
-pub async fn fetch_user_data(
-    pool: &SqlitePool,
-    username: &str,
-) -> Result<(i64, String, String, Option<Vec<u8>>), DBError> {
+pub async fn fetch_user_data(pool: &SqlitePool, username: &str) -> Result<UserDataResult, DBError> {
     debug!("Fetching user credentials in database");
     let row = query("SELECT id, username, created_at, avatar FROM users WHERE username = ?")
         .bind(username)
@@ -838,9 +757,8 @@ pub async fn check_user(
     let password = SecretString::new(password.expose_secret().into());
     let hash = fetch_user_password(pool, username)
         .await
-        .map_err(|e| AuthError::DB(e))?;
-    verify_password(password, hash.as_str()).map_err(|e| AuthError::Decryption(e))?;
-
+        .map_err(AuthError::DB)?;
+    verify_password(password, hash.as_str()).map_err(AuthError::Decryption)?;
     Ok(())
 }
 
@@ -962,8 +880,8 @@ pub async fn fetch_passwords_paginated(
                 "#,
             )
             .bind(user_id)
-            .bind(min as i32)
-            .bind(max as i32)
+            .bind(min)
+            .bind(max)
             .bind(page_size as i32)
             .bind(offset)
             .fetch_all(pool)
@@ -986,8 +904,8 @@ pub async fn fetch_passwords_paginated(
             "SELECT COUNT(*) FROM passwords WHERE user_id = ? AND score >= ? AND score <= ?",
         )
         .bind(user_id)
-        .bind(min as i32)
-        .bind(max as i32)
+        .bind(min)
+        .bind(max)
         .fetch_one(pool)
         .await
         .map_err(|e| DBError::new_list_error(format!("Failed to count passwords: {}", e)))?,
@@ -1057,8 +975,8 @@ pub async fn fetch_all_passwords_for_user_with_filter(
                 "#
         ))
         .bind(user_id)
-        .bind(min as i32)
-        .bind(max as i32)
+        .bind(min)
+        .bind(max)
         .fetch_all(pool)
         .await
         .map_err(|e| DBError::new_list_error(format!("Failed to fetch all passwords: {}", e)))?,
