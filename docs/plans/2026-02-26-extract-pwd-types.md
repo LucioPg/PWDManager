@@ -4,11 +4,13 @@
 
 **Goal:** Estrarre il crate `pwd-types` contenente tipi puri per la gestione delle password dal progetto PWDManager.
 
-**Architecture:** Creazione crate indipendente con feature flags per dipendenze opzionali (sqlx, generator, dioxus). Il progetto padre userà il crate via path dependency.
+**Architecture:** Creazione crate indipendente con feature flags per dipendenze opzionali (sqlx, generator, dioxus). Il
+progetto padre userà il crate via path dependency.
 
 **Tech Stack:** Rust, secrecy, sqlx, sqlx-template, aegis-password-generator
 
 **Reference Documents:**
+
 - `docs/plans/2026-02-26-library-extraction-orchestrator.md` (stato e prerequisiti)
 - `docs/library-extraction-analysis.md` (dettagli tecnici living)
 
@@ -17,17 +19,20 @@
 ## Task 1: Creare Struttura Crate
 
 **Files:**
+
 - Create: `pwd-types/Cargo.toml`
 - Create: `pwd-types/src/lib.rs`
 
 **Step 1.1: Creare directory e Cargo.toml**
 
 Eseguire:
+
 ```bash
 mkdir -p pwd-types/src
 ```
 
 Creare `pwd-types/Cargo.toml`:
+
 ```toml
 [package]
 name = "pwd-types"
@@ -67,6 +72,7 @@ dioxus = { version = "0.7", optional = true }
 **Step 1.2: Creare lib.rs skeleton**
 
 Creare `pwd-types/src/lib.rs`:
+
 ```rust
 //! Tipi puri per la gestione delle password.
 //!
@@ -118,6 +124,7 @@ Expected: Directory e file creati
 ## Task 2: Estrarre Core Types (score.rs, stats.rs)
 
 **Files:**
+
 - Create: `pwd-types/src/score.rs`
 - Create: `pwd-types/src/stats.rs`
 - Source: `src/backend/password_types_helper.rs:349-433`, `374-383`
@@ -125,6 +132,7 @@ Expected: Directory e file creati
 **Step 2.1: Creare score.rs**
 
 Creare `pwd-types/src/score.rs`:
+
 ```rust
 //! Tipi per la valutazione della forza delle password.
 
@@ -251,6 +259,7 @@ mod tests {
 **Step 2.2: Creare stats.rs**
 
 Creare `pwd-types/src/stats.rs`:
+
 ```rust
 //! Statistiche sulle password salvate.
 
@@ -280,6 +289,7 @@ Expected: Compilazione OK (con warnings per unused imports)
 ## Task 3: Estrarre SQLx Types (secrets.rs, stored.rs)
 
 **Files:**
+
 - Create: `pwd-types/src/secrets.rs`
 - Create: `pwd-types/src/stored.rs`
 - Source: `src/backend/password_types_helper.rs:13-150`, `152-321`
@@ -287,6 +297,7 @@ Expected: Compilazione OK (con warnings per unused imports)
 **Step 3.1: Creare secrets.rs**
 
 Creare `pwd-types/src/secrets.rs`:
+
 ```rust
 //! Wrapper secrecy per SQLx/SQLite.
 //!
@@ -395,6 +406,7 @@ impl std::ops::Deref for DbSecretVec {
 **Step 3.2: Creare stored.rs**
 
 Creare `pwd-types/src/stored.rs`:
+
 ```rust
 //! Tipi database per password salvate.
 
@@ -553,12 +565,14 @@ Expected: Compilazione OK
 ## Task 4: Estrarre Generator Types (generator.rs)
 
 **Files:**
+
 - Create: `pwd-types/src/generator.rs`
 - Source: `src/backend/password_types_helper.rs:435-593`
 
 **Step 4.1: Creare generator.rs**
 
 Creare `pwd-types/src/generator.rs`:
+
 ```rust
 //! Configurazione per la generazione di password.
 
@@ -731,6 +745,7 @@ Expected: Compilazione OK
 ## Task 5: Aggiornare Workspace Cargo.toml
 
 **Files:**
+
 - Modify: `Cargo.toml` (root, linee 36-37)
 
 **Step 5.1: Aggiungere pwd-types ai workspace members**
@@ -763,6 +778,7 @@ Expected: Compilazione OK (pwd-types compilato, progetto principale fallisce per
 ## Task 6: Aggiornare Use Paths nel Progetto Padre
 
 **Files da modificare (da grep):**
+
 1. `src/backend/db_backend.rs:3`
 2. `src/backend/password_utils.rs:13`
 3. `src/backend/password_utils_tests.rs:5`
@@ -780,10 +796,13 @@ Expected: Compilazione OK (pwd-types compilato, progetto principale fallisce per
 **Step 6.1: Aggiornare db_backend.rs**
 
 Sostituire:
+
 ```rust
 use crate::backend::password_types_helper::{
 ```
+
 con:
+
 ```rust
 use pwd_types::{
 ```
@@ -791,10 +810,13 @@ use pwd_types::{
 **Step 6.2: Aggiornare password_utils.rs**
 
 Sostituire:
+
 ```rust
 use crate::backend::password_types_helper::{
 ```
+
 con:
+
 ```rust
 use pwd_types::{
 ```
@@ -802,10 +824,13 @@ use pwd_types::{
 **Step 6.3: Aggiornare password_utils_tests.rs**
 
 Sostituire:
+
 ```rust
 use crate::backend::password_types_helper::{
 ```
+
 con:
+
 ```rust
 use pwd_types::{
 ```
@@ -813,19 +838,25 @@ use pwd_types::{
 **Step 6.4: Aggiornare strength_utils.rs**
 
 Sostituire:
+
 ```rust
 use crate::backend::password_types_helper::{PasswordEvaluation, PasswordScore};
 ```
+
 con:
+
 ```rust
 use pwd_types::{PasswordEvaluation, PasswordScore};
 ```
 
 E nel modulo test (linea 279), sostituire:
+
 ```rust
 use crate::backend::password_types_helper::PasswordStrength;
 ```
+
 con:
+
 ```rust
 use pwd_types::PasswordStrength;
 ```
@@ -833,10 +864,13 @@ use pwd_types::PasswordStrength;
 **Step 6.5: Aggiornare db_settings_tests.rs**
 
 Sostituire:
+
 ```rust
 use crate::backend::password_types_helper::PasswordPreset;
 ```
+
 con:
+
 ```rust
 use pwd_types::PasswordPreset;
 ```
@@ -844,10 +878,13 @@ use pwd_types::PasswordPreset;
 **Step 6.6: Aggiornare components (upsert_user.rs, dashboard.rs, ...)**
 
 Per ognuno dei file in `src/components/`, sostituire:
+
 ```rust
 use crate::backend::password_types_helper::...
 ```
+
 con:
+
 ```rust
 use pwd_types::...
 ```
@@ -865,6 +902,7 @@ Expected: Compilazione OK con warnings
 ## Task 7: Aggiornare mod.rs e Rimuovere Vecchio Codice
 
 **Files:**
+
 - Modify: `src/backend/mod.rs`
 - Modify: `src/backend/password_types_helper.rs` (da trasformare in re-export)
 
@@ -915,7 +953,7 @@ git add src/components/globals/dialogs/stored_password_upsert.rs
 git add src/components/globals/password_handler/component.rs
 git add src/components/globals/password_handler/strength_analyzer.rs
 git add src/components/globals/stat_card.rs
-git add src/components/globals/table/table.rs
+git add src/components/globals/table/component
 git add src/components/globals/table/table_row.rs
 
 git commit -m "$(cat <<'EOF'
@@ -950,6 +988,7 @@ Expected: Commit creato
 **Step 9.1: Aggiornare orchestratore**
 
 In `docs/plans/2026-02-26-library-extraction-orchestrator.md`:
+
 - Cambiare stato Step 1 da ⏳ a ✅
 - Aggiungere data completamento
 - Compilare "Lezioni Apprese" per Step 1
@@ -957,6 +996,7 @@ In `docs/plans/2026-02-26-library-extraction-orchestrator.md`:
 **Step 9.2: Aggiornare reference document**
 
 In `docs/library-extraction-analysis.md`:
+
 - Aggiornare mappa dipendenze
 - Documentare eventuali problemi riscontrati
 - Aggiungere note per Step 2
@@ -965,27 +1005,31 @@ In `docs/library-extraction-analysis.md`:
 
 ## Riepilogo Feature Flags
 
-| Feature     | Moduli Abilitati                    | Dipendenze                    |
-|-------------|-------------------------------------|-------------------------------|
-| `secrecy`   | SecretString, SecretBox re-export   | secrecy                       |
-| `sqlx`      | secrets, stored                     | sqlx, sqlx-template, secrecy  |
-| `generator` | generator                           | aegis-password-generator      |
-| `dioxus`    | (placeholder per FormSecret)        | dioxus                        |
+| Feature     | Moduli Abilitati                  | Dipendenze                   |
+|-------------|-----------------------------------|------------------------------|
+| `secrecy`   | SecretString, SecretBox re-export | secrecy                      |
+| `sqlx`      | secrets, stored                   | sqlx, sqlx-template, secrecy |
+| `generator` | generator                         | aegis-password-generator     |
+| `dioxus`    | (placeholder per FormSecret)      | dioxus                       |
 
 ---
 
 ## Troubleshooting
 
 ### Problema: "cannot find crate pwd_types"
+
 Verificare che `pwd-types` sia in `workspace.members` nel `Cargo.toml` root.
 
 ### Problema: "feature `sqlx` is required"
+
 Assicurarsi che il progetto padre abbia le features corrette in `Cargo.toml`:
+
 ```toml
 pwd-types = { path = "pwd-types", features = ["sqlx", "generator"] }
 ```
 
 ### Problema: "unused import" warnings
+
 I warnings per unused imports/variables sono non bloccanti e possono essere puliti successivamente.
 
 ---

@@ -25,7 +25,7 @@ pub fn StoredRawPasswordsTable(
     // Aggiorna le dimensioni della finestra quando il tooltip si apre
     use_effect(move || {
         if tooltip_state.read().is_open() {
-            let mut window_size_clone = window_size.clone();
+            let mut window_size_clone = window_size;
             spawn(async move {
                 let mut eval = document::eval(
                     r#"
@@ -55,7 +55,7 @@ pub fn StoredRawPasswordsTable(
                             }
                         }
                         tbody {
-                            for (index , stored_raw_password) in stored_raw_passwords.iter().enumerate() {
+                            for (_ , stored_raw_password) in stored_raw_passwords.iter().enumerate() {
                                 // Key include id + len(password) + score per forzare re-render
                                 // quando qualsiasi campo significativo cambia
                                 StoredRawPasswordRow {
