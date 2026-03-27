@@ -131,11 +131,11 @@ Section "Install"
 
     ; Create Start Menu shortcuts
     CreateDirectory "$SMPROGRAMS\${START_MENU_FOLDER}"
-    CreateShortcut "$SMPROGRAMS\${START_MENU_FOLDER}\${PRODUCT_NAME}.lnk" "$INSTDIR\${MAIN_BINARY_NAME}"
+    CreateShortcut "$SMPROGRAMS\${START_MENU_FOLDER}\${PRODUCT_NAME}.lnk" "$INSTDIR\${MAIN_BINARY_NAME}" "" "$INSTDIR\${MAIN_BINARY_NAME}" 0
     CreateShortcut "$SMPROGRAMS\${START_MENU_FOLDER}\Uninstall ${PRODUCT_NAME}.lnk" "$INSTDIR\uninstall.exe"
 
     ; Create Desktop shortcut
-    CreateShortcut "$DESKTOP\${PRODUCT_NAME}.lnk" "$INSTDIR\${MAIN_BINARY_NAME}"
+    CreateShortcut "$DESKTOP\${PRODUCT_NAME}.lnk" "$INSTDIR\${MAIN_BINARY_NAME}" "" "$INSTDIR\${MAIN_BINARY_NAME}" 0
 
     ; Write registry keys for Add/Remove Programs
     WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\${BUNDLE_ID}" \

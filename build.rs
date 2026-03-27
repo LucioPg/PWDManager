@@ -45,16 +45,9 @@ fn copy_if_changed(src: &Path, dst: &Path) -> std::io::Result<bool> {
     Ok(true) // File was copied
 }
 
-#[cfg(windows)]
 fn windows_executable_icon() {
-    println!("executable icon for windows os");
-    #[cfg(windows)]
-    {
-        winres::WindowsResource::new()
-            .set_icon("icons/icon.ico")
-            .compile()
-            .unwrap()
-    }
+    let result = embed_resource::compile("build/icon.rc", embed_resource::NONE);
+    result.manifest_optional().unwrap();
 }
 
 /// Download a file from GitHub raw URL (fallback when local cache is not available)

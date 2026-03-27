@@ -61,7 +61,7 @@ minisign-verify = "0.2"
 tempfile = "3"
 
 [target.'cfg(windows)'.build-dependencies]
-winres = "0.1"
+embed-resource = "3.0"
 
 [workspace]
 members = ["gui_launcher", "."]
