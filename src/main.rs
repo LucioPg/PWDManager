@@ -22,6 +22,11 @@ use dioxus::prelude::*;
 use gui_launcher::launch_desktop;
 use secrecy::ExposeSecret;
 
+use dioxus::desktop::trayicon::init_tray_icon;
+use dioxus::desktop::use_tray_menu_event_handler;
+use dioxus::desktop::use_window;
+use tray_icon::menu::{Menu, MenuItem, PredefinedMenuItem};
+
 // const LOGO_BYTES: &[u8] = include_bytes!("../assets/logo.png");
 //
 // // Asset CSS di Tailwind only in dev
@@ -43,6 +48,7 @@ static BLACKLIST_ASSET: Asset = asset!(
 #[allow(clippy::redundant_closure)]
 fn App() -> Element {
     let auth_state = auth::AuthState::new();
+    let mut auth_state_tray = auth_state.clone();
     use_context_provider(move || auth_state);
     let app_theme = use_signal(|| Theme::Light);
     let auto_update = use_signal(|| AutoUpdate::default());
@@ -53,6 +59,69 @@ fn App() -> Element {
     let update_manifest = use_signal(|| None::<UpdateManifest>);
     use_context_provider(|| update_manifest);
     use_context_provider(|| Signal::new(ToastHubState::default()));
+
+    // System tray initialization
+    use_hook(|| {
+        let tray_menu = Menu::new();
+
+        // Voce "Apri" — riapre la finestra (alternativa al click sinistro sulla tray icon)
+        tray_menu
+            .append(&MenuItem::with_id("open", "Apri", true, None))
+            .unwrap();
+
+        // Voce "Logout"
+        tray_menu
+            .append(&MenuItem::with_id("logout", "Logout", true, None))
+            .unwrap();
+
+        // Separatore
+        tray_menu
+            .append(&PredefinedMenuItem::separator())
+            .unwrap();
+
+        // Voce "Esci" — chiude l'applicazione
+        // NOTA: PredefinedMenuItem::quit su Windows chiama PostQuitMessage(0) che
+        // termina il processo bruscamente, saltando il cleanup di Dioxus (use_drop).
+        // SQLite gestisce correttamente gli shutdown imprevisti, quindi questo e accettabile.
+        tray_menu
+            .append(&PredefinedMenuItem::quit(None))
+            .unwrap();
+
+        // Usa l'icona dell'app gia embeddata in gui_launcher
+        // Nota: l'icona viene inclusa nel binario anche qui (duplicazione con gui_launcher).
+        // L'impatto sul binary size e minimo per un'icona piccola.
+        let icon_rgba = {
+            let icon_bytes = include_bytes!("../icons/icon.png");
+            let img = image::load_from_memory(icon_bytes).expect("failed to load tray icon");
+            let rgba = img.to_rgba8();
+            let (w, h) = rgba.dimensions();
+            Some(tray_icon::Icon::from_rgba(rgba.into_raw(), w, h).expect("failed to build tray icon"))
+        };
+
+        init_tray_icon(tray_menu, icon_rgba);
+    });
+
+    // Handle tray menu events
+    let desktop = use_window();
+    use_tray_menu_event_handler(move |event: &tray_icon::menu::MenuEvent| {
+        match event.id().as_ref() {
+            "open" => {
+                // Re-show la finestra quando l'utente clicca "Apri" nel menu.
+                // Il ri-show automatico funziona solo per il click diretto sulla tray icon,
+                // non per i MenuItem custom — quindi questo handler e necessario.
+                desktop.set_visible(true);
+                desktop.set_focus();
+            }
+            "logout" => {
+                auth_state_tray.logout();
+                // AuthWrapper reindirizza automaticamente alla LandingPage quando
+                // auth_state.user diventa None (non serve navigator qui).
+                desktop.set_visible(true);
+                desktop.set_focus();
+            }
+            _ => {} // altri eventi gestiti dal framework (es. quit)
+        }
+    });
 
     let mut db_resource = use_resource(move || async move { init_db().await });
     let db_resource_clone_drop = db_resource;
