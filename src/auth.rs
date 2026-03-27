@@ -60,19 +60,15 @@ impl AuthState {
 
     #[allow(dead_code)]
     pub fn set_username(&mut self, username: String) {
-        match &mut *self.user.write() {
-            Some(user) => user.username = username,
-            None => {}
-        }
+        if let Some(user) = &mut *self.user.write() { user.username = username }
     }
 
     pub fn get_user(&self) -> Option<User> {
-        let user = self.user.read().clone();
-        user
+        self.user.read().clone()
     }
     pub fn get_user_id(&self) -> i64 {
         match &*self.user.read() {
-            Some(user) => user.id.clone(),
+            Some(user) => user.id,
             None => -1,
         }
     }
