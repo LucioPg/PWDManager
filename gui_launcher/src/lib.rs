@@ -129,6 +129,11 @@ pub fn create_desktop_config(app_version: &str) -> Config {
             .with_window_icon(window_icon),
     );
 
+    // System tray: X hides window instead of closing, app stays alive in background
+    config = config
+        .with_close_behaviour(dioxus::desktop::WindowCloseBehaviour::WindowHides)
+        .with_exits_when_last_window_closes(false);
+
     // Set data directory to avoid creating .exe.WebView2 folder next to exe
     if let Some(dir) = data_dir {
         tracing::info!("Setting WebView2 data directory to: {:?}", dir);
