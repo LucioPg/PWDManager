@@ -23,15 +23,9 @@ pub struct UserSettings {
     pub auto_update: AutoUpdate,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, sqlx::Type)]
+#[derive(Debug, Clone, Copy, PartialEq, sqlx::Type, Default)]
 #[sqlx(transparent)]
 pub struct AutoUpdate(pub bool);
-
-impl Default for AutoUpdate {
-    fn default() -> Self {
-        AutoUpdate(false)
-    }
-}
 
 impl Deref for AutoUpdate {
     type Target = bool;
@@ -130,6 +124,7 @@ impl From<diceware::EmbeddedList> for DicewareLanguage {
     }
 }
 
+#[allow(clippy::needless_question_mark)]
 #[derive(sqlx::FromRow, Debug, Clone, Default, sqlx_template::SqlxTemplate, PartialEq)]
 #[db("sqlite")]
 #[table("diceware_generation_settings")]
