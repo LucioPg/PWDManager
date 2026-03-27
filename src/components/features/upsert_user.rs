@@ -48,12 +48,12 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     let mut is_picking = use_signal(|| false); // Traccia se il dialog è aperto
     let mut show_delete_modal = use_signal(|| false);
     let mut show_warning_modal = use_signal(|| false);
-    let mut show_migration_progress_modal = use_signal(|| false);
+    let show_migration_progress_modal = use_signal(|| false);
     let mut migration_completed = use_signal(|| false);
     #[allow(unused_mut)]
     let mut migration_failed = use_signal(|| false);
     let submit_completed = use_signal(|| false); // Per il caso senza migrazione
-    let mut save_completed_for_migration = use_signal(|| false); // Per sincronizzare modale migrazione
+    let save_completed_for_migration = use_signal(|| false); // Per sincronizzare modale migrazione
 
     // Inizializzazione dati utente (Semplificata con unwrap_or_default)
     #[allow(unused_mut)]
@@ -74,7 +74,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
 
     // --- Derivazione Proprietà (Configurazione UI) ---
     let is_updating = user_to_edit.is_some();
-    let user_id = user_to_edit.as_ref().map(|u| u.id.clone());
+    let user_id = user_to_edit.as_ref().map(|u| u.id);
     let migration_data_context =
         use_context_provider(|| Signal::new(MigrationData::new(user_id, None)));
     let (
@@ -112,8 +112,8 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     });
 
     use_effect(move || {
-        let mut this_error = error.clone();
-        let toast = toast.clone();
+        let mut this_error = error;
+        let toast = toast;
         if let Some(msg) = this_error() {
             show_toast_error(format!("Error saving user: {}", msg), toast);
             this_error.set(None);
@@ -123,8 +123,8 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     // Gestione errori centralizzata
     use_effect(move || {
         let user = auth_state_delete_clone.get_user();
-        let mut user_deleted = is_user_deleted.clone();
-        let toast = toast.clone();
+        let mut user_deleted = is_user_deleted;
+        let toast = toast;
         if user_deleted() {
             if let Some(u) = user {
                 show_toast_success(format!("User {} deleted successfully!", u.username), toast);
@@ -135,9 +135,9 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
 
     // Gestione completamento migrazione password
     use_effect(move || {
-        let mut show_progress = show_migration_progress_modal.clone();
+        let mut show_progress = show_migration_progress_modal;
         let mut auth_state = auth_state_logout_clone.clone();
-        let mut migration_data = migration_data_context.clone();
+        let mut migration_data = migration_data_context;
         if migration_completed() {
             migration_data.write().old_password = None;
             show_progress.set(false);
@@ -148,8 +148,8 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
 
     // Apertura modale migrazione dopo salvataggio completato
     use_effect(move || {
-        let mut show_progress = show_migration_progress_modal.clone();
-        let mut save_signal = save_completed_for_migration.clone();
+        let mut show_progress = show_migration_progress_modal;
+        let mut save_signal = save_completed_for_migration;
         if save_signal() {
             // Reset del signal per permettere future migrazioni
             save_signal.set(false);
@@ -175,13 +175,13 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
             return;
         }
         #[allow(unused_mut)]
-        let mut new_avatar_clone = new_avatar.clone();
+        let mut new_avatar_clone = new_avatar;
         #[allow(unused_mut)]
-        let mut is_loading_clone = is_loading.clone();
+        let mut is_loading_clone = is_loading;
         #[allow(unused_mut)]
-        let mut is_picking_clone = is_picking.clone(); // Clona anche is_picking
+        let mut is_picking_clone = is_picking; // Clona anche is_picking
         #[allow(unused_mut)]
-        let mut error_clone = error.clone();
+        let mut error_clone = error;
         spawn(pick_and_process_avatar(
             new_avatar_clone,
             is_loading_clone,
@@ -197,12 +197,12 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
 
     // Esegue la cancellazione vera e propria (chiamata dal modal)
     let confirm_delete_user = move || {
-        let mut is_user_deleted = is_user_deleted.clone();
+        let mut is_user_deleted = is_user_deleted;
         let pool_for_delete = pool.clone();
         let user = auth_state.get_user();
-        let mut error = error.clone();
+        let mut error = error;
         let mut auth_state_logout = auth_state_delete_logout_clone.clone();
-        let mut show_modal = show_delete_modal.clone();
+        let mut show_modal = show_delete_modal;
 
         match user {
             Some(user) => {
@@ -236,7 +236,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         let u = username.read().clone();
         let a = new_avatar.read().clone();
         let pool = pool_clone_on_submit.clone();
-        let mut migration_data = migration_data_context.clone();
+        let mut migration_data = migration_data_context;
         // In modalità update: se password vuota o None → mantieni password attuale
         let password_to_save = pwd_result.and_then(|result| {
             if result.password.expose_secret().trim().is_empty() {
@@ -284,22 +284,15 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
             };
 
             // Se il salvataggio ha successo e c'è un segnale di completamento, impostalo
-            if success {
-                if let Some(mut signal) = completion_signal {
-                    signal.set(true);
-                }
+            if success && let Some(mut signal) = completion_signal {
+                signal.set(true);
             }
         });
     };
 
-    // Callback per navigare verso login dopo completamento (usato da entrambi i casi)
-    let navigate_to_login = move || {
-        nav.push("/login");
-    };
-
     // Handler per conferma del warning - procede con il submit (con migrazione password)
-    let mut confirm_change_password = {
-        let mut execute_submit = execute_submit.clone();
+    let confirm_change_password = {
+        let execute_submit = execute_submit.clone();
         move |_: ()| {
             show_warning_modal.set(false);
             // Passa il signal - il modale si aprirà quando il salvataggio completa
@@ -324,11 +317,12 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         }
 
         // Per la registrazione, la password non può essere vuota
-        if let Some(ref result) = pwd_result {
-            if !is_updating && result.password.expose_secret().trim().is_empty() {
-                error.set(Some("Password is required for registration".to_string()));
-                return;
-            }
+        if let Some(ref result) = pwd_result
+            && !is_updating
+            && result.password.expose_secret().trim().is_empty()
+        {
+            error.set(Some("Password is required for registration".to_string()));
+            return;
         }
 
         // Determina se c'è una password nuova (non vuota) da salvare
