@@ -226,15 +226,6 @@ fn render_app_with_setup(
     }
 }
 
-fn render_app(update_state: Signal<UpdateState>) -> Element {
-    rsx! {
-        Style {}
-        ToastContainer {}
-        UpdateNotification { update_state }
-        Router::<Route> {}
-    }
-}
-
 fn render_recovery_ui(
     mut db_resource: Resource<Result<InitResult, custom_errors::DBError>>,
     mut show_recovery_dialog: Signal<bool>,
