@@ -60,7 +60,9 @@ impl AuthState {
 
     #[allow(dead_code)]
     pub fn set_username(&mut self, username: String) {
-        if let Some(user) = &mut *self.user.write() { user.username = username }
+        if let Some(user) = &mut *self.user.write() {
+            user.username = username
+        }
     }
 
     pub fn get_user(&self) -> Option<User> {
