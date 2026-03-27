@@ -4,12 +4,16 @@
 // Questo file mantiene backward compatibility con il resto del progetto
 
 use crate::auth::AuthState;
-use crate::backend::db_backend::{fetch_diceware_settings, fetch_user_passwords_generation_settings};
-use crate::backend::password_utils::{generate_diceware_password, generate_suggested_password, DicewareGenConfig};
+use crate::backend::db_backend::{
+    fetch_diceware_settings, fetch_user_passwords_generation_settings,
+};
 use crate::backend::evaluate_password_strength_tx;
+use crate::backend::password_utils::{
+    DicewareGenConfig, generate_diceware_password, generate_suggested_password,
+};
 use dioxus::prelude::*;
-use pwd_dioxus::{PasswordHandler as LibPasswordHandler, FormSecret, EvaluationResult};
 use pwd_dioxus::password::GenerationMethod;
+use pwd_dioxus::{EvaluationResult, FormSecret, PasswordHandler as LibPasswordHandler};
 use pwd_types::{PasswordChangeResult, PasswordScore};
 use sqlx::SqlitePool;
 use std::sync::Arc;
@@ -32,29 +36,32 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
     let pool = use_context::<SqlitePool>();
 
     // State per generazione password
-    let mut generated_pwd = use_signal(|| None::<FormSecret>);
-    let mut is_generating = use_signal(|| false);
+    let generated_pwd = use_signal(|| None::<FormSecret>);
+    let is_generating = use_signal(|| false);
 
     // Callback per valutazione password (chiama DB)
-    let pool_for_eval = pool.clone();
-    let on_evaluate = use_callback(move |(form_secret, token, tx): (FormSecret, Arc<CancellationToken>, mpsc::Sender<EvaluationResult>)| {
-        let pool = pool_for_eval.clone();
+    let on_evaluate = use_callback(
+        move |(form_secret, token, tx): (
+            FormSecret,
+            Arc<CancellationToken>,
+            mpsc::Sender<EvaluationResult>,
+        )| {
+            spawn(async move {
+                // Chiama la funzione di valutazione dal backend
+                let (eval_tx, mut eval_rx) = mpsc::channel(1);
+                evaluate_password_strength_tx(&form_secret.0, (*token).clone(), eval_tx).await;
 
-        spawn(async move {
-            // Chiama la funzione di valutazione dal backend
-            let (eval_tx, mut eval_rx) = mpsc::channel(1);
-            evaluate_password_strength_tx(&form_secret.0, (*token).clone(), eval_tx).await;
-
-            if let Some(eval) = eval_rx.recv().await {
-                let result = EvaluationResult {
-                    score: eval.score,
-                    strength: eval.strength(),
-                    reasons: eval.reasons,
-                };
-                let _ = tx.send(result).await;
-            }
-        });
-    });
+                if let Some(eval) = eval_rx.recv().await {
+                    let result = EvaluationResult {
+                        score: eval.score,
+                        strength: eval.strength(),
+                        reasons: eval.reasons,
+                    };
+                    let _ = tx.send(result).await;
+                }
+            });
+        },
+    );
 
     // Callback per generazione password (chiama DB)
     let auth_for_gen = auth_state.clone();
@@ -62,8 +69,8 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
     let on_suggest_method = use_callback(move |method: GenerationMethod| {
         let pool = pool_for_gen.clone();
         let auth = auth_for_gen.clone();
-        let mut is_gen = is_generating.clone();
-        let mut gen_pwd = generated_pwd.clone();
+        let mut is_gen = is_generating;
+        let mut gen_pwd = generated_pwd;
 
         spawn(async move {
             is_gen.set(true);
@@ -71,7 +78,9 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
             match method {
                 GenerationMethod::Random => {
                     let config = if let Some(user) = auth.get_user() {
-                        fetch_user_passwords_generation_settings(&pool, user.id).await.ok()
+                        fetch_user_passwords_generation_settings(&pool, user.id)
+                            .await
+                            .ok()
                     } else {
                         None
                     };
