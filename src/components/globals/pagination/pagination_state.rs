@@ -31,6 +31,7 @@ pub struct PaginationState {
     pub is_loading: Signal<bool>,
 }
 
+#[allow(dead_code)]
 impl PaginationState {
     /// Crea un nuovo stato di paginazione con page_size di default (20).
     ///
@@ -76,8 +77,8 @@ impl PaginationState {
     pub fn set_page_size(&mut self, page_size: usize) {
         if *self.page_size.read() != page_size {
             self.page_size.set(page_size);
-            self.cache.write().clear();  // Invalida cache per evitare dimensioni mismatch
-            self.current_page.set(0);     // Reset a prima pagina
+            self.cache.write().clear(); // Invalida cache per evitare dimensioni mismatch
+            self.current_page.set(0); // Reset a prima pagina
         }
     }
 
@@ -125,7 +126,7 @@ impl PaginationState {
         if page_size == 0 {
             return 0;
         }
-        (total + page_size - 1) / page_size
+        total.div_ceil(page_size)
     }
 
     /// Verifica se può andare a pagina precedente
@@ -157,7 +158,12 @@ impl PaginationState {
     }
 
     /// Salva una pagina in cache
-    pub fn cache_page(&mut self, filter: Option<PasswordStrength>, page: usize, passwords: Vec<StoredRawPassword>) {
+    pub fn cache_page(
+        &mut self,
+        filter: Option<PasswordStrength>,
+        page: usize,
+        passwords: Vec<StoredRawPassword>,
+    ) {
         let key = (filter, page);
         self.cache.write().insert(key, passwords);
     }
