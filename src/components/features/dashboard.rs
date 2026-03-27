@@ -35,7 +35,7 @@ pub fn Dashboard() -> Element {
             is_open: Signal::new(false),
             current_stored_raw_password: Signal::new(None::<StoredRawPassword>),
         });
-    let mut stored_password_show_dialog_state =
+    let _stored_password_show_dialog_state =
         use_context_provider(|| StoredPasswordShowDialogState {
             is_open: Signal::new(false),
             current_stored_raw_password: Signal::new(None::<StoredRawPassword>),
@@ -59,22 +59,25 @@ pub fn Dashboard() -> Element {
     let mut current_table_order = use_signal(|| Some(TableOrder::Newest));
 
     // Dati completi per ordinamento frontend
+    #[allow(clippy::redundant_closure)]
     let mut all_passwords = use_signal(|| Vec::<StoredRawPassword>::new());
 
     // Search query per filtro client-side
+    #[allow(clippy::redundant_closure)]
     let mut search_query = use_signal(|| String::new());
 
     // Estrae user_id
     let user_id = user_id_option.unwrap_or(-1);
 
     // Stato paginazione
+    #[allow(clippy::redundant_closure)]
     let mut pagination = use_context_provider(|| PaginationState::new());
 
     // Resource per fetch completa (ordinamento delegato al DB)
     // Reagisce a: current_table_order, pagination.active_filter()
     let mut sorted_passwords_resource = use_resource(move || {
         let pool = pool.clone();
-        let user_id = user_id.clone();
+        let user_id = user_id;
         let filter = pagination.active_filter();
         let order_clause = current_table_order()
             .unwrap_or(TableOrder::Newest)
@@ -157,12 +160,12 @@ pub fn Dashboard() -> Element {
     // stored raw passwords
 
     // Stats dalle query DB (non più calcolate lato client)
-    let stats = use_memo(move || stats_data.read().clone().flatten().unwrap_or_default());
+    let stats = use_memo(move || stats_data.read().flatten().unwrap_or_default());
 
     // upsert modal - refresh tabella dopo salvataggio
     let on_confirm_upsert = {
-        let mut stats_data = stats_data.clone();
-        let mut sorted_passwords_resource = sorted_passwords_resource.clone();
+        let mut stats_data = stats_data;
+        let mut sorted_passwords_resource = sorted_passwords_resource;
         move |_| {
             stats_data.restart();
             sorted_passwords_resource.restart();
@@ -172,17 +175,16 @@ pub fn Dashboard() -> Element {
     // deletion modal
     let on_confirm_delete = {
         let pool = pool_for_delete.clone();
-        let mut stats_data = stats_data.clone();
-        let mut sorted_passwords_resource = sorted_passwords_resource.clone();
+        let sorted_passwords_resource = sorted_passwords_resource;
         let mut deletion_password_dialog_state = deletion_password_dialog_state.clone();
-        let mut error = error.clone();
+        let error = error;
 
         move |_| {
             let pool = pool.clone();
             let mut delete_state = deletion_password_dialog_state.clone();
-            let mut error_signal = error.clone();
-            let mut stats_data = stats_data.clone();
-            let mut sorted_passwords_resource = sorted_passwords_resource.clone();
+            let mut error_signal = error;
+            let mut stats_data = stats_data;
+            let mut sorted_passwords_resource = sorted_passwords_resource;
 
             let Some(password_id) = (delete_state.password_id)() else {
                 error_signal.set(Some(DBError::new_general_error(
@@ -212,14 +214,14 @@ pub fn Dashboard() -> Element {
 
     use_effect(move || {
         if let Some(e) = error.read().deref() {
-            show_toast_error(format!("Error fetching user data: {}", e), toast.clone());
+            show_toast_error(format!("Error fetching user data: {}", e), toast);
         }
     });
 
     use_effect(move || {
-        let mut need_restart = on_need_restart.clone();
-        let mut stats_data = stats_data.clone();
-        let mut sorted_passwords_resource = sorted_passwords_resource.clone();
+        let mut need_restart = on_need_restart;
+        let mut stats_data = stats_data;
+        let mut sorted_passwords_resource = sorted_passwords_resource;
         if need_restart() {
             stats_data.restart();
             sorted_passwords_resource.restart();
@@ -246,7 +248,7 @@ pub fn Dashboard() -> Element {
                     h1 { class: "text-h2", "Welcome, {username}!" }
                     p { class: "text-body mt-2", "Manage your passwords and secure your digital life" }
                 }
-                DashboardMenu { on_need_restart: on_need_restart.clone() }
+                DashboardMenu { on_need_restart }
             }
             div { class: "pwd-controls-bar",
                 div { class: "pwd-controls-left",
@@ -333,7 +335,7 @@ pub fn Dashboard() -> Element {
 
             // Controlli paginazione
             PaginationControls {
-                pagination: pagination.clone(),
+                pagination,
                 on_page_change: move |new_page| {
                     pagination.go_to_page(new_page);
                 },
@@ -343,7 +345,7 @@ pub fn Dashboard() -> Element {
         StoredPasswordUpsertDialog { on_confirm: on_confirm_upsert, on_cancel: move |_| {} }
         StoredPasswordShowDialog { on_confirm: move |_| {}, on_cancel: move |_| {} }
         StoredPasswordDeletionDialog {
-            open: deletion_password_dialog_state.is_open.clone(),
+            open: deletion_password_dialog_state.is_open,
             on_confirm: on_confirm_delete,
             on_cancel: cancel_delete,
         }
