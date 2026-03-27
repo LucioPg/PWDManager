@@ -215,7 +215,6 @@ pub fn DicewareSettings() -> Element {
                     }
                 }
             }
-
         }
     }
 }
