@@ -1,5 +1,7 @@
 use crate::auth::AuthState;
 use crate::backend::db_backend::fetch_user_settings;
+#[cfg(target_os = "windows")]
+use crate::backend::auto_start::{self, AutoStartError};
 use crate::backend::settings_types::{AutoLogoutSettings, AutoUpdate, Theme, UserSettings};
 use crate::components::{ActionButton, ButtonSize, ButtonType, ButtonVariant};
 use dioxus::prelude::*;
@@ -14,6 +16,67 @@ fn auto_logout_options() -> Vec<(&'static str, Option<AutoLogoutSettings>)> {
         ("1 hour", Some(AutoLogoutSettings::OneHour)),
         ("5 hours", Some(AutoLogoutSettings::FiveHours)),
     ]
+}
+
+#[cfg(target_os = "windows")]
+#[component]
+fn AutoStartToggle() -> Element {
+    let mut auto_start_enabled = use_signal(|| false);
+    let toast = use_toast();
+
+    let _autostart_resource = use_resource(move || {
+        let mut auto_start_enabled = auto_start_enabled;
+        async move {
+            let enabled = tokio::task::spawn_blocking(|| auto_start::is_enabled())
+                .await
+                .unwrap_or(false);
+            auto_start_enabled.set(enabled);
+        }
+    });
+
+    let on_toggle = move |_| {
+        let toast = toast;
+        let currently_enabled = auto_start_enabled();
+        spawn(async move {
+            let result = match tokio::task::spawn_blocking(move || {
+                if currently_enabled {
+                    auto_start::disable()
+                } else {
+                    auto_start::enable()
+                }
+            })
+            .await
+            {
+                Ok(inner) => inner,
+                Err(e) => Err(AutoStartError::RegistryError(format!("Task failed: {}", e))),
+            };
+
+            match result {
+                Ok(()) => {
+                    auto_start_enabled.set(!auto_start_enabled());
+                }
+                Err(e) => {
+                    show_toast_error(format!("Auto-start error: {}", e), toast);
+                }
+            }
+        });
+    };
+
+    rsx! {
+        div { class: "flex flex-row justify-between mb-2",
+            label { class: "label cursor-pointer",
+                strong {
+                    span { class: "label-text", "Auto Start" }
+                }
+            }
+            Toggle {
+                checked: auto_start_enabled(),
+                onchange: on_toggle,
+                size: ToggleSize::Large,
+                color: ToggleColor::Success,
+            }
+        }
+    }
 }
 
 #[component]
@@ -159,6 +222,7 @@ pub fn GeneralSettings() -> Element {
                     color: ToggleColor::Success,
                 }
             }
+            AutoStartToggle {}
             div { class: "flex flex-row justify-between mb-2",
                 label { class: "label cursor-pointer",
                     strong {
