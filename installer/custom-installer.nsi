@@ -183,6 +183,12 @@ SectionEnd
 
 ; Uninstaller section
 Section "Uninstall"
+    ; Kill any running instances of the application before removing files.
+    ; With the system tray, the process may stay alive even when the window is closed,
+    ; which causes RMDir to silently fail on locked files.
+    nsExec::ExecToLog 'taskkill /F /IM "${MAIN_BINARY_NAME}"'
+    Sleep 1000
+
     ; Remove files
     RMDir /r "$INSTDIR"
 
