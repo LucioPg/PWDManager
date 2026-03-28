@@ -1,8 +1,6 @@
 use crate::auth::AuthState;
 use crate::backend::db_backend::fetch_user_settings;
-use crate::backend::settings_types::{
-    AutoLogoutSettings, AutoUpdate, DicewareLanguage, Theme, UserSettings,
-};
+use crate::backend::settings_types::{AutoLogoutSettings, AutoUpdate, Theme, UserSettings};
 use crate::components::{ActionButton, ButtonSize, ButtonType, ButtonVariant};
 use dioxus::prelude::*;
 use pwd_dioxus::combobox::Combobox;
