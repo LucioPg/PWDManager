@@ -51,6 +51,7 @@ chrono = "0.4"
 # DB Encryption
 keyring = { version = "3", features = ["windows-native"] }
 rand = "0.9"
+winreg = "0.55"
 
 # Updater
 reqwest = { version = "0.12", features = ["json", "stream"] }
