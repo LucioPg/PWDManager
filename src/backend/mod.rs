@@ -1,3 +1,6 @@
+#[cfg(target_os = "windows")]
+pub mod auto_start;
+
 pub mod avatar_utils;
 pub mod db_backend;
 pub mod export;
