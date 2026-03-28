@@ -26,7 +26,7 @@ pub fn GeneralSettings() -> Element {
     let mut app_theme = use_context::<Signal<Theme>>();
     let mut auto_update = use_context::<Signal<AutoUpdate>>();
     let mut auto_logout_settings = use_context::<Signal<Option<AutoLogoutSettings>>>();
-    let mut auto_logout_toggle = use_signal(|| auto_logout_settings.read().is_some());
+    let mut auto_logout_toggle = use_signal(|| auto_logout_settings.read().is_none());
     let toast = use_toast();
     let user_id = auth_state.get_user_id();
 
@@ -92,7 +92,12 @@ pub fn GeneralSettings() -> Element {
         auto_update_sig.set(new_auto_update.into());
     };
     let on_toggle_auto_logout = move |_| {
-        if !auto_logout_toggle() {
+        if auto_logout_toggle() {
+            // Nessun timer configurato → si abilita il feature
+            auto_logout_toggle.set(false);
+        } else {
+            // Timer configurato → si disabilita il feature
+            auto_logout_toggle.set(true);
             auto_logout_settings.set(None);
         }
     };
@@ -163,7 +168,7 @@ pub fn GeneralSettings() -> Element {
                     }
                 }
                 Toggle {
-                    checked: auto_logout_toggle(),
+                    checked: !auto_logout_toggle(),
                     onchange: on_toggle_auto_logout,
                     size: ToggleSize::Large,
                     color: ToggleColor::Success,
@@ -179,6 +184,8 @@ pub fn GeneralSettings() -> Element {
                     options: options.clone(),
                     placeholder: "Select timer".to_string(),
                     on_change: move |v| auto_logout_settings.set(v),
+                    disabled: auto_logout_toggle,
+                    selected_value: auto_logout_settings.read().clone(),
                 }
             }
             div { class: "flex flex-row justify-end gap-2 mt-2",
