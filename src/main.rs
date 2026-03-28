@@ -477,10 +477,12 @@ fn main() {
         }
     }
 
+    let start_visible = !args.contains(&"--minimized".to_string());
+
     // Nota: il logging viene inizializzato automaticamente nel launcher
     const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
     println!("PWDManager v{}", APP_VERSION);
-    launch_desktop!(App, APP_VERSION);
+    launch_desktop!(App, APP_VERSION, start_visible);
 }
 
 #[derive(Routable, PartialEq, Clone)]

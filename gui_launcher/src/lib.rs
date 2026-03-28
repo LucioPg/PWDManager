@@ -106,7 +106,7 @@ pub fn load_window_icon() -> Option<dioxus::desktop::tao::window::Icon> {
 const FORCE_ENABLE_DEVTOOLS: bool = false;
 
 /// Creates a desktop configuration with custom window settings
-pub fn create_desktop_config(app_version: &str) -> Config {
+pub fn create_desktop_config(app_version: &str, start_visible: bool) -> Config {
     let window_icon = load_window_icon();
 
     // Calculate AppData path for WebView2 data folder to avoid security issues
@@ -126,6 +126,7 @@ pub fn create_desktop_config(app_version: &str) -> Config {
             .with_title(format!("PWDManager v{}", app_version))
             .with_inner_size(LogicalSize::new(800.0, 600.0))
             .with_resizable(true)
+            .with_visible(start_visible)
             .with_window_icon(window_icon),
     );
 
@@ -154,13 +155,13 @@ pub fn create_desktop_config(app_version: &str) -> Config {
 /// Macro to launch the application with custom desktop configuration
 #[macro_export]
 macro_rules! launch_desktop {
-    ($app:expr, $version:expr) => {{
+    ($app:expr, $version:expr, $visible:expr) => {{
         // Initialize logging first (idempotent, safe to call multiple times)
         $crate::init_logging();
 
         tracing::info!("Using custom desktop launcher configuration");
 
-        let config = $crate::create_desktop_config($version);
+        let config = $crate::create_desktop_config($version, $visible);
 
         dioxus::LaunchBuilder::new().with_cfg(config).launch($app);
     }};
