@@ -3,7 +3,7 @@ mod auth;
 mod backend;
 mod components;
 
-use crate::auth::User;
+use crate::auth::{set_on_auth_change, User};
 use crate::backend::db_backend::InitResult;
 use crate::backend::init_blacklist_from_path;
 use crate::backend::settings_types::AutoUpdate;
@@ -87,18 +87,30 @@ fn App() -> Element {
             .append(&PredefinedMenuItem::quit(None))
             .unwrap();
 
-        // Usa l'icona dell'app gia embeddata in gui_launcher
-        // Nota: l'icona viene inclusa nel binario anche qui (duplicazione con gui_launcher).
-        // L'impatto sul binary size e minimo per un'icona piccola.
-        let icon_rgba = {
-            let icon_bytes = include_bytes!("../icons/icon.png");
-            let img = image::load_from_memory(icon_bytes).expect("failed to load tray icon");
+        // Carica entrambe le icone della tray a compile-time
+        let load_icon = |bytes: &[u8]| {
+            let img = image::load_from_memory(bytes).expect("failed to load tray icon");
             let rgba = img.to_rgba8();
             let (w, h) = rgba.dimensions();
-            Some(tray_icon::Icon::from_rgba(rgba.into_raw(), w, h).expect("failed to build tray icon"))
+            tray_icon::Icon::from_rgba(rgba.into_raw(), w, h).expect("failed to build tray icon")
         };
+        let icon_loggedout = load_icon(include_bytes!("../assets/icon_loggedout.png"));
+        let icon_loggedin = load_icon(include_bytes!("../assets/icon_loggedin.png"));
 
-        init_tray_icon(tray_menu, icon_rgba);
+        let tray = init_tray_icon(tray_menu, Some(icon_loggedout.clone()));
+
+        // Registra callback imperativa per aggiornare l'icona al cambio auth.
+        // Viene chiamata direttamente da AuthState::login() / logout().
+        set_on_auth_change(move |is_logged| {
+            let icon = if is_logged {
+                icon_loggedin.clone()
+            } else {
+                icon_loggedout.clone()
+            };
+            if let Err(e) = tray.set_icon(Some(icon)) {
+                eprintln!("Failed to update tray icon: {e}");
+            }
+        });
     });
 
     // Handle tray menu events via Dioxus's muda event system.
