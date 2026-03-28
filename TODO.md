@@ -11,10 +11,11 @@
 
 ## Generali
 
-- [ ] rimuovere possibilità di aprire in devtools in release
-- [ ] rimuovere menu contestuali in release
-- [ ] rimuovere menu finestra (windows, help etc...)
-- [x] aggiungere password al database tramite sqlcipher con chiave nel keyring del sistema operativo (vedi `src/backend/db_key.rs` e `src/backend/db_backend.rs`)
+- [x] rimuovere possibilità di aprire in devtools in release
+- [x] rimuovere menu contestuali in release
+- [x] rimuovere menu finestra (windows, help etc...)
+- [x] aggiungere password al database tramite sqlcipher con chiave nel keyring del sistema operativo (vedi
+  `src/backend/db_key.rs` e `src/backend/db_backend.rs`)
 - ~~la password db deve essere offuscata tramite il crate obfstr~~ (sostituito dal keyring del SO)
 
 ## Registrazione
@@ -32,6 +33,10 @@
     - [x] Creazione tabella settings
     - [x] Creazione di un form per la modifica delle preferenze utente per le password
     - [x] Creazione trigger creazione di settings per ogni nuovo utente
+- [ ] gestire l'auto logout:
+    - [ ] aggiungere componente combobox in settings General per scegliere un set predefinito di tempistiche
+    - [ ] aggiornare la tabella user settings (quella dove c'è anche il theme)
+    - [ ] implementare l'event listener effettivo per il calcolo del timeout
 
 ## UI e UX
 
@@ -148,5 +153,6 @@
 - [ ] spostare import_data.rs e export_data.rs dal frontend al backend
 - [ ] forzare spinner al caricamendo della dashboard o aumentare la velocità dell'animaizione (bug di rallentamento
   quando un utente fa il login con il dark mode attivo)
-- [ ] la disinstallazione deve chiedere all'utente se vuole eliminare anche il database, cosa che non deve succedere se
-  la disinstallazione avviene per un update.
+- [x] ~~la disinstallazione deve chiedere all'utente se vuole eliminare anche il database, cosa che non deve succedere
+  se
+  la disinstallazione avviene per un update.~~ Database viene eliminato automaticamente.
