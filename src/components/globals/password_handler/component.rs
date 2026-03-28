@@ -13,7 +13,7 @@ use crate::backend::password_utils::{
 };
 use dioxus::prelude::*;
 use pwd_dioxus::password::GenerationMethod;
-use pwd_dioxus::{EvaluationResult, FormSecret, PasswordHandler as LibPasswordHandler};
+use pwd_dioxus::{EvaluationResult, FormSecret, PasswordHandler as LibPasswordHandler, show_toast_error, use_toast};
 use pwd_types::{PasswordChangeResult, PasswordScore};
 use sqlx::SqlitePool;
 use std::sync::Arc;
@@ -34,8 +34,7 @@ pub struct PasswordHandlerProps {
 pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
     let auth_state = use_context::<AuthState>();
     let pool = use_context::<SqlitePool>();
-
-    // State per generazione password
+    let toast = use_toast();
     let generated_pwd = use_signal(|| None::<FormSecret>);
     let is_generating = use_signal(|| false);
 
@@ -66,11 +65,13 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
     // Callback per generazione password (chiama DB)
     let auth_for_gen = auth_state.clone();
     let pool_for_gen = pool.clone();
+    let toast_for_gen = toast;
     let on_suggest_method = use_callback(move |method: GenerationMethod| {
         let pool = pool_for_gen.clone();
         let auth = auth_for_gen.clone();
         let mut is_gen = is_generating;
         let mut gen_pwd = generated_pwd;
+        let toast = toast_for_gen;
 
         spawn(async move {
             is_gen.set(true);
@@ -98,13 +99,17 @@ pub fn PasswordHandler(props: PasswordHandlerProps) -> Element {
                     };
                     let config = pwd.unwrap_or_else(|| DicewareGenConfig {
                         word_count: 6,
-                        special_chars: 0,
-                        force_special_chars: false,
+                        add_special_char: false,
                         numbers: 0,
                         language: crate::backend::password_utils::detect_system_language().into(),
                     });
-                    let generated = generate_diceware_password(config);
-                    gen_pwd.set(Some(FormSecret(generated)));
+                    match generate_diceware_password(config) {
+                        Ok(generated) => gen_pwd.set(Some(FormSecret(generated))),
+                        Err(e) => show_toast_error(
+                            format!("Diceware generation failed: {}", e),
+                            toast,
+                        ),
+                    }
                 }
             }
 

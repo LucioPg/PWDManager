@@ -64,8 +64,7 @@ pub fn generate_suggested_password(custom_config: Option<PasswordGeneratorConfig
 /// Configuration for Diceware passphrase generation.
 pub struct DicewareGenConfig {
     pub word_count: usize,
-    pub special_chars: u8,
-    pub force_special_chars: bool,
+    pub add_special_char: bool,
     pub numbers: u8,
     pub language: EmbeddedList,
 }
@@ -74,8 +73,7 @@ impl From<DicewareGenerationSettings> for DicewareGenConfig {
     fn from(s: DicewareGenerationSettings) -> Self {
         Self {
             word_count: s.word_count as usize,
-            special_chars: s.special_chars as u8,
-            force_special_chars: s.force_special_chars,
+            add_special_char: s.add_special_char,
             numbers: s.numbers as u8,
             language: s.language.into(),
         }
@@ -86,7 +84,7 @@ const MAX_DICEWARE_RETRIES: usize = 200;
 
 /// Generate a Diceware passphrase using the given configuration.
 /// Retries up to MAX_DICEWARE_RETRIES times to satisfy all criteria.
-pub fn generate_diceware_password(config: DicewareGenConfig) -> SecretString {
+pub fn generate_diceware_password(config: DicewareGenConfig) -> Result<SecretString, String> {
     for _ in 0..MAX_DICEWARE_RETRIES {
         let lang = config.language.clone();
         let mut dw_config = diceware::Config::new()
@@ -94,25 +92,22 @@ pub fn generate_diceware_password(config: DicewareGenConfig) -> SecretString {
             .with_words(config.word_count)
             .with_camel_case(true);
 
-        if config.special_chars >= 1 {
+        if config.add_special_char {
             dw_config = dw_config.with_special_chars(true);
         }
 
         if let Ok(passphrase) = diceware::make_passphrase(dw_config)
             && is_valid_diceware(&passphrase, &config)
         {
-            return SecretString::new(passphrase.into());
+            return Ok(SecretString::new(passphrase.into()));
         }
     }
-    panic!(
-        "Failed to generate a valid Diceware passphrase after {} attempts. \
-         Config: word_count={}, special_chars={}, force={}, numbers={}",
-        MAX_DICEWARE_RETRIES,
-        config.word_count,
-        config.special_chars,
-        config.force_special_chars,
-        config.numbers
-    );
+    Err(format!(
+        "Cannot generate a valid Diceware passphrase with these settings \
+         (word_count={}, add_special_char={}, numbers={}). \
+         Try disabling special chars, reducing numbers, or increasing word_count.",
+        config.word_count, config.add_special_char, config.numbers
+    ))
 }
 
 /// Validate a Diceware passphrase against the configuration criteria.
@@ -130,10 +125,10 @@ fn is_valid_diceware(passphrase: &str, config: &DicewareGenConfig) -> bool {
         .count();
 
     // Validate special chars
-    if config.special_chars == 0 && special_count > 0 {
+    if !config.add_special_char && special_count > 0 {
         return false;
     }
-    if config.special_chars >= 1 && special_count < config.special_chars as usize {
+    if config.add_special_char && special_count < 1 {
         return false;
     }
 

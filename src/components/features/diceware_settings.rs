@@ -1,5 +1,6 @@
 use crate::auth::AuthState;
 use crate::backend::db_backend::{fetch_diceware_settings, upsert_diceware_settings};
+use crate::backend::password_utils::{DicewareGenConfig, generate_diceware_password};
 use crate::backend::settings_types::{DicewareGenerationSettings, DicewareLanguage};
 use crate::components::globals::toggle::{Toggle, ToggleColor, ToggleSize};
 use crate::components::{ActionButton, ButtonSize, ButtonType, ButtonVariant};
@@ -27,8 +28,7 @@ pub fn DicewareSettings() -> Element {
     let user_id = auth_state.get_user_id();
     let error = use_signal(|| <Option<String>>::None);
     let word_count = use_signal(|| PositiveInt(6));
-    let special_chars = use_signal(|| NonNegativeInt(0));
-    let mut force_special_chars = use_signal(|| false);
+    let mut add_special_char = use_signal(|| false);
     let numbers = use_signal(|| NonNegativeInt(0));
     let mut current_language = use_signal(|| Option::<DicewareLanguage>::None);
     let settings_ready = use_signal(|| false);
@@ -40,8 +40,7 @@ pub fn DicewareSettings() -> Element {
         let user_id = user_id;
         let pool = pool.clone();
         let mut word_count = word_count;
-        let mut special_chars = special_chars;
-        let mut force_special_chars = force_special_chars;
+        let mut add_special_char = add_special_char;
         let mut numbers = numbers;
         let mut current_language = current_language;
         let mut settings_id = settings_id;
@@ -51,8 +50,7 @@ pub fn DicewareSettings() -> Element {
             match fetch_diceware_settings(&pool, user_id).await {
                 Ok(settings) => {
                     word_count.set(PositiveInt(settings.word_count as u32));
-                    special_chars.set(NonNegativeInt(settings.special_chars as u32));
-                    force_special_chars.set(settings.force_special_chars);
+                    add_special_char.set(settings.add_special_char);
                     numbers.set(NonNegativeInt(settings.numbers as u32));
                     current_language.set(Some(settings.language));
                     settings_id.set(settings.settings_id);
@@ -79,8 +77,7 @@ pub fn DicewareSettings() -> Element {
 
     let on_submit = move |_| {
         let word_count = word_count();
-        let special_chars = special_chars();
-        let force_special_chars = force_special_chars();
+        let add_special_char = add_special_char();
         let numbers = numbers();
         let language = current_language().unwrap_or(DicewareLanguage::EN);
         let sid = settings_id();
@@ -89,8 +86,7 @@ pub fn DicewareSettings() -> Element {
             id: Some(sid),
             settings_id: sid,
             word_count: word_count.into(),
-            special_chars: special_chars.into(),
-            force_special_chars,
+            add_special_char,
             numbers: numbers.into(),
             language,
         };
@@ -98,6 +94,18 @@ pub fn DicewareSettings() -> Element {
         let pool = pool_for_submit.clone();
         let toast = toast;
         spawn(async move {
+            // Validate settings by attempting a silent generation
+            let gen_config = DicewareGenConfig::from(settings.clone());
+            match generate_diceware_password(gen_config) {
+                Ok(_) => {} // Settings are valid, proceed to save
+                Err(e) => {
+                    show_toast_error(
+                        format!("Settings saved, but: {}", e),
+                        toast,
+                    );
+                }
+            }
+
             match upsert_diceware_settings(&pool, settings).await {
                 Ok(()) => {
                     show_toast_success("Diceware settings saved!".to_string(), toast);
@@ -116,8 +124,6 @@ pub fn DicewareSettings() -> Element {
             }
         };
     }
-
-    let force_disabled: bool = special_chars().0 == 0;
 
     rsx! {
         form { class: "flex flex-col gap-4  mb-[1rem]", onsubmit: on_submit,
@@ -159,35 +165,18 @@ pub fn DicewareSettings() -> Element {
                     }
                 }
 
-                // Special chars
+                // Add special char toggle
                 div { class: "flex flex-row justify-between mb-2",
                     label { class: "label cursor-pointer",
                         strong {
-                            span { class: "label-text", "Special chars" }
-                        }
-                    }
-                    FormField {
-                        class: "min-w-[50%]",
-                        input_type: InputType::NonNegativeInt,
-                        value: special_chars,
-                        placeholder: String::new(),
-                        label: String::new(),
-                    }
-                }
-
-                // Force special chars toggle
-                div { class: "flex flex-row justify-between mb-2",
-                    label { class: "label cursor-pointer",
-                        strong {
-                            span { class: "label-text", "Force special chars" }
+                            span { class: "label-text", "Add 1 special char" }
                         }
                     }
                     Toggle {
-                        checked: force_special_chars(),
-                        onchange: move |_| force_special_chars.toggle(),
+                        checked: add_special_char(),
+                        onchange: move |_| add_special_char.toggle(),
                         size: ToggleSize::Large,
                         color: ToggleColor::Success,
-                        disabled: force_disabled,
                     }
                 }
 

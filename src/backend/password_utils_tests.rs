@@ -1006,21 +1006,20 @@ mod diceware_tests {
     fn test_generate_diceware_default_config() {
         let config = DicewareGenConfig {
             word_count: 6,
-            special_chars: 0,
-            force_special_chars: false,
+            add_special_char: false,
             numbers: 0,
             language: EmbeddedList::EN,
         };
-        let pwd = generate_diceware_password(config);
+        let pwd = generate_diceware_password(config).expect("should generate with default config");
         let pwd_str = pwd.expose_secret();
         // CamelCase: no spaces, each word starts uppercase
         assert!(!pwd_str.contains(' '), "Should be CamelCase (no spaces)");
         // 6 words = at least 6 characters
         assert!(pwd_str.len() >= 6, "Should have at least 6 characters");
-        // No special chars (special_chars == 0)
+        // No special chars (add_special_char == false)
         assert!(
             !pwd_str.chars().any(|c| !c.is_alphanumeric()),
-            "Should have no special characters when special_chars == 0"
+            "Should have no special characters when add_special_char == false"
         );
     }
 
@@ -1028,12 +1027,11 @@ mod diceware_tests {
     fn test_generate_diceware_with_special_chars() {
         let config = DicewareGenConfig {
             word_count: 6,
-            special_chars: 1,
-            force_special_chars: false,
+            add_special_char: true,
             numbers: 0,
             language: EmbeddedList::EN,
         };
-        let pwd = generate_diceware_password(config);
+        let pwd = generate_diceware_password(config).expect("should generate with special char");
         let pwd_str = pwd.expose_secret();
         let special_count = pwd_str.chars().filter(|c| !c.is_alphanumeric()).count();
         assert!(special_count >= 1, "Should have at least 1 special character, got {special_count}");
@@ -1043,12 +1041,11 @@ mod diceware_tests {
     fn test_generate_diceware_italian() {
         let config = DicewareGenConfig {
             word_count: 4,
-            special_chars: 0,
-            force_special_chars: false,
+            add_special_char: false,
             numbers: 0,
             language: EmbeddedList::IT,
         };
-        let pwd = generate_diceware_password(config);
+        let pwd = generate_diceware_password(config).expect("should generate italian diceware");
         let pwd_str = pwd.expose_secret();
         assert!(pwd_str.len() >= 4);
         assert!(!pwd_str.contains(' '));
@@ -1058,6 +1055,18 @@ mod diceware_tests {
     fn test_detect_system_language_returns_valid() {
         // Just verify it returns a valid EmbeddedList variant without panicking
         let _lang = crate::backend::password_utils::detect_system_language();
+    }
+
+    #[test]
+    fn test_generate_diceware_impossible_config_returns_err() {
+        let config = DicewareGenConfig {
+            word_count: 1,
+            add_special_char: false,
+            numbers: 99,
+            language: EmbeddedList::EN,
+        };
+        let result = generate_diceware_password(config);
+        assert!(result.is_err(), "Should fail with impossible numbers config");
     }
 }
 
@@ -1084,8 +1093,7 @@ async fn test_diceware_registration_default_settings() {
 
     // Verify defaults
     assert_eq!(settings.word_count, 6);
-    assert_eq!(settings.special_chars, 0);
-    assert!(!settings.force_special_chars);
+    assert!(!settings.add_special_char);
     assert_eq!(settings.numbers, 0);
     // Language depends on system locale — just verify it's one of the valid variants
     assert!(matches!(

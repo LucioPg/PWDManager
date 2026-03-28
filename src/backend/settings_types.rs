@@ -197,8 +197,7 @@ pub struct DicewareGenerationSettings {
     pub id: Option<i64>,
     pub settings_id: i64,
     pub word_count: i32,
-    pub special_chars: i32,
-    pub force_special_chars: bool,
+    pub add_special_char: bool,
     pub numbers: i32,
     pub language: DicewareLanguage,
 }
