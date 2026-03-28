@@ -8,6 +8,7 @@ use sqlx::{FromRow, Sqlite, Type};
 use sqlx_template::SqlxTemplate;
 use std::fmt;
 use std::ops::Deref;
+use std::time::Duration;
 
 /// Settings generali utente.
 ///
@@ -94,6 +95,16 @@ impl From<String> for AutoLogoutSettings {
             "onehour" => AutoLogoutSettings::OneHour,
             "fivehours" => AutoLogoutSettings::FiveHours,
             _ => AutoLogoutSettings::TenMinutes,
+        }
+    }
+}
+
+impl AutoLogoutSettings {
+    pub fn duration(&self) -> Duration {
+        match self {
+            AutoLogoutSettings::TenMinutes => Duration::from_secs(10 * 60),
+            AutoLogoutSettings::OneHour => Duration::from_secs(60 * 60),
+            AutoLogoutSettings::FiveHours => Duration::from_secs(5 * 60 * 60),
         }
     }
 }

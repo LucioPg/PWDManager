@@ -4,9 +4,10 @@ use crate::backend::db_backend::fetch_user_settings;
 use crate::backend::settings_types::{AutoLogoutSettings, AutoUpdate, Theme};
 use crate::backend::updater::check_for_update;
 use crate::backend::updater_types::{UpdateManifest, UpdateState};
+use dioxus::desktop::use_wry_event_handler;
 use dioxus::prelude::*;
 use sqlx::SqlitePool;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 #[component]
 pub fn AuthWrapper() -> Element {
@@ -33,6 +34,64 @@ pub fn AuthWrapper() -> Element {
     let update_manifest = use_context::<Signal<Option<UpdateManifest>>>();
     // Guardia: evita check multipli concorrenti
     let mut update_check_started = use_signal(|| false);
+
+    // --- Activity Tracking per Auto-Logout ---
+    let mut last_activity = use_signal(Instant::now);
+
+    // Intercetta ogni evento finestra (mouse, tastiera, focus) a livello nativo tao
+    use_wry_event_handler(move |event, _| {
+        if let dioxus::desktop::tao::event::Event::WindowEvent { .. } = event {
+            last_activity.set(Instant::now());
+        }
+    });
+
+    // Reset del timer quando le settings di auto-logout cambiano
+    use_effect(move || {
+        let _ = *auto_logout_settings.read();
+        last_activity.set(Instant::now());
+    });
+
+    // Timer periodico per auto-logout
+    let mut auto_logout_started = use_signal(|| false);
+    let auth_for_timer = auth_state.clone();
+    use_effect(move || {
+        if auto_logout_started() {
+            return;
+        }
+        let settings = *auto_logout_settings.read();
+        if settings.is_none() {
+            return; // Auto-logout disabilitato
+        }
+        auto_logout_started.set(true);
+
+        let last = last_activity;
+        let logout_settings = auto_logout_settings;
+        let mut auth = auth_for_timer.clone();
+        let mut theme = app_theme;
+        let nav = nav.clone();
+
+        spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_secs(5)).await;
+
+                if !auth.is_logged_in() {
+                    return;
+                }
+
+                let settings = *logout_settings.read();
+                let Some(timeout) = settings.map(|s| s.duration()) else {
+                    continue;
+                };
+
+                if last.read().elapsed() >= timeout {
+                    auth.logout();
+                    theme.set(Theme::Light);
+                    nav.push(Route::LandingPage);
+                    return;
+                }
+            }
+        });
+    });
 
     if !auth_state.is_logged_in() {
         nav.push(Route::LandingPage);
