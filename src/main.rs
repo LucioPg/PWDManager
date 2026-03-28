@@ -3,10 +3,10 @@ mod auth;
 mod backend;
 mod components;
 
-use crate::auth::{set_on_auth_change, User};
+use crate::auth::{User, set_on_auth_change};
 use crate::backend::db_backend::InitResult;
 use crate::backend::init_blacklist_from_path;
-use crate::backend::settings_types::AutoUpdate;
+use crate::backend::settings_types::{AutoLogoutSettings, AutoUpdate};
 use crate::backend::updater_types::{UpdateManifest, UpdateState};
 use crate::components::{
     AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, RouteWrapper,
@@ -52,8 +52,10 @@ fn App() -> Element {
     use_context_provider(move || auth_state);
     let app_theme = use_signal(|| Theme::Light);
     let auto_update = use_signal(|| AutoUpdate::default());
+    let auto_logout_settings = use_signal(|| Option::<AutoLogoutSettings>::default());
     use_context_provider(move || app_theme);
     use_context_provider(|| auto_update);
+    use_context_provider(|| auto_logout_settings);
     let update_state = use_signal(|| UpdateState::Idle);
     use_context_provider(|| update_state);
     let update_manifest = use_signal(|| None::<UpdateManifest>);
@@ -75,17 +77,13 @@ fn App() -> Element {
             .unwrap();
 
         // Separatore
-        tray_menu
-            .append(&PredefinedMenuItem::separator())
-            .unwrap();
+        tray_menu.append(&PredefinedMenuItem::separator()).unwrap();
 
         // Voce "Esci" — chiude l'applicazione
         // NOTA: PredefinedMenuItem::quit su Windows chiama PostQuitMessage(0) che
         // termina il processo bruscamente, saltando il cleanup di Dioxus (use_drop).
         // SQLite gestisce correttamente gli shutdown imprevisti, quindi questo e accettabile.
-        tray_menu
-            .append(&PredefinedMenuItem::quit(None))
-            .unwrap();
+        tray_menu.append(&PredefinedMenuItem::quit(None)).unwrap();
 
         // Carica entrambe le icone della tray a compile-time
         let load_icon = |bytes: &[u8]| {
@@ -274,7 +272,8 @@ fn App() -> Element {
             }
         },
         None => rsx! {
-            div { class: "flex gap-4 justify-center items-center h-screen",
+            div {
+                class: "flex gap-4 justify-center items-center h-screen",
                 style: "color: #3b82f6",
                 Spinner {
                     size: SpinnerSize::XXXXLarge,

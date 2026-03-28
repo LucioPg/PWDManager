@@ -23,6 +23,7 @@ pub struct UserSettings {
     pub user_id: i64,
     pub theme: Theme,
     pub auto_update: AutoUpdate,
+    pub auto_logout_settings: Option<AutoLogoutSettings>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, sqlx::Type, Default)]
@@ -45,6 +46,55 @@ impl From<bool> for AutoUpdate {
 impl From<AutoUpdate> for bool {
     fn from(value: AutoUpdate) -> Self {
         value.0
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Copy, Default)]
+pub enum AutoLogoutSettings {
+    #[default]
+    TenMinutes,
+    OneHour,
+    FiveHours,
+}
+
+// Serve per l'encode
+impl fmt::Display for AutoLogoutSettings {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl Type<Sqlite> for AutoLogoutSettings {
+    fn type_info() -> sqlx::sqlite::SqliteTypeInfo {
+        <String as Type<Sqlite>>::type_info()
+    }
+}
+
+impl<'q> sqlx::Encode<'q, sqlx::Sqlite> for AutoLogoutSettings {
+    fn encode_by_ref(
+        &self,
+        args: &mut Vec<sqlx::sqlite::SqliteArgumentValue<'q>>,
+    ) -> Result<sqlx::encode::IsNull, Box<dyn std::error::Error + Send + Sync>> {
+        <String as sqlx::Encode<'q, sqlx::Sqlite>>::encode(self.to_string(), args)
+    }
+}
+
+impl<'r> sqlx::Decode<'r, sqlx::Sqlite> for AutoLogoutSettings {
+    fn decode(
+        value: sqlx::sqlite::SqliteValueRef<'r>,
+    ) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+        let s = <String as sqlx::Decode<'r, sqlx::Sqlite>>::decode(value)?;
+        Ok(AutoLogoutSettings::from(s))
+    }
+}
+
+impl From<String> for AutoLogoutSettings {
+    fn from(value: String) -> Self {
+        match value.to_lowercase().as_str() {
+            "onehour" => AutoLogoutSettings::OneHour,
+            "fivehours" => AutoLogoutSettings::FiveHours,
+            _ => AutoLogoutSettings::TenMinutes,
+        }
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::Route;
 use crate::auth::AuthState;
 use crate::backend::db_backend::fetch_user_settings;
-use crate::backend::settings_types::{AutoUpdate, Theme};
+use crate::backend::settings_types::{AutoLogoutSettings, AutoUpdate, Theme};
 use crate::backend::updater::check_for_update;
 use crate::backend::updater_types::{UpdateManifest, UpdateState};
 use dioxus::prelude::*;
@@ -17,14 +17,17 @@ pub fn AuthWrapper() -> Element {
     let mut app_theme = use_context::<Signal<Theme>>();
     #[allow(unused_mut)]
     let mut auto_update = use_context::<Signal<AutoUpdate>>();
-
+    #[allow(unused_mut)]
+    let mut auto_logout_settings = use_context::<Signal<Option<AutoLogoutSettings>>>();
     // Flag per fetch unico dei settings
     #[allow(unused_mut)]
     let mut theme_fetched = use_signal(|| false);
     // Flag per fetch unico dei settings di autoupdate
     #[allow(unused_mut)]
     let mut auto_update_fetched = use_signal(|| false);
-
+    // Flag per fetch unico dei settings di autoupdate
+    #[allow(unused_mut)]
+    let mut auto_logout_settings_fetched = use_signal(|| false);
     // Leggi Signal<UpdateState> fornito da App() — NON dentro use_effect!
     let update_state = use_context::<Signal<UpdateState>>();
     let update_manifest = use_context::<Signal<Option<UpdateManifest>>>();
@@ -43,17 +46,23 @@ pub fn AuthWrapper() -> Element {
         let mut theme_fetched = theme_fetched;
         let mut auto_update_fetched = auto_update_fetched;
         let mut auto_update = auto_update;
+        let mut auto_logout_settings_fetched = auto_logout_settings_fetched;
+        let mut auto_logout_settings = auto_logout_settings;
         let user_id = user_id;
         async move {
-            if (theme_fetched() && auto_update_fetched()) || user_id <= 0 {
+            if (theme_fetched() && auto_update_fetched() && auto_logout_settings_fetched())
+                || user_id <= 0
+            {
                 return;
             }
             if let Ok(Some(settings)) = fetch_user_settings(&pool, user_id).await {
                 app_theme.set(settings.theme);
                 auto_update.set(settings.auto_update);
+                auto_logout_settings.set(settings.auto_logout_settings);
             }
             theme_fetched.set(true);
             auto_update_fetched.set(true);
+            auto_logout_settings_fetched.set(true);
         }
     });
 
