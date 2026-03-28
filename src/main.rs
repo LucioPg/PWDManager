@@ -23,7 +23,9 @@ use gui_launcher::launch_desktop;
 use secrecy::ExposeSecret;
 
 use dioxus::desktop::trayicon::init_tray_icon;
-use tray_icon::menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem};
+use dioxus::desktop::use_muda_event_handler;
+use dioxus::desktop::window;
+use tray_icon::menu::{Menu, MenuItem, PredefinedMenuItem};
 
 // const LOGO_BYTES: &[u8] = include_bytes!("../assets/logo.png");
 //
@@ -97,36 +99,23 @@ fn App() -> Element {
         };
 
         init_tray_icon(tray_menu, icon_rgba);
+    });
 
-        // Handle tray menu events.
-        // Dioxus's init_tray_icon() sets its own MenuEvent handler that doesn't
-        // dispatch to Dioxus hooks. We replace it with our own handler that forwards
-        // events to a tokio mpsc channel, then consume them in an async loop.
-        let (tray_tx, mut tray_rx) = tokio::sync::mpsc::channel::<MenuEvent>(16);
-        MenuEvent::set_event_handler::<fn(MenuEvent)>(None);
-        MenuEvent::set_event_handler(Some(move |event: MenuEvent| {
-            let _ = tray_tx.blocking_send(event);
-        }));
-        let mut auth_for_tray = auth_state_tray.clone();
-        spawn(async move {
-            while let Some(event) = tray_rx.recv().await {
-                match event.id.0.as_str() {
-                    "open" => {
-                        use dioxus::desktop::window;
-                        window().set_visible(true);
-                        window().set_focus();
-                    }
-                    "logout" => {
-                        println!("Logout from tray");
-                        auth_for_tray.logout();
-                        use dioxus::desktop::window;
-                        window().set_visible(true);
-                        window().set_focus();
-                    }
-                    _ => {}
-                }
-            }
-        });
+    // Handle tray menu events via Dioxus's muda event system.
+    // Dioxus 0.7 registers muda::MenuEvent handler during app init (OnceCell).
+    // tray_icon::menu::MenuEvent shares the same OnceCell, so custom handlers
+    // on it are silently ignored. use_muda_event_handler hooks into the correct
+    // MudaMenuEvent dispatch path.
+    let mut auth_for_tray = auth_state_tray.clone();
+    use_muda_event_handler(move |event| {
+        if event.id() == "open" {
+            window().set_visible(true);
+            window().set_focus();
+        } else if event.id() == "logout" {
+            auth_for_tray.logout();
+            window().set_visible(true);
+            window().set_focus();
+        }
     });
 
     let mut db_resource = use_resource(move || async move { init_db().await });
@@ -274,6 +263,7 @@ fn App() -> Element {
         },
         None => rsx! {
             div { class: "flex gap-4 justify-center items-center h-screen",
+                style: "color: #3b82f6",
                 Spinner {
                     size: SpinnerSize::XXXXLarge,
                     color_class: "text-blue-500",
