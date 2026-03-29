@@ -116,7 +116,6 @@ shared UI components.
 ## Technical documentation
 
 - [docs/security.md](docs/security.md) -- security architecture, encryption layers, key management
-- [docs/AUTO_UPDATE_PATTERN.md](docs/AUTO_UPDATE_PATTERN.md) -- auto-update system with minisign signature verification
 - [docs/AUTO_UPDATE_DIOXUS.md](docs/AUTO_UPDATE_DIOXUS.md) -- updater integration with the Dioxus application lifecycle
 - [docs/howto_sqlitetemplate.md](docs/howto_sqlitetemplate.md) -- sqlx-template guide for automatic CRUD generation
 - [docs/nsis-custom-template.md](docs/nsis-custom-template.md) -- custom NSIS template for the installer
