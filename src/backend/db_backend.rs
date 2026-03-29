@@ -2,7 +2,7 @@
 // Licensed under the Prosperity Public License 3.0.0
 // Commercial use requires a license. See LICENSE.md for details.
 
-﻿#![allow(dead_code)]
+#![allow(dead_code)]
 #[cfg(feature = "desktop")]
 use crate::backend::db_key;
 use crate::backend::init_queries::QUERIES;
@@ -280,13 +280,14 @@ pub async fn rekey_database() -> Result<secrecy::SecretString, DBError> {
             Ok(_) => {
                 drop(temp_pool);
                 // 7. Update keyring with new key
-                db_key::store_db_key(service_name, db_key::KEY_USERNAME, &new_key)
-                    .map_err(|e| {
+                db_key::store_db_key(service_name, db_key::KEY_USERNAME, &new_key).map_err(
+                    |e| {
                         DBError::new_general_error(format!(
                             "Cannot store new key in keyring: {}",
                             e
                         ))
-                    })?;
+                    },
+                )?;
                 Ok(secrecy::SecretString::new(new_passphrase.into()))
             }
             Err(e) => {
