@@ -22,14 +22,12 @@ pwd-strength = { git = "https://github.com/LucioPg/pwd-strength", features = ["a
 pwd-crypto = { git = "https://github.com/LucioPg/pwd-crypto", features = ["full", "base64", "pwd-types"] }
 pwd-dioxus = { git = "https://github.com/LucioPg/pwd-dioxus", branch = "main", features = ["handler", "secret-display", "modal", "icons-visibility", "icons-action", "icons-alert", "toast", "toggle", "combobox"] }
 diceware = { git = "https://github.com/LucioPg/diceware.git" }
-sys-locale = "0.2"
 
 # Dipendenze esterne
 tracing = "0.1.44"
-dioxus = { version = "0.7.3", features = ["desktop", "router"] }
+dioxus = { version = "0.7.4", features = ["desktop", "router"] }
 tray-icon = "0.21"
 sqlx = { version = "0.8.6", default-features = false, features = ["runtime-tokio", "sqlite", "macros"] }
-libsqlite3-sys = { version = "0.30", default-features = false, features = ["bundled-sqlcipher"] }
 tokio = { version = "1.49.0", features = ["full", "tracing"] }
 argon2 = { version = "0.5.3", features = ["std", "zeroize"] }
 base64 = "0.22.1"
@@ -47,6 +45,8 @@ serde_json = "1.0"
 csv = "1.3"
 quick-xml = { version = "0.37", features = ["serialize"] }
 chrono = "0.4"
+sys-locale = "0.2"
+
 
 # DB Encryption
 keyring = { version = "3", features = ["windows-native"] }
@@ -74,37 +74,3 @@ desktop = ["dioxus/desktop"]
 # ide-only serve per fare in modo che la ide analizzi il codice normalmente ma il compilatore non tenterà di compilare
 # utile per avere highlight mentre si lavora su elementi non ancora completati. (ricordarsi di attivare la feature nel pannello di cargo della ide)
 ide-only = []
-
-# da rimuovere per la release
-
-[patch."https://github.com/LucioPg/custom_errors"]
-custom_errors = { path = "../custom_errors" }
-
-[patch."https://github.com/LucioPg/pwd-types"]
-pwd-types = { path = "../pwd-types" }
-
-[patch."https://github.com/LucioPg/pwd-strength"]
-pwd-strength = { path = "../pwd-strength" }
-
-[patch."https://github.com/LucioPg/pwd-crypto"]
-pwd-crypto = { path = "../pwd-crypto" }
-
-[patch."https://github.com/LucioPg/pwd-dioxus"]
-pwd-dioxus = { path = "../pwd-dioxus" }
-
-[patch."https://github.com/LucioPg/diceware"]
-diceware = { path = "../diceware/diceware" }
-
-[patch.crates-io]
-dioxus = { path = "../dioxus/packages/dioxus" }
-dioxus-core = { path = "../dioxus/packages/core" }
-dioxus-html = { path = "../dioxus/packages/html" }
-dioxus-html-internal-macro = { path = "../dioxus/packages/html-internal-macro" }
-dioxus-rsx = { path = "../dioxus/packages/rsx" }
-dioxus-signals = { path = "../dioxus/packages/signals" }
-dioxus-hooks = { path = "../dioxus/packages/hooks" }
-dioxus-router = { path = "../dioxus/packages/router" }
-dioxus-desktop = { path = "../dioxus/packages/desktop" }
-dioxus-interpreter-js = { path = "../dioxus/packages/interpreter" }
-dioxus-core-macro = { path = "../dioxus/packages/core-macro" }
-dioxus-core-types = { path = "../dioxus/packages/core-types" }
