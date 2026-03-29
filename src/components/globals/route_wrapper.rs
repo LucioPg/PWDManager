@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Lucio Di Capua <ldcproductions@proton.me>
+// Licensed under the Prosperity Public License 3.0.0
+// Commercial use requires a license. See LICENSE.md for details.
+
 use crate::Route;
 use crate::backend::settings_types::Theme;
 use crate::backend::utils::base64_encode;

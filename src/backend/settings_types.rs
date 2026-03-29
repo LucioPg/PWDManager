@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Lucio Di Capua <ldcproductions@proton.me>
+// Licensed under the Prosperity Public License 3.0.0
+// Commercial use requires a license. See LICENSE.md for details.
+
 #![allow(clippy::needless_question_mark, clippy::len_without_is_empty)]
 //! Tipi per la gestione dei settings utente.
 //!

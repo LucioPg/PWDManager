@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Lucio Di Capua <ldcproductions@proton.me>
+// Licensed under the Prosperity Public License 3.0.0
+// Commercial use requires a license. See LICENSE.md for details.
+
 use crate::components::features::diceware_settings::DicewareSettings;
 use crate::components::features::general_settings::GeneralSettings;
 use crate::components::features::recovery_key_settings::RecoveryKeySettings;

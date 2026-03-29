@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Lucio Di Capua <ldcproductions@proton.me>
+// Licensed under the Prosperity Public License 3.0.0
+// Commercial use requires a license. See LICENSE.md for details.
+
 //! Componente per mostrare il progresso dell'export.
 
 use crate::backend::export::export_passwords_pipeline_with_progress;

@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Lucio Di Capua <ldcproductions@proton.me>
+// Licensed under the Prosperity Public License 3.0.0
+// Commercial use requires a license. See LICENSE.md for details.
+
 use crate::auth::{AuthState, User};
 use crate::backend::avatar_utils::get_user_avatar_with_default;
 use crate::backend::db_backend::{delete_user, register_user_with_settings, save_or_update_user};

@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Lucio Di Capua <ldcproductions@proton.me>
+// Licensed under the Prosperity Public License 3.0.0
+// Commercial use requires a license. See LICENSE.md for details.
+
 use crate::backend::db_backend::{
     create_user_settings, fetch_all_stored_passwords_for_user, fetch_user_auth_from_id,
     fetch_user_data, fetch_user_passwords_generation_settings, fetch_user_temp_old_password,

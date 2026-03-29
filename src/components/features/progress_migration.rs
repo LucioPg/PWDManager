@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Lucio Di Capua <ldcproductions@proton.me>
+// Licensed under the Prosperity Public License 3.0.0
+// Commercial use requires a license. See LICENSE.md for details.
+
 use crate::backend::db_backend::restore_old_password;
 use crate::backend::migration_types::{MigrationStage, ProgressMessage};
 use crate::backend::password_utils::stored_passwords_migration_pipeline_with_progress;

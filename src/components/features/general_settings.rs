@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Lucio Di Capua <ldcproductions@proton.me>
+// Licensed under the Prosperity Public License 3.0.0
+// Commercial use requires a license. See LICENSE.md for details.
+
 use crate::auth::AuthState;
 use crate::backend::db_backend::fetch_user_settings;
 #[cfg(target_os = "windows")]

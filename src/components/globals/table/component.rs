@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Lucio Di Capua <ldcproductions@proton.me>
+// Licensed under the Prosperity Public License 3.0.0
+// Commercial use requires a license. See LICENSE.md for details.
+
 use crate::components::globals::secret_notes_tooltip::SecretNotesTooltip;
 use crate::components::globals::table::TooltipState;
 use crate::components::{Spinner, SpinnerSize, StoredRawPasswordRow};

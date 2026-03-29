@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Lucio Di Capua <ldcproductions@proton.me>
+// Licensed under the Prosperity Public License 3.0.0
+// Commercial use requires a license. See LICENSE.md for details.
+
 use crate::auth::{AuthState, User};
 use crate::backend::db_backend::{
     fetch_user_passwords_generation_settings, upsert_password_config,

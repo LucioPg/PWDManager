@@ -1,3 +1,7 @@
+// Copyright (c) 2026 Lucio Di Capua <ldcproductions@proton.me>
+// Licensed under the Prosperity Public License 3.0.0
+// Commercial use requires a license. See LICENSE.md for details.
+
 use super::base_modal::{BaseModal, ModalVariant};
 use crate::backend::password_utils::create_stored_data_pipeline_bulk;
 use crate::components::features::dashboard::StoredPasswordUpsertDialogState;
