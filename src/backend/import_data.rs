@@ -5,7 +5,7 @@
 //! - input_path: Path del file da importare
 //! - format: Formato di import (JSON, CSV, XML)
 
-use crate::backend::export_types::ExportFormat;
+use super::export_types::ExportFormat;
 use std::path::PathBuf;
 
 /// Dati di contesto per l'import delle password.

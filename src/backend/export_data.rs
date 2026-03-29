@@ -5,7 +5,7 @@
 //! - output_path: Path dove salvare il file
 //! - format: Formato di export (JSON, CSV, XML)
 
-use crate::backend::export_types::ExportFormat;
+use super::export_types::ExportFormat;
 use std::path::PathBuf;
 
 /// Dati di contesto per l'export delle password.

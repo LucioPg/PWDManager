@@ -33,11 +33,11 @@
     - [x] Creazione tabella settings
     - [x] Creazione di un form per la modifica delle preferenze utente per le password
     - [x] Creazione trigger creazione di settings per ogni nuovo utente
-- [ ] gestire l'auto logout:
+- [x] gestire l'auto logout:
     - [x] aggiungere componente combobox in settings General per scegliere un set predefinito di tempistiche
     - [x] aggiornare la tabella user settings (quella dove c'è anche il theme)
-    - [ ] implementare l'event listener effettivo per il calcolo del timeout
-    - [ ] deve essere monitorata l'attività dell'utente in AuthWrapper in modo tale da resettare il timeout
+    - [x] implementare l'event listener effettivo per il calcolo del timeout
+    - [x] deve essere monitorata l'attività dell'utente in AuthWrapper in modo tale da resettare il timeout
 
 ## UI e UX
 

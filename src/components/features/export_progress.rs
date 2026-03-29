@@ -2,7 +2,7 @@
 
 use crate::backend::export::export_passwords_pipeline_with_progress;
 use crate::backend::migration_types::{MigrationStage, ProgressMessage, ProgressSender};
-use crate::components::ExportData;
+use crate::backend::export_data::ExportData;
 use crate::components::{show_toast_error, show_toast_success, use_toast};
 use dioxus::prelude::*;
 use sqlx::SqlitePool;
