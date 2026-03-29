@@ -200,6 +200,9 @@ Section "Uninstall"
 
     ; Remove registry keys
     DeleteRegKey SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\${BUNDLE_ID}"
+
+    ; Remove auto-start entry (HKCU, no admin needed)
+    DeleteRegValue HKCU "Software\Microsoft\Windows\CurrentVersion\Run" "PwdManager"
 SectionEnd
 
 ; ============================================================================
