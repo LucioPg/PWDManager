@@ -2,10 +2,10 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-/// Resolve pwd-dioxus crate path via cargo metadata.
+/// Resolve pwd-dioxus crate path via cargo metadata (minified JSON output).
 fn find_pwd_dioxus_path() -> Option<std::path::PathBuf> {
     let output = Command::new("cargo")
-        .args(["metadata", "--format-version=1", "--no-deps"])
+        .args(["metadata", "--format-version=1"])
         .output()
         .ok()?;
 
@@ -14,69 +14,52 @@ fn find_pwd_dioxus_path() -> Option<std::path::PathBuf> {
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
+    let bytes = stdout.as_bytes();
+    let name_marker = "\"name\":\"pwd-dioxus\"";
+    let mp_prefix = "\"manifest_path\":\"";
 
-    // Find the pwd-dioxus package and get its manifest_path
-    // We need to find "pwd-dioxus" in the packages array
-    let mut in_packages = false;
-    let mut brace_depth = 0;
-    let mut in_pwd_dioxus = false;
-    let mut found = false;
-    let mut manifest_path = String::new();
+    // cargo metadata is minified (single line). "name":"pwd-dioxus" appears both
+    // in dependency entries (no manifest_path) and in the packages array entry.
+    // Try each occurrence and return the one that has a manifest_path.
+    let mut search_from = 0;
+    while search_from < bytes.len() {
+        let name_pos = match stdout[search_from..].find(name_marker) {
+            Some(pos) => search_from + pos,
+            None => break,
+        };
 
-    for line in stdout.lines() {
-        let trimmed = line.trim();
-
-        if !in_packages {
-            if trimmed == "\"packages\": [" || trimmed == "\"packages\":[" {
-                in_packages = true;
-                brace_depth = 0;
-            }
-            continue;
-        }
-
-        // Track nested braces
-        for ch in trimmed.chars() {
+        // Find end of enclosing object (the '{' before name_pos is uncounted)
+        let mut depth = 0i32;
+        let mut obj_end = bytes.len();
+        for (i, &ch) in bytes[name_pos..].iter().enumerate() {
             match ch {
-                '{' => brace_depth += 1,
-                '}' => {
-                    brace_depth -= 1;
-                    if brace_depth == 0 {
-                        in_pwd_dioxus = false;
-                        if found {
-                            break;
-                        }
+                b'{' => depth += 1,
+                b'}' => {
+                    depth -= 1;
+                    if depth == -1 {
+                        obj_end = name_pos + i;
+                        break;
                     }
                 }
                 _ => {}
             }
         }
 
-        if found {
-            if trimmed.contains("\"manifest_path\"") {
-                // Extract path from: "manifest_path": "/path/to/Cargo.toml"
-                if let Some(start) = trimmed.find('"').and_then(|i| {
-                    trimmed[i + 1..].find('"').map(|j| Some(i + 1 + j))
-                }).flatten() {
-                    if let Some(end) = trimmed[start..].find('"') {
-                        manifest_path = trimmed[start..start + end].to_string();
-                        found = true;
-                    }
-                }
+        // Check if this object contains manifest_path
+        let obj = &stdout[name_pos..obj_end];
+        if let Some(mp_start) = obj.find(mp_prefix) {
+            let path_start = mp_start + mp_prefix.len();
+            if let Some(path_end) = obj[path_start..].find('"') {
+                let manifest_path = &obj[path_start..path_start + path_end];
+                let pkg_dir = Path::new(manifest_path).parent()?;
+                return Some(pkg_dir.to_path_buf());
             }
         }
 
-        if trimmed.contains("\"name\": \"pwd-dioxus\"") || trimmed.contains("\"name\":\"pwd-dioxus\"") {
-            in_pwd_dioxus = true;
-        }
+        search_from = obj_end;
     }
 
-    if manifest_path.is_empty() {
-        return None;
-    }
-
-    // manifest_path points to Cargo.toml, we need the parent directory
-    let pkg_dir = Path::new(&manifest_path).parent()?;
-    Some(pkg_dir.to_path_buf())
+    None
 }
 
 fn windows_executable_icon() {
