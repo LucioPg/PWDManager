@@ -30,3 +30,4 @@ test_import.json
 # Chiavi di firma updater (MAI committare)
 .env
 /.tokensave/
+/assets/pwd-dioxus-safelist.txt

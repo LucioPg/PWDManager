@@ -4363,7 +4363,7 @@ dependencies = [
 [[package]]
 name = "pwd-crypto"
 version = "0.1.0"
-source = "git+https://github.com/LucioPg/pwd-crypto#ce097530dd64a77ad6612c81960d0c8a03d436e3"
+source = "git+https://github.com/LucioPg/pwd-crypto#a62d2e81eb50d06c109e076951c63a3419e413a9"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -4375,8 +4375,8 @@ dependencies = [
 
 [[package]]
 name = "pwd-dioxus"
-version = "0.2.25"
-source = "git+https://github.com/LucioPg/pwd-dioxus?branch=main#44effbea02c9b261ae2f59a0888e080674755087"
+version = "0.3.0"
+source = "git+https://github.com/LucioPg/pwd-dioxus?branch=main#dd5296ca345b7cefc8f7b0fd88e8de75db8cddae"
 dependencies = [
  "arboard",
  "dioxus",
@@ -4389,7 +4389,7 @@ dependencies = [
 [[package]]
 name = "pwd-strength"
 version = "0.1.4"
-source = "git+https://github.com/LucioPg/pwd-strength#23ae020c2176f43c8ad97a15a636cff9d5a9d4fa"
+source = "git+https://github.com/LucioPg/pwd-strength#f4f53c0d585265fd4b28d15469671cfb73fae256"
 dependencies = [
  "pwd-types",
  "secrecy",
@@ -4402,7 +4402,7 @@ dependencies = [
 [[package]]
 name = "pwd-types"
 version = "0.2.2"
-source = "git+https://github.com/LucioPg/pwd-types#3bdc11791b6330b4ee80a173f4efeaf2bec86919"
+source = "git+https://github.com/LucioPg/pwd-types#69e417b5766ac172437300b70687e1d785921dae"
 dependencies = [
  "aegis-password-generator",
  "chrono",
