@@ -49,13 +49,13 @@ pub fn SettingsTabContent() -> Element {
                 value: "Security".to_string(),
                 Tabs {
                     class: "pwd-tabs-inner".to_string(),
-                    default_value: "Password Casuale".to_string(),
+                    default_value: "Random Password".to_string(),
                     horizontal: true,
                     TabList {
                         TabTrigger {
-                            value: "Password Casuale".to_string(),
+                            value: "Random Password".to_string(),
                             index: 0usize,
-                            "Password Casuale"
+                            "Random Password"
                         }
                         TabTrigger { value: "Diceware".to_string(), index: 1usize, "Diceware" }
                         TabTrigger { value: "Recovery Key".to_string(), index: 2usize, "Recovery Key" }
@@ -63,7 +63,7 @@ pub fn SettingsTabContent() -> Element {
                     TabContent {
                         index: 0usize,
                         class: "pwd-tabs-content",
-                        value: "Password Casuale".to_string(),
+                        value: "Random Password".to_string(),
                         StoredPasswordSettings { user_to_edit: user.clone() }
                     }
                     TabContent {
