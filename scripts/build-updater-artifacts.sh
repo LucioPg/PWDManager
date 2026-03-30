@@ -17,6 +17,12 @@ BUNDLE_DIR="${2:?Usage: $0 <version> <bundle_output_dir>}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
+# Usa minisign locale se disponibile, altrimenti quello di sistema
+MINISIGN="$PROJECT_ROOT/minisign.exe"
+if [ ! -x "$MINISIGN" ]; then
+    MINISIGN="minisign"
+fi
+
 if [ -f "$PROJECT_ROOT/.env" ]; then
     set -a
     source "$PROJECT_ROOT/.env"
@@ -43,22 +49,26 @@ echo "==> Found NSIS installer: $NSIS_EXE"
 # Firma l'artefatto con minisign
 SIG_FILE="${NSIS_EXE}.sig"
 echo "==> Signing artifact..."
+
+# Scrivi la chiave privata in un file temporaneo (minisign richiede un path, non stdin)
+TMP_KEY=$(mktemp)
+trap 'rm -f "$TMP_KEY"' EXIT
+printf 'untrusted comment: minisign encrypted secret key\n%s\n' "$DIOXUS_SIGNING_PRIVATE_KEY" > "$TMP_KEY"
+
 if [ -n "$DIOXUS_SIGNING_PRIVATE_KEY_PASSWORD" ]; then
-    echo "$DIOXUS_SIGNING_PRIVATE_KEY_PASSWORD" | minisign \
+    echo "$DIOXUS_SIGNING_PRIVATE_KEY_PASSWORD" | "$MINISIGN" \
         -Sm "$NSIS_EXE" \
-        -s - \
+        -s "$TMP_KEY" \
         -t "PWDManager v$VERSION" \
         -x "$SIG_FILE"
 else
-    minisign -Sm "$NSIS_EXE" -t "PWDManager v$VERSION" -x "$SIG_FILE"
+    "$MINISIGN" -Sm "$NSIS_EXE" -s "$TMP_KEY" -t "PWDManager v$VERSION" -x "$SIG_FILE"
 fi
 
 # Crea lo zip per l'update (contiene solo l'installer .exe)
 NSIS_ZIP="${NSIS_EXE%.*}.nsis.zip"
 echo "==> Creating update zip: $NSIS_ZIP"
-cp "$NSIS_EXE" "$(basename "$NSIS_EXE")"
-zip -j "$NSIS_ZIP" "$(basename "$NSIS_EXE")"
-rm "$(basename "$NSIS_EXE")"
+powershell -NoProfile -Command "Compress-Archive -Path '$NSIS_EXE' -DestinationPath '$NSIS_ZIP' -Force"
 
 # Legge la firma e la converte in base64 per latest.json
 SIGNATURE_B64=$(base64 -w 0 "$SIG_FILE")
@@ -76,10 +86,13 @@ fi
 
 PUB_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
+# Escape JSON: backslash, double quotes, newline -> \n
+NOTES_JSON=$(printf '%s' "$NOTES" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | awk '{printf "%s%s", (NR>1?"\\n":""), $0}')
+
 cat > "$BUNDLE_DIR/latest.json" <<EOF
 {
   "version": "$VERSION",
-  "notes": $(echo "$NOTES" | python3 -c 'import sys,json; print(json.dumps(sys.stdin.read().strip()))'),
+  "notes": "$NOTES_JSON",
   "pub_date": "$PUB_DATE",
   "platforms": {
     "windows-x86_64": {

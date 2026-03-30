@@ -31,3 +31,5 @@ test_import.json
 .env
 /.tokensave/
 /assets/pwd-dioxus-safelist.txt
+/minisign.exe
+/keys/pwdmanager.key
