@@ -10,8 +10,8 @@
 /* Scansiona i file sorgente del progetto principale */
 @source "../src/**/*.rs";
 
-/* Scansiona il file generato con le classi Tailwind usate da pwd-dioxus */
-@source "./pwd-dioxus-classes.rs";
+/* Scansiona le classi Tailwind usate da pwd-dioxus (generato dal build.rs di pwd-dioxus) */
+@source "./pwd-dioxus-safelist.txt";
 
 /* Importa il CSS custom di pwd-dioxus (spinner, toast, strength analyzer, ecc.) */
 @import "./pwd-dioxus-components.css";
