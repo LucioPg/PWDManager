@@ -1,5 +1,6 @@
 /target
 /.idea
+/RELEASE_PROCEDURE.md
 /database.db*
 */target/*
 /.claude/
@@ -33,3 +34,4 @@ test_import.json
 /assets/pwd-dioxus-safelist.txt
 /minisign.exe
 /keys/pwdmanager.key
+/RELEASE_NOTES.md
