@@ -142,8 +142,12 @@ pub async fn download_and_install(
 
     update_state.set(UpdateState::Downloading { progress: 98 });
 
-    // Estrai lo zip
+    // Estrai lo zip — pulisci la cartella prima per rimuovere installer di vecchie versioni
     let extract_dir = temp_dir.join("extracted");
+    if extract_dir.exists() {
+        std::fs::remove_dir_all(&extract_dir)
+            .map_err(|e| format!("Cannot clean extract dir: {}", e))?;
+    }
     std::fs::create_dir_all(&extract_dir)
         .map_err(|e| format!("Cannot create extract dir: {}", e))?;
 
@@ -170,19 +174,53 @@ pub async fn download_and_install(
     std::process::exit(0);
 }
 
-/// Cerca il primo file .exe nella directory estratta.
+/// Cerca il file .exe con la versione semver più alta nella directory estratta.
+/// Fallback al primo .exe se nessun nome contiene un numero di versione.
 fn find_exe_in_dir(dir: &Path) -> Result<PathBuf, String> {
-    std::fs::read_dir(dir)
+    let exe_files: Vec<PathBuf> = std::fs::read_dir(dir)
         .map_err(|e| format!("Cannot read extract dir: {}", e))?
         .filter_map(|entry| entry.ok())
-        .find(|entry| {
+        .filter(|entry| {
             entry
                 .path()
                 .extension()
                 .is_some_and(|ext| ext.eq_ignore_ascii_case("exe"))
         })
         .map(|entry| entry.path())
-        .ok_or_else(|| "No .exe installer found in archive".to_string())
+        .collect();
+
+    if exe_files.is_empty() {
+        return Err("No .exe installer found in archive".to_string());
+    }
+
+    // Se c'è un solo exe, restituiscilo direttamente
+    if exe_files.len() == 1 {
+        return Ok(exe_files.into_iter().next().unwrap());
+    }
+
+    // Con più exe, seleziona quello con la versione semver più alta nel nome
+    let best = exe_files
+        .iter()
+        .filter_map(|path| {
+            let name = path.file_name()?.to_str()?;
+            // Cerca pattern tipo "0.2.5" nel nome del file
+            let version_str = name.split('_').find_map(|part| {
+                Version::parse(part).ok().map(|v| (v, (*path).clone()))
+            })?;
+            Some(version_str)
+        })
+        .max_by(|(v1, _), (v2, _)| v1.cmp(v2))
+        .map(|(_, path)| path);
+
+    match best {
+        Some(path) => Ok(path),
+        None => {
+            // Fallback: nessun exe con versione nel nome, prendi il primo
+            // (comportamento originale retrocompatibile)
+            let mut files = exe_files;
+            Ok(files.remove(0))
+        }
+    }
 }
 
 #[cfg(test)]
@@ -213,10 +251,11 @@ mod tests {
     }
 
     #[test]
-    fn finds_first_exe_when_multiple() {
+    fn finds_highest_version_exe_when_multiple() {
         let dir = tempfile();
-        create_file(&dir, "alpha.exe", "a");
-        create_file(&dir, "beta.exe", "b");
+        create_file(&dir, "PwdManager_0.2.2_x64-setup.exe", "a");
+        create_file(&dir, "PwdManager_0.2.5_x64-setup.exe", "b");
+        create_file(&dir, "PwdManager_0.2.3_x64-setup.exe", "c");
 
         let result = find_exe_in_dir(&dir).unwrap();
         assert!(
@@ -225,7 +264,7 @@ mod tests {
                 .unwrap()
                 .to_str()
                 .unwrap()
-                .contains("alpha")
+                .contains("0.2.5")
         );
     }
 
@@ -355,6 +394,26 @@ mod tests {
         assert_eq!(
             result.unwrap().file_name().unwrap().to_str().unwrap(),
             "Setup.EXE"
+        );
+    }
+
+    #[test]
+    fn falls_back_to_first_exe_when_no_version_in_name() {
+        let dir = tempfile();
+        create_file(&dir, "alpha.exe", "a");
+        create_file(&dir, "beta.exe", "b");
+
+        let result = find_exe_in_dir(&dir);
+        assert!(result.is_ok());
+        // Fallback: restituisce il primo .exe trovato (comportamento originale)
+        assert!(
+            result
+                .unwrap()
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .contains("alpha")
         );
     }
 
