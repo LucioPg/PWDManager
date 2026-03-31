@@ -49,7 +49,11 @@ echo "==> Found NSIS installer: $NSIS_EXE"
 # Crea lo zip per l'update (contiene solo l'installer .exe)
 NSIS_ZIP="${NSIS_EXE%.*}.nsis.zip"
 echo "==> Creating update zip: $NSIS_ZIP"
-powershell -NoProfile -Command "Compress-Archive -Path '$NSIS_EXE' -DestinationPath '$NSIS_ZIP' -Force"
+
+# Convert Unix paths to Windows paths for PowerShell on MSYS2/Git Bash
+WIN_NSIS_EXE=$(cygpath -w "$NSIS_EXE")
+WIN_NSIS_ZIP=$(cygpath -w "$NSIS_ZIP")
+powershell -NoProfile -Command "Compress-Archive -Path '$WIN_NSIS_EXE' -DestinationPath '$WIN_NSIS_ZIP' -Force"
 
 # Firma lo ZIP con minisign (il client scarica lo zip, quindi la firma deve essere sullo zip)
 SIG_FILE="${NSIS_ZIP}.sig"
