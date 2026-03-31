@@ -105,6 +105,24 @@ Page custom PageRecoveryKey PageLeaveRecoveryKey
 !include "{{installer_hooks}}"
 {{/if}}
 
+; Detect update mode before any page is shown
+; ($INSTDIR is auto-populated from registry for existing installs)
+Function .onInit
+  StrCpy $IsUpdate "0"
+
+  ${GetOptions} $CMDLINE "/UPDATE" $R0
+  ${IfNot} ${Errors}
+    StrCpy $IsUpdate "1"
+  ${Else}
+    ${GetOptions} $CMDLINE "/S" $R0
+    ${IfNot} ${Errors}
+      ${If} ${FileExists} "$INSTDIR\database.db"
+        StrCpy $IsUpdate "1"
+      ${EndIf}
+    ${EndIf}
+  ${EndIf}
+FunctionEnd
+
 ; Installer section
 Section "Install"
     SetOutPath $INSTDIR
@@ -221,6 +239,11 @@ SectionEnd
 ; PWDManager - Disclaimer page (nsDialogs)
 ; ============================================================================
 Function PageDisclaimer
+  ; Skip disclaimer page for updates — no setup will run
+  ${If} $IsUpdate == "1"
+    Abort
+  ${EndIf}
+
   !insertmacro MUI_HEADER_TEXT "Disclaimer" "Read and accept before installing"
   nsDialogs::Create 1018
   Pop $0

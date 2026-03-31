@@ -17,23 +17,7 @@
   ; (get_db_path() in Rust uses std::env::current_dir())
   SetOutPath $INSTDIR
 
-  ; Determine if this is an update:
-  ;   1. Explicit /UPDATE flag (new client)
-  ;   2. Implicit: /S (silent) + existing database (old client backward compat)
-  StrCpy $IsUpdate "0"
-
-  ${GetOptions} $CMDLINE "/UPDATE" $R0
-  ${IfNot} ${Errors}
-    StrCpy $IsUpdate "1"
-  ${Else}
-    ${GetOptions} $CMDLINE "/S" $R0
-    ${IfNot} ${Errors}
-      ${If} ${FileExists} "$INSTDIR\database.db"
-        StrCpy $IsUpdate "1"
-      ${EndIf}
-    ${EndIf}
-  ${EndIf}
-
+  ; $IsUpdate is set in .onInit (before any page is shown)
   ${If} $IsUpdate == "1"
     ; Update mode — skip setup, launch the updated app
     Exec '"$INSTDIR\PWDManager.exe"'
