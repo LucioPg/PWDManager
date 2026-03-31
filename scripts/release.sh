@@ -129,22 +129,22 @@ WIN_NSIS_EXE=$(cygpath -w "$NSIS_EXE")
 MSYS_NO_PATHCONV=1 signtool sign /tr http://timestamp.digicert.com /td sha256 /fd sha256 /a "$WIN_NSIS_EXE"
 step "Installer code-signed: $(basename "$NSIS_EXE")"
 
-# ── Step 6: Sign artifacts for updater ──────────────────
-info "Signing artifacts for updater..."
+# ── Step 6: Open editor for RELEASE_NOTES.md ────────────
+info "Opening editor for RELEASE_NOTES.md..."
+${EDITOR:-notepad} "$NOTES_FILE"
+step "Release notes saved"
+
+# ── Step 7: Sign artifacts for updater ──────────────────
+info "Signing artifacts for updater (reads RELEASE_NOTES.md for latest.json)..."
 bash -x "$SCRIPT_DIR/build-updater-artifacts.sh" "$VERSION" "$BUNDLE_DIR"
 step "Updater artifacts signed"
 
-# ── Step 7: Find remaining artifact paths ───────────────
+# ── Step 8: Find remaining artifact paths ───────────────
 NSIS_ZIP=$(find "$BUNDLE_DIR" -name "*.nsis.zip" | head -1)
 LATEST_JSON="$BUNDLE_DIR/latest.json"
 
 if [[ -z "$NSIS_ZIP" ]]; then die "No NSIS .zip found"; fi
 if [[ ! -f "$LATEST_JSON" ]]; then die "latest.json not found"; fi
-
-# ── Step 8: Open editor for RELEASE_NOTES.md ────────────
-info "Opening editor for RELEASE_NOTES.md..."
-${EDITOR:-notepad} "$NOTES_FILE"
-step "Release notes saved"
 
 # ── Step 9: Summary + confirmation ──────────────────────
 echo ""
