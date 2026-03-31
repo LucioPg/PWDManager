@@ -125,7 +125,7 @@ info "Code signing the installer for SmartScreen reputation..."
 NSIS_EXE=$(find "$BUNDLE_DIR" -name "*.exe" -path "*nsis*" | head -1)
 if [[ -z "$NSIS_EXE" ]]; then die "No NSIS .exe found in $BUNDLE_DIR"; fi
 
-signtool sign /tr http://timestamp.digicert.com /td sha256 /fd sha256 /a "$NSIS_EXE"
+MSYS_NO_PATHCONV=1 signtool sign /tr http://timestamp.digicert.com /td sha256 /fd sha256 /a "$NSIS_EXE"
 step "Installer code-signed: $(basename "$NSIS_EXE")"
 
 # ── Step 6: Sign artifacts for updater ──────────────────
