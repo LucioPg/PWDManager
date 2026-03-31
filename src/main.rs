@@ -17,7 +17,9 @@ use crate::components::{
     Settings, Spinner, SpinnerSize, Style, ToastContainer, ToastHubState, UpdateNotification,
     UpsertUser, show_toast_error, show_toast_success,
 };
-use crate::components::{DatabaseResetDialog, RecoveryKeyInputDialog, RecoveryKeySetupDialog};
+use crate::components::{DatabaseResetDialog, RecoveryKeyInputDialog};
+#[cfg(debug_assertions)]
+use crate::components::RecoveryKeySetupDialog;
 use backend::db_backend::init_db;
 use backend::db_backend::{build_sqlcipher_options, get_db_path};
 use backend::settings_types::Theme;
