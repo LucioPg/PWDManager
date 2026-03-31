@@ -48,7 +48,7 @@ pub fn parse_from_json(content: &str) -> Result<Vec<ExportablePassword>, String>
 /// - `name` field: Firefox has no `name` → falls back to `username`, then `url`
 /// - `created_at`: converted from Firefox `timeCreated` (Unix ms timestamp) to ISO string
 pub fn parse_firefox_csv(content: &str) -> Result<Vec<ExportablePassword>, String> {
-    use chrono::{DateTime, Utc};
+    use chrono::DateTime;
 
     let mut reader = csv::ReaderBuilder::new().from_reader(content.as_bytes());
     let mut passwords = Vec::new();
@@ -75,7 +75,7 @@ pub fn parse_firefox_csv(content: &str) -> Result<Vec<ExportablePassword>, Strin
             time_created
                 .parse::<i64>()
                 .ok()
-                .and_then(|ms| DateTime::from_timestamp_millis(ms))
+                .and_then(DateTime::from_timestamp_millis)
                 .map(|dt| dt.to_string())
         } else {
             None
@@ -101,7 +101,7 @@ pub fn parse_firefox_csv(content: &str) -> Result<Vec<ExportablePassword>, Strin
 /// `parse_firefox_csv` in that case. Otherwise falls back to the standard
 /// app CSV format.
 pub fn parse_from_csv(content: &str) -> Result<Vec<ExportablePassword>, String> {
-    let is_firefox = content.lines().next().map_or(false, |header| {
+    let is_firefox = content.lines().next().is_some_and(|header| {
         header.contains("timeCreated")
     });
 

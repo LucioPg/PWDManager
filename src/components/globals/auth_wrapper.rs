@@ -72,7 +72,7 @@ pub fn AuthWrapper() -> Element {
         let logout_settings = auto_logout_settings;
         let mut auth = auth_for_timer.clone();
         let mut theme = app_theme;
-        let nav = nav.clone();
+        let nav = nav;
 
         spawn(async move {
             loop {

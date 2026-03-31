@@ -31,7 +31,7 @@ fn AutoStartToggle() -> Element {
     let _autostart_resource = use_resource(move || {
         let mut auto_start_enabled = auto_start_enabled;
         async move {
-            let enabled = tokio::task::spawn_blocking(|| auto_start::is_enabled())
+            let enabled = tokio::task::spawn_blocking(auto_start::is_enabled)
                 .await
                 .unwrap_or(false);
             auto_start_enabled.set(enabled);
@@ -251,7 +251,7 @@ pub fn GeneralSettings() -> Element {
                     placeholder: "Select timer".to_string(),
                     on_change: move |v| auto_logout_settings.set(v),
                     disabled: auto_logout_toggle,
-                    selected_value: auto_logout_settings.read().clone(),
+                    selected_value: *auto_logout_settings.read(),
                 }
             }
             div { class: "flex flex-row justify-end gap-2 mt-2",
