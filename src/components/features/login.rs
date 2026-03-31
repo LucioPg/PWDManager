@@ -51,7 +51,7 @@ pub fn Login() -> Element {
     rsx! {
         div { class: "page-centered",
             div { class: "auth-form futuristic animate-scale-in",
-                h1 { class: "text-h2 text-center", "Welcome Back" }
+                h1 { class: "text-h2 text-center", "Welcome Back ###########" }
                 p { class: "text-body mb-4 text-center", "Sign in to your account to continue" }
                 form { onsubmit: on_submit, class: "flex flex-col gap-3 w-full",
                     FormField {
