@@ -8,6 +8,7 @@
 !include "MUI2.nsh"
 !include "nsDialogs.nsh"
 !include "FileFunc.nsh"
+!include "WordFunc.nsh"
 !include "x64.nsh"
 
 ; Capture Handlebars variables into NSIS defines and reference with NSIS syntax
@@ -105,9 +106,26 @@ Page custom PageRecoveryKey PageLeaveRecoveryKey
 !include "{{installer_hooks}}"
 {{/if}}
 
-; Detect update mode before any page is shown
+; Detect update mode and block downgrades before any page is shown
 ; ($INSTDIR is auto-populated from registry for existing installs)
 Function .onInit
+  ; Block downgrade: check installed version against current installer version
+  ReadRegStr $R0 SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\${BUNDLE_ID}" "DisplayVersion"
+  ${If} $R0 != ""
+    ${VersionCompare} "${VERSION}" $R0 $R1
+    ${If} $R1 < 0
+      MessageBox MB_OK|MB_ICONSTOP \
+        "Cannot install an older version over a newer one.$\n$\n\
+        To downgrade:$\n$\n\
+        1. Export your passwords from the current version$\n\
+        2. Uninstall PWDManager from Settings > Apps$\n\
+        3. Install this version$\n\
+        4. Import your passwords (compatibility not guaranteed)"
+      Abort
+    ${EndIf}
+  ${EndIf}
+
+  ; Detect update mode
   StrCpy $IsUpdate "0"
 
   ${GetOptions} $CMDLINE "/UPDATE" $R0
