@@ -7,10 +7,11 @@
 #   1. Ask for version → update Cargo.toml + Dioxus.toml
 #   2. Commit + push version bump to master
 #   3. Build NSIS bundle
-#   4. Sign artifacts (build-updater-artifacts.sh)
-#   5. Open editor for RELEASE_NOTES.md
-#   6. Summary + confirmation
-#   7. Create GitHub release
+#   4. Code sign the installer (signtool — SmartScreen reputation)
+#   5. Sign artifacts for updater (minisign)
+#   6. Open editor for RELEASE_NOTES.md
+#   7. Summary + confirmation
+#   8. Create GitHub release
 
 set -euo pipefail
 
@@ -57,6 +58,10 @@ fi
 
 if ! command -v gh &>/dev/null; then
     die "gh CLI not found. Install it: https://cli.github.com/"
+fi
+
+if ! command -v signtool &>/dev/null; then
+    die "signtool not found in PATH. Install Windows SDK."
 fi
 
 if ! gh auth status &>/dev/null 2>&1; then
@@ -115,26 +120,32 @@ info "Building NSIS bundle (release)..."
 dx bundle --desktop --release --package-types "nsis"
 step "NSIS bundle built"
 
-# ── Step 5: Sign artifacts ──────────────────────────────
-info "Signing artifacts..."
-bash -x "$SCRIPT_DIR/build-updater-artifacts.sh" "$VERSION" "$BUNDLE_DIR"
-step "Artifacts signed"
-
-# ── Step 6: Find artifact paths ─────────────────────────
+# ── Step 5: Code sign the installer ─────────────────────
+info "Code signing the installer for SmartScreen reputation..."
 NSIS_EXE=$(find "$BUNDLE_DIR" -name "*.exe" -path "*nsis*" | head -1)
+if [[ -z "$NSIS_EXE" ]]; then die "No NSIS .exe found in $BUNDLE_DIR"; fi
+
+signtool sign /tr http://timestamp.digicert.com /td sha256 /fd sha256 /a "$NSIS_EXE"
+step "Installer code-signed: $(basename "$NSIS_EXE")"
+
+# ── Step 6: Sign artifacts for updater ──────────────────
+info "Signing artifacts for updater..."
+bash -x "$SCRIPT_DIR/build-updater-artifacts.sh" "$VERSION" "$BUNDLE_DIR"
+step "Updater artifacts signed"
+
+# ── Step 7: Find remaining artifact paths ───────────────
 NSIS_ZIP=$(find "$BUNDLE_DIR" -name "*.nsis.zip" | head -1)
 LATEST_JSON="$BUNDLE_DIR/latest.json"
 
-if [[ -z "$NSIS_EXE" ]]; then die "No NSIS .exe found"; fi
 if [[ -z "$NSIS_ZIP" ]]; then die "No NSIS .zip found"; fi
 if [[ ! -f "$LATEST_JSON" ]]; then die "latest.json not found"; fi
 
-# ── Step 7: Open editor for RELEASE_NOTES.md ────────────
+# ── Step 8: Open editor for RELEASE_NOTES.md ────────────
 info "Opening editor for RELEASE_NOTES.md..."
 ${EDITOR:-notepad} "$NOTES_FILE"
 step "Release notes saved"
 
-# ── Step 8: Summary + confirmation ──────────────────────
+# ── Step 9: Summary + confirmation ──────────────────────
 echo ""
 echo -e "${CYAN}════════════════════════════════════════${NC}"
 echo -e "${CYAN}  Release Summary${NC}"
@@ -156,7 +167,7 @@ if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
     exit 0
 fi
 
-# ── Step 9: Create GitHub release ───────────────────────
+# ── Step 10: Create GitHub release ──────────────────────
 info "Creating GitHub release v$VERSION..."
 gh release create "v$VERSION" \
     --title "v$VERSION" \
