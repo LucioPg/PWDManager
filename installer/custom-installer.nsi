@@ -72,6 +72,7 @@ VIAddVersionKey "LegalCopyright" "${COPYRIGHT}"
 Var DisclaimerAccepted
 Var RecoveryKey
 Var SetupFailed
+Var IsUpdate
 
 ; Pages
 {{#if license}}
@@ -113,11 +114,22 @@ Section "Install"
 
     ; Install resources
     ; New bundler stages under resources/ but Dioxus expects assets/ at install time
+    ; Backup user-modifiable files before overwriting
+    ${If} ${FileExists} "$INSTDIR\assets\blacklist.txt"
+        CopyFiles /SILENT "$INSTDIR\assets\blacklist.txt" "$TEMP\pwdmanager_update_blacklist.txt"
+    ${EndIf}
+
     CreateDirectory "$INSTDIR\assets"
     {{#each staged_files}}
     SetOutPath "$INSTDIR\assets"
     File "{{this.source}}"
     {{/each}}
+
+    ; Restore user-modifiable files after overwriting
+    ${If} ${FileExists} "$TEMP\pwdmanager_update_blacklist.txt"
+        CopyFiles /SILENT "$TEMP\pwdmanager_update_blacklist.txt" "$INSTDIR\assets\blacklist.txt"
+        Delete "$TEMP\pwdmanager_update_blacklist.txt"
+    ${EndIf}
 
     SetOutPath $INSTDIR
 

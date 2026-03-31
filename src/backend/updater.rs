@@ -158,14 +158,16 @@ pub async fn download_and_install(
     // Trova il file .exe nell'archivio estratto
     let installer = find_exe_in_dir(&extract_dir)?;
 
-    // Lancia l'installer NSIS in modalita silenziosa
+    // Lancia l'installer NSIS in modalita silenziosa con flag update
     update_state.set(UpdateState::Installing);
     std::process::Command::new(&installer)
         .arg("/S")
+        .arg("/UPDATE")
         .spawn()
         .map_err(|e| format!("Cannot launch installer: {}", e))?;
 
-    Ok(())
+    // Esci dall'app per permettere all'installer di sovrascrivere i file
+    std::process::exit(0);
 }
 
 /// Cerca il primo file .exe nella directory estratta.

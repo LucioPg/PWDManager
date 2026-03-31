@@ -17,34 +17,56 @@
   ; (get_db_path() in Rust uses std::env::current_dir())
   SetOutPath $INSTDIR
 
-  ; Check for existing installation — warn user before creating new keyring key
-  ${If} ${FileExists} "$INSTDIR\database.db"
-    MessageBox MB_YESNO|MB_ICONEXCLAMATION \
-      "An existing PWDManager installation was found.$\n$\n\
-      Reinstalling will create a NEW encryption key.$\n\
-      Your existing passwords will NO LONGER be accessible.$\n$\n\
-      Do you want to continue?" \
-      IDYES DoSetup
-    StrCpy $SetupFailed "1"
-    Abort "Installation cancelled by user"
-    DoSetup:
-    ; Remove old database files so --setup starts fresh
-    Delete "$INSTDIR\database.db"
-    Delete "$INSTDIR\database.db-shm"
-    Delete "$INSTDIR\database.db-wal"
-    Delete "$INSTDIR\database.db.salt"
-    Delete "$INSTDIR\recovery_key.txt"
+  ; Determine if this is an update:
+  ;   1. Explicit /UPDATE flag (new client)
+  ;   2. Implicit: /S (silent) + existing database (old client backward compat)
+  StrCpy $IsUpdate "0"
+
+  ${GetOptions} $CMDLINE "/UPDATE" $R0
+  ${IfNot} ${Errors}
+    StrCpy $IsUpdate "1"
+  ${Else}
+    ${GetOptions} $CMDLINE "/S" $R0
+    ${IfNot} ${Errors}
+      ${If} ${FileExists} "$INSTDIR\database.db"
+        StrCpy $IsUpdate "1"
+      ${EndIf}
+    ${EndIf}
   ${EndIf}
 
-  nsExec::ExecToStack '"$INSTDIR\PWDManager.exe" --setup'
-  Pop $R0
-  Pop $R1
+  ${If} $IsUpdate == "1"
+    ; Update mode — skip setup, launch the updated app
+    Exec '"$INSTDIR\PWDManager.exe"'
+  ${Else}
+    ; Fresh install — warn user before creating new keyring key
+    ${If} ${FileExists} "$INSTDIR\database.db"
+      MessageBox MB_YESNO|MB_ICONEXCLAMATION \
+        "An existing PWDManager installation was found.$\n$\n\
+        Reinstalling will create a NEW encryption key.$\n\
+        Your existing passwords will NO LONGER be accessible.$\n$\n\
+        Do you want to continue?" \
+        IDYES DoSetup
+      StrCpy $SetupFailed "1"
+      Abort "Installation cancelled by user"
+      DoSetup:
+      ; Remove old database files so --setup starts fresh
+      Delete "$INSTDIR\database.db"
+      Delete "$INSTDIR\database.db-shm"
+      Delete "$INSTDIR\database.db-wal"
+      Delete "$INSTDIR\database.db.salt"
+      Delete "$INSTDIR\recovery_key.txt"
+    ${EndIf}
 
-  ${If} $R0 != 0
-    StrCpy $SetupFailed "1"
-    MessageBox MB_OK "Database setup failed. Exit: $R0 Output: $R1"
-    Abort "Database setup failed"
+    nsExec::ExecToStack '"$INSTDIR\PWDManager.exe" --setup'
+    Pop $R0
+    Pop $R1
+
+    ${If} $R0 != 0
+      StrCpy $SetupFailed "1"
+      MessageBox MB_OK "Database setup failed. Exit: $R0 Output: $R1"
+      Abort "Database setup failed"
+    ${EndIf}
+
+    StrCpy $RecoveryKey $R1
   ${EndIf}
-
-  StrCpy $RecoveryKey $R1
 !macroend
