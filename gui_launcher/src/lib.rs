@@ -105,6 +105,121 @@ pub fn load_window_icon() -> Option<dioxus::desktop::tao::window::Icon> {
 /// Da impostare a `false` per la release finale.
 const FORCE_ENABLE_DEVTOOLS: bool = false;
 
+/// Singleton instance management via Windows named mutex.
+///
+/// Prevents multiple instances of the application from running simultaneously.
+/// If a second instance is detected, the first instance's window is brought
+/// to the foreground and the second instance exits.
+#[cfg(target_os = "windows")]
+pub mod singleton {
+    use std::ffi::c_void;
+    use std::ptr;
+
+    const ERROR_ALREADY_EXISTS: u32 = 183;
+    const SW_SHOW: i32 = 5;
+    const SW_RESTORE: i32 = 9;
+
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn CreateMutexW(
+            lpMutexAttributes: *const c_void,
+            bInitialOwner: i32,
+            lpName: *const u16,
+        ) -> *mut c_void;
+        fn ReleaseMutex(hMutex: *mut c_void) -> i32;
+        fn CloseHandle(hObject: *mut c_void) -> i32;
+        fn GetLastError() -> u32;
+    }
+
+    #[link(name = "user32")]
+    extern "system" {
+        fn FindWindowW(lpClassName: *const u16, lpWindowName: *const u16) -> isize;
+        fn SetForegroundWindow(hWnd: isize) -> i32;
+        fn ShowWindow(hWnd: isize, nCmdShow: i32) -> i32;
+        fn IsIconic(hWnd: isize) -> i32;
+    }
+
+    /// RAII guard that holds the named mutex handle.
+    /// The main instance uses `std::mem::forget` to keep the mutex alive
+    /// for the entire process lifetime (Windows cleans up on exit).
+    pub struct SingleInstanceGuard(*mut c_void);
+
+    impl Drop for SingleInstanceGuard {
+        fn drop(&mut self) {
+            unsafe {
+                ReleaseMutex(self.0);
+                CloseHandle(self.0);
+            }
+        }
+    }
+
+    /// Attempts to acquire a named mutex to enforce single-instance behavior.
+    ///
+    /// The `Local\` prefix makes it session-scoped (per logged-in user).
+    pub fn try_acquire(app_name: &str) -> Result<SingleInstanceGuard, ()> {
+        let mutex_name: Vec<u16> = format!("Local\\{}", app_name)
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect();
+
+        unsafe {
+            let handle = CreateMutexW(ptr::null(), 1, mutex_name.as_ptr());
+            if handle.is_null() {
+                tracing::error!("Failed to create singleton mutex for {}", app_name);
+                return Err(());
+            }
+
+            if GetLastError() == ERROR_ALREADY_EXISTS {
+                CloseHandle(handle);
+                tracing::info!("Another instance of {} is already running", app_name);
+                Err(())
+            } else {
+                tracing::info!("Singleton lock acquired for {}", app_name);
+                Ok(SingleInstanceGuard(handle))
+            }
+        }
+    }
+
+    /// Brings a window with the given title to the foreground.
+    /// Handles both minimized and hidden windows.
+    pub fn bring_window_to_foreground(window_title: &str) {
+        let title: Vec<u16> = window_title
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect();
+
+        unsafe {
+            let hwnd = FindWindowW(ptr::null(), title.as_ptr());
+            if hwnd == 0 {
+                tracing::warn!(
+                    "Singleton: could not find window '{}'",
+                    window_title
+                );
+                return;
+            }
+
+            if IsIconic(hwnd) != 0 {
+                ShowWindow(hwnd, SW_RESTORE);
+            } else {
+                ShowWindow(hwnd, SW_SHOW);
+            }
+            SetForegroundWindow(hwnd);
+        }
+    }
+}
+
+/// Non-Windows stub: always allows running (no singleton enforcement).
+#[cfg(not(target_os = "windows"))]
+pub mod singleton {
+    pub struct SingleInstanceGuard;
+
+    pub fn try_acquire(_app_name: &str) -> Result<SingleInstanceGuard, ()> {
+        Ok(SingleInstanceGuard)
+    }
+
+    pub fn bring_window_to_foreground(_window_title: &str) {}
+}
+
 /// Creates a desktop configuration with custom window settings
 pub fn create_desktop_config(app_version: &str, start_visible: bool) -> Config {
     let window_icon = load_window_icon();
@@ -153,16 +268,25 @@ pub fn create_desktop_config(app_version: &str, start_visible: bool) -> Config {
 }
 
 /// Macro to launch the application with custom desktop configuration
+/// and singleton instance enforcement.
 #[macro_export]
 macro_rules! launch_desktop {
     ($app:expr, $version:expr, $visible:expr) => {{
-        // Initialize logging first (idempotent, safe to call multiple times)
         $crate::init_logging();
 
-        tracing::info!("Using custom desktop launcher configuration");
-
-        let config = $crate::create_desktop_config($version, $visible);
-
-        dioxus::LaunchBuilder::new().with_cfg(config).launch($app);
+        match $crate::singleton::try_acquire("PWDManager") {
+            Ok(_guard) => {
+                // First instance — keep mutex alive for the entire process lifetime.
+                // std::mem::forget prevents Drop; Windows cleans up the handle on exit.
+                std::mem::forget(_guard);
+                let config = $crate::create_desktop_config($version, $visible);
+                dioxus::LaunchBuilder::new().with_cfg(config).launch($app);
+            }
+            Err(()) => {
+                // Another instance is running — activate its window and exit.
+                let title = format!("PWDManager v{}", $version);
+                $crate::singleton::bring_window_to_foreground(&title);
+            }
+        }
     }};
 }
