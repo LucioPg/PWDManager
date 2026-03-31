@@ -22,7 +22,7 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
                             size: SpinnerSize::Medium,
                             color_class: "text-primary",
                         }
-                        span { class: "pwd-update-version", "Verifica aggiornamenti..." }
+                        span { class: "pwd-update-version", "Check for updates..." }
                     }
                 }
             }
@@ -53,8 +53,8 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
                             path { d: "M21 3v5h-5" }
                         }
                         div { class: "flex-1 min-w-0",
-                            h3 { class: "pwd-update-title", "Aggiornamento disponibile!" }
-                            p { class: "pwd-update-version", "Versione {version}" }
+                            h3 { class: "pwd-update-title", "Update available!" }
+                            p { class: "pwd-update-version", "Version {version}" }
                             p { class: "pwd-update-version", "{pub_date}" }
                             if !changelog.is_empty() {
                                 p {
@@ -77,15 +77,15 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
                                         });
                                     } else {
                                         update_state_avail
-                                            .set(UpdateState::Error("Manifest non disponibile".to_string()));
+                                            .set(UpdateState::Error("Manifest not available".to_string()));
                                     }
                                 },
-                                "Aggiorna ora"
+                                "Update now!"
                             }
                             button {
                                 class: "btn btn-ghost btn-sm",
                                 onclick: move |_| update_state_dismiss.set(UpdateState::Idle),
-                                "Più tardi"
+                                "Later..."
                             }
                         }
                     }
@@ -97,7 +97,7 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
             rsx! {
                 div { class: "pwd-update-overlay",
                     div { class: "pwd-update-card",
-                        p { class: "pwd-update-title", "Download aggiornamento..." }
+                        p { class: "pwd-update-title", "Download update..." }
                         div { class: "pwd-update-progress-bar",
                             div {
                                 class: "pwd-update-progress-fill",
@@ -118,7 +118,7 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
                             color_class: "text-primary",
                         }
                         span { class: "pwd-update-version",
-                            "Installazione in corso, l'app si riavviera..."
+                            "Installation in progress, PWDManager will be restarted..."
                         }
                     }
                 }
@@ -130,12 +130,12 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
             rsx! {
                 div { class: "pwd-update-overlay",
                     div { class: "pwd-update-card",
-                        p { class: "pwd-update-error-text", "Errore aggiornamento: {error_msg}" }
+                        p { class: "pwd-update-error-text", "Update Error: {error_msg}" }
                         div { class: "pwd-update-actions",
                             button {
                                 class: "btn btn-ghost btn-sm",
                                 onclick: move |_| update_state_err.set(UpdateState::Idle),
-                                "Chiudi"
+                                "Close"
                             }
                         }
                     }
