@@ -5,7 +5,7 @@ asset_dir = "assets"
 
 [bundle]
 name = "PWDManager"
-version = "0.2.3"
+version = "0.2.4"
 description = "A Rust app for manage passwords"
 identifier = "com.app.pwdmanager"
 publisher = "Lucio Di Capua"
