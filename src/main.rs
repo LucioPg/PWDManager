@@ -293,6 +293,7 @@ fn App() -> Element {
     }
 }
 
+#[cfg(debug_assertions)]
 fn render_app_with_setup(
     show_setup_dialog: Signal<bool>,
     setup_passphrase: Signal<String>,
