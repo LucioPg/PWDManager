@@ -334,6 +334,104 @@ mod tests {
         assert_eq!(dupes, 0);
     }
 
+    // ==================== FIREFOX CSV IMPORT TESTS ====================
+
+    /// CSV Firefox di esempio con i campi reali che il browser esporta.
+    fn firefox_csv_header() -> &'static str {
+        r#""url","username","password","httpRealm","formActionOrigin","guid","timeCreated","timeLastUsed","timePasswordChanged""#
+    }
+
+    #[test]
+    fn test_firefox_csv_username_fills_name() {
+        // Firefox CSV: name non esiste, username è presente → name = username
+        let csv = format!(
+            "{}\n\"https://www.example.com\",\"testuser\",\"testpassword\",,\"\",\"{{guid}}\",\"1774894390184\",\"1774894390184\",\"1774894390184\"",
+            firefox_csv_header()
+        );
+        let result = crate::backend::import::parse_firefox_csv(&csv);
+        assert!(result.is_ok());
+        let passwords = result.unwrap();
+        assert_eq!(passwords.len(), 1);
+        assert_eq!(passwords[0].name, "testuser");
+        assert_eq!(passwords[0].username, "testuser");
+        assert_eq!(passwords[0].url, "https://www.example.com");
+        assert_eq!(passwords[0].password, "testpassword");
+    }
+
+    #[test]
+    fn test_firefox_csv_missing_username_url_fills_name() {
+        // Firefox CSV: name e username mancanti → name = url
+        let csv = format!(
+            "{}\n\"https://www.example.com\",,\"testpassword\",,\"\",\"{{guid}}\",\"1774894390184\",\"1774894390184\",\"1774894390184\"",
+            firefox_csv_header()
+        );
+        let result = crate::backend::import::parse_firefox_csv(&csv);
+        assert!(result.is_ok());
+        let passwords = result.unwrap();
+        assert_eq!(passwords.len(), 1);
+        assert_eq!(passwords[0].name, "https://www.example.com");
+        assert_eq!(passwords[0].username, "");
+        assert_eq!(passwords[0].url, "https://www.example.com");
+    }
+
+    #[test]
+    fn test_firefox_csv_time_created_to_created_at() {
+        // timeCreated è un timestamp Unix in millisecondi → convertito in ISO
+        let csv = format!(
+            "{}\n\"https://www.example.com\",\"testuser\",\"testpassword\",,\"\",\"{{guid}}\",\"1774894390184\",\"1774894390184\",\"1774894390184\"",
+            firefox_csv_header()
+        );
+        let result = crate::backend::import::parse_firefox_csv(&csv);
+        assert!(result.is_ok());
+        let passwords = result.unwrap();
+        assert_eq!(passwords.len(), 1);
+        // timeCreated 1774894390184 → 2026-03-30 in UTC
+        assert!(passwords[0].created_at.is_some());
+        let created_at = passwords[0].created_at.as_ref().unwrap();
+        assert!(created_at.starts_with("2026-03-30"));
+    }
+
+    #[test]
+    fn test_firefox_csv_missing_time_created() {
+        // Senza timeCreated, created_at deve essere None
+        let csv = format!(
+            "{}\n\"https://www.example.com\",\"testuser\",\"testpassword\",,\"\",\"{{guid}}\",,\"1774894390184\",\"1774894390184\"",
+            firefox_csv_header()
+        );
+        let result = crate::backend::import::parse_firefox_csv(&csv);
+        assert!(result.is_ok());
+        let passwords = result.unwrap();
+        assert_eq!(passwords[0].created_at, None);
+    }
+
+    #[test]
+    fn test_firefox_csv_multiple_entries() {
+        // Più entry nel CSV Firefox
+        let csv = format!(
+            "{header}\n\
+             \"https://site1.com\",\"user1\",\"pass1\",,\"\",\"{{g1}}\",\"1774894390184\",\"1774894390184\",\"1774894390184\"\n\
+             \"https://site2.com\",\"user2\",\"pass2\",,\"\",\"{{g2}}\",,\"\",",
+            header = firefox_csv_header()
+        );
+        let result = crate::backend::import::parse_firefox_csv(&csv);
+        assert!(result.is_ok());
+        let passwords = result.unwrap();
+        assert_eq!(passwords.len(), 2);
+        assert_eq!(passwords[0].name, "user1");
+        assert_eq!(passwords[1].name, "user2");
+        // La prima ha timeCreated, la seconda no
+        assert!(passwords[0].created_at.is_some());
+        assert_eq!(passwords[1].created_at, None);
+    }
+
+    #[test]
+    fn test_firefox_csv_empty_file() {
+        let csv = format!("{}\n", firefox_csv_header());
+        let result = crate::backend::import::parse_firefox_csv(&csv);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().len(), 0);
+    }
+
     #[test]
     fn test_parse_passwords_dispatch() {
         // Verifica che parse_passwords dispatchi correttamente

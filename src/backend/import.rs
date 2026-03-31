@@ -39,8 +39,76 @@ pub fn parse_from_json(content: &str) -> Result<Vec<ExportablePassword>, String>
     serde_json::from_str(content).map_err(|e| format!("JSON parse error: {}", e))
 }
 
+/// Parse Firefox CSV content into ExportablePassword list.
+///
+/// Firefox exports CSV with columns:
+/// url, username, password, httpRealm, formActionOrigin, guid, timeCreated, timeLastUsed, timePasswordChanged
+///
+/// Mapping rules:
+/// - `name` field: Firefox has no `name` → falls back to `username`, then `url`
+/// - `created_at`: converted from Firefox `timeCreated` (Unix ms timestamp) to ISO string
+pub fn parse_firefox_csv(content: &str) -> Result<Vec<ExportablePassword>, String> {
+    use chrono::{DateTime, Utc};
+
+    let mut reader = csv::ReaderBuilder::new().from_reader(content.as_bytes());
+    let mut passwords = Vec::new();
+
+    for result in reader.records() {
+        let record = result.map_err(|e| format!("Firefox CSV parse error: {}", e))?;
+
+        let url = record.get(0).unwrap_or("").to_string();
+        let username = record.get(1).unwrap_or("").to_string();
+        let password = record.get(2).unwrap_or("").to_string();
+        let time_created = record.get(6).unwrap_or("");
+
+        // Fallback: name = username, then url
+        let name = if !username.is_empty() {
+            username.clone()
+        } else if !url.is_empty() {
+            url.clone()
+        } else {
+            String::new()
+        };
+
+        // Convert Unix ms timestamp → ISO string
+        let created_at = if !time_created.is_empty() {
+            time_created
+                .parse::<i64>()
+                .ok()
+                .and_then(|ms| DateTime::from_timestamp_millis(ms))
+                .map(|dt| dt.to_string())
+        } else {
+            None
+        };
+
+        passwords.push(ExportablePassword {
+            name,
+            username,
+            url,
+            password,
+            notes: None,
+            score: None,
+            created_at,
+        });
+    }
+
+    Ok(passwords)
+}
+
 /// Parse CSV content into ExportablePassword list.
+///
+/// Auto-detects Firefox CSV (header contains `timeCreated`) and uses
+/// `parse_firefox_csv` in that case. Otherwise falls back to the standard
+/// app CSV format.
 pub fn parse_from_csv(content: &str) -> Result<Vec<ExportablePassword>, String> {
+    let is_firefox = content.lines().next().map_or(false, |header| {
+        header.contains("timeCreated")
+    });
+
+    if is_firefox {
+        return parse_firefox_csv(content);
+    }
+
     let mut reader = csv::Reader::from_reader(content.as_bytes());
     let mut passwords = Vec::new();
 
