@@ -46,8 +46,13 @@ fi
 
 echo "==> Found NSIS installer: $NSIS_EXE"
 
-# Firma l'artefatto con minisign
-SIG_FILE="${NSIS_EXE}.sig"
+# Crea lo zip per l'update (contiene solo l'installer .exe)
+NSIS_ZIP="${NSIS_EXE%.*}.nsis.zip"
+echo "==> Creating update zip: $NSIS_ZIP"
+powershell -NoProfile -Command "Compress-Archive -Path '$NSIS_EXE' -DestinationPath '$NSIS_ZIP' -Force"
+
+# Firma lo ZIP con minisign (il client scarica lo zip, quindi la firma deve essere sullo zip)
+SIG_FILE="${NSIS_ZIP}.sig"
 echo "==> Signing artifact..."
 
 # Scrivi la chiave privata in un file temporaneo (minisign richiede un path, non stdin)
@@ -57,18 +62,13 @@ printf 'untrusted comment: minisign encrypted secret key\n%s\n' "$DIOXUS_SIGNING
 
 if [ -n "$DIOXUS_SIGNING_PRIVATE_KEY_PASSWORD" ]; then
     echo "$DIOXUS_SIGNING_PRIVATE_KEY_PASSWORD" | "$MINISIGN" \
-        -Sm "$NSIS_EXE" \
+        -Sm "$NSIS_ZIP" \
         -s "$TMP_KEY" \
         -t "PWDManager v$VERSION" \
         -x "$SIG_FILE"
 else
-    "$MINISIGN" -Sm "$NSIS_EXE" -s "$TMP_KEY" -t "PWDManager v$VERSION" -x "$SIG_FILE"
+    "$MINISIGN" -Sm "$NSIS_ZIP" -s "$TMP_KEY" -t "PWDManager v$VERSION" -x "$SIG_FILE"
 fi
-
-# Crea lo zip per l'update (contiene solo l'installer .exe)
-NSIS_ZIP="${NSIS_EXE%.*}.nsis.zip"
-echo "==> Creating update zip: $NSIS_ZIP"
-powershell -NoProfile -Command "Compress-Archive -Path '$NSIS_EXE' -DestinationPath '$NSIS_ZIP' -Force"
 
 # Legge la firma e la converte in base64 per latest.json
 SIGNATURE_B64=$(base64 -w 0 "$SIG_FILE")
