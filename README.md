@@ -4,67 +4,156 @@
 
 <h1 align="center">PWDManager</h1>
 
-A lightweight desktop password manager for Windows, built with [Dioxus](https://dioxuslabs.com/) and Rust. Credentials
-are stored in a local SQLCipher-encrypted SQLite database. No data is ever sent to external servers.
+<p align="center">
+  <strong>A lightweight, local-first password manager for Windows.</strong><br>
+  No cloud. No subscriptions. No telemetry. Your passwords stay on your machine.
+</p>
 
-Built on the Dioxus 0.7 framework, PWDManager compiles to a single native binary with a minimal footprint. The UI runs
-on a system WebView2 instance -- no bundled Chromium, no Electron overhead. The result is a compact, fast application
-that starts in under a second and uses very little memory.
+---
 
-## Why this project
+## Why PWDManager
 
 Most password managers rely on cloud infrastructure or SaaS subscriptions. Even when they advertise end-to-end
-encryption, their business model still depends on the user trusting a third-party server. PWDManager takes a different
-approach: the database lives on the local filesystem, the encryption key never leaves the machine via Windows Credential
-Manager, and there is no sync server, no cloud account, no telemetry.
+encryption, their business model still depends on the user trusting a third-party server. Others expose biometric
+authentication as an attack surface -- compromise Windows Hello or a keychain, and the vault is open.
+
+PWDManager takes a fundamentally different approach:
+
+- The database is **encrypted at rest** with SQLCipher (AES-256, HMAC-SHA512). The file is indistinguishable from random
+  data.
+- Every credential field is **individually encrypted** with AES-256-GCM, using a key derived from the master password.
+  No separate Data Encryption Key that could be extracted from memory or a keyring.
+- The encryption key is stored in **Windows Credential Manager** (DPAPI, current-user scoped). It never leaves the
+  machine.
+- There are **no biometrics, no browser extensions, no daemons, no external dependencies**. One binary, nothing else to
+  install or configure.
+- Your passwords are readable only with the master password, on this machine, by this user. Full stop.
+
+Built on [Dioxus 0.7](https://dioxuslabs.com/) and Rust, PWDManager compiles to a single native binary. The UI runs on
+the system WebView2 instance -- no bundled Chromium, no Electron overhead. The result is a compact, fast application
+that starts in under a second and uses very little memory.
+
+## Security Architecture
+
+PWDManager uses four independent encryption layers. Compromising one layer does not expose data protected by another.
+
+```
+Stored passwords
+  |-- AES-256-GCM (per-field encryption, unique nonce per field)
+  |
+Database file
+  |-- SQLCipher (AES-256, transparent page-level encryption)
+  |
+Database key
+  |-- Windows Credential Manager (OS-provided DPAPI storage)
+  |-- Recovery key path via Argon2id + dedicated salt
+  |
+User authentication
+  |-- Argon2id (password hashing with zeroize)
+```
+
+### Layer 1 -- Database encryption (SQLCipher)
+
+The entire SQLite database is encrypted at rest. Without the key, the file is indistinguishable from random bytes.
+
+| Parameter      | Value                              |
+|----------------|------------------------------------|
+| Cipher         | AES-256                            |
+| Page size      | 4096                               |
+| HMAC           | SHA-512                            |
+| KDF iterations | 256000                             |
+| Mode           | WAL (concurrent read/write safety) |
+
+### Layer 2 -- Per-field encryption (AES-256-GCM)
+
+Each credential (username, URL, password, notes) is individually encrypted before storage. The AES-256-GCM cipher key is
+derived from the user's master password via Argon2id. This means each user has their own encryption domain -- two users
+with the same password store different ciphertext for the same credential.
+
+Every field uses a cryptographically random 12-byte nonce, generated per-field at encryption time.
+
+### Layer 3 -- Authentication (Argon2id)
+
+User passwords are hashed with Argon2id before storage. The embedded salt within the hash is also extracted at runtime
+to serve as the AES key derivation salt, avoiding a separate salt storage for the cipher. Memory is zeroized after
+hashing via the `secrecy` crate.
+
+### Layer 4 -- Key management
+
+On first setup, a random 32-byte key is generated and stored in Windows Credential Manager. This key is used directly as
+the SQLCipher encryption key.
+
+If the keyring entry is lost or corrupted, a **recovery key** (6-word Diceware passphrase) serves as a backup path. The
+key is derived via Argon2id with a dedicated 16-byte salt stored separately.
+
+### In-memory protection
+
+All passwords and sensitive data in memory use `SecretString` and `SecretBox<[u8]>` from the `secrecy` crate. These
+types zeroize their contents automatically on drop. Access to the underlying value requires an explicit `ExposeSecret`
+call -- accidental leaks through logging, printing, or copies are prevented at the type level.
+
+### Anti-brute-force design
+
+PWDManager does not implement account lockout. This is a deliberate design choice:
+
+- **Argon2id IS the brute-force protection.** Each password attempt costs ~50ms of CPU-bound computation. Offline
+  brute-force is already heavily mitigated by the KDF.
+- **Four independent layers** mean that brute-forcing the master password alone does not produce readable data without
+  the SQLCipher key in the keyring.
+- **Lockout would be a self-DoS** on a local-only application. Typing the wrong password a few times would lock you out
+  of your own vault with no recovery path -- a worse outcome than the already-minimized brute-force risk.
+- **There is no server, no account, no rate limit target.** The protection lives entirely in the cryptographic cost.
+
+See [docs/security.md](docs/security.md) for the full technical breakdown.
 
 ## Features
 
-**Password management**
+### Password management
 
 - Store credentials with name, username, URL, password, and notes
-- Password strength scoring on a 0-100 numeric scale, mapped to levels: WEAK, MEDIUM, STRONG, EPIC, GOD
+- Password strength scoring on a 0-100 numeric scale, mapped to five levels: **WEAK, MEDIUM, STRONG, EPIC, GOD**
 - Built-in blacklist for common password detection
-- Random password generator with configurable length, character set, and excluded symbols
-- Diceware passphrase generator in English, Italian, and French, with optional numbers and special characters
+- **Dashboard with vault composition statistics** -- a sidebar panel shows the count of passwords per strength level.
+  Click a level to instantly filter the list. Essential after importing passwords from a browser to identify and fix
+  weak entries at a glance.
+- Paginated password list with configurable sorting (A-Z, Z-A, oldest, newest) and client-side search
 
-**Security**
+### Password generation
 
-- Database encrypted at rest with SQLCipher (AES-256)
-- Encryption key derived via Argon2id, stored in Windows Credential Manager
-- User passwords hashed with Argon2 (zeroize enabled)
-- Individual credentials encrypted per-field with AES-256-GCM (unique nonce per field)
-- Recovery key generated as a 6-word Diceware passphrase, derivable via Argon2id with a dedicated salt
-- Configurable auto-logout: 10 minutes, 1 hour, or 5 hours of inactivity
+- **Random password generator** with full configuration: length, uppercase, lowercase, digits, symbols count, and
+  excluded symbols
+- **Customizable presets** -- choose from Medium, Strong, Epic, God, or Custom. Each preset defines length and character
+  constraints. Useful when sites restrict password length or prohibit certain symbols.
+- **Diceware passphrase generator** in English, Italian, and French, with optional numbers and special characters
 
-See [docs/security.md](docs/security.md) for a full breakdown of the security architecture.
+### Import / Export
 
-**Import / Export**
-
-- Export to JSON, CSV, and XML
+- Export to **JSON, CSV, and XML**
 - Import from all three formats with automatic deduplication by (URL, password) pair
 - Skips passwords already present in the database during import
-- Compatible with Chrome's CSV export -- export from `chrome://password-manager/settings` and import directly into
-  PWDManager
+- Compatible with Chrome's and Firefox's CSV export -- export from `chrome://password-manager/settings` and import
+  directly into PWDManager
+- Bulk operations run in parallel via **Rayon** -- importing or exporting 10,000+ entries completes in under a second
 
-**Desktop integration**
+### Desktop integration
 
-- System tray icon with visual state (different icon when authenticated vs logged out)
+- System tray icon with **visual state** (different icon when authenticated vs logged out)
 - Tray menu actions: Open, Logout, Quit
 - Closing the window hides the application without terminating the process
 - Auto-start on Windows boot via HKCU registry key, with Task Manager disabled-state detection
+- Activity tracking at OS level for auto-logout (Wry/Tao native event handler, not DOM events)
 
-**Interface**
+### Security features
+
+- Configurable **auto-logout**: 10 minutes, 1 hour, or 5 hours of inactivity
+- Recovery key generation and regeneration with full database rekey
+- Password change with complete re-encryption pipeline and progress reporting
+- **Automatic updates** with minisign signature verification before installation (public key embedded at compile-time)
+
+### Interface
 
 - Light and dark theme
-- UI built on DaisyUI 5 and Tailwind CSS
-- Dashboard with vault composition statistics (count per strength level)
-- Paginated password list with strength filtering and sorting
-
-**Updates**
-
-- Automatic update check on startup
-- Download with progress bar and minisign signature verification before installation
+- UI built on **DaisyUI 5** and **Tailwind CSS**
 - Custom NSIS installer
 
 ## Prerequisites
@@ -107,11 +196,13 @@ shared UI components.
 
 ## Application data
 
-- **Database**: `%LOCALAPPDATA%/PWDManager/pwdmanager.db` (SQLCipher encrypted)
-- **Salt**: `%LOCALAPPDATA%/PWDManager/pwdmanager.db.salt` (16 bytes, Argon2id)
-- **DB key**: Windows Credential Manager, service `PWDManager`
-- **Log**: `%LOCALAPPDATA%/PWDManager/pwdmanager.log`
-- **WebView2 data**: `%LOCALAPPDATA%/PWDManager/`
+| Data          | Location                                       | Description          |
+|---------------|------------------------------------------------|----------------------|
+| Database      | `%LOCALAPPDATA%/PWDManager/pwdmanager.db`      | SQLCipher encrypted  |
+| Salt          | `%LOCALAPPDATA%/PWDManager/pwdmanager.db.salt` | 16 bytes, Argon2id   |
+| DB key        | Windows Credential Manager                     | Service `PWDManager` |
+| Log           | `%LOCALAPPDATA%/PWDManager/pwdmanager.log`     | Application log      |
+| WebView2 data | `%LOCALAPPDATA%/PWDManager/`                   | UI runtime data      |
 
 ## Technical documentation
 
@@ -123,23 +214,13 @@ shared UI components.
 
 This project is licensed under the **Prosperity Public License 3.0.0**.
 
-### What does this mean for you?
+- **Personal and Non-Profit Use:** Free to use, study, and modify for personal, educational, or research purposes.
+- **Commercial Use:** A 30-day trial period is granted. To continue using commercially, a dedicated license is required.
 
-- **Personal and Non-Profit Use:** You are free to use, study, and modify this software at no cost for personal,
-  educational, or research purposes.
-- **Commercial Use:** If you are a company or a professional using this software for profit-making activities, you are
-  granted a **30-day trial period**.
-
-### How to Obtain a Commercial License
-
-To continue using the software for commercial purposes after the 30-day trial, you must purchase a dedicated commercial
-license.
-
-To request a quote or activate your license, please contact:
-**ldcproductions@proton.me**
-
-*Please use the subject line: "Commercial License Request - PWDManager"*
+To request a quote or activate a license: **ldcproductions@proton.me** (subject: "Commercial License Request -
+PWDManager")
 
 ---
-*Note: This software is built using the Dioxus framework (MIT/Apache 2.0). All third-party open-source components remain
-subject to their respective licenses.*
+
+*Built with [Dioxus](https://dioxuslabs.com/) (MIT/Apache 2.0). All third-party open-source components remain subject to
+their respective licenses.*
