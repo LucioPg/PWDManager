@@ -30,7 +30,7 @@ use secrecy::ExposeSecret;
 
 use dioxus::desktop::trayicon::init_tray_icon;
 use dioxus::desktop::use_muda_event_handler;
-use dioxus::desktop::window;
+use dioxus::desktop::{use_wry_event_handler, window};
 use tray_icon::menu::{Menu, MenuItem, PredefinedMenuItem};
 
 // const LOGO_BYTES: &[u8] = include_bytes!("../assets/logo.png");
@@ -131,6 +131,23 @@ fn App() -> Element {
             auth_for_tray.logout();
             window().set_visible(true);
             window().set_focus();
+        }
+    });
+
+    // WORKAROUND: tao's WindowFlags::VISIBLE gets out of sync when the singleton
+    // calls ShowWindow(SW_SHOW) from a second process — tao never updates the flag
+    // from Win32 messages, so set_visible(false) becomes a no-op (already false).
+    // Re-sync by forcing true then false on close.
+    use_wry_event_handler(move |event, _| {
+        if let dioxus::desktop::tao::event::Event::WindowEvent {
+            event: dioxus::desktop::tao::event::WindowEvent::CloseRequested,
+            ..
+        } = event
+        {
+            if window().is_visible() {
+                window().set_visible(true);
+                window().set_visible(false);
+            }
         }
     });
 
