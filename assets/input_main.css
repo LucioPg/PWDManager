@@ -1268,7 +1268,7 @@ button[class*="btn-"] {
         background: transparent !important;
         box-shadow: none !important;
         outline: none !important;
-        color: theme('colors.base-content');
+        color: var(--color-base-content);
         cursor: pointer;
         transition: all 0.2s ease;
         min-width: 2.5rem;
@@ -1297,11 +1297,11 @@ button[class*="btn-"] {
 
     /* Active/current page button - BLUE border (2px), no background, bold font */
     .pwd-pagination-btn-active {
-        border: 2px solid theme('colors.primary') !important;
+        border: 2px solid var(--color-primary) !important;
         background: transparent !important;
         box-shadow: none !important;
         outline: none !important;
-        color: theme('colors.primary') !important;
+        color: var(--color-primary) !important;
         cursor: default;
         min-width: 2.5rem;
         height: 2.5rem;
@@ -1341,8 +1341,8 @@ button[class*="btn-"] {
         display: flex;
         align-items: center;
         justify-content: center;
-        background-color: theme('colors.base-300');
-        color: theme('colors.base-content');
+        background-color: var(--color-base-300);
+        color: var(--color-base-content);
         border: none;
         cursor: pointer;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
