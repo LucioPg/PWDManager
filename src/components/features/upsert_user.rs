@@ -5,6 +5,7 @@
 use crate::auth::{AuthState, User};
 use crate::backend::avatar_utils::get_user_avatar_with_default;
 use crate::backend::db_backend::{delete_user, register_user_with_settings, save_or_update_user};
+use crate::backend::vault_utils::create_vault;
 use crate::backend::ui_utils::pick_and_process_avatar;
 use crate::components::{
     ActionButton, AvatarSelector, AvatarSize, ButtonSize, ButtonType, ButtonVariant,
@@ -264,8 +265,11 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                 )
                 .await
                 {
-                    Ok(_saved_user_id) => {
-                        schedule_toast_success("User Registered successfully!".to_string(), toast);
+                    Ok(saved_user_id) => {
+                        // Auto-create Default vault for new user
+                        if create_vault(&pool, saved_user_id, "Default".to_string(), None).await.is_ok() {
+                            schedule_toast_success("User Registered successfully!".to_string(), toast);
+                        }
                         true
                     }
                     Err(e) => {
