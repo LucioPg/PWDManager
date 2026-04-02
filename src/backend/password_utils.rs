@@ -342,6 +342,7 @@ pub async fn create_stored_data_records(
                 Ok(StoredPassword::new(
                     srp.id,
                     user_auth.id,
+                    srp.vault_id,
                     srp.name.clone(),
                     encrypted_username,
                     username_nonce.to_vec(),
@@ -522,6 +523,7 @@ pub async fn decrypt_bulk_stored_data(
                     uuid: Uuid::new_v4(),
                     id: sp.id,
                     user_id: user_auth.id,
+                    vault_id: sp.vault_id,
                     name: sp.name.clone(),
                     username: SecretString::new(username.into()),
                     url: SecretString::new(url.into()),
