@@ -363,6 +363,51 @@ pub async fn create_stored_data_records(
     .map_err(|e| DBError::new_password_save_error(format!("Join error: {}", e)))?
 }
 
+/// Clona password tra vault: decripta dal vault sorgente e re-cripta nel vault target.
+///
+/// Il re-encryption è necessario perché ogni record ha nonce unici.
+/// Copiare il ciphertext con nonce diversi produrrebbe dati illeggibili.
+pub async fn clone_passwords_to_vault(
+    pool: &SqlitePool,
+    user_id: i64,
+    password_ids: Vec<i64>,
+    target_vault_id: i64,
+) -> Result<(), DBError> {
+    // 1. Fetch password sorgente per ID
+    let all_passwords = fetch_all_stored_passwords_for_user(pool, user_id).await?;
+    let to_clone: Vec<StoredPassword> = all_passwords
+        .into_iter()
+        .filter(|p| p.id.map_or(false, |id| password_ids.contains(&id)))
+        .collect();
+
+    if to_clone.is_empty() {
+        return Ok(());
+    }
+
+    // 2. Decripta (consuma UserAuth)
+    let user_auth = fetch_user_auth_from_id(pool, user_id).await?;
+    let raw_passwords = decrypt_bulk_stored_data(user_auth, to_clone, None).await?;
+
+    // 3. Imposta vault_id target e id: None (nuovi record)
+    let cloned: Vec<StoredRawPassword> = raw_passwords
+        .into_iter()
+        .map(|mut rp| {
+            rp.id = None;
+            rp.vault_id = target_vault_id;
+            rp
+        })
+        .collect();
+
+    // 4. Re-cripta (genera nuovi nonce) e salva
+    let user_auth = fetch_user_auth_from_id(pool, user_id).await?;
+    let salt = get_salt(&user_auth.password);
+    let cipher = create_cipher(&salt, &user_auth)?;
+    let stored = create_stored_data_records(cipher, user_auth, cloned, None).await?;
+    upsert_stored_passwords_batch(pool, stored).await?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 pub async fn get_stored_raw_passwords(
     pool: &SqlitePool,

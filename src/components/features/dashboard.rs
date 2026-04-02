@@ -4,7 +4,7 @@
 
 use crate::Route;
 use crate::backend::db_backend::{delete_stored_password, fetch_password_stats_for_vault, move_passwords_to_vault};
-use crate::backend::password_utils::get_all_stored_raw_passwords_for_vault_with_filter;
+use crate::backend::password_utils::{clone_passwords_to_vault, get_all_stored_raw_passwords_for_vault_with_filter};
 use crate::backend::vault_utils::fetch_vaults_by_user;
 use crate::components::globals::StatsAside;
 use crate::components::globals::ActiveVaultState;
@@ -12,7 +12,7 @@ use crate::components::globals::pagination::{PaginationControls, PaginationState
 use crate::components::globals::spinner::{Spinner, SpinnerSize};
 use crate::components::globals::types::TableOrder;
 use crate::components::{
-    BulkActionBar, MoveToVaultDialog, StoredPasswordDeletionDialog, StoredPasswordShowDialog,
+    BulkActionBar, CloneToVaultDialog, MoveToVaultDialog, StoredPasswordDeletionDialog, StoredPasswordShowDialog,
     StoredPasswordUpsertDialog, StoredRawPasswordsTable, show_toast_error, use_toast,
 };
 use custom_errors::DBError;
@@ -58,6 +58,7 @@ pub fn Dashboard() -> Element {
     let pool_for_delete = pool.clone();
     let pool_for_vaults = pool.clone();
     let pool_for_move = pool.clone();
+    let pool_for_clone = pool.clone();
     let mut error = use_signal(|| <Option<DBError>>::None);
     let user_id_option = auth_state.user.cloned().map(|u| u.id);
     let toast = use_toast();
@@ -510,6 +511,40 @@ pub fn Dashboard() -> Element {
             },
             on_cancel: move |_| {
                 move_dialog_open.set(false);
+            },
+        }
+        // Clone to vault dialog
+        CloneToVaultDialog {
+            open: clone_dialog_open,
+            selected_ids: selected_ids.read().iter().cloned().collect(),
+            selected_passwords: all_passwords()
+                .into_iter()
+                .filter(|p| p.id.map_or(false, |id| selected_ids.read().contains(&id)))
+                .collect(),
+            current_vault_id: active_vault_id().unwrap_or(0),
+            on_confirm: move |target_vault_id| {
+                let pool = pool_for_clone.clone();
+                let user_id = user_id;
+                let ids: Vec<i64> = selected_ids.read().iter().cloned().collect();
+                let mut clone_dialog = clone_dialog_open;
+                let mut sorted_resource = sorted_passwords_resource;
+                let mut stats_res = stats_data;
+                spawn(async move {
+                    match clone_passwords_to_vault(&pool, user_id, ids, target_vault_id).await {
+                        Ok(()) => {
+                            selected_ids.set(HashSet::new());
+                            clone_dialog.set(false);
+                            sorted_resource.restart();
+                            stats_res.restart();
+                        }
+                        Err(e) => {
+                            show_toast_error(format!("Failed to clone passwords: {}", e), toast);
+                        }
+                    }
+                });
+            },
+            on_cancel: move |_| {
+                clone_dialog_open.set(false);
             },
         }
     }
