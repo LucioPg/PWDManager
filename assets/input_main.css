@@ -675,17 +675,17 @@ textarea.pwd-input {
 }
 
 
-// Vault grid responsive
+/* Vault grid responsive */
 @utility pwd-vault-grid {
     @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3;
 }
 
-// Dashboard controls bar responsive wrap
+/* Dashboard controls bar responsive wrap */
 @utility pwd-dashboard-controls {
     @apply flex flex-wrap gap-3 items-center;
 }
 
-// Bulk action bar responsive wrap
+/* Bulk action bar responsive wrap */
 @utility pwd-bulk-action-bar {
     @apply flex flex-wrap gap-2 items-center p-2 mb-2 rounded-lg bg-primary/10;
 }
@@ -694,7 +694,7 @@ textarea.pwd-input {
     @apply text-sm font-medium mr-2;
 }
 
-// Empty state centered
+/* Empty state centered */
 @utility pwd-empty-state {
     @apply flex flex-col items-center justify-center py-20 px-4;
 }
@@ -707,18 +707,18 @@ textarea.pwd-input {
     @apply text-base-content/60 max-w-sm text-center;
 }
 
-// Limita l'altezza del dropdown del Combobox con scrollbar
+/* Limita l'altezza del dropdown del Combobox con scrollbar */
 ul.menu[style*="position: fixed"] {
     max-height: 300px;
     overflow-y: auto;
 }
 
-// Vault card
+/* Vault card */
 @utility pwd-vault-card {
     @apply hover:shadow-md transition-shadow duration-200;
 }
 
-// Vault selector combobox spacing
+/* Vault selector combobox spacing */
 @utility pwd-vault-controls {
     @apply flex flex-wrap gap-2 items-center;
 }
