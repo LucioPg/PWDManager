@@ -1,0 +1,120 @@
+<h2>My Vaults — Card Grid con Paginazione</h2>
+<p class="subtitle">Stessa PaginationControls della dashboard, card semplificate</p>
+
+<div class="mockup">
+  <div class="mockup-header">My Vaults — Lista paginata</div>
+  <div class="mockup-body">
+    <div style="padding:24px">
+      <!-- Header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div>
+          <h3 style="margin:0 0 4px 0">My Vaults</h3>
+          <p style="margin:0;font-size:13px;color:#6b7280">Manage your password vaults</p>
+        </div>
+        <div style="padding:8px 16px;background:#22c55e;color:white;border-radius:6px;font-size:13px;font-weight:500">+ New Vault</div>
+      </div>
+
+      <!-- Vault selector combobox for actions -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+        <span style="font-size:13px;color:#6b7280">Actions for vault:</span>
+        <div style="padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;background:#fff;display:flex;align-items:center;gap:6px">
+          <span style="font-weight:500">Lavoro</span>
+          <span style="color:#9ca3af">▼</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-left:8px">
+          <div style="padding:8px 16px;border:1px solid #3b82f6;color:#3b82f6;border-radius:6px;font-size:13px;cursor:pointer">Import ▾</div>
+          <div style="padding:8px 16px;border:1px solid #3b82f6;color:#3b82f6;border-radius:6px;font-size:13px;cursor:pointer">Export ▾</div>
+          <div style="padding:8px 16px;border:1px solid #ef4444;color:#ef4444;border-radius:6px;font-size:13px;cursor:pointer">Delete All</div>
+        </div>
+      </div>
+
+      <!-- Vault cards grid (3 columns) -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+        <!-- Vault 1 -->
+        <div style="border:1px solid #e5e7eb;border-radius:8px;padding:14px;background:#fff">
+          <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
+            <div style="font-weight:600;font-size:14px">Lavoro</div>
+            <div style="display:flex;gap:6px">
+              <span style="color:#3b82f6;cursor:pointer;font-size:12px">Edit</span>
+              <span style="color:#ef4444;cursor:pointer;font-size:12px">Del</span>
+            </div>
+          </div>
+          <div style="font-size:11px;color:#9ca3af">24 passwords</div>
+        </div>
+
+        <!-- Vault 2 -->
+        <div style="border:1px solid #e5e7eb;border-radius:8px;padding:14px;background:#fff">
+          <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
+            <div style="font-weight:600;font-size:14px">Personale</div>
+            <div style="display:flex;gap:6px">
+              <span style="color:#3b82f6;cursor:pointer;font-size:12px">Edit</span>
+              <span style="color:#ef4444;cursor:pointer;font-size:12px">Del</span>
+            </div>
+          </div>
+          <div style="font-size:11px;color:#9ca3af">12 passwords</div>
+        </div>
+
+        <!-- Vault 3 -->
+        <div style="border:1px solid #e5e7eb;border-radius:8px;padding:14px;background:#fff">
+          <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
+            <div style="font-weight:600;font-size:14px">Banca</div>
+            <div style="display:flex;gap:6px">
+              <span style="color:#3b82f6;cursor:pointer;font-size:12px">Edit</span>
+              <span style="color:#ef4444;cursor:pointer;font-size:12px">Del</span>
+            </div>
+          </div>
+          <div style="font-size:11px;color:#9ca3af">6 passwords</div>
+        </div>
+
+        <!-- Vault 4 -->
+        <div style="border:1px solid #e5e7eb;border-radius:8px;padding:14px;background:#fff">
+          <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
+            <div style="font-weight:600;font-size:14px">Social</div>
+            <div style="display:flex;gap:6px">
+              <span style="color:#3b82f6;cursor:pointer;font-size:12px">Edit</span>
+              <span style="color:#ef4444;cursor:pointer;font-size:12px">Del</span>
+            </div>
+          </div>
+          <div style="font-size:11px;color:#9ca3af">8 passwords</div>
+        </div>
+
+        <!-- Vault 5 -->
+        <div style="border:1px solid #e5e7eb;border-radius:8px;padding:14px;background:#fff">
+          <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
+            <div style="font-weight:600;font-size:14px">Sviluppo</div>
+            <div style="display:flex;gap:6px">
+              <span style="color:#3b82f6;cursor:pointer;font-size:12px">Edit</span>
+              <span style="color:#ef4444;cursor:pointer;font-size:12px">Del</span>
+            </div>
+          </div>
+          <div style="font-size:11px;color:#9ca3af">15 passwords</div>
+        </div>
+
+        <!-- Vault 6 -->
+        <div style="border:1px solid #e5e7eb;border-radius:8px;padding:14px;background:#fff">
+          <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:6px">
+            <div style="font-weight:600;font-size:14px">Shopping</div>
+            <div style="display:flex;gap:6px">
+              <span style="color:#3b82f6;cursor:pointer;font-size:12px">Edit</span>
+              <span style="color:#ef4444;cursor:pointer;font-size:12px">Del</span>
+            </div>
+          </div>
+          <div style="font-size:11px;color:#9ca3af">3 passwords</div>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <div style="display:flex;justify-content:center;gap:4px">
+        <div style="padding:6px 10px;border:1px solid #d1d5db;border-radius:4px;font-size:12px;color:#9ca3af">Prev</div>
+        <div style="padding:6px 10px;background:#3b82f6;color:white;border-radius:4px;font-size:12px">1</div>
+        <div style="padding:6px 10px;border:1px solid #d1d5db;border-radius:4px;font-size:12px">2</div>
+        <div style="padding:6px 10px;border:1px solid #d1d5db;border-radius:4px;font-size:12px">3</div>
+        <div style="padding:6px 10px;border:1px solid #d1d5db;border-radius:4px;font-size:12px">Next</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:16px;padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;font-size:13px">
+  <strong>Cambiamenti:</strong> Card semplificate (nome + conteggio, senza descrizione nella card). Griglia 3 colonne. Riutilizza lo stesso <code>PaginationControls</code> della dashboard. La descrizione si vede nel dialog di edit.
+</div>

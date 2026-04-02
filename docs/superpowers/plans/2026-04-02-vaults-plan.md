@@ -52,7 +52,7 @@
 
 **Prerequisite:** Clone pwd-types repo locally. Add `[patch]` section in main project's `Cargo.toml` pointing to local path.
 
-- [ ] **Step 1: Add `[patch]` to Cargo.toml for local development**
+- [x] **Step 1: Add `[patch]` to Cargo.toml for local development** ✅ DONE (not committed — workaround)
 
 In `Cargo.toml`, add at the bottom:
 
@@ -63,7 +63,7 @@ pwd-types = { path = "../pwd-types" }
 
 Adjust path to point to the local pwd-types checkout.
 
-- [ ] **Step 2: Add `Vault` struct to pwd-types `src/stored.rs`**
+- [x] **Step 2: Add `Vault` struct to pwd-types `src/stored.rs`** ✅ DONE
 
 After the `StoredRawPassword` impl block, add:
 
@@ -83,7 +83,7 @@ pub struct Vault {
 }
 ```
 
-- [ ] **Step 3: Add `vault_id` to `StoredPassword`**
+- [x] **Step 3: Add `vault_id` to `StoredPassword`** ✅ DONE
 
 In `StoredPassword` struct, add field after `user_id`:
 
@@ -91,7 +91,7 @@ In `StoredPassword` struct, add field after `user_id`:
 pub vault_id: i64,
 ```
 
-- [ ] **Step 4: Update `StoredPassword::new()` to accept `vault_id`**
+- [x] **Step 4: Update `StoredPassword::new()` to accept `vault_id`** ✅ DONE
 
 Add `vault_id: i64` parameter after `user_id`. Include it in the struct construction:
 
@@ -114,7 +114,7 @@ pub fn new(
 }
 ```
 
-- [ ] **Step 5: Add `vault_id` to `StoredRawPassword`**
+- [x] **Step 5: Add `vault_id` to `StoredRawPassword`** ✅ DONE
 
 Add field after `user_id`:
 
@@ -132,7 +132,7 @@ All struct literal sites must add `vault_id` field. Use grep `StoredRawPassword 
 
 Update `Debug` impl to include `.field("vault_id", &self.vault_id)`.
 
-- [ ] **Step 6: Export `Vault` from `src/lib.rs`**
+- [x] **Step 6: Export `Vault` from `src/lib.rs`** ✅ DONE
 
 Change:
 ```rust
@@ -143,12 +143,12 @@ To:
 pub use stored::{UserAuth, StoredPassword, StoredRawPassword, Vault};
 ```
 
-- [ ] **Step 7: Verify compilation**
+- [x] **Step 7: Verify compilation**
 
 Run: `cargo check`
 Expected: Compiles (some downstream errors expected due to new field)
 
-- [ ] **Step 8: Commit in pwd-types repo**
+- [x] **Step 8: Commit in pwd-types repo** ✅ DONE (commit 011f180)
 
 ```bash
 git add src/stored.rs src/lib.rs

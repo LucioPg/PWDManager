@@ -3,7 +3,6 @@
 // Commercial use requires a license. See LICENSE.md for details.
 
 pub mod dashboard;
-mod dashboard_menu;
 mod diceware_settings;
 pub mod my_vaults;
 mod export_progress;
@@ -20,7 +19,6 @@ mod update_notification;
 pub mod upsert_user;
 
 pub use dashboard::*;
-pub use dashboard_menu::*;
 pub use my_vaults::*;
 pub use export_progress::*;
 pub use import_progress::*;

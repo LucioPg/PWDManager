@@ -1,0 +1,73 @@
+<h2>Dialog — Move/Clone con Helper New Vault</h2>
+<p class="subtitle">Pulsante per creare un nuovo vault direttamente dal dialog</p>
+
+<div class="split">
+  <!-- Move dialog -->
+  <div class="mockup">
+    <div class="mockup-header">Dialog — Move to Vault</div>
+    <div class="mockup-body">
+      <div style="padding:20px">
+        <div style="position:relative;border:2px solid #e5e7eb;border-radius:12px;padding:24px;max-width:380px;margin:0 auto">
+          <div style="font-weight:600;font-size:15px;margin-bottom:4px">Move 2 passwords to vault</div>
+          <div style="font-size:12px;color:#6b7280;margin-bottom:16px">GitHub, AWS Console</div>
+
+          <div style="margin-bottom:16px">
+            <div style="font-size:12px;font-weight:500;margin-bottom:6px">Target vault</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <div style="flex:1;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;background:#fff;display:flex;justify-content:space-between;align-items:center;cursor:pointer">
+                <span style="color:#9ca3af">Select a vault...</span>
+                <span style="color:#9ca3af">▼</span>
+              </div>
+              <div style="padding:8px 12px;background:#f0f9ff;border:1px solid #3b82f6;color:#3b82f6;border-radius:6px;font-size:12px;cursor:pointer;white-space:nowrap">+ New Vault</div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <div style="padding:8px 16px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;cursor:pointer">Cancel</div>
+            <div style="padding:8px 16px;background:#3b82f6;color:white;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer">Move</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Inline new vault form -->
+  <div class="mockup">
+    <div class="mockup-header">Dopo click "+ New Vault" — Form inline</div>
+    <div class="mockup-body">
+      <div style="padding:20px">
+        <div style="position:relative;border:2px solid #e5e7eb;border-radius:12px;padding:24px;max-width:380px;margin:0 auto">
+          <div style="font-weight:600;font-size:15px;margin-bottom:4px">Move 2 passwords to vault</div>
+          <div style="font-size:12px;color:#6b7280;margin-bottom:16px">GitHub, AWS Console</div>
+
+          <div style="margin-bottom:12px">
+            <div style="font-size:12px;font-weight:500;margin-bottom:6px">Target vault</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <div style="flex:1;padding:8px 12px;border:1px solid #3b82f6;border-radius:6px;font-size:13px;background:#fff;box-shadow:0 0 0 1px #3b82f6">
+                <input type="text" placeholder="New vault name..." style="border:none;outline:none;width:100%;font-size:13px" />
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-bottom:16px">
+            <input type="text" placeholder="Description (optional)" style="width:100%;padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;box-sizing:border-box" />
+          </div>
+
+          <div style="display:flex;gap:8px;justify-content:flex-end">
+            <div style="padding:8px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;cursor:pointer">← Back</div>
+            <div style="padding:8px 16px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;cursor:pointer">Cancel</div>
+            <div style="padding:8px 16px;background:#3b82f6;color:white;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer">Create & Move</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:16px;padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;font-size:13px">
+  <strong>Flusso helper:</strong><br>
+  1. Click "+ New Vault" → la combobox si trasforma in input testo per il nome<br>
+  2. Appare campo description opzionale inline<br>
+  3. Pulsante "← Back" per tornare alla combobox<br>
+  4. "Create & Move" crea il vault, lo seleziona, ed esegue lo spostamento in un colpo
+</div>
