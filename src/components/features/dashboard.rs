@@ -2,10 +2,12 @@
 // Licensed under the Prosperity Public License 3.0.0
 // Commercial use requires a license. See LICENSE.md for details.
 
-use crate::backend::db_backend::{delete_stored_password, fetch_password_stats};
-use crate::backend::password_utils::get_all_stored_raw_passwords_with_filter;
-use crate::components::features::DashboardMenu;
+use crate::Route;
+use crate::backend::db_backend::{delete_stored_password, fetch_password_stats_for_vault};
+use crate::backend::password_utils::get_all_stored_raw_passwords_for_vault_with_filter;
+use crate::backend::vault_utils::fetch_vaults_by_user;
 use crate::components::globals::StatsAside;
+use crate::components::globals::ActiveVaultState;
 use crate::components::globals::pagination::{PaginationControls, PaginationState};
 use crate::components::globals::spinner::{Spinner, SpinnerSize};
 use crate::components::globals::types::TableOrder;
@@ -32,7 +34,6 @@ fn table_order_options() -> Vec<(&'static str, Option<TableOrder>)> {
 #[component]
 pub fn Dashboard() -> Element {
     let auth_state = use_context::<crate::auth::AuthState>();
-    let on_need_restart = use_signal(|| false);
     let username = auth_state.get_username();
     let mut stored_password_dialog_state =
         use_context_provider(|| StoredPasswordUpsertDialogState {
@@ -54,6 +55,7 @@ pub fn Dashboard() -> Element {
     let pool = use_context::<SqlitePool>();
     let pool_for_stats = pool.clone();
     let pool_for_delete = pool.clone();
+    let pool_for_vaults = pool.clone();
     let mut error = use_signal(|| <Option<DBError>>::None);
     let user_id_option = auth_state.user.cloned().map(|u| u.id);
     let toast = use_toast();
@@ -73,31 +75,64 @@ pub fn Dashboard() -> Element {
     // Estrae user_id
     let user_id = user_id_option.unwrap_or(-1);
 
+    // Vault state
+    let active_vault_state = use_context::<ActiveVaultState>();
+    let mut active_vault_id = active_vault_state.0;
+
+    // Vault list resource
+    let vaults_resource = use_resource(move || {
+        let pool = pool_for_vaults.clone();
+        let user_id = user_id;
+        async move {
+            if user_id == -1 {
+                return Vec::new();
+            }
+            fetch_vaults_by_user(&pool, user_id).await.unwrap_or_default()
+        }
+    });
+
+    // Vault combobox options
+    let vault_options = use_memo(move || {
+        let vaults = vaults_resource.read().as_ref().cloned().unwrap_or_default();
+        let opts: Vec<(&'static str, Option<i64>)> = vaults
+            .iter()
+            .map(|v| {
+                // Leaked because the Combobox expects &'static str
+                let name = Box::leak(v.name.clone().into_boxed_str()) as &'static str;
+                (name, Some(v.id.unwrap_or(0)))
+            })
+            .collect();
+        opts
+    });
+
     // Stato paginazione
     #[allow(clippy::redundant_closure)]
     let mut pagination = use_context_provider(|| PaginationState::new());
 
     // Resource per fetch completa (ordinamento delegato al DB)
-    // Reagisce a: current_table_order, pagination.active_filter()
+    // Reagisce a: active_vault_id, current_table_order, pagination.active_filter()
     let mut sorted_passwords_resource = use_resource(move || {
         let pool = pool.clone();
         let user_id = user_id;
+        let vault_id = active_vault_id().unwrap_or(-1);
         let filter = pagination.active_filter();
         let order_clause = current_table_order()
             .unwrap_or(TableOrder::Newest)
             .order_by_clause();
 
         async move {
-            if user_id == -1 {
+            if user_id == -1 || vault_id == -1 {
                 return Vec::new();
             }
 
-            get_all_stored_raw_passwords_with_filter(&pool, user_id, filter, order_clause)
-                .await
-                .unwrap_or_else(|e| {
-                    error.set(Some(e));
-                    Vec::new()
-                })
+            get_all_stored_raw_passwords_for_vault_with_filter(
+                &pool, user_id, vault_id, filter, order_clause,
+            )
+            .await
+            .unwrap_or_else(|e| {
+                error.set(Some(e));
+                Vec::new()
+            })
         }
     });
 
@@ -144,14 +179,15 @@ pub fn Dashboard() -> Element {
         }
     });
 
-    // Stats sempre fresche (query separata)
-    let stats_data = use_resource(move || {
+    // Stats sempre fresche (query separata, vault-scoped)
+    let mut stats_data = use_resource(move || {
         let pool = pool_for_stats.clone();
+        let vault_id = active_vault_id().unwrap_or(-1);
         async move {
-            if user_id == -1 {
+            if vault_id == -1 {
                 return None;
             }
-            match fetch_password_stats(&pool, user_id).await {
+            match fetch_password_stats_for_vault(&pool, vault_id).await {
                 Ok(stats) => Some(stats),
                 Err(e) => {
                     error.set(Some(e));
@@ -222,15 +258,12 @@ pub fn Dashboard() -> Element {
         }
     });
 
+    // Restart resources when active vault changes
     use_effect(move || {
-        let mut need_restart = on_need_restart;
-        let mut stats_data = stats_data;
-        let mut sorted_passwords_resource = sorted_passwords_resource;
-        if need_restart() {
-            stats_data.restart();
-            sorted_passwords_resource.restart();
-            need_restart.set(false);
-        }
+        let _ = *active_vault_id.read();
+        pagination.go_to_page(0);
+        sorted_passwords_resource.restart();
+        stats_data.restart();
     });
 
     rsx! {
@@ -247,12 +280,9 @@ pub fn Dashboard() -> Element {
 
         // Main content con margin-left per fare spazio all'aside collassato (52px)
         div { class: "content-container animate-fade-in ml-16",
-            div { class: "mb-8 flex justify-between items-start align-center",
-                div {
-                    h1 { class: "text-h2", "Welcome, {username}!" }
-                    p { class: "text-body mt-2", "Manage your passwords and secure your digital life" }
-                }
-                DashboardMenu { on_need_restart }
+            div { class: "mb-8",
+                h1 { class: "text-h2", "Welcome, {username}!" }
+                p { class: "text-body mt-2", "Manage your passwords and secure your digital life" }
             }
             div { class: "pwd-controls-bar",
                 div { class: "pwd-controls-left",
@@ -306,6 +336,14 @@ pub fn Dashboard() -> Element {
                             sorted_passwords_resource.restart();
                         },
                     }
+                    // Vault selector Combobox
+                    Combobox::<i64> {
+                        options: vault_options(),
+                        placeholder: "Select Vault".to_string(),
+                        on_change: move |v| {
+                            active_vault_id.set(v);
+                        },
+                    }
                 }
                 button {
                     class: "btn btn-success",
@@ -319,19 +357,46 @@ pub fn Dashboard() -> Element {
             }
 
             {
-                let table_data = page_data();
-                if sorted_passwords_resource.read().is_none() {
+                let vaults = vaults_resource.read().as_ref().cloned().unwrap_or_default();
+                if vaults.is_empty() {
                     rsx! {
-                        div { class: "card card-lg",
-                            div { class: "flex justify-center py-8",
-                                Spinner { size: SpinnerSize::Medium, color_class: "text-info" }
+                        div { class: "pwd-empty-state",
+                            div { class: "pwd-empty-state-icon",
+                                svg {
+                                    view_box: "0 0 24 24",
+                                    fill: "none",
+                                    stroke: "currentColor",
+                                    stroke_width: "2",
+                                    rect { x: "3", y: "11", width: "18", height: "11", rx: "2", ry: "2" }
+                                    path { d: "M7 11V7a5 5 0 0 1 10 0v4" }
+                                }
+                            }
+                            h3 { class: "text-h3", "Create your first Vault" }
+                            p { class: "text-body mt-2 pwd-empty-state-subtitle",
+                                "A vault is where your passwords live. Create one to get started."
+                            }
+                            Link {
+                                to: Route::MyVaults,
+                                class: "btn btn-primary mt-4",
+                                "+ New Vault"
                             }
                         }
                     }
                 } else {
-                    rsx! {
-                        div { class: "card card-lg",
-                            StoredRawPasswordsTable { data: table_data }
+                    let table_data = page_data();
+                    if sorted_passwords_resource.read().is_none() {
+                        rsx! {
+                            div { class: "card card-lg",
+                                div { class: "flex justify-center py-8",
+                                    Spinner { size: SpinnerSize::Medium, color_class: "text-info" }
+                                }
+                            }
+                        }
+                    } else {
+                        rsx! {
+                            div { class: "card card-lg",
+                                StoredRawPasswordsTable { data: table_data }
+                            }
                         }
                     }
                 }

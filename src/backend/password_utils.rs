@@ -11,7 +11,8 @@
 //! - Salvare le password nel database
 
 use crate::backend::db_backend::{
-    fetch_all_passwords_for_user_with_filter, fetch_all_stored_passwords_for_user,
+    fetch_all_passwords_for_user_with_filter, fetch_all_passwords_for_vault_with_filter,
+    fetch_all_stored_passwords_for_user,
     fetch_passwords_paginated, fetch_user_auth_from_id, remove_temp_old_password,
     upsert_stored_passwords_batch,
 };
@@ -404,6 +405,27 @@ pub async fn get_all_stored_raw_passwords_with_filter(
         fetch_user_auth_from_id(pool, user_id).await?,
         stored_passwords,
         None, // Nessun progress tracking
+    )
+    .await?;
+
+    Ok(stored_raw_passwords)
+}
+
+/// Recupera e decifra le password di un vault con filtro opzionale per strength.
+pub async fn get_all_stored_raw_passwords_for_vault_with_filter(
+    pool: &SqlitePool,
+    user_id: i64,
+    vault_id: i64,
+    filter: Option<PasswordStrength>,
+    order: &str,
+) -> Result<Vec<StoredRawPassword>, DBError> {
+    let stored_passwords =
+        fetch_all_passwords_for_vault_with_filter(pool, vault_id, filter, order).await?;
+
+    let stored_raw_passwords = decrypt_bulk_stored_data(
+        fetch_user_auth_from_id(pool, user_id).await?,
+        stored_passwords,
+        None,
     )
     .await?;
 
