@@ -12,10 +12,9 @@
 
 use crate::backend::db_backend::{
     fetch_all_passwords_for_user_with_filter, fetch_all_stored_passwords_for_user,
-    fetch_user_auth_from_id, remove_temp_old_password, upsert_stored_passwords_batch,
+    fetch_passwords_paginated, fetch_user_auth_from_id, remove_temp_old_password,
+    upsert_stored_passwords_batch,
 };
-#[cfg(test)]
-use crate::backend::db_backend::fetch_passwords_paginated;
 use crate::backend::evaluate_password_strength;
 use crate::backend::migration_types::{MigrationStage, ProgressMessage, ProgressSender};
 use crate::backend::settings_types::{DicewareGenerationSettings, DicewareLanguage};
@@ -424,7 +423,7 @@ pub async fn get_all_stored_raw_passwords_with_filter(
 ///
 /// # Returns
 /// * `Ok((Vec<StoredRawPassword>, u64))` - Password decifrate e totale count
-#[cfg(test)]
+#[allow(dead_code)]
 pub async fn get_stored_raw_passwords_paginated(
     pool: &SqlitePool,
     user_id: i64,

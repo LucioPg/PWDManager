@@ -1354,7 +1354,7 @@ mod tests {
     async fn test_fetch_user_passwords_generation_settings() {
         let pool = setup_test_db().await;
         let (user_id, _) = create_test_user(&pool, "user_generation_set", "abc", None).await;
-        let settings = create_user_settings(&pool, user_id, PasswordPreset::God)
+        let _settings = create_user_settings(&pool, user_id, PasswordPreset::God)
             .await
             .unwrap();
         let passwords_generation_settings =

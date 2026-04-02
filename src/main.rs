@@ -12,14 +12,14 @@ use crate::backend::db_backend::InitResult;
 use crate::backend::init_blacklist_from_path;
 use crate::backend::settings_types::{AutoLogoutSettings, AutoUpdate};
 use crate::backend::updater_types::{UpdateManifest, UpdateState};
+#[cfg(debug_assertions)]
+use crate::components::RecoveryKeySetupDialog;
 use crate::components::{
     AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, RouteWrapper,
     Settings, Spinner, SpinnerSize, Style, ToastContainer, ToastHubState, UpdateNotification,
     UpsertUser, show_toast_error, show_toast_success,
 };
 use crate::components::{DatabaseResetDialog, RecoveryKeyInputDialog};
-#[cfg(debug_assertions)]
-use crate::components::RecoveryKeySetupDialog;
 use backend::db_backend::init_db;
 use backend::db_backend::{build_sqlcipher_options, get_db_path};
 use backend::settings_types::Theme;
@@ -143,11 +143,10 @@ fn App() -> Element {
             event: dioxus::desktop::tao::event::WindowEvent::CloseRequested,
             ..
         } = event
+            && window().is_visible()
         {
-            if window().is_visible() {
-                window().set_visible(true);
-                window().set_visible(false);
-            }
+            window().set_visible(true);
+            window().set_visible(false);
         }
     });
 

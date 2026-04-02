@@ -81,7 +81,7 @@ mod tests {
         assert!(result.is_ok(), "INSERT without avatar should succeed");
 
         // Verifica che l'utente sia stato creato senza avatar
-        let (user_id, _, _, avatar) = fetch_user_data(&pool, &username)
+        let (_user_id, _, _, avatar) = fetch_user_data(&pool, &username)
             .await
             .expect("Failed to fetch user");
         assert!(avatar.is_none(), "User should not have avatar");

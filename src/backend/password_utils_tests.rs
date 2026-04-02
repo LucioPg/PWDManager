@@ -9,16 +9,14 @@ use crate::backend::db_backend::{
 };
 use crate::backend::evaluate_password_strength;
 use crate::backend::password_utils::{
-    create_stored_data_pipeline_bulk, decrypt_bulk_stored_data,
-    generate_suggested_password, get_stored_raw_passwords,
-    stored_passwords_migration_pipeline_with_progress,
+    create_stored_data_pipeline_bulk, decrypt_bulk_stored_data, generate_suggested_password,
+    get_stored_raw_passwords, stored_passwords_migration_pipeline_with_progress,
 };
 use crate::backend::test_helpers::setup_test_db;
 use pwd_types::{
-    ExcludedSymbolSet, PasswordGeneratorConfig, PasswordPreset, PasswordScore,
-    PasswordStrength, StoredRawPassword,
+    ExcludedSymbolSet, PasswordGeneratorConfig, PasswordPreset, PasswordStrength, StoredRawPassword,
 };
-use secrecy::{ExposeSecret, SecretBox, SecretString};
+use secrecy::{ExposeSecret, SecretString};
 use sqlx::SqlitePool;
 use std::time::Instant;
 use uuid::Uuid;
@@ -52,7 +50,7 @@ async fn test_generate_password_from_preset() {
     let setting_id = create_user_settings(&pool, user_id, PasswordPreset::God)
         .await
         .unwrap();
-    let mut pass_settings = fetch_user_passwords_generation_settings(&pool, user_id)
+    let pass_settings = fetch_user_passwords_generation_settings(&pool, user_id)
         .await
         .unwrap();
     let presets: Vec<(PasswordPreset, PasswordStrength)> = vec![
@@ -545,7 +543,10 @@ async fn test_multiple_passwords_for_same_user_with_predefined_strength() {
         .expect("Failed to decrypt passwords");
     for (i, (_expected_url, expected_password, expected_strength)) in passwords.iter().enumerate() {
         let expected_strength_score = expected_strength.score.map(|s| s.value()).unwrap_or(0);
-        assert_eq!(decrypted[i].score.map(|s| s.value()), Some(expected_strength_score));
+        assert_eq!(
+            decrypted[i].score.map(|s| s.value()),
+            Some(expected_strength_score)
+        );
         assert_eq!(decrypted[i].password.expose_secret(), *expected_password);
     }
 }
@@ -751,7 +752,9 @@ async fn test_password_migration_single_password() {
         .expect("temp_old_password should exist");
 
     // 5. Esegui migration passando l'HASH
-    let result = stored_passwords_migration_pipeline_with_progress(&pool, user_id, temp_old_hash, None).await;
+    let result =
+        stored_passwords_migration_pipeline_with_progress(&pool, user_id, temp_old_hash, None)
+            .await;
     assert!(result.is_ok(), "Migration should succeed: {:?}", result);
 
     // 6. Verifica temp_old_password rimosso
@@ -829,7 +832,9 @@ async fn test_password_migration_multiple_passwords() {
         .expect("Failed to fetch temp_old_password")
         .expect("temp_old_password should exist");
 
-    let result = stored_passwords_migration_pipeline_with_progress(&pool, user_id, temp_old_hash, None).await;
+    let result =
+        stored_passwords_migration_pipeline_with_progress(&pool, user_id, temp_old_hash, None)
+            .await;
     assert!(result.is_ok(), "Migration should succeed: {:?}", result);
 
     // 5. Verifica tutte le password
@@ -875,7 +880,9 @@ async fn test_password_migration_empty_passwords() {
         .expect("Failed to fetch temp_old_password")
         .expect("temp_old_password should exist");
 
-    let result = stored_passwords_migration_pipeline_with_progress(&pool, user_id, temp_old_hash, None).await;
+    let result =
+        stored_passwords_migration_pipeline_with_progress(&pool, user_id, temp_old_hash, None)
+            .await;
     assert!(
         result.is_ok(),
         "Migration with no passwords should succeed: {:?}",
@@ -1003,7 +1010,7 @@ async fn test_excluded_symbol_set_empty() {
 #[cfg(test)]
 mod diceware_tests {
     use super::*;
-    use crate::backend::password_utils::{generate_diceware_password, DicewareGenConfig};
+    use crate::backend::password_utils::{DicewareGenConfig, generate_diceware_password};
     use diceware::EmbeddedList;
 
     #[test]
@@ -1038,7 +1045,10 @@ mod diceware_tests {
         let pwd = generate_diceware_password(config).expect("should generate with special char");
         let pwd_str = pwd.expose_secret();
         let special_count = pwd_str.chars().filter(|c| !c.is_alphanumeric()).count();
-        assert!(special_count >= 1, "Should have at least 1 special character, got {special_count}");
+        assert!(
+            special_count >= 1,
+            "Should have at least 1 special character, got {special_count}"
+        );
     }
 
     #[test]
@@ -1070,7 +1080,10 @@ mod diceware_tests {
             language: EmbeddedList::EN,
         };
         let result = generate_diceware_password(config);
-        assert!(result.is_err(), "Should fail with impossible numbers config");
+        assert!(
+            result.is_err(),
+            "Should fail with impossible numbers config"
+        );
     }
 }
 
@@ -1081,8 +1094,13 @@ async fn test_diceware_registration_default_settings() {
     // Use register_user_with_settings — it creates user + user_settings + passwords_generation_settings + diceware_generation_settings
     let user_id = crate::backend::db_backend::register_user_with_settings(
         &pool,
-        format!("diceware_reg_test_{}", std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()),
+        format!(
+            "diceware_reg_test_{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ),
         Some(secrecy::SecretString::new("TestPass123!".into())),
         None,
         pwd_types::PasswordPreset::God,

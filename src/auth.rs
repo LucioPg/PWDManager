@@ -28,7 +28,9 @@ thread_local! {
 /// Registers a callback that fires on every login/logout.
 /// Must be called once during app initialization.
 pub fn set_on_auth_change(f: impl Fn(bool) + 'static) {
-    ON_AUTH_CHANGE.with(|c| { *c.borrow_mut() = Some(Box::new(f)); });
+    ON_AUTH_CHANGE.with(|c| {
+        *c.borrow_mut() = Some(Box::new(f));
+    });
 }
 
 fn notify_auth_change(is_logged: bool) {
@@ -112,7 +114,6 @@ impl Default for AuthState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::cell::Cell;
 
     /// Helper: crea un VirtualDom minimo e esegue f nello scope root.
     /// Signal::new() richiede un runtime + uno scope attivo.

@@ -4,20 +4,20 @@
 
 #![allow(dead_code)]
 use crate::backend::db_backend::{
-    build_sqlcipher_options, check_user, create_user_settings, delete_all_user_stored_passwords,
-    delete_stored_password, delete_user, fetch_all_passwords_for_user_with_filter,
-    fetch_all_stored_passwords_for_user, fetch_diceware_settings, fetch_password_stats,
-    fetch_passwords_paginated, fetch_user_data, fetch_user_password,
-    fetch_user_passwords_generation_settings, fetch_user_settings,
+    UserUpdate, build_sqlcipher_options, check_user, create_user_settings,
+    delete_all_user_stored_passwords, delete_stored_password, delete_user,
+    fetch_all_passwords_for_user_with_filter, fetch_all_stored_passwords_for_user,
+    fetch_diceware_settings, fetch_password_stats, fetch_passwords_paginated, fetch_user_data,
+    fetch_user_password, fetch_user_passwords_generation_settings, fetch_user_settings,
     register_user_with_settings, remove_temp_old_password, restore_old_password,
     save_or_update_user, upsert_diceware_settings, upsert_password_config,
-    upsert_stored_passwords_batch, UserUpdate,
+    upsert_stored_passwords_batch,
 };
 use crate::backend::password_utils::create_stored_data_pipeline_bulk;
 use crate::backend::test_helpers::{create_test_user, setup_test_db};
 use custom_errors::AuthError;
-use pwd_types::{PasswordPreset, PasswordScore, PasswordStrength, StoredRawPassword};
-use secrecy::{ExposeSecret, SecretString};
+use pwd_types::{PasswordPreset, PasswordStrength, StoredRawPassword};
+use secrecy::SecretString;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
@@ -31,10 +31,8 @@ async fn insert_test_passwords(
     let raw_passwords: Vec<StoredRawPassword> = entries
         .into_iter()
         .map(|(url, pwd)| {
-            let strength = crate::backend::evaluate_password_strength(
-                &SecretString::new(pwd.into()),
-                None,
-            );
+            let strength =
+                crate::backend::evaluate_password_strength(&SecretString::new(pwd.into()), None);
             StoredRawPassword {
                 uuid: Uuid::new_v4(),
                 id: None,
@@ -149,7 +147,10 @@ mod tests {
     #[cfg(feature = "desktop")]
     #[test]
     fn test_build_sqlcipher_options_returns_ok() {
-        let result = build_sqlcipher_options("/tmp/test.db", "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890");
+        let result = build_sqlcipher_options(
+            "/tmp/test.db",
+            "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+        );
         assert!(result.is_ok());
     }
 
@@ -160,10 +161,11 @@ mod tests {
     #[tokio::test]
     async fn test_delete_user_success() {
         let pool = setup_test_db().await;
-        let (user_id, username) =
-            create_test_user(&pool, "del_user", "password123", None).await;
+        let (user_id, username) = create_test_user(&pool, "del_user", "password123", None).await;
 
-        delete_user(&pool, user_id).await.expect("delete should succeed");
+        delete_user(&pool, user_id)
+            .await
+            .expect("delete should succeed");
 
         let result = fetch_user_data(&pool, &username).await;
         assert!(result.is_err(), "User should be deleted");
@@ -181,7 +183,9 @@ mod tests {
         )
         .await;
 
-        delete_user(&pool, user_id).await.expect("delete should succeed");
+        delete_user(&pool, user_id)
+            .await
+            .expect("delete should succeed");
 
         let passwords = fetch_all_stored_passwords_for_user(&pool, user_id)
             .await
@@ -204,8 +208,7 @@ mod tests {
     #[tokio::test]
     async fn test_check_user_correct_password() {
         let pool = setup_test_db().await;
-        let (_, username) =
-            create_test_user(&pool, "check_ok", "MyPassword123!", None).await;
+        let (_, username) = create_test_user(&pool, "check_ok", "MyPassword123!", None).await;
 
         let result = check_user(
             &pool,
@@ -219,8 +222,7 @@ mod tests {
     #[tokio::test]
     async fn test_check_user_wrong_password() {
         let pool = setup_test_db().await;
-        let (_, username) =
-            create_test_user(&pool, "check_wrong", "CorrectPassword!", None).await;
+        let (_, username) = create_test_user(&pool, "check_wrong", "CorrectPassword!", None).await;
 
         let result = check_user(
             &pool,
@@ -270,8 +272,7 @@ mod tests {
     #[tokio::test]
     async fn test_fetch_all_passwords_returns_records() {
         let pool = setup_test_db().await;
-        let (user_id, _) =
-            create_test_user(&pool, "fetch_some", "pass123", None).await;
+        let (user_id, _) = create_test_user(&pool, "fetch_some", "pass123", None).await;
 
         insert_test_passwords(
             &pool,
@@ -289,8 +290,7 @@ mod tests {
     #[tokio::test]
     async fn test_delete_stored_password() {
         let pool = setup_test_db().await;
-        let (user_id, _) =
-            create_test_user(&pool, "del_pwd", "pass123", None).await;
+        let (user_id, _) = create_test_user(&pool, "del_pwd", "pass123", None).await;
 
         insert_test_passwords(&pool, user_id, vec![("https://site.com", "abc")]).await;
 
@@ -313,8 +313,7 @@ mod tests {
     #[tokio::test]
     async fn test_delete_all_user_stored_passwords() {
         let pool = setup_test_db().await;
-        let (user_id, _) =
-            create_test_user(&pool, "del_all", "pass123", None).await;
+        let (user_id, _) = create_test_user(&pool, "del_all", "pass123", None).await;
 
         insert_test_passwords(
             &pool,
@@ -344,8 +343,7 @@ mod tests {
     #[tokio::test]
     async fn test_fetch_passwords_paginated_no_filter() {
         let pool = setup_test_db().await;
-        let (user_id, _) =
-            create_test_user(&pool, "page_nofilter", "pass123", None).await;
+        let (user_id, _) = create_test_user(&pool, "page_nofilter", "pass123", None).await;
 
         insert_test_passwords(
             &pool,
@@ -360,17 +358,15 @@ mod tests {
         )
         .await;
 
-        let (results, total) =
-            fetch_passwords_paginated(&pool, user_id, None, 0, 2)
-                .await
-                .expect("paginated fetch should succeed");
+        let (results, total) = fetch_passwords_paginated(&pool, user_id, None, 0, 2)
+            .await
+            .expect("paginated fetch should succeed");
         assert_eq!(results.len(), 2, "First page should have 2 items");
         assert_eq!(total, 5, "Total should be 5");
 
-        let (page1, total) =
-            fetch_passwords_paginated(&pool, user_id, None, 1, 2)
-                .await
-                .expect("page 1 should succeed");
+        let (page1, total) = fetch_passwords_paginated(&pool, user_id, None, 1, 2)
+            .await
+            .expect("page 1 should succeed");
         assert_eq!(page1.len(), 2, "Second page should have 2 items");
         assert_eq!(total, 5);
     }
@@ -378,8 +374,7 @@ mod tests {
     #[tokio::test]
     async fn test_fetch_passwords_paginated_filter_strength() {
         let pool = setup_test_db().await;
-        let (user_id, _) =
-            create_test_user(&pool, "page_filter", "pass123", None).await;
+        let (user_id, _) = create_test_user(&pool, "page_filter", "pass123", None).await;
 
         // ciaociao = weak, Password2! = medium, VeryLongSecurePassword123! = epic/god
         insert_test_passwords(
@@ -393,26 +388,16 @@ mod tests {
         )
         .await;
 
-        let (weak, _) = fetch_passwords_paginated(
-            &pool,
-            user_id,
-            Some(PasswordStrength::WEAK),
-            0,
-            10,
-        )
-        .await
-        .expect("weak filter should succeed");
+        let (weak, _) =
+            fetch_passwords_paginated(&pool, user_id, Some(PasswordStrength::WEAK), 0, 10)
+                .await
+                .expect("weak filter should succeed");
         assert!(weak.len() >= 1, "Should find at least 1 weak password");
 
-        let (no_match, total) = fetch_passwords_paginated(
-            &pool,
-            user_id,
-            Some(PasswordStrength::GOD),
-            0,
-            10,
-        )
-        .await
-        .expect("GOD filter should succeed");
+        let (no_match, total) =
+            fetch_passwords_paginated(&pool, user_id, Some(PasswordStrength::GOD), 0, 10)
+                .await
+                .expect("GOD filter should succeed");
         assert_eq!(total, 0, "Should find 0 GOD passwords");
         assert!(no_match.is_empty());
     }
@@ -420,8 +405,7 @@ mod tests {
     #[tokio::test]
     async fn test_fetch_all_passwords_filter_no_filter() {
         let pool = setup_test_db().await;
-        let (user_id, _) =
-            create_test_user(&pool, "allfilter_no", "pass123", None).await;
+        let (user_id, _) = create_test_user(&pool, "allfilter_no", "pass123", None).await;
 
         insert_test_passwords(
             &pool,
@@ -434,22 +418,17 @@ mod tests {
         )
         .await;
 
-        let results = fetch_all_passwords_for_user_with_filter(
-            &pool,
-            user_id,
-            None,
-            "created_at DESC",
-        )
-        .await
-        .expect("fetch all no filter should succeed");
+        let results =
+            fetch_all_passwords_for_user_with_filter(&pool, user_id, None, "created_at DESC")
+                .await
+                .expect("fetch all no filter should succeed");
         assert_eq!(results.len(), 3);
     }
 
     #[tokio::test]
     async fn test_fetch_all_passwords_filter_by_strength() {
         let pool = setup_test_db().await;
-        let (user_id, _) =
-            create_test_user(&pool, "allfilter_str", "pass123", None).await;
+        let (user_id, _) = create_test_user(&pool, "allfilter_str", "pass123", None).await;
 
         insert_test_passwords(
             &pool,
@@ -476,8 +455,7 @@ mod tests {
     #[tokio::test]
     async fn test_fetch_all_passwords_order_asc() {
         let pool = setup_test_db().await;
-        let (user_id, _) =
-            create_test_user(&pool, "allfilter_ord", "pass123", None).await;
+        let (user_id, _) = create_test_user(&pool, "allfilter_ord", "pass123", None).await;
 
         insert_test_passwords(
             &pool,
@@ -490,14 +468,10 @@ mod tests {
         )
         .await;
 
-        let results = fetch_all_passwords_for_user_with_filter(
-            &pool,
-            user_id,
-            None,
-            "created_at ASC",
-        )
-        .await
-        .expect("ASC order should succeed");
+        let results =
+            fetch_all_passwords_for_user_with_filter(&pool, user_id, None, "created_at ASC")
+                .await
+                .expect("ASC order should succeed");
         assert_eq!(results.len(), 3);
         // First result should have the earliest created_at
         let first_id = results[0].id.unwrap();
@@ -515,8 +489,7 @@ mod tests {
     #[tokio::test]
     async fn test_fetch_password_stats_empty() {
         let pool = setup_test_db().await;
-        let (user_id, _) =
-            create_test_user(&pool, "stats_empty", "pass123", None).await;
+        let (user_id, _) = create_test_user(&pool, "stats_empty", "pass123", None).await;
 
         let stats = fetch_password_stats(&pool, user_id)
             .await
@@ -532,8 +505,7 @@ mod tests {
     #[tokio::test]
     async fn test_fetch_password_stats_mixed() {
         let pool = setup_test_db().await;
-        let (user_id, _) =
-            create_test_user(&pool, "stats_mixed", "pass123", None).await;
+        let (user_id, _) = create_test_user(&pool, "stats_mixed", "pass123", None).await;
 
         // ciaociao = weak, Password2! = medium
         insert_test_passwords(
@@ -552,7 +524,10 @@ mod tests {
             .expect("stats should succeed");
         assert!(stats.weak >= 2, "Should have at least 2 weak passwords");
         assert!(stats.medium >= 1, "Should have at least 1 medium password");
-        assert_eq!(stats.total, stats.weak + stats.medium + stats.strong + stats.epic + stats.god);
+        assert_eq!(
+            stats.total,
+            stats.weak + stats.medium + stats.strong + stats.epic + stats.god
+        );
     }
 
     // =========================================================================
@@ -562,8 +537,7 @@ mod tests {
     #[tokio::test]
     async fn test_fetch_user_settings_none() {
         let pool = setup_test_db().await;
-        let (user_id, _) =
-            create_test_user(&pool, "settings_none", "pass123", None).await;
+        let (user_id, _) = create_test_user(&pool, "settings_none", "pass123", None).await;
 
         let settings = fetch_user_settings(&pool, user_id)
             .await
@@ -597,17 +571,15 @@ mod tests {
     #[tokio::test]
     async fn test_upsert_password_config_update() {
         let pool = setup_test_db().await;
-        let (user_id, _) =
-            create_test_user(&pool, "upsert_cfg", "pass123", None).await;
+        let (user_id, _) = create_test_user(&pool, "upsert_cfg", "pass123", None).await;
 
         let settings_id = create_user_settings(&pool, user_id, PasswordPreset::God)
             .await
             .expect("create settings should succeed");
 
-        let mut config =
-            fetch_user_passwords_generation_settings(&pool, user_id)
-                .await
-                .expect("fetch config should succeed");
+        let mut config = fetch_user_passwords_generation_settings(&pool, user_id)
+            .await
+            .expect("fetch config should succeed");
         assert_eq!(config.id, Some(settings_id));
 
         // Modify and upsert
@@ -616,10 +588,9 @@ mod tests {
             .await
             .expect("upsert should succeed");
 
-        let updated =
-            fetch_user_passwords_generation_settings(&pool, user_id)
-                .await
-                .expect("fetch updated config should succeed");
+        let updated = fetch_user_passwords_generation_settings(&pool, user_id)
+            .await
+            .expect("fetch updated config should succeed");
         assert_eq!(updated.length, 20);
     }
 
@@ -697,8 +668,7 @@ mod tests {
     #[tokio::test]
     async fn test_upsert_stored_passwords_batch_valid() {
         let pool = setup_test_db().await;
-        let (user_id, _) =
-            create_test_user(&pool, "batch_valid", "pass123", None).await;
+        let (user_id, _) = create_test_user(&pool, "batch_valid", "pass123", None).await;
 
         // Insert passwords via pipeline first, then batch-upsert them back
         insert_test_passwords(
@@ -731,8 +701,7 @@ mod tests {
     #[tokio::test]
     async fn test_remove_temp_old_password() {
         let pool = setup_test_db().await;
-        let (user_id, username) =
-            create_test_user(&pool, "rem_temp", "OldPassword1!", None).await;
+        let (user_id, username) = create_test_user(&pool, "rem_temp", "OldPassword1!", None).await;
 
         // Update password → sets temp_old_password
         save_or_update_user(
@@ -749,7 +718,10 @@ mod tests {
         let temp = crate::backend::db_backend::fetch_user_temp_old_password(&pool, user_id)
             .await
             .expect("fetch temp should succeed");
-        assert!(temp.is_some(), "temp_old_password should be set after update");
+        assert!(
+            temp.is_some(),
+            "temp_old_password should be set after update"
+        );
 
         // Remove temp
         remove_temp_old_password(&pool, user_id)
@@ -759,14 +731,16 @@ mod tests {
         let temp_after = crate::backend::db_backend::fetch_user_temp_old_password(&pool, user_id)
             .await
             .expect("fetch temp should succeed");
-        assert!(temp_after.is_none(), "temp_old_password should be NULL after remove");
+        assert!(
+            temp_after.is_none(),
+            "temp_old_password should be NULL after remove"
+        );
     }
 
     #[tokio::test]
     async fn test_remove_temp_old_password_already_null() {
         let pool = setup_test_db().await;
-        let (user_id, _) =
-            create_test_user(&pool, "rem_temp_null", "pass123", None).await;
+        let (user_id, _) = create_test_user(&pool, "rem_temp_null", "pass123", None).await;
 
         // No password update → temp is NULL
         let result = remove_temp_old_password(&pool, user_id).await;
@@ -818,6 +792,9 @@ mod tests {
         let temp = crate::backend::db_backend::fetch_user_temp_old_password(&pool, user_id)
             .await
             .expect("fetch temp should succeed");
-        assert!(temp.is_none(), "temp_old_password should be NULL after restore");
+        assert!(
+            temp.is_none(),
+            "temp_old_password should be NULL after restore"
+        );
     }
 }

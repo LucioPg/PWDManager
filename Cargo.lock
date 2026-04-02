@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "PWDManager"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -932,8 +932,8 @@ dependencies = [
 
 [[package]]
 name = "custom_errors"
-version = "0.1.0"
-source = "git+https://github.com/LucioPg/custom_errors#e0f5e8e4fdfc412ca193f31be8685854f04cc389"
+version = "0.1.1"
+source = "git+https://github.com/LucioPg/custom_errors#a5265f65fafc4548c0bc00ed86ecde6decbb698f"
 dependencies = [
  "thiserror 2.0.18",
 ]
@@ -2410,6 +2410,7 @@ dependencies = [
 name = "gui-launcher"
 version = "0.1.0"
 dependencies = [
+ "custom_errors",
  "dioxus",
  "dirs 5.0.1",
  "image",

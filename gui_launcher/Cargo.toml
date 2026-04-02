@@ -12,6 +12,7 @@ tracing = "0.1.43"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2"
 dirs = "5.0"
+custom_errors = { git = "https://github.com/LucioPg/custom_errors" }
 
 [features]
 default = ["desktop"]

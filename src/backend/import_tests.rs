@@ -8,7 +8,7 @@
 mod tests {
     use crate::backend::export_types::{ExportFormat, ExportablePassword};
     use crate::backend::import::{
-        deduplicate_passwords, parse_from_csv, parse_from_json, parse_from_xml, parse_passwords,
+        deduplicate_passwords, parse_from_csv, parse_from_json, parse_from_xml,
         validate_import_path,
     };
     use std::io::Write;

@@ -156,7 +156,7 @@ pub mod singleton {
     /// Attempts to acquire a named mutex to enforce single-instance behavior.
     ///
     /// The `Local\` prefix makes it session-scoped (per logged-in user).
-    pub fn try_acquire(app_name: &str) -> Result<SingleInstanceGuard, ()> {
+    pub fn try_acquire(app_name: &str) -> Result<SingleInstanceGuard, custom_errors::SingletonError> {
         let mutex_name: Vec<u16> = format!("Local\\{}", app_name)
             .encode_utf16()
             .chain(std::iter::once(0))
@@ -166,13 +166,13 @@ pub mod singleton {
             let handle = CreateMutexW(ptr::null(), 1, mutex_name.as_ptr());
             if handle.is_null() {
                 tracing::error!("Failed to create singleton mutex for {}", app_name);
-                return Err(());
+                return Err(custom_errors::SingletonError::new_mutex_creation_failed(app_name));
             }
 
             if GetLastError() == ERROR_ALREADY_EXISTS {
                 CloseHandle(handle);
                 tracing::info!("Another instance of {} is already running", app_name);
-                Err(())
+                Err(custom_errors::SingletonError::new_already_running(app_name))
             } else {
                 tracing::info!("Singleton lock acquired for {}", app_name);
                 Ok(SingleInstanceGuard(handle))
@@ -213,7 +213,7 @@ pub mod singleton {
 pub mod singleton {
     pub struct SingleInstanceGuard;
 
-    pub fn try_acquire(_app_name: &str) -> Result<SingleInstanceGuard, ()> {
+    pub fn try_acquire(_app_name: &str) -> Result<SingleInstanceGuard, custom_errors::SingletonError> {
         Ok(SingleInstanceGuard)
     }
 
@@ -282,8 +282,9 @@ macro_rules! launch_desktop {
                 let config = $crate::create_desktop_config($version, $visible);
                 dioxus::LaunchBuilder::new().with_cfg(config).launch($app);
             }
-            Err(()) => {
-                // Another instance is running — activate its window and exit.
+            Err(e) => {
+                // Another instance is running or mutex creation failed — activate its window and exit.
+                tracing::warn!("{}", e);
                 let title = format!("PWDManager v{}", $version);
                 $crate::singleton::bring_window_to_foreground(&title);
             }
