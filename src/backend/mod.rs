@@ -17,6 +17,7 @@ pub mod migration_types;
 pub mod password_utils;
 pub mod settings_types;
 pub mod ui_utils;
+pub mod vault_utils;
 pub mod updater;
 pub mod updater_types;
 pub mod utils;
