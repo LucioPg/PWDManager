@@ -12,8 +12,8 @@ use crate::components::globals::pagination::{PaginationControls, PaginationState
 use crate::components::globals::spinner::{Spinner, SpinnerSize};
 use crate::components::globals::types::TableOrder;
 use crate::components::{
-    StoredPasswordDeletionDialog, StoredPasswordShowDialog, StoredPasswordUpsertDialog,
-    StoredRawPasswordsTable, show_toast_error, use_toast,
+    BulkActionBar, StoredPasswordDeletionDialog, StoredPasswordShowDialog,
+    StoredPasswordUpsertDialog, StoredRawPasswordsTable, show_toast_error, use_toast,
 };
 use custom_errors::DBError;
 use dioxus::prelude::*;
@@ -112,6 +112,12 @@ pub fn Dashboard() -> Element {
 
     // Multi-select state for password table
     let mut selected_ids: Signal<HashSet<i64>> = use_signal(HashSet::new);
+
+    // Dialog open states for bulk actions (Task 14/15 will wire actual dialogs)
+    #[allow(unused_mut)]
+    let mut move_dialog_open = use_signal(|| false);
+    #[allow(unused_mut)]
+    let mut clone_dialog_open = use_signal(|| false);
 
     // Resource per fetch completa (ordinamento delegato al DB)
     // Reagisce a: active_vault_id, current_table_order, pagination.active_filter()
@@ -358,6 +364,29 @@ pub fn Dashboard() -> Element {
                         stored_password_dialog_state.is_open.set(true);
                     },
                     "New Password"
+                }
+            }
+
+            // Bulk action bar - shown when passwords are selected
+            {
+                let count = selected_ids.read().len();
+                if count > 0 {
+                    rsx! {
+                        BulkActionBar {
+                            count,
+                            on_move: move |_| {
+                                move_dialog_open.set(true);
+                            },
+                            on_clone: move |_| {
+                                clone_dialog_open.set(true);
+                            },
+                            on_clear: move |_| {
+                                selected_ids.set(HashSet::new());
+                            },
+                        }
+                    }
+                } else {
+                    rsx! {}
                 }
             }
 

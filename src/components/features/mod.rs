@@ -2,6 +2,7 @@
 // Licensed under the Prosperity Public License 3.0.0
 // Commercial use requires a license. See LICENSE.md for details.
 
+mod bulk_action_bar;
 pub mod dashboard;
 mod diceware_settings;
 pub mod my_vaults;
@@ -18,6 +19,7 @@ mod storedpassword_settings;
 mod update_notification;
 pub mod upsert_user;
 
+pub use bulk_action_bar::*;
 pub use dashboard::*;
 pub use my_vaults::*;
 pub use export_progress::*;
