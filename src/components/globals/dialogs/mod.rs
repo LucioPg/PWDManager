@@ -17,6 +17,9 @@ mod stored_all_passwords_deletion;
 mod stored_password_deletion;
 mod stored_password_show;
 mod stored_password_upsert;
+mod vault_create;
+mod vault_delete;
+mod vault_edit;
 pub mod user_deletion;
 
 pub use base_modal::*;
@@ -38,3 +41,6 @@ pub use migration_warning::*;
 pub use stored_all_passwords_deletion::*;
 pub use stored_password_show::*;
 pub use stored_password_upsert::*;
+pub use vault_create::*;
+pub use vault_delete::*;
+pub use vault_edit::*;
