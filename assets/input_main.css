@@ -675,6 +675,48 @@ textarea.pwd-input {
 }
 
 
+// Vault grid responsive
+@utility pwd-vault-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3;
+}
+
+// Dashboard controls bar responsive wrap
+@utility pwd-dashboard-controls {
+    @apply flex flex-wrap gap-3 items-center;
+}
+
+// Bulk action bar responsive wrap
+@utility pwd-bulk-action-bar {
+    @apply flex flex-wrap gap-2 items-center p-2 mb-2 rounded-lg bg-primary/10;
+}
+
+@utility pwd-bulk-action-bar-count {
+    @apply text-sm font-medium mr-2;
+}
+
+// Empty state centered
+@utility pwd-empty-state {
+    @apply flex flex-col items-center justify-center py-20 px-4;
+}
+
+@utility pwd-empty-state-icon {
+    @apply text-5xl text-primary/30 mb-4;
+}
+
+@utility pwd-empty-state-subtitle {
+    @apply text-base-content/60 max-w-sm text-center;
+}
+
+// Vault card
+@utility pwd-vault-card {
+    @apply hover:shadow-md transition-shadow duration-200;
+}
+
+// Vault selector combobox spacing
+@utility pwd-vault-controls {
+    @apply flex flex-wrap gap-2 items-center;
+}
+
 @utility navbar-nav {
     @apply flex items-center gap-2;
 }
