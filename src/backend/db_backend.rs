@@ -1543,6 +1543,31 @@ pub async fn delete_vault_passwords(
     Ok(())
 }
 
+/// Sposta password tra vault (aggiorna vault_id senza re-encryption).
+#[instrument(skip(pool))]
+pub async fn move_passwords_to_vault(
+    pool: &SqlitePool,
+    password_ids: Vec<i64>,
+    target_vault_id: i64,
+) -> Result<(), DBError> {
+    debug!(
+        "Moving {} passwords to vault_id: {}",
+        password_ids.len(),
+        target_vault_id
+    );
+    for id in password_ids {
+        sqlx::query("UPDATE passwords SET vault_id = ? WHERE id = ?")
+            .bind(target_vault_id)
+            .bind(id)
+            .execute(pool)
+            .await
+            .map_err(|e| {
+                DBError::new_password_save_error(format!("Failed to move password: {}", e))
+            })?;
+    }
+    Ok(())
+}
+
 /// Questa funzione viene usata solo per i test - NON DEVE ESSERE RIMOSSA
 pub(crate) async fn fetch_user_temp_old_password(
     pool: &SqlitePool,

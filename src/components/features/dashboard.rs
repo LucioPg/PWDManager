@@ -3,7 +3,7 @@
 // Commercial use requires a license. See LICENSE.md for details.
 
 use crate::Route;
-use crate::backend::db_backend::{delete_stored_password, fetch_password_stats_for_vault};
+use crate::backend::db_backend::{delete_stored_password, fetch_password_stats_for_vault, move_passwords_to_vault};
 use crate::backend::password_utils::get_all_stored_raw_passwords_for_vault_with_filter;
 use crate::backend::vault_utils::fetch_vaults_by_user;
 use crate::components::globals::StatsAside;
@@ -12,7 +12,7 @@ use crate::components::globals::pagination::{PaginationControls, PaginationState
 use crate::components::globals::spinner::{Spinner, SpinnerSize};
 use crate::components::globals::types::TableOrder;
 use crate::components::{
-    BulkActionBar, StoredPasswordDeletionDialog, StoredPasswordShowDialog,
+    BulkActionBar, MoveToVaultDialog, StoredPasswordDeletionDialog, StoredPasswordShowDialog,
     StoredPasswordUpsertDialog, StoredRawPasswordsTable, show_toast_error, use_toast,
 };
 use custom_errors::DBError;
@@ -57,6 +57,7 @@ pub fn Dashboard() -> Element {
     let pool_for_stats = pool.clone();
     let pool_for_delete = pool.clone();
     let pool_for_vaults = pool.clone();
+    let pool_for_move = pool.clone();
     let mut error = use_signal(|| <Option<DBError>>::None);
     let user_id_option = auth_state.user.cloned().map(|u| u.id);
     let toast = use_toast();
@@ -477,6 +478,39 @@ pub fn Dashboard() -> Element {
             open: deletion_password_dialog_state.is_open,
             on_confirm: on_confirm_delete,
             on_cancel: cancel_delete,
+        }
+        // Move to vault dialog
+        MoveToVaultDialog {
+            open: move_dialog_open,
+            selected_ids: selected_ids.read().iter().cloned().collect(),
+            selected_passwords: all_passwords()
+                .into_iter()
+                .filter(|p| p.id.map_or(false, |id| selected_ids.read().contains(&id)))
+                .collect(),
+            current_vault_id: active_vault_id().unwrap_or(0),
+            on_confirm: move |target_vault_id| {
+                let pool = pool_for_move.clone();
+                let ids: Vec<i64> = selected_ids.read().iter().cloned().collect();
+                let mut move_dialog = move_dialog_open;
+                let mut sorted_resource = sorted_passwords_resource;
+                let mut stats_res = stats_data;
+                spawn(async move {
+                    match move_passwords_to_vault(&pool, ids, target_vault_id).await {
+                        Ok(()) => {
+                            selected_ids.set(HashSet::new());
+                            move_dialog.set(false);
+                            sorted_resource.restart();
+                            stats_res.restart();
+                        }
+                        Err(e) => {
+                            show_toast_error(format!("Failed to move passwords: {}", e), toast);
+                        }
+                    }
+                });
+            },
+            on_cancel: move |_| {
+                move_dialog_open.set(false);
+            },
         }
     }
 }
