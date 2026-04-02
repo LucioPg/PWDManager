@@ -182,6 +182,7 @@ pub fn GeneralSettings() -> Element {
                 theme,
                 auto_update,
                 auto_logout_settings,
+                active_vault_id: None,
             };
             match UserSettings::upsert_by_id(&settings, &pool).await {
                 Ok(_) => {

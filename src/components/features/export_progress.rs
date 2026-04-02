@@ -85,12 +85,14 @@ pub fn ExportProgressChn(
         spawn(async move {
             tracing::info!("Export task started");
             let user_id = context_for_progress.read().user_id;
+            let vault_id = context_for_progress.read().vault_id;
             let output_path = context_for_progress.read().output_path.clone();
             let format = context_for_progress.read().format;
 
             tracing::info!(
-                "Export data: user_id={}, path={:?}, format={:?}",
+                "Export data: user_id={}, vault_id={}, path={:?}, format={:?}",
                 user_id,
+                vault_id,
                 output_path,
                 format
             );
@@ -101,6 +103,7 @@ pub fn ExportProgressChn(
             let result = export_passwords_pipeline_with_progress(
                 &pool_for_progress,
                 user_id,
+                vault_id,
                 &output_path,
                 format,
                 progress_tx,

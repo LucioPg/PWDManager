@@ -110,7 +110,7 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
 
                 match file_result {
                     Ok(Some(path)) => {
-                        export_data_json.set(ExportData::new(user.id, path, format));
+                        export_data_json.set(ExportData::new(user.id, 0, path, format));
                         export_format_json.set(format);
                         export_warning_open_json.set(true);
                     }
@@ -151,7 +151,7 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
 
                 match file_result {
                     Ok(Some(path)) => {
-                        export_data_csv.set(ExportData::new(user.id, path, format));
+                        export_data_csv.set(ExportData::new(user.id, 0, path, format));
                         export_format_csv.set(format);
                         export_warning_open_csv.set(true);
                     }
@@ -192,7 +192,7 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
 
                 match file_result {
                     Ok(Some(path)) => {
-                        export_data_xml.set(ExportData::new(user.id, path, format));
+                        export_data_xml.set(ExportData::new(user.id, 0, path, format));
                         export_format_xml.set(format);
                         export_warning_open_xml.set(true);
                     }
@@ -245,7 +245,7 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
                 match file_result {
                     Ok(Some(path)) => match validate_import_path(&path) {
                         Ok(detected_format) => {
-                            import_data_json.set(ImportData::new(user.id, path, detected_format));
+                            import_data_json.set(ImportData::new(user.id, 0, path, detected_format));
                             import_format_json.set(detected_format);
                             import_warning_open_json.set(true);
                         }
@@ -289,7 +289,7 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
                 match file_result {
                     Ok(Some(path)) => match validate_import_path(&path) {
                         Ok(detected_format) => {
-                            import_data_csv.set(ImportData::new(user.id, path, detected_format));
+                            import_data_csv.set(ImportData::new(user.id, 0, path, detected_format));
                             import_format_csv.set(detected_format);
                             import_warning_open_csv.set(true);
                         }
@@ -333,7 +333,7 @@ pub fn DashboardMenu(on_need_restart: Signal<bool>) -> Element {
                 match file_result {
                     Ok(Some(path)) => match validate_import_path(&path) {
                         Ok(detected_format) => {
-                            import_data_xml.set(ImportData::new(user.id, path, detected_format));
+                            import_data_xml.set(ImportData::new(user.id, 0, path, detected_format));
                             import_format_xml.set(detected_format);
                             import_warning_open_xml.set(true);
                         }

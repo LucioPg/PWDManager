@@ -121,6 +121,7 @@ pub fn StoredPasswordUpsertDialog(
             uuid: Uuid::new_v4(),
             id: stored_password_id,
             user_id,
+            vault_id: 0,
             name: name(),
             username: SecretString::new(username().into()),
             url: SecretString::new(url().into()),

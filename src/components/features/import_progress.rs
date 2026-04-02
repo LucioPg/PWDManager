@@ -87,12 +87,14 @@ pub fn ImportProgressChn(
         spawn(async move {
             tracing::info!("Import task started");
             let user_id = context_for_progress.read().user_id;
+            let vault_id = context_for_progress.read().vault_id;
             let input_path = context_for_progress.read().input_path.clone();
             let format = context_for_progress.read().format;
 
             tracing::info!(
-                "Import data: user_id={}, path={:?}, format={:?}",
+                "Import data: user_id={}, vault_id={}, path={:?}, format={:?}",
                 user_id,
+                vault_id,
                 input_path,
                 format
             );
@@ -103,6 +105,7 @@ pub fn ImportProgressChn(
             let result = import_passwords_pipeline_with_progress(
                 &pool_for_progress,
                 user_id,
+                vault_id,
                 &input_path,
                 format,
                 progress_tx,

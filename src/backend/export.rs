@@ -15,7 +15,7 @@
 //! File JSON/CSV/XML
 //! ```
 
-use crate::backend::db_backend::{fetch_all_stored_passwords_for_user, fetch_user_auth_from_id};
+use crate::backend::db_backend::{fetch_all_stored_passwords_for_vault, fetch_user_auth_from_id};
 use crate::backend::export_types::{ExportFormat, ExportablePassword, XmlExportRoot};
 use crate::backend::migration_types::{MigrationStage, ProgressMessage, ProgressSender};
 use crate::backend::password_utils::decrypt_bulk_stored_data;
@@ -90,6 +90,7 @@ pub fn serialize_passwords(
 pub async fn export_passwords_pipeline_with_progress(
     pool: &SqlitePool,
     user_id: i64,
+    vault_id: i64,
     output_path: &Path,
     format: ExportFormat,
     progress_tx: Option<Arc<ProgressSender>>,
@@ -105,7 +106,7 @@ pub async fn export_passwords_pipeline_with_progress(
 
     // 1. Fetch StoredPassword crittografate dal database
     tracing::info!("export_passwords_pipeline_with_progress: fetching passwords from DB");
-    let stored_passwords = fetch_all_stored_passwords_for_user(pool, user_id)
+    let stored_passwords = fetch_all_stored_passwords_for_vault(pool, vault_id)
         .await
         .map_err(|e| e.to_string())?;
 

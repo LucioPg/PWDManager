@@ -69,10 +69,10 @@ impl ExportablePassword {
 
     /// Converte un ExportablePassword in StoredRawPassword per l'import.
     ///
-    /// Crea un nuovo UUID e assegna lo user_id fornito.
+    /// Crea un nuovo UUID e assegna lo user_id e vault_id forniti.
     /// `id` è None (nuovo record, sarà assegnato dal DB).
     /// `created_at` preserva il timestamp originale dal file di import.
-    pub fn to_stored_raw(&self, user_id: i64) -> pwd_types::StoredRawPassword {
+    pub fn to_stored_raw(&self, user_id: i64, vault_id: i64) -> pwd_types::StoredRawPassword {
         use pwd_types::PasswordScore;
         use secrecy::SecretString;
         use uuid::Uuid;
@@ -81,6 +81,7 @@ impl ExportablePassword {
             uuid: Uuid::new_v4(),
             id: None, // Nuovo record, sarà assegnato dal DB
             user_id,
+            vault_id,
             name: self.name.clone(),
             username: SecretString::new(self.username.clone().into()),
             url: SecretString::new(self.url.clone().into()),

@@ -20,7 +20,7 @@
 //! ```
 
 use crate::backend::db_backend::{
-    fetch_all_stored_passwords_for_user, fetch_user_auth_from_id, upsert_stored_passwords_batch,
+    fetch_all_stored_passwords_for_vault, fetch_user_auth_from_id, upsert_stored_passwords_batch,
 };
 use crate::backend::export_types::{ExportFormat, ExportablePassword, XmlExportRoot};
 use crate::backend::migration_types::{MigrationStage, ProgressMessage, ProgressSender};
@@ -237,6 +237,7 @@ fn storedRawPasswords_score_patch(stored_passwords: &mut [StoredRawPassword]) {
 pub async fn import_passwords_pipeline_with_progress(
     pool: &SqlitePool,
     user_id: i64,
+    vault_id: i64,
     input_path: &Path,
     format: ExportFormat,
     progress_tx: Option<Arc<ProgressSender>>,
@@ -289,7 +290,7 @@ pub async fn import_passwords_pipeline_with_progress(
     let (unique_passwords, file_duplicates) = deduplicate_passwords(passwords);
 
     // 4. Recupera password esistenti dell'utente per confronto
-    let existing_passwords = fetch_all_stored_passwords_for_user(pool, user_id)
+    let existing_passwords = fetch_all_stored_passwords_for_vault(pool, vault_id)
         .await
         .map_err(|e| e.to_string())?;
 
@@ -355,7 +356,7 @@ pub async fn import_passwords_pipeline_with_progress(
     // 5. Converti in StoredRawPassword con user_id
     let mut stored_raw: Vec<StoredRawPassword> = new_passwords
         .into_iter()
-        .map(|p| p.to_stored_raw(user_id))
+        .map(|p| p.to_stored_raw(user_id, vault_id))
         .collect();
     storedRawPasswords_score_patch(&mut stored_raw);
     // 6. Cripta con progress tracking
