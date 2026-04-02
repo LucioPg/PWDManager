@@ -20,6 +20,7 @@ use dioxus::prelude::*;
 use pwd_dioxus::Combobox;
 use pwd_types::StoredRawPassword;
 use sqlx::SqlitePool;
+use std::collections::HashSet;
 use std::ops::Deref;
 
 fn table_order_options() -> Vec<(&'static str, Option<TableOrder>)> {
@@ -108,6 +109,9 @@ pub fn Dashboard() -> Element {
     // Stato paginazione
     #[allow(clippy::redundant_closure)]
     let mut pagination = use_context_provider(|| PaginationState::new());
+
+    // Multi-select state for password table
+    let mut selected_ids: Signal<HashSet<i64>> = use_signal(HashSet::new);
 
     // Resource per fetch completa (ordinamento delegato al DB)
     // Reagisce a: active_vault_id, current_table_order, pagination.active_filter()
@@ -262,6 +266,7 @@ pub fn Dashboard() -> Element {
     use_effect(move || {
         let _ = *active_vault_id.read();
         pagination.go_to_page(0);
+        selected_ids.set(HashSet::new());
         sorted_passwords_resource.restart();
         stats_data.restart();
     });
@@ -395,7 +400,32 @@ pub fn Dashboard() -> Element {
                     } else {
                         rsx! {
                             div { class: "card card-lg",
-                                StoredRawPasswordsTable { data: table_data }
+                                StoredRawPasswordsTable {
+                                    data: table_data,
+                                    selected_ids,
+                                    on_select: move |(id, checked)| {
+                                        let mut ids = selected_ids.write();
+                                        if checked {
+                                            ids.insert(id);
+                                        } else {
+                                            ids.remove(&id);
+                                        }
+                                    },
+                                    on_select_all: move |select_all| {
+                                        let mut ids = selected_ids.write();
+                                        if select_all {
+                                            if let Some(data) = page_data() {
+                                                for p in data {
+                                                    if let Some(id) = p.id {
+                                                        ids.insert(id);
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            ids.clear();
+                                        }
+                                    },
+                                }
                             }
                         }
                     }
@@ -407,6 +437,7 @@ pub fn Dashboard() -> Element {
                 pagination,
                 on_page_change: move |new_page| {
                     pagination.go_to_page(new_page);
+                    selected_ids.set(HashSet::new());
                 },
             }
         }

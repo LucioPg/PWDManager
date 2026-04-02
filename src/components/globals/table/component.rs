@@ -7,6 +7,7 @@ use crate::components::globals::table::TooltipState;
 use crate::components::{Spinner, SpinnerSize, StoredRawPasswordRow};
 use pwd_types::StoredRawPassword;
 use secrecy::ExposeSecret;
+use std::collections::HashSet;
 
 use dioxus::document;
 use dioxus::prelude::*;
@@ -22,6 +23,12 @@ struct WindowSize {
 pub fn StoredRawPasswordsTable(
     /// Valore dei dati (già calcolato dal parent in modo reattivo)
     data: Option<Vec<StoredRawPassword>>,
+    /// Set of selected password IDs
+    selected_ids: Signal<HashSet<i64>>,
+    /// Callback when a single row checkbox is toggled
+    on_select: EventHandler<(i64, bool)>,
+    /// Callback when header select-all checkbox is toggled
+    on_select_all: EventHandler<bool>,
 ) -> Element {
     let mut tooltip_state = use_signal(TooltipState::default);
     let window_size = use_signal(WindowSize::default);
@@ -45,12 +52,23 @@ pub fn StoredRawPasswordsTable(
 
     match data.as_ref() {
         Some(stored_raw_passwords) => {
+            let all_visible_selected = stored_raw_passwords.iter().all(|p| {
+                p.id.map_or(false, |id| selected_ids.read().contains(&id))
+            });
+
             rsx! {
                 // Wrapper con scroll orizzontale per gestire overflow
                 div { class: "pwd-table-wrapper relative",
                     table { class: "pwd-table",
                         thead {
                             tr {
+                                th { class: "pwd-table__col-checkbox",
+                                    input {
+                                        r#type: "checkbox",
+                                        checked: all_visible_selected,
+                                        onchange: move |_| on_select_all.call(!all_visible_selected),
+                                    }
+                                }
                                 th { class: "", "Name" }
                                 th { class: "pwd-table__col-info", "Details" }
                                 th { class: "pwd-table__col-strength", "Strength" }
@@ -65,6 +83,8 @@ pub fn StoredRawPasswordsTable(
                                 StoredRawPasswordRow {
                                     key: "{stored_raw_password.id.unwrap_or(0)}-{stored_raw_password.password.expose_secret().len()}-{stored_raw_password.score.map(|s| s.value()).unwrap_or(0)}",
                                     stored_raw_password: stored_raw_password.clone(),
+                                    selected_ids,
+                                    on_select,
                                     on_edit: move |_| {},
                                     on_delete: move |_| {},
                                     on_show_tooltip: move |(password, x, y)| {

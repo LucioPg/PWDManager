@@ -10,12 +10,17 @@ use crate::components::globals::password_handler::StrengthAnalyzer;
 use crate::components::globals::svgs::{BurgerIcon, DeleteIcon, EditIcon};
 use dioxus::prelude::*;
 use pwd_types::{PasswordScore, StoredRawPassword};
+use std::collections::HashSet;
 
 /// Props for the StoredRawPasswordRow component
 #[derive(Props, Clone, PartialEq)]
 pub struct StoredRawPasswordRowProps {
     /// The password data to display
     pub stored_raw_password: StoredRawPassword,
+    /// Set of selected password IDs
+    pub selected_ids: Signal<HashSet<i64>>,
+    /// Callback when checkbox is toggled - passes (id, is_checked)
+    pub on_select: EventHandler<(i64, bool)>,
     /// Callback when edit button is clicked
     pub on_edit: EventHandler<StoredRawPassword>,
     /// Callback when delete button is clicked
@@ -40,6 +45,18 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
         tr {
             key: "{password_id}",
             class: "stored-password-row hover:bg-base-200/50 transition-colors",
+
+            // Column 0: Checkbox for multi-select
+            td { class: "pwd-table__col-checkbox",
+                input {
+                    r#type: "checkbox",
+                    checked: props.stored_raw_password.id.map_or(false, |id| props.selected_ids.read().contains(&id)),
+                    onchange: move |_| {
+                        let is_checked = !props.selected_ids.read().contains(&password_id);
+                        props.on_select.call((password_id, is_checked));
+                    },
+                }
+            }
 
             // Column 1: url (visualizzazione sicura con toggle)
             td { class: "pwd-table__cell-content",
