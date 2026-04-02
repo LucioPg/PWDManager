@@ -108,3 +108,174 @@ impl Default for AuthState {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cell::Cell;
+
+    /// Helper: crea un VirtualDom minimo e esegue f nello scope root.
+    /// Signal::new() richiede un runtime + uno scope attivo.
+    fn with_runtime(f: impl FnOnce()) {
+        let dom = VirtualDom::new(|| rsx! {});
+        dom.in_scope(dioxus::prelude::ScopeId::ROOT, f);
+    }
+
+    #[test]
+    fn test_new_auth_state_is_not_logged_in() {
+        with_runtime(|| {
+            let auth = AuthState::new();
+            assert!(!auth.is_logged_in());
+            assert_eq!(auth.get_user(), None);
+            assert_eq!(auth.get_user_id(), -1);
+        });
+    }
+
+    #[test]
+    fn test_default_trait_creates_valid_state() {
+        with_runtime(|| {
+            let auth = AuthState::default();
+            assert!(!auth.is_logged_in());
+            assert_eq!(auth.get_user(), None);
+        });
+    }
+
+    #[test]
+    fn test_login_sets_user() {
+        with_runtime(|| {
+            let mut auth = AuthState::new();
+            auth.login(42, "alice".into(), "2024-01-01".into(), None);
+            assert!(auth.is_logged_in());
+            assert_eq!(auth.get_user_id(), 42);
+        });
+    }
+
+    #[test]
+    fn test_login_sets_username() {
+        with_runtime(|| {
+            let mut auth = AuthState::new();
+            auth.login(1, "bob".into(), "2024-06-15".into(), None);
+            assert_eq!(auth.get_username(), "bob");
+        });
+    }
+
+    #[test]
+    fn test_login_without_avatar_returns_default() {
+        with_runtime(|| {
+            let mut auth = AuthState::new();
+            auth.login(1, "user".into(), "2024-01-01".into(), None);
+            assert!(auth.get_avatar().starts_with("data:"));
+        });
+    }
+
+    #[test]
+    fn test_login_with_custom_avatar() {
+        with_runtime(|| {
+            let mut auth = AuthState::new();
+            let avatar_bytes = vec![0x89, 0x50, 0x4E, 0x47]; // fake PNG header
+            auth.login(1, "user".into(), "2024-01-01".into(), Some(avatar_bytes));
+            assert!(auth.get_avatar().starts_with("data:"));
+        });
+    }
+
+    #[test]
+    fn test_logout_clears_user() {
+        with_runtime(|| {
+            let mut auth = AuthState::new();
+            auth.login(1, "alice".into(), "2024-01-01".into(), None);
+            assert!(auth.is_logged_in());
+            auth.logout();
+            assert!(!auth.is_logged_in());
+            assert_eq!(auth.get_user(), None);
+            assert_eq!(auth.get_user_id(), -1);
+        });
+    }
+
+    #[test]
+    fn test_get_username_when_not_logged_in() {
+        with_runtime(|| {
+            let auth = AuthState::new();
+            assert_eq!(auth.get_username(), "");
+        });
+    }
+
+    #[test]
+    fn test_get_avatar_when_not_logged_in() {
+        with_runtime(|| {
+            let auth = AuthState::new();
+            assert!(auth.get_avatar().starts_with("data:"));
+        });
+    }
+
+    #[test]
+    fn test_get_user_id_when_not_logged_in() {
+        with_runtime(|| {
+            let auth = AuthState::new();
+            assert_eq!(auth.get_user_id(), -1);
+        });
+    }
+
+    #[test]
+    fn test_set_username_updates_username() {
+        with_runtime(|| {
+            let mut auth = AuthState::new();
+            auth.login(1, "old_name".into(), "2024-01-01".into(), None);
+            auth.set_username("new_name".into());
+            assert_eq!(auth.get_username(), "new_name");
+        });
+    }
+
+    #[test]
+    fn test_set_username_does_nothing_when_not_logged_in() {
+        with_runtime(|| {
+            let mut auth = AuthState::new();
+            auth.set_username("ghost".into());
+            assert_eq!(auth.get_username(), "");
+        });
+    }
+
+    #[test]
+    fn test_login_logout_cycle() {
+        with_runtime(|| {
+            let mut auth = AuthState::new();
+            auth.login(1, "alice".into(), "2024-01-01".into(), None);
+            assert_eq!(auth.get_user_id(), 1);
+            auth.logout();
+            assert_eq!(auth.get_user_id(), -1);
+            auth.login(99, "bob".into(), "2025-06-01".into(), None);
+            assert_eq!(auth.get_user_id(), 99);
+            assert_eq!(auth.get_username(), "bob");
+        });
+    }
+
+    #[test]
+    fn test_user_clone_and_equality() {
+        let user = User {
+            id: 1,
+            username: "alice".into(),
+            created_at: "2024-01-01".into(),
+            avatar: "avatar_data".into(),
+        };
+        let cloned = user.clone();
+        assert_eq!(user, cloned);
+    }
+
+    #[test]
+    fn test_login_and_logout_trigger_auth_change_callback() {
+        with_runtime(|| {
+            let mut auth = AuthState::new();
+            let calls = std::rc::Rc::new(RefCell::new(Vec::new()));
+
+            set_on_auth_change({
+                let calls = calls.clone();
+                move |is_logged: bool| calls.borrow_mut().push(is_logged)
+            });
+
+            auth.login(1, "alice".into(), "2024-01-01".into(), None);
+            assert_eq!(*calls.borrow(), vec![true]);
+
+            auth.logout();
+            assert_eq!(*calls.borrow(), vec![true, false]);
+        });
+    }
+}
