@@ -17,6 +17,10 @@ pub fn NavBar() -> Element {
                 Link { to: Route::Dashboard, class: "navbar-brand",
                     h3 { class: "navbar-brand-text", "Dashboard" }
                 }
+                div { class: "pwd-navbar-separator", "|" }
+                Link { to: Route::MyVaults, class: "navbar-brand",
+                    h3 { class: "navbar-brand-text", "My Vaults" }
+                }
                 div { id: "user-info", class: "navbar-user",
                     Link { to: Route::Settings, id: "settings",
                         img {

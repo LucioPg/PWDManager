@@ -5,6 +5,7 @@
 pub mod dashboard;
 mod dashboard_menu;
 mod diceware_settings;
+pub mod my_vaults;
 mod export_progress;
 pub mod general_settings;
 mod import_progress;
@@ -20,6 +21,7 @@ pub mod upsert_user;
 
 pub use dashboard::*;
 pub use dashboard_menu::*;
+pub use my_vaults::*;
 pub use export_progress::*;
 pub use import_progress::*;
 pub use landing::*;

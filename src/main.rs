@@ -15,9 +15,9 @@ use crate::backend::updater_types::{UpdateManifest, UpdateState};
 #[cfg(debug_assertions)]
 use crate::components::RecoveryKeySetupDialog;
 use crate::components::{
-    AuthWrapper, Dashboard, LandingPage, Login, Logout, NavBar, PageNotFound, RouteWrapper,
-    Settings, Spinner, SpinnerSize, Style, ToastContainer, ToastHubState, UpdateNotification,
-    UpsertUser, show_toast_error, show_toast_success,
+    AuthWrapper, Dashboard, LandingPage, Login, Logout, MyVaults, NavBar, PageNotFound,
+    RouteWrapper, Settings, Spinner, SpinnerSize, Style, ToastContainer, ToastHubState,
+    UpdateNotification, UpsertUser, show_toast_error, show_toast_success,
 };
 use crate::components::{DatabaseResetDialog, RecoveryKeyInputDialog};
 use backend::db_backend::init_db;
@@ -517,6 +517,8 @@ enum Route {
     #[layout(AuthWrapper)]
     #[route("/dashboard")]
     Dashboard,
+    #[route("/my-vaults")]
+    MyVaults,
 
     #[route("/logout")]
     Logout,

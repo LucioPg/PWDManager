@@ -670,6 +670,10 @@ textarea.pwd-input {
     font-family: 'pwd-futuristic';
 }
 
+@utility pwd-navbar-separator {
+    @apply mx-2 text-neutral-300 font-light select-none;
+}
+
 
 @utility navbar-nav {
     @apply flex items-center gap-2;
