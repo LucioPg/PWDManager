@@ -8,10 +8,15 @@ use crate::backend::db_backend::fetch_user_settings;
 use crate::backend::settings_types::{AutoLogoutSettings, AutoUpdate, Theme};
 use crate::backend::updater::check_for_update;
 use crate::backend::updater_types::{UpdateManifest, UpdateState};
+use crate::backend::vault_utils::fetch_vaults_by_user;
 use dioxus::desktop::use_wry_event_handler;
 use dioxus::prelude::*;
 use sqlx::SqlitePool;
 use std::time::{Duration, Instant};
+
+/// Stato condiviso del vault attivo, accessibile via `use_context`.
+#[derive(Clone, Copy, Default)]
+pub struct ActiveVaultState(pub Signal<Option<i64>>);
 
 #[component]
 pub fn AuthWrapper() -> Element {
@@ -24,6 +29,8 @@ pub fn AuthWrapper() -> Element {
     let mut auto_update = use_context::<Signal<AutoUpdate>>();
     #[allow(unused_mut)]
     let mut auto_logout_settings = use_context::<Signal<Option<AutoLogoutSettings>>>();
+    // Stato del vault attivo
+    let mut active_vault = use_context_provider(|| ActiveVaultState(Signal::new(None)));
     // Flag per fetch unico dei settings
     #[allow(unused_mut)]
     let mut theme_fetched = use_signal(|| false);
@@ -111,6 +118,7 @@ pub fn AuthWrapper() -> Element {
         let mut auto_update = auto_update;
         let mut auto_logout_settings_fetched = auto_logout_settings_fetched;
         let mut auto_logout_settings = auto_logout_settings;
+        let mut active_vault = active_vault;
         let user_id = user_id;
         async move {
             if (theme_fetched() && auto_update_fetched() && auto_logout_settings_fetched())
@@ -122,6 +130,16 @@ pub fn AuthWrapper() -> Element {
                 app_theme.set(settings.theme);
                 auto_update.set(settings.auto_update);
                 auto_logout_settings.set(settings.auto_logout_settings);
+
+                // Carica il vault attivo
+                if let Some(vault_id) = settings.active_vault_id {
+                    active_vault.0.set(Some(vault_id));
+                } else if let Ok(vaults) = fetch_vaults_by_user(&pool, user_id).await {
+                    // Default al primo vault per created_at
+                    if let Some(first) = vaults.first() {
+                        active_vault.0.set(first.id);
+                    }
+                }
             }
             theme_fetched.set(true);
             auto_update_fetched.set(true);
