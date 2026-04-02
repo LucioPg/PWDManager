@@ -29,6 +29,7 @@ pub struct UserSettings {
     pub theme: Theme,
     pub auto_update: AutoUpdate,
     pub auto_logout_settings: Option<AutoLogoutSettings>,
+    pub active_vault_id: Option<i64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, sqlx::Type, Default)]
