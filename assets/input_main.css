@@ -707,6 +707,12 @@ textarea.pwd-input {
     @apply text-base-content/60 max-w-sm text-center;
 }
 
+// Limita l'altezza del dropdown del Combobox con scrollbar
+ul.menu[style*="position: fixed"] {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
 // Vault card
 @utility pwd-vault-card {
     @apply hover:shadow-md transition-shadow duration-200;
