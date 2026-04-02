@@ -54,8 +54,8 @@ pub async fn fetch_vaults_by_user(
         .await
         .map_err(|e| DBError::new_list_error(format!("Failed to fetch vaults: {}", e)))?;
 
-    // Sort by created_at ascending for deterministic "first vault" selection
-    result.sort_by_key(|v| v.created_at.clone().unwrap_or_default());
+    // Sort by name ascending for deterministic ordering
+    result.sort_by(|a, b| a.name.cmp(&b.name));
     Ok(result)
 }
 

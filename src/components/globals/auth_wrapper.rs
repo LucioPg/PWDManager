@@ -131,13 +131,15 @@ pub fn AuthWrapper() -> Element {
                 auto_update.set(settings.auto_update);
                 auto_logout_settings.set(settings.auto_logout_settings);
 
-                // Carica il vault attivo
+                // Carica il vault attivo: prefer "Default", poi primo per nome alfabetico
                 if let Some(vault_id) = settings.active_vault_id {
                     active_vault.0.set(Some(vault_id));
                 } else if let Ok(vaults) = fetch_vaults_by_user(&pool, user_id).await {
-                    // Default al primo vault per created_at
-                    if let Some(first) = vaults.first() {
-                        active_vault.0.set(first.id);
+                    let default = vaults.iter().find(|v| v.name == "Default");
+                    let fallback = vaults.first();
+                    let selected = default.or(fallback);
+                    if let Some(vault) = selected {
+                        active_vault.0.set(vault.id);
                     }
                 }
             }
