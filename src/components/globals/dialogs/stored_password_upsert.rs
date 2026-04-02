@@ -9,6 +9,7 @@ use crate::components::{
     ActionButton, ButtonSize, ButtonType, ButtonVariant, PasswordHandler, show_toast_error,
     use_toast,
 };
+use crate::components::globals::auth_wrapper::ActiveVaultState;
 use dioxus::prelude::*;
 pub use pwd_dioxus::form::FormField;
 use pwd_dioxus::{FormSecret, InputType};
@@ -36,6 +37,8 @@ pub fn StoredPasswordUpsertDialog(
     #[allow(unused_mut)]
     let mut stored_password_dialog_state = use_context::<StoredPasswordUpsertDialogState>();
     let mut open_clone = stored_password_dialog_state.is_open;
+    let active_vault_state = use_context::<ActiveVaultState>();
+    let active_vault_id = active_vault_state.0;
     let mut is_new = use_signal(|| false);
     let mut url_sig = use_signal(String::new);
     let mut notes_sig = use_signal(|| None::<String>);
@@ -121,7 +124,7 @@ pub fn StoredPasswordUpsertDialog(
             uuid: Uuid::new_v4(),
             id: stored_password_id,
             user_id,
-            vault_id: 0,
+            vault_id: active_vault_id().unwrap_or(0),
             name: name(),
             username: SecretString::new(username().into()),
             url: SecretString::new(url().into()),
@@ -141,6 +144,7 @@ pub fn StoredPasswordUpsertDialog(
                     open_clone.set(false);
                 }
                 Err(e) => {
+                    tracing::error!("Failed to save password: {}", e);
                     error.set(Some(e.to_string()));
                 }
             }
