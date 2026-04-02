@@ -935,7 +935,7 @@ pub async fn fetch_passwords_paginated(
             // Nessun filtro: tutte le password dell'utente
             sqlx::query_as::<_, StoredPassword>(
                 r#"
-                SELECT id, user_id, name, username, username_nonce, url, url_nonce,
+                SELECT id, user_id, vault_id, name, username, username_nonce, url, url_nonce,
                        password, password_nonce, notes, notes_nonce, score, created_at
                 FROM passwords
                 WHERE user_id = ?
@@ -956,7 +956,7 @@ pub async fn fetch_passwords_paginated(
             // Filtro range score
             sqlx::query_as::<_, StoredPassword>(
                 r#"
-                SELECT id, user_id, name, username, username_nonce, url, url_nonce,
+                SELECT id, user_id, vault_id, name, username, username_nonce, url, url_nonce,
                        password, password_nonce, notes, notes_nonce, score, created_at
                 FROM passwords
                 WHERE user_id = ? AND score >= ? AND score <= ?
@@ -1039,7 +1039,7 @@ pub async fn fetch_all_passwords_for_user_with_filter(
     let results = match (min_score, max_score) {
         (None, None) => sqlx::query_as::<_, StoredPassword>(&format!(
             r#"
-                SELECT id, user_id, name, username, username_nonce, url, url_nonce,
+                SELECT id, user_id, vault_id, name, username, username_nonce, url, url_nonce,
                        password, password_nonce, notes, notes_nonce, score, created_at
                 FROM passwords
                 WHERE user_id = ?
@@ -1052,7 +1052,7 @@ pub async fn fetch_all_passwords_for_user_with_filter(
         .map_err(|e| DBError::new_list_error(format!("Failed to fetch all passwords: {}", e)))?,
         (Some(min), Some(max)) => sqlx::query_as::<_, StoredPassword>(&format!(
             r#"
-                SELECT id, user_id, name, username, username_nonce, url, url_nonce,
+                SELECT id, user_id, vault_id, name, username, username_nonce, url, url_nonce,
                        password, password_nonce, notes, notes_nonce, score, created_at
                 FROM passwords
                 WHERE user_id = ? AND score >= ? AND score <= ?
@@ -1296,6 +1296,250 @@ pub async fn delete_all_user_stored_passwords(
             DBError::new_password_delete_error(format!("Failed to delete passwords: {}", e))
         })?;
 
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Vault-scoped query functions
+// ---------------------------------------------------------------------------
+
+/// Fetch all passwords for a vault, ordered by created_at DESC.
+#[instrument(skip(pool))]
+pub async fn fetch_all_stored_passwords_for_vault(
+    pool: &SqlitePool,
+    vault_id: i64,
+) -> Result<Vec<StoredPassword>, DBError> {
+    debug!("Fetching all passwords for vault_id: {}", vault_id);
+    let builder = StoredPassword::builder_select()
+        .vault_id(&vault_id)
+        .map_err(|e| DBError::new_list_error(format!("Builder error: {}", e)))?
+        .order_by_created_at_desc()
+        .map_err(|e| DBError::new_list_error(format!("Builder error: {}", e)))?;
+    builder
+        .find_all(pool)
+        .await
+        .map_err(|e| DBError::new_list_error(format!("Failed to fetch passwords: {}", e)))
+}
+
+/// Fetch passwords paginated for a vault with optional strength filter.
+#[instrument(skip(pool))]
+pub async fn fetch_passwords_paginated_for_vault(
+    pool: &SqlitePool,
+    vault_id: i64,
+    filter: Option<PasswordStrength>,
+    page: usize,
+    page_size: usize,
+) -> Result<(Vec<StoredPassword>, u64), DBError> {
+    debug!(
+        "Fetching passwords paginated for vault: vault_id={}, filter={:?}, page={}, page_size={}",
+        vault_id, filter, page, page_size
+    );
+
+    // Mappa filtro strength -> range di score
+    let (min_score, max_score) = match filter {
+        None => (None, None),
+        Some(PasswordStrength::WEAK) => (Some(0), Some(49)),
+        Some(PasswordStrength::MEDIUM) => (Some(50), Some(69)),
+        Some(PasswordStrength::STRONG) => (Some(70), Some(84)),
+        Some(PasswordStrength::EPIC) => (Some(85), Some(95)),
+        Some(PasswordStrength::GOD) => (Some(96), Some(100)),
+        Some(PasswordStrength::NotEvaluated) => {
+            // Range impossibile: score >= 255 AND score <= 0 -> nessun risultato
+            (Some(255), Some(0))
+        }
+    };
+
+    let offset = page as i64 * page_size as i64;
+
+    let results = match (min_score, max_score) {
+        (None, None) => {
+            sqlx::query_as::<_, StoredPassword>(
+                r#"
+                SELECT id, user_id, vault_id, name, username, username_nonce, url, url_nonce,
+                       password, password_nonce, notes, notes_nonce, score, created_at
+                FROM passwords
+                WHERE vault_id = ?
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
+                "#,
+            )
+            .bind(vault_id)
+            .bind(page_size as i32)
+            .bind(offset)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| {
+                DBError::new_list_error(format!("Failed to fetch paginated passwords: {}", e))
+            })?
+        }
+        (Some(min), Some(max)) => {
+            sqlx::query_as::<_, StoredPassword>(
+                r#"
+                SELECT id, user_id, vault_id, name, username, username_nonce, url, url_nonce,
+                       password, password_nonce, notes, notes_nonce, score, created_at
+                FROM passwords
+                WHERE vault_id = ? AND score >= ? AND score <= ?
+                ORDER BY created_at DESC
+                LIMIT ? OFFSET ?
+                "#,
+            )
+            .bind(vault_id)
+            .bind(min)
+            .bind(max)
+            .bind(page_size as i32)
+            .bind(offset)
+            .fetch_all(pool)
+            .await
+            .map_err(|e| {
+                DBError::new_list_error(format!("Failed to fetch paginated passwords: {}", e))
+            })?
+        }
+        _ => unreachable!("min_score e max_score sono sempre entrambi Some o entrambi None"),
+    };
+
+    // Count totale per la paginazione (con stesso filtro)
+    let total: (i64,) = match (min_score, max_score) {
+        (None, None) => sqlx::query_as("SELECT COUNT(*) FROM passwords WHERE vault_id = ?")
+            .bind(vault_id)
+            .fetch_one(pool)
+            .await
+            .map_err(|e| DBError::new_list_error(format!("Failed to count passwords: {}", e)))?,
+        (Some(min), Some(max)) => sqlx::query_as(
+            "SELECT COUNT(*) FROM passwords WHERE vault_id = ? AND score >= ? AND score <= ?",
+        )
+        .bind(vault_id)
+        .bind(min)
+        .bind(max)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| DBError::new_list_error(format!("Failed to count passwords: {}", e)))?,
+        _ => unreachable!(),
+    };
+
+    Ok((results, total.0 as u64))
+}
+
+/// Fetch all passwords for a vault with optional strength filter and dynamic order.
+#[instrument(skip(pool))]
+pub async fn fetch_all_passwords_for_vault_with_filter(
+    pool: &SqlitePool,
+    vault_id: i64,
+    filter: Option<PasswordStrength>,
+    order: &str,
+) -> Result<Vec<StoredPassword>, DBError> {
+    debug!(
+        "Fetching all passwords for vault_id={} with filter={:?}, order={}",
+        vault_id, filter, order
+    );
+
+    // Mappa filtro strength -> range di score
+    let (min_score, max_score) = match filter {
+        None => (None, None),
+        Some(PasswordStrength::WEAK) => (Some(0), Some(49)),
+        Some(PasswordStrength::MEDIUM) => (Some(50), Some(69)),
+        Some(PasswordStrength::STRONG) => (Some(70), Some(84)),
+        Some(PasswordStrength::EPIC) => (Some(85), Some(95)),
+        Some(PasswordStrength::GOD) => (Some(96), Some(100)),
+        Some(PasswordStrength::NotEvaluated) => (Some(255), Some(0)),
+    };
+
+    let results = match (min_score, max_score) {
+        (None, None) => sqlx::query_as::<_, StoredPassword>(&format!(
+            r#"
+                SELECT id, user_id, vault_id, name, username, username_nonce, url, url_nonce,
+                       password, password_nonce, notes, notes_nonce, score, created_at
+                FROM passwords
+                WHERE vault_id = ?
+                ORDER BY {order}
+                "#
+        ))
+        .bind(vault_id)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| DBError::new_list_error(format!("Failed to fetch all passwords: {}", e)))?,
+        (Some(min), Some(max)) => sqlx::query_as::<_, StoredPassword>(&format!(
+            r#"
+                SELECT id, user_id, vault_id, name, username, username_nonce, url, url_nonce,
+                       password, password_nonce, notes, notes_nonce, score, created_at
+                FROM passwords
+                WHERE vault_id = ? AND score >= ? AND score <= ?
+                ORDER BY {order}
+                "#
+        ))
+        .bind(vault_id)
+        .bind(min)
+        .bind(max)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| DBError::new_list_error(format!("Failed to fetch all passwords: {}", e)))?,
+        _ => unreachable!("min_score e max_score sono sempre entrambi Some o entrambi None"),
+    };
+
+    Ok(results)
+}
+
+/// Fetch password statistics for a vault (counts grouped by strength).
+#[instrument(skip(pool))]
+pub async fn fetch_password_stats_for_vault(
+    pool: &SqlitePool,
+    vault_id: i64,
+) -> Result<PasswordStats, DBError> {
+    debug!("Fetching password stats for vault_id: {}", vault_id);
+
+    let rows = sqlx::query_as::<_, (i64, i64)>(
+        r#"
+        SELECT
+            CASE
+                WHEN score < 50 THEN 0
+                WHEN score < 70 THEN 1
+                WHEN score < 85 THEN 2
+                WHEN score < 96 THEN 3
+                ELSE 4
+            END as strength_group,
+            COUNT(*) as count
+        FROM passwords
+        WHERE vault_id = ?
+        GROUP BY strength_group
+        ORDER BY strength_group
+        "#,
+    )
+    .bind(vault_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| DBError::new_list_error(format!("Failed to fetch password stats: {}", e)))?;
+
+    let mut stats = PasswordStats::default();
+
+    for (group, count) in rows {
+        match group {
+            0 => stats.weak = count as usize,
+            1 => stats.medium = count as usize,
+            2 => stats.strong = count as usize,
+            3 => stats.epic = count as usize,
+            4 => stats.god = count as usize,
+            _ => {}
+        }
+    }
+
+    stats.total = stats.weak + stats.medium + stats.strong + stats.epic + stats.god;
+
+    Ok(stats)
+}
+
+/// Delete all passwords belonging to a vault.
+#[instrument(skip(pool))]
+pub async fn delete_vault_passwords(
+    pool: &SqlitePool,
+    vault_id: i64,
+) -> Result<(), DBError> {
+    debug!("Deleting all passwords in vault_id: {}", vault_id);
+    sqlx::query("DELETE FROM passwords WHERE vault_id = ?")
+        .bind(vault_id)
+        .execute(pool)
+        .await
+        .map_err(|e| {
+            DBError::new_password_delete_error(format!("Failed to delete vault passwords: {}", e))
+        })?;
     Ok(())
 }
 
