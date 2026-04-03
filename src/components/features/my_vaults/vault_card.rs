@@ -9,6 +9,7 @@ use pwd_types::Vault;
 pub fn VaultCard(
     vault: Vault,
     password_count: u64,
+    #[props(default)] is_selected: bool,
     on_edit: EventHandler<Vault>,
     on_delete: EventHandler<Vault>,
 ) -> Element {
@@ -19,7 +20,11 @@ pub fn VaultCard(
     };
 
     rsx! {
-        div { class: "card card-side bg-base-100 shadow-sm pwd-vault-card",
+        div {
+            class: format!(
+                "card card-side bg-base-100 shadow-sm pwd-vault-card{}",
+                if is_selected { " pwd-vault-selected" } else { "" }
+            ),
             div { class: "card-body p-4",
                 h3 { class: "card-title text-base", "{vault.name}" }
                 p { class: "text-sm text-base-content/60",

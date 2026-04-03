@@ -636,11 +636,13 @@ pub fn MyVaults() -> Element {
                         {
                             let vault_clone = vault.clone();
                             let count = vault.id.and_then(|id| counts.get(&id).copied()).unwrap_or(0);
+                            let is_selected = vault.id == active_vault_id.read().as_ref().copied();
                             rsx! {
                                 super::vault_card::VaultCard {
                                     key: "{vault_clone.id.unwrap_or(0)}",
                                     vault: vault_clone,
                                     password_count: count,
+                                    is_selected,
                                     on_edit: move |v: Vault| {
                                         on_edit_click(v);
                                     },

@@ -2260,3 +2260,8 @@ button[class*="btn-"] {
         box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 15%, transparent);
     }
 }
+
+.pwd-vault-selected {
+    border: 2px solid oklch(var(--p));
+    box-shadow: 0 0 12px oklch(var(--p) / 0.15);
+}
