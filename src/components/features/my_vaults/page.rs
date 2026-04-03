@@ -5,8 +5,8 @@
 use crate::backend::db_backend::delete_vault_passwords;
 use crate::backend::export_types::ExportFormat;
 use crate::backend::import::validate_import_path;
-use crate::backend::vault_utils::{fetch_password_count_by_vault, fetch_vaults_by_user};
-use crate::components::globals::ActiveVaultState;
+use crate::backend::vault_utils::fetch_password_count_by_vault;
+use crate::components::globals::{ActiveVaultState, VaultListState};
 use crate::components::globals::spinner::{Spinner, SpinnerSize};
 use crate::components::globals::{
     ExportProgressDialog, ExportWarningDialog, ImportProgressDialog, ImportWarningDialog,
@@ -29,20 +29,8 @@ pub fn MyVaults() -> Element {
     let pool_for_delete = pool.clone();
     let user = auth_state.get_user();
     let toast = use_toast();
-    let user_id = user.as_ref().map(|u| u.id).unwrap_or(-1);
-
-    // Vault list resource
-    let mut vaults_resource = use_resource(move || {
-        let pool = pool.clone();
-        async move {
-            if user_id == -1 {
-                return Vec::new();
-            }
-            fetch_vaults_by_user(&pool, user_id)
-                .await
-                .unwrap_or_default()
-        }
-    });
+    // Vault list resource (shared via VaultListState from AuthWrapper)
+    let mut vaults_resource = use_context::<VaultListState>().0;
 
     // Active vault state for import/export/delete scope
     let active_vault_state = use_context::<ActiveVaultState>();
