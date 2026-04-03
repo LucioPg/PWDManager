@@ -17,8 +17,7 @@ mod stored_all_passwords_deletion;
 mod stored_password_deletion;
 mod stored_password_show;
 mod stored_password_upsert;
-mod clone_to_vault_dialog;
-mod move_to_vault_dialog;
+mod vault_action_dialog;
 mod vault_create;
 mod vault_delete;
 mod vault_edit;
@@ -33,7 +32,6 @@ pub use stored_password_deletion::*;
 pub use user_deletion::*;
 
 // ide-only serve per avere highlight mentre si lavora su elementi non ancora completati.
-// #[cfg(feature = "ide-only")]
 pub use export_progress::*;
 pub use export_warning::*;
 pub use import_progress::*;
@@ -43,8 +41,7 @@ pub use migration_warning::*;
 pub use stored_all_passwords_deletion::*;
 pub use stored_password_show::*;
 pub use stored_password_upsert::*;
-pub use clone_to_vault_dialog::*;
-pub use move_to_vault_dialog::*;
+pub use vault_action_dialog::*;
 pub use vault_create::*;
 pub use vault_delete::*;
 pub use vault_edit::*;

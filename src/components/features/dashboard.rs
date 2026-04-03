@@ -16,8 +16,9 @@ use crate::components::globals::pagination::{PaginationControls, PaginationState
 use crate::components::globals::spinner::{Spinner, SpinnerSize};
 use crate::components::globals::types::TableOrder;
 use crate::components::{
-    BulkActionBar, CloneToVaultDialog, MoveToVaultDialog, StoredPasswordDeletionDialog,
+    BulkActionBar, StoredPasswordDeletionDialog,
     StoredPasswordShowDialog, StoredPasswordUpsertDialog, StoredRawPasswordsTable,
+    VaultAction, VaultActionDialog,
     show_toast_error, use_toast,
 };
 use custom_errors::DBError;
@@ -63,7 +64,6 @@ pub fn Dashboard() -> Element {
     let pool_for_delete = pool.clone();
     let pool_for_vaults = pool.clone();
     let pool_for_move = pool.clone();
-    let pool_for_clone = pool.clone();
     let mut error = use_signal(|| <Option<DBError>>::None);
     let user_id_option = auth_state.user.cloned().map(|u| u.id);
     let toast = use_toast();
@@ -122,11 +122,9 @@ pub fn Dashboard() -> Element {
     // Multi-select state for password table
     let mut selected_ids: Signal<HashSet<i64>> = use_signal(HashSet::new);
 
-    // Dialog open states for bulk actions (Task 14/15 will wire actual dialogs)
-    #[allow(unused_mut)]
-    let mut move_dialog_open = use_signal(|| false);
-    #[allow(unused_mut)]
-    let mut clone_dialog_open = use_signal(|| false);
+    // Dialog open states for bulk actions
+    let mut vault_action_dialog_open = use_signal(|| false);
+    let mut current_vault_action = use_signal(|| VaultAction::Move);
 
     // Resource per fetch completa (ordinamento delegato al DB)
     // Reagisce a: active_vault_id, current_table_order, pagination.active_filter()
@@ -390,10 +388,12 @@ pub fn Dashboard() -> Element {
                         BulkActionBar {
                             count,
                             on_move: move |_| {
-                                move_dialog_open.set(true);
+                                current_vault_action.set(VaultAction::Move);
+                                vault_action_dialog_open.set(true);
                             },
                             on_clone: move |_| {
-                                clone_dialog_open.set(true);
+                                current_vault_action.set(VaultAction::Clone);
+                                vault_action_dialog_open.set(true);
                             },
                             on_clear: move |_| {
                                 selected_ids.set(HashSet::new());
@@ -496,10 +496,9 @@ pub fn Dashboard() -> Element {
             on_confirm: on_confirm_delete,
             on_cancel: cancel_delete,
         }
-        // Move to vault dialog
-        MoveToVaultDialog {
-            open: move_dialog_open,
-            selected_ids: selected_ids.read().iter().cloned().collect(),
+        VaultActionDialog {
+            open: vault_action_dialog_open,
+            action: current_vault_action(),
             selected_passwords: all_passwords()
                 .into_iter()
                 .filter(|p| p.id.is_some_and(|id| selected_ids.read().contains(&id)))
@@ -507,60 +506,33 @@ pub fn Dashboard() -> Element {
             current_vault_id: active_vault_id().unwrap_or(0),
             on_confirm: move |target_vault_id| {
                 let pool = pool_for_move.clone();
-                let ids: Vec<i64> = selected_ids.read().iter().cloned().collect();
-                let mut move_dialog = move_dialog_open;
-                let mut sorted_resource = sorted_passwords_resource;
-                let mut stats_res = stats_data;
-                spawn(async move {
-                    match move_passwords_to_vault(&pool, ids, target_vault_id).await {
-                        Ok(()) => {
-                            selected_ids.set(HashSet::new());
-                            move_dialog.set(false);
-                            sorted_resource.restart();
-                            stats_res.restart();
-                        }
-                        Err(e) => {
-                            show_toast_error(format!("Failed to move passwords: {}", e), toast);
-                        }
-                    }
-                });
-            },
-            on_cancel: move |_| {
-                move_dialog_open.set(false);
-            },
-        }
-        // Clone to vault dialog
-        CloneToVaultDialog {
-            open: clone_dialog_open,
-            selected_ids: selected_ids.read().iter().cloned().collect(),
-            selected_passwords: all_passwords()
-                .into_iter()
-                .filter(|p| p.id.is_some_and(|id| selected_ids.read().contains(&id)))
-                .collect(),
-            current_vault_id: active_vault_id().unwrap_or(0),
-            on_confirm: move |target_vault_id| {
-                let pool = pool_for_clone.clone();
                 let user_id = user_id;
                 let ids: Vec<i64> = selected_ids.read().iter().cloned().collect();
-                let mut clone_dialog = clone_dialog_open;
+                let mut dialog_open = vault_action_dialog_open;
                 let mut sorted_resource = sorted_passwords_resource;
                 let mut stats_res = stats_data;
+                let action = current_vault_action();
                 spawn(async move {
-                    match clone_passwords_to_vault(&pool, user_id, ids, target_vault_id).await {
+                    let result = if action == VaultAction::Move {
+                        move_passwords_to_vault(&pool, ids, target_vault_id).await
+                    } else {
+                        clone_passwords_to_vault(&pool, user_id, ids, target_vault_id).await
+                    };
+                    match result {
                         Ok(()) => {
                             selected_ids.set(HashSet::new());
-                            clone_dialog.set(false);
+                            dialog_open.set(false);
                             sorted_resource.restart();
                             stats_res.restart();
                         }
                         Err(e) => {
-                            show_toast_error(format!("Failed to clone passwords: {}", e), toast);
+                            show_toast_error(format!("Failed: {}", e), toast);
                         }
                     }
                 });
             },
             on_cancel: move |_| {
-                clone_dialog_open.set(false);
+                vault_action_dialog_open.set(false);
             },
         }
     }
