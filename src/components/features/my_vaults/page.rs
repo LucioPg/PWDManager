@@ -8,12 +8,12 @@ use crate::backend::import::validate_import_path;
 use crate::backend::vault_utils::{fetch_password_count_by_vault, fetch_vaults_by_user};
 use crate::components::globals::ActiveVaultState;
 use crate::components::globals::spinner::{Spinner, SpinnerSize};
-use crate::components::{
-    show_toast_error, use_toast, AllStoredPasswordDeletionDialog, ExportData, ImportData,
-    VaultCreateDialog, VaultDeleteDialog, VaultEditDialog,
-};
 use crate::components::globals::{
     ExportProgressDialog, ExportWarningDialog, ImportProgressDialog, ImportWarningDialog,
+};
+use crate::components::{
+    AllStoredPasswordDeletionDialog, ExportData, ImportData, VaultCreateDialog, VaultDeleteDialog,
+    VaultEditDialog, show_toast_error, use_toast,
 };
 use dioxus::prelude::*;
 use pwd_types::Vault;
@@ -38,12 +38,14 @@ pub fn MyVaults() -> Element {
             if user_id == -1 {
                 return Vec::new();
             }
-            fetch_vaults_by_user(&pool, user_id).await.unwrap_or_default()
+            fetch_vaults_by_user(&pool, user_id)
+                .await
+                .unwrap_or_default()
         }
     });
 
     // Password count per vault
-    let mut password_counts = use_signal(|| std::collections::HashMap::<i64, u64>::new());
+    let mut password_counts = use_signal(std::collections::HashMap::<i64, u64>::new);
 
     // Fetch password counts whenever vault list changes
     use_effect(move || {
@@ -492,12 +494,7 @@ pub fn MyVaults() -> Element {
             div { class: "flex items-center gap-2 mb-6",
                 // Import dropdown
                 div { class: "dropdown",
-                    div {
-                        tabindex: "0",
-                        role: "button",
-                        class: "btn btn-sm",
-                        "Import"
-                    }
+                    div { tabindex: "0", role: "button", class: "btn btn-sm", "Import" }
                     ul {
                         tabindex: "0",
                         class: "dropdown-content menu bg-base-100 rounded-box z-[100] w-40 p-2 shadow-lg border border-base-300",
@@ -515,12 +512,7 @@ pub fn MyVaults() -> Element {
 
                 // Export dropdown
                 div { class: "dropdown",
-                    div {
-                        tabindex: "0",
-                        role: "button",
-                        class: "btn btn-sm",
-                        "Export"
-                    }
+                    div { tabindex: "0", role: "button", class: "btn btn-sm", "Export" }
                     ul {
                         tabindex: "0",
                         class: "dropdown-content menu bg-base-100 rounded-box z-[100] w-40 p-2 shadow-lg border border-base-300",
@@ -558,7 +550,14 @@ pub fn MyVaults() -> Element {
                             fill: "none",
                             stroke: "currentColor",
                             stroke_width: "2",
-                            rect { x: "3", y: "11", width: "18", height: "11", rx: "2", ry: "2" }
+                            rect {
+                                x: "3",
+                                y: "11",
+                                width: "18",
+                                height: "11",
+                                rx: "2",
+                                ry: "2",
+                            }
                             path { d: "M7 11V7a5 5 0 0 1 10 0v4" }
                         }
                     }

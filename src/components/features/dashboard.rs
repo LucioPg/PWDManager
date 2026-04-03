@@ -3,17 +3,22 @@
 // Commercial use requires a license. See LICENSE.md for details.
 
 use crate::Route;
-use crate::backend::db_backend::{delete_stored_password, fetch_password_stats_for_vault, move_passwords_to_vault};
-use crate::backend::password_utils::{clone_passwords_to_vault, get_all_stored_raw_passwords_for_vault_with_filter};
+use crate::backend::db_backend::{
+    delete_stored_password, fetch_password_stats_for_vault, move_passwords_to_vault,
+};
+use crate::backend::password_utils::{
+    clone_passwords_to_vault, get_all_stored_raw_passwords_for_vault_with_filter,
+};
 use crate::backend::vault_utils::fetch_vaults_by_user;
-use crate::components::globals::StatsAside;
 use crate::components::globals::ActiveVaultState;
+use crate::components::globals::StatsAside;
 use crate::components::globals::pagination::{PaginationControls, PaginationState};
 use crate::components::globals::spinner::{Spinner, SpinnerSize};
 use crate::components::globals::types::TableOrder;
 use crate::components::{
-    BulkActionBar, CloneToVaultDialog, MoveToVaultDialog, StoredPasswordDeletionDialog, StoredPasswordShowDialog,
-    StoredPasswordUpsertDialog, StoredRawPasswordsTable, show_toast_error, use_toast,
+    BulkActionBar, CloneToVaultDialog, MoveToVaultDialog, StoredPasswordDeletionDialog,
+    StoredPasswordShowDialog, StoredPasswordUpsertDialog, StoredRawPasswordsTable,
+    show_toast_error, use_toast,
 };
 use custom_errors::DBError;
 use dioxus::prelude::*;
@@ -90,7 +95,9 @@ pub fn Dashboard() -> Element {
             if user_id == -1 {
                 return Vec::new();
             }
-            fetch_vaults_by_user(&pool, user_id).await.unwrap_or_default()
+            fetch_vaults_by_user(&pool, user_id)
+                .await
+                .unwrap_or_default()
         }
     });
 
@@ -138,7 +145,11 @@ pub fn Dashboard() -> Element {
             }
 
             get_all_stored_raw_passwords_for_vault_with_filter(
-                &pool, user_id, vault_id, filter, order_clause,
+                &pool,
+                user_id,
+                vault_id,
+                filter,
+                order_clause,
             )
             .await
             .unwrap_or_else(|e| {
@@ -403,7 +414,14 @@ pub fn Dashboard() -> Element {
                                     fill: "none",
                                     stroke: "currentColor",
                                     stroke_width: "2",
-                                    rect { x: "3", y: "11", width: "18", height: "11", rx: "2", ry: "2" }
+                                    rect {
+                                        x: "3",
+                                        y: "11",
+                                        width: "18",
+                                        height: "11",
+                                        rx: "2",
+                                        ry: "2",
+                                    }
                                     path { d: "M7 11V7a5 5 0 0 1 10 0v4" }
                                 }
                             }
@@ -411,11 +429,7 @@ pub fn Dashboard() -> Element {
                             p { class: "text-body mt-2 pwd-empty-state-subtitle",
                                 "A vault is where your passwords live. Create one to get started."
                             }
-                            Link {
-                                to: Route::MyVaults,
-                                class: "btn btn-primary mt-4",
-                                "+ New Vault"
-                            }
+                            Link { to: Route::MyVaults, class: "btn btn-primary mt-4", "+ New Vault" }
                         }
                     }
                 } else {
@@ -486,7 +500,7 @@ pub fn Dashboard() -> Element {
             selected_ids: selected_ids.read().iter().cloned().collect(),
             selected_passwords: all_passwords()
                 .into_iter()
-                .filter(|p| p.id.map_or(false, |id| selected_ids.read().contains(&id)))
+                .filter(|p| p.id.is_some_and(|id| selected_ids.read().contains(&id)))
                 .collect(),
             current_vault_id: active_vault_id().unwrap_or(0),
             on_confirm: move |target_vault_id| {
@@ -519,7 +533,7 @@ pub fn Dashboard() -> Element {
             selected_ids: selected_ids.read().iter().cloned().collect(),
             selected_passwords: all_passwords()
                 .into_iter()
-                .filter(|p| p.id.map_or(false, |id| selected_ids.read().contains(&id)))
+                .filter(|p| p.id.is_some_and(|id| selected_ids.read().contains(&id)))
                 .collect(),
             current_vault_id: active_vault_id().unwrap_or(0),
             on_confirm: move |target_vault_id| {

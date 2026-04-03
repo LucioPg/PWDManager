@@ -52,9 +52,9 @@ pub fn StoredRawPasswordsTable(
 
     match data.as_ref() {
         Some(stored_raw_passwords) => {
-            let all_visible_selected = stored_raw_passwords.iter().all(|p| {
-                p.id.map_or(false, |id| selected_ids.read().contains(&id))
-            });
+            let all_visible_selected = stored_raw_passwords
+                .iter()
+                .all(|p| p.id.is_some_and(|id| selected_ids.read().contains(&id)));
 
             rsx! {
                 // Wrapper con scroll orizzontale per gestire overflow

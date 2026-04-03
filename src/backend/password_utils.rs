@@ -12,9 +12,8 @@
 
 use crate::backend::db_backend::{
     fetch_all_passwords_for_user_with_filter, fetch_all_passwords_for_vault_with_filter,
-    fetch_all_stored_passwords_for_user,
-    fetch_passwords_paginated, fetch_user_auth_from_id, remove_temp_old_password,
-    upsert_stored_passwords_batch,
+    fetch_all_stored_passwords_for_user, fetch_passwords_paginated, fetch_user_auth_from_id,
+    remove_temp_old_password, upsert_stored_passwords_batch,
 };
 use crate::backend::evaluate_password_strength;
 use crate::backend::migration_types::{MigrationStage, ProgressMessage, ProgressSender};
@@ -377,7 +376,7 @@ pub async fn clone_passwords_to_vault(
     let all_passwords = fetch_all_stored_passwords_for_user(pool, user_id).await?;
     let to_clone: Vec<StoredPassword> = all_passwords
         .into_iter()
-        .filter(|p| p.id.map_or(false, |id| password_ids.contains(&id)))
+        .filter(|p| p.id.is_some_and(|id| password_ids.contains(&id)))
         .collect();
 
     if to_clone.is_empty() {

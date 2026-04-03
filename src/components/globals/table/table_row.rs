@@ -50,7 +50,10 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
             td { class: "pwd-table__col-checkbox",
                 input {
                     r#type: "checkbox",
-                    checked: props.stored_raw_password.id.map_or(false, |id| props.selected_ids.read().contains(&id)),
+                    checked: props
+                        .stored_raw_password
+                        .id
+                        .is_some_and(|id| props.selected_ids.read().contains(&id)),
                     onchange: move |_| {
                         let is_checked = !props.selected_ids.read().contains(&password_id);
                         props.on_select.call((password_id, is_checked));

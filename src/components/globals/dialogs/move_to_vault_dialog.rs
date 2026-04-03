@@ -67,7 +67,7 @@ pub fn MoveToVaultDialog(
         let vaults = vaults_resource.read().as_ref().cloned().unwrap_or_default();
         let opts: Vec<(&'static str, Option<i64>)> = vaults
             .iter()
-            .filter(|v| v.id.map_or(false, |id| id != current_vault_id))
+            .filter(|v| v.id.is_some_and(|id| id != current_vault_id))
             .map(|v| {
                 let name = Box::leak(v.name.clone().into_boxed_str()) as &'static str;
                 (name, v.id)
@@ -119,7 +119,10 @@ pub fn MoveToVaultDialog(
             }
 
             // Title
-            h3 { class: "font-bold text-lg mb-4", "Move {count} password{if count != 1 { "s" }} to vault" }
+            h3 { class: "font-bold text-lg mb-4",
+                "Move {count} password{if count != 1 { "s
+                " }} to vault"
+            }
 
             // Selected passwords list
             if !display_names.is_empty() {
@@ -138,7 +141,9 @@ pub fn MoveToVaultDialog(
 
             // Target vault selector
             div { class: "form-control w-full mb-6",
-                label { class: "label", span { class: "label-text", "Target vault" } }
+                label { class: "label",
+                    span { class: "label-text", "Target vault" }
+                }
                 Combobox::<i64> {
                     options: vault_options(),
                     placeholder: "Select vault...".to_string(),
