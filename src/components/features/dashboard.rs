@@ -360,13 +360,22 @@ pub fn Dashboard() -> Element {
                         },
                     }
                     // Vault selector Combobox
-                    Combobox::<i64> {
-                        options: vault_options(),
-                        placeholder: "Select Vault".to_string(),
-                        size: ComboboxSize::Medium,
-                        on_change: move |v| {
-                            active_vault_id.set(v);
-                        },
+                    // key forces re-mount when vault changes (workaround for non-reactive selected_value)
+                    {
+                        let vault_key = active_vault_id().unwrap_or(-1);
+                        let selected = active_vault_id();
+                        rsx! {
+                            Combobox::<i64> {
+                                key: "{vault_key}",
+                                options: vault_options(),
+                                placeholder: "Select Vault".to_string(),
+                                size: ComboboxSize::Medium,
+                                selected_value: selected,
+                                on_change: move |v| {
+                                    active_vault_id.set(v);
+                                },
+                            }
+                        }
                     }
                 }
                 button {
