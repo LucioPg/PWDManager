@@ -16,6 +16,7 @@ use crate::components::{
     VaultEditDialog, show_toast_error, use_toast,
 };
 use dioxus::prelude::*;
+use pwd_dioxus::{Combobox, ComboboxSize};
 use pwd_types::Vault;
 use rfd::FileDialog;
 use sqlx::SqlitePool;
@@ -42,6 +43,35 @@ pub fn MyVaults() -> Element {
                 .await
                 .unwrap_or_default()
         }
+    });
+
+    // Active vault state for import/export/delete scope
+    let active_vault_state = use_context::<ActiveVaultState>();
+    let mut active_vault_id = active_vault_state.0;
+
+    // Vault combobox options
+    let vault_options = use_memo(move || {
+        let vaults = vaults_resource.read().as_ref().cloned().unwrap_or_default();
+        let opts: Vec<(&'static str, Option<i64>)> = vaults
+            .iter()
+            .map(|v| {
+                let name = Box::leak(v.name.clone().into_boxed_str()) as &'static str;
+                (name, Some(v.id.unwrap_or(0)))
+            })
+            .collect();
+        opts
+    });
+
+    // Derive computed state for toolbar
+    let is_empty = vaults_resource.read().as_ref().map_or(true, |v| v.is_empty());
+    let selected: Option<i64> = active_vault_id.read().as_ref().copied();
+    let has_selection = selected.is_some();
+    let vault_key = selected.unwrap_or(-1);
+
+    // Refresh password counts when active vault changes (for dashboard sync)
+    use_effect(move || {
+        let _ = *active_vault_id.read();
+        vaults_resource.restart();
     });
 
     // Password count per vault
@@ -90,9 +120,6 @@ pub fn MyVaults() -> Element {
     let import_failed = use_signal(|| false);
     let import_data = use_context_provider(|| Signal::new(ImportData::default()));
     let import_format = use_signal(|| ExportFormat::Json);
-
-    // Active vault state for import/export/delete scope
-    let active_vault_state = use_context::<ActiveVaultState>();
 
     // Error toast effect
     use_effect(move || {
@@ -491,10 +518,32 @@ pub fn MyVaults() -> Element {
             }
 
             // Import/Export/Delete All bar
-            div { class: "flex items-center gap-2 mb-6",
+            div { class: "flex flex-wrap items-center gap-2 mb-6",
+
+                // Vault selector Combobox
+                Combobox::<i64> {
+                    key: "{vault_key}",
+                    options: vault_options(),
+                    placeholder: if is_empty { "Create a vault first".to_string() } else { "Select Vault".to_string() },
+                    size: ComboboxSize::Medium,
+                    selected_value: selected,
+                    disabled: Signal::new(is_empty),
+                    on_change: move |v: Option<i64>| {
+                        active_vault_id.set(v);
+                    },
+                }
+
+                // Spacer
+                div { class: "divider divider-horizontal mx-1" }
+
                 // Import dropdown
                 div { class: "dropdown",
-                    div { tabindex: "0", role: "button", class: "btn btn-sm", "Import" }
+                    div {
+                        tabindex: "0",
+                        role: "button",
+                        class: if has_selection { "btn btn-sm" } else { "btn btn-sm btn-disabled" },
+                        "Import"
+                    }
                     ul {
                         tabindex: "0",
                         class: "dropdown-content menu bg-base-100 rounded-box z-[100] w-40 p-2 shadow-lg border border-base-300",
@@ -512,7 +561,12 @@ pub fn MyVaults() -> Element {
 
                 // Export dropdown
                 div { class: "dropdown",
-                    div { tabindex: "0", role: "button", class: "btn btn-sm", "Export" }
+                    div {
+                        tabindex: "0",
+                        role: "button",
+                        class: if has_selection { "btn btn-sm" } else { "btn btn-sm btn-disabled" },
+                        "Export"
+                    }
                     ul {
                         tabindex: "0",
                         class: "dropdown-content menu bg-base-100 rounded-box z-[100] w-40 p-2 shadow-lg border border-base-300",
@@ -531,7 +585,12 @@ pub fn MyVaults() -> Element {
                 // Delete All (scoped to active vault)
                 button {
                     r#type: "button",
-                    class: "btn btn-sm btn-ghost text-error hover:bg-error hover:text-error-content ml-auto",
+                    class: if has_selection {
+                        "btn btn-sm btn-ghost text-error hover:bg-error hover:text-error-content ml-auto"
+                    } else {
+                        "btn btn-sm btn-disabled ml-auto"
+                    },
+                    disabled: !has_selection,
                     onclick: on_warning_open,
                     "Delete All Passwords"
                 }
