@@ -63,7 +63,7 @@ pub fn MyVaults() -> Element {
     });
 
     // Derive computed state for toolbar
-    let is_empty = use_memo(move || vaults_resource.read().as_ref().map_or(true, |v| v.is_empty()));
+    let is_empty = use_memo(move || vaults_resource.read().as_ref().is_none_or(|v| v.is_empty()));
     let selected: Option<i64> = active_vault_id.read().as_ref().copied();
     let has_selection = selected.is_some();
     let vault_key = selected.unwrap_or(-1);
@@ -585,11 +585,7 @@ pub fn MyVaults() -> Element {
                 // Delete All (scoped to active vault)
                 button {
                     r#type: "button",
-                    class: if has_selection {
-                        "btn btn-sm btn-ghost text-error hover:bg-error hover:text-error-content ml-auto"
-                    } else {
-                        "btn btn-sm btn-disabled ml-auto"
-                    },
+                    class: if has_selection { "btn btn-sm btn-ghost text-error hover:bg-error hover:text-error-content ml-auto" } else { "btn btn-sm btn-disabled ml-auto" },
                     disabled: !has_selection,
                     onclick: on_warning_open,
                     "Delete All Passwords"
