@@ -30,7 +30,7 @@ pub fn AuthWrapper() -> Element {
     #[allow(unused_mut)]
     let mut auto_logout_settings = use_context::<Signal<Option<AutoLogoutSettings>>>();
     // Stato del vault attivo
-    let mut active_vault = use_context_provider(|| ActiveVaultState(Signal::new(None)));
+    let active_vault = use_context_provider(|| ActiveVaultState(Signal::new(None)));
     // Flag per fetch unico dei settings
     #[allow(unused_mut)]
     let mut theme_fetched = use_signal(|| false);
