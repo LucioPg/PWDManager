@@ -14,12 +14,14 @@ pub fn NavBar() -> Element {
         let avatar = auth_state.get_avatar();
         rsx! {
             nav { id: "nav", class: "navbar",
-                Link { to: Route::Dashboard, class: "navbar-brand",
-                    h3 { class: "navbar-brand-text", "Dashboard" }
-                }
-                div { class: "pwd-navbar-separator", "|" }
-                Link { to: Route::MyVaults, class: "navbar-brand",
-                    h3 { class: "navbar-brand-text", "My Vaults" }
+                div { class: "flex flex-rowjustify-between",
+                    Link { to: Route::Dashboard, class: "navbar-brand",
+                        h3 { class: "navbar-brand-text", "Dashboard" }
+                    }
+                    div { class: "pwd-navbar-separator", "|" }
+                    Link { to: Route::MyVaults, class: "navbar-brand",
+                        h3 { class: "navbar-brand-text", "My Vaults" }
+                    }
                 }
                 div { id: "user-info", class: "navbar-user",
                     Link { to: Route::Settings, id: "settings",
