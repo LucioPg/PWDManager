@@ -77,7 +77,8 @@ pub fn MoveToVaultDialog(
     });
 
     let count = selected_passwords.len();
-
+    #[rustfmt::skip]
+    let title = format!("Move {count} {} to vault", if count == 1 { "password" } else { "passwords" });
     // Build the displayed password names (max 5, then "and X more...")
     let display_names: Vec<String> = selected_passwords
         .iter()
@@ -119,10 +120,10 @@ pub fn MoveToVaultDialog(
             }
 
             // Title
-            h3 { class: "font-bold text-lg mb-4",
-                "Move {count} password{if count != 1 { "s
-                " }} to vault"
-            }
+
+
+            h3 { class: "font-bold text-lg mb-4", "{title}" }
+
 
             // Selected passwords list
             if !display_names.is_empty() {

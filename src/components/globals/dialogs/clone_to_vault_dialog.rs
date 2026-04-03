@@ -77,7 +77,8 @@ pub fn CloneToVaultDialog(
     });
 
     let count = selected_passwords.len();
-
+    #[rustfmt::skip]
+    let title = format!("Clone {count} {} to vault", if count == 1 { "password" } else { "passwords" });
     // Build the displayed password names (max 5, then "and X more...")
     let display_names: Vec<String> = selected_passwords
         .iter()
@@ -119,8 +120,8 @@ pub fn CloneToVaultDialog(
             }
 
             // Title
-            h3 { class: "font-bold text-lg mb-4", "Clone {count} password{if count != 1 { "s" }} to vault" }
 
+            h3 { class: "font-bold text-lg mb-4", "{title}" }
             // Selected passwords list
             if !display_names.is_empty() {
                 div { class: "mb-4",
@@ -138,7 +139,9 @@ pub fn CloneToVaultDialog(
 
             // Target vault selector
             div { class: "form-control w-full mb-6",
-                label { class: "label", span { class: "label-text", "Target vault" } }
+                label { class: "label",
+                    span { class: "label-text", "Target vault" }
+                }
                 Combobox::<i64> {
                     options: vault_options(),
                     placeholder: "Select vault...".to_string(),
