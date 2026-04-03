@@ -53,6 +53,9 @@ pub fn VaultCard(
                                 evt.stop_propagation();
                                 on_edit.call(vault_for_edit.clone());
                             },
+                            ondoubleclick: move |evt| {
+                                evt.stop_propagation();
+                            },
                             "Edit"
                         }
                     }
@@ -65,6 +68,9 @@ pub fn VaultCard(
                             onclick: move |evt| {
                                 evt.stop_propagation();
                                 on_delete.call(vault_for_delete.clone());
+                            },
+                            ondoubleclick: move |evt| {
+                                evt.stop_propagation();
                             },
                             "Delete"
                         }
