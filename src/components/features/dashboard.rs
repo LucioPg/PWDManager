@@ -22,7 +22,7 @@ use crate::components::{
 };
 use custom_errors::DBError;
 use dioxus::prelude::*;
-use pwd_dioxus::Combobox;
+use pwd_dioxus::{Combobox, ComboboxSize};
 use pwd_types::StoredRawPassword;
 use sqlx::SqlitePool;
 use std::collections::HashSet;
@@ -311,7 +311,7 @@ pub fn Dashboard() -> Element {
             div { class: "pwd-controls-bar",
                 div { class: "pwd-controls-left",
                     // Search input
-                    div { class: "pwd-search-wrapper",
+                    div { class: "pwd-search-wrapper max-w-[150px]",
                         svg {
                             class: "pwd-search-icon",
                             view_box: "0 0 24 24",
@@ -354,6 +354,7 @@ pub fn Dashboard() -> Element {
                     Combobox::<TableOrder> {
                         options: options.clone(),
                         placeholder: "Order by".to_string(),
+                        size: ComboboxSize::Small,
                         on_change: move |v| {
                             current_table_order.set(v);
                             pagination.go_to_page(0);
@@ -364,6 +365,7 @@ pub fn Dashboard() -> Element {
                     Combobox::<i64> {
                         options: vault_options(),
                         placeholder: "Select Vault".to_string(),
+                        size: ComboboxSize::Medium,
                         on_change: move |v| {
                             active_vault_id.set(v);
                         },
