@@ -9,8 +9,7 @@ use crate::backend::db_backend::{
 use crate::backend::password_utils::{
     clone_passwords_to_vault, get_all_stored_raw_passwords_for_vault_with_filter,
 };
-use crate::backend::vault_utils::fetch_vaults_by_user;
-use crate::components::globals::ActiveVaultState;
+use crate::components::globals::{ActiveVaultState, VaultListState};
 use crate::components::globals::StatsAside;
 use crate::components::globals::pagination::{PaginationControls, PaginationState};
 use crate::components::globals::spinner::{Spinner, SpinnerSize};
@@ -62,7 +61,6 @@ pub fn Dashboard() -> Element {
     let pool = use_context::<SqlitePool>();
     let pool_for_stats = pool.clone();
     let pool_for_delete = pool.clone();
-    let pool_for_vaults = pool.clone();
     let pool_for_move = pool.clone();
     let mut error = use_signal(|| <Option<DBError>>::None);
     let user_id_option = auth_state.user.cloned().map(|u| u.id);
@@ -87,19 +85,9 @@ pub fn Dashboard() -> Element {
     let active_vault_state = use_context::<ActiveVaultState>();
     let mut active_vault_id = active_vault_state.0;
 
-    // Vault list resource
-    let vaults_resource = use_resource(move || {
-        let pool = pool_for_vaults.clone();
-        let user_id = user_id;
-        async move {
-            if user_id == -1 {
-                return Vec::new();
-            }
-            fetch_vaults_by_user(&pool, user_id)
-                .await
-                .unwrap_or_default()
-        }
-    });
+    // Vault list resource (shared via VaultListState from AuthWrapper)
+    #[allow(unused_mut)]
+    let mut vaults_resource = use_context::<VaultListState>().0;
 
     // Vault combobox options
     let vault_options = use_memo(move || {
