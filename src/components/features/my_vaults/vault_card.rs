@@ -13,6 +13,7 @@ pub fn VaultCard(
     on_select: EventHandler<Vault>,
     on_edit: EventHandler<Vault>,
     on_delete: EventHandler<Vault>,
+    #[props(default)] on_open: EventHandler<Vault>,
 ) -> Element {
     let password_word = if password_count == 1 {
         "password"
@@ -20,13 +21,17 @@ pub fn VaultCard(
         "passwords"
     };
 
+    let vault_for_select = vault.clone();
+    let vault_for_open = vault.clone();
+
     rsx! {
         div {
             class: format!(
                 "card card-side bg-base-100 shadow-sm pwd-vault-card cursor-pointer{}",
                 if is_selected { " pwd-vault-selected" } else { "" }
             ),
-            onclick: move |_| on_select.call(vault.clone()),
+            onclick: move |_| on_select.call(vault_for_select.clone()),
+            ondoubleclick: move |_| on_open.call(vault_for_open.clone()),
             div { class: "card-body p-4",
                 h3 { class: "card-title text-base", "{vault.name}" }
                 p { class: "text-sm text-base-content/60",
@@ -44,7 +49,10 @@ pub fn VaultCard(
                     rsx! {
                         button {
                             class: "btn btn-ghost btn-sm",
-                            onclick: move |_| on_edit.call(vault_for_edit.clone()),
+                            onclick: move |evt| {
+                                evt.stop_propagation();
+                                on_edit.call(vault_for_edit.clone());
+                            },
                             "Edit"
                         }
                     }
@@ -54,7 +62,10 @@ pub fn VaultCard(
                     rsx! {
                         button {
                             class: "btn btn-ghost btn-sm text-error",
-                            onclick: move |_| on_delete.call(vault_for_delete.clone()),
+                            onclick: move |evt| {
+                                evt.stop_propagation();
+                                on_delete.call(vault_for_delete.clone());
+                            },
                             "Delete"
                         }
                     }

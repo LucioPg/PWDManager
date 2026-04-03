@@ -7,6 +7,7 @@ use crate::backend::export_types::ExportFormat;
 use crate::backend::import::validate_import_path;
 use crate::backend::vault_utils::fetch_password_count_by_vault;
 use crate::components::globals::{ActiveVaultState, VaultListState};
+use crate::Route;
 use crate::components::globals::spinner::{Spinner, SpinnerSize};
 use crate::components::globals::{
     ExportProgressDialog, ExportWarningDialog, ImportProgressDialog, ImportWarningDialog,
@@ -120,6 +121,12 @@ pub fn MyVaults() -> Element {
 
     let mut on_select_vault = move |vault: Vault| {
         active_vault_id.set(vault.id);
+    };
+
+    let nav = use_navigator();
+    let mut on_open_vault = move |vault: Vault| {
+        active_vault_id.set(vault.id);
+        nav.push(Route::Dashboard);
     };
 
     let mut on_delete_click = move |vault: Vault| {
@@ -601,6 +608,9 @@ pub fn MyVaults() -> Element {
                                     },
                                     on_delete: move |v: Vault| {
                                         on_delete_click(v);
+                                    },
+                                    on_open: move |v: Vault| {
+                                        on_open_vault(v);
                                     },
                                 }
                             }
