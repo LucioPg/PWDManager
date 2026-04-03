@@ -360,17 +360,19 @@ pub fn Dashboard() -> Element {
                         },
                     }
                     // Vault selector Combobox
-                    // key forces re-mount when vault changes (workaround for non-reactive selected_value)
                     {
+                        let vaults = vaults_resource.read().as_ref().cloned().unwrap_or_default();
+                        let is_empty = vaults.is_empty();
                         let vault_key = active_vault_id().unwrap_or(-1);
                         let selected = active_vault_id();
                         rsx! {
                             Combobox::<i64> {
                                 key: "{vault_key}",
                                 options: vault_options(),
-                                placeholder: "Select Vault".to_string(),
+                                placeholder: if is_empty { "Create a vault first".to_string() } else { "Select Vault".to_string() },
                                 size: ComboboxSize::Medium,
                                 selected_value: selected,
+                                disabled: Signal::new(is_empty),
                                 on_change: move |v| {
                                     active_vault_id.set(v);
                                 },
@@ -379,8 +381,9 @@ pub fn Dashboard() -> Element {
                     }
                 }
                 button {
-                    class: "btn btn-success",
+                    class: if active_vault_id().is_none() { "btn btn-success btn-disabled" } else { "btn btn-success" },
                     r#type: "button",
+                    disabled: active_vault_id().is_none(),
                     onclick: move |_| {
                         stored_password_dialog_state.current_stored_raw_password.set(None);
                         stored_password_dialog_state.is_open.set(true);
