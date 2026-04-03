@@ -18,6 +18,10 @@ use std::time::{Duration, Instant};
 #[derive(Clone, Copy, Default)]
 pub struct ActiveVaultState(pub Signal<Option<i64>>);
 
+/// Vault list shared across pages, provided via `use_context`.
+#[derive(Clone, Copy)]
+pub struct VaultListState(pub Resource<Vec<pwd_types::Vault>>);
+
 #[component]
 pub fn AuthWrapper() -> Element {
     let auth_state = use_context::<AuthState>();
@@ -30,7 +34,7 @@ pub fn AuthWrapper() -> Element {
     #[allow(unused_mut)]
     let mut auto_logout_settings = use_context::<Signal<Option<AutoLogoutSettings>>>();
     // Stato del vault attivo
-    let active_vault = use_context_provider(|| ActiveVaultState(Signal::new(None)));
+    let mut active_vault = use_context_provider(|| ActiveVaultState(Signal::new(None)));
     // Flag per fetch unico dei settings
     #[allow(unused_mut)]
     let mut theme_fetched = use_signal(|| false);
@@ -110,6 +114,22 @@ pub fn AuthWrapper() -> Element {
 
     let user_id = auth_state.get_user_id();
 
+    // Shared vault list resource — consumed by Dashboard and MyVaults
+    let pool_for_vaults = pool.clone();
+    let vaults_resource = use_resource(move || {
+        let pool = pool_for_vaults.clone();
+        let user_id = user_id;
+        async move {
+            if user_id <= 0 {
+                return Vec::new();
+            }
+            fetch_vaults_by_user(&pool, user_id)
+                .await
+                .unwrap_or_default()
+        }
+    });
+    use_context_provider(move || VaultListState(vaults_resource));
+
     use_resource(move || {
         let pool = pool.clone();
         let mut app_theme = app_theme;
@@ -131,21 +151,29 @@ pub fn AuthWrapper() -> Element {
                 auto_update.set(settings.auto_update);
                 auto_logout_settings.set(settings.auto_logout_settings);
 
-                // Carica il vault attivo: prefer "Default", poi primo per nome alfabetico
+                // Carica il vault attivo dal DB settings
                 if let Some(vault_id) = settings.active_vault_id {
                     active_vault.0.set(Some(vault_id));
-                } else if let Ok(vaults) = fetch_vaults_by_user(&pool, user_id).await {
-                    let default = vaults.iter().find(|v| v.name == "Default");
-                    let fallback = vaults.first();
-                    let selected = default.or(fallback);
-                    if let Some(vault) = selected {
-                        active_vault.0.set(vault.id);
-                    }
                 }
+                // Fallback "Default/first vault" is handled by the reactive use_effect below
             }
             theme_fetched.set(true);
             auto_update_fetched.set(true);
             auto_logout_settings_fetched.set(true);
+        }
+    });
+
+    // Fallback: set default vault when vault list loads but settings had no active_vault_id
+    use_effect(move || {
+        let already_set = active_vault.0.read().is_some();
+        if already_set {
+            return; // Already set by settings — don't override
+        }
+        let vaults = vaults_resource.read().as_ref().cloned().unwrap_or_default();
+        let default = vaults.iter().find(|v| v.name == "Default");
+        let fallback = vaults.first();
+        if let Some(vault) = default.or(fallback) {
+            active_vault.0.set(vault.id);
         }
     });
 
