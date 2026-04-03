@@ -136,6 +136,7 @@ pub fn VaultActionDialog(
         let mut open = open_clone;
         let on_confirm = on_confirm;
         let toast = toast;
+        let mut creating = is_creating;
         spawn(async move {
             match create_vault(&pool, user_id, name_val.trim().to_string(), desc).await {
                 Ok(vault) => {
@@ -144,6 +145,7 @@ pub fn VaultActionDialog(
                     open.set(false);
                 }
                 Err(e) => {
+                    creating.set(false);
                     show_toast_error(format!("Failed to create vault: {}", e), toast);
                 }
             }

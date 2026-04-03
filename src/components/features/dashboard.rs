@@ -126,6 +126,13 @@ pub fn Dashboard() -> Element {
     let mut vault_action_dialog_open = use_signal(|| false);
     let mut current_vault_action = use_signal(|| VaultAction::Move);
 
+    // Reactive signal for vault combobox disabled state
+    let mut vaults_empty = use_signal(|| true);
+    use_effect(move || {
+        let v = vaults_resource.read().as_ref().cloned().unwrap_or_default();
+        vaults_empty.set(v.is_empty());
+    });
+
     // Resource per fetch completa (ordinamento delegato al DB)
     // Reagisce a: active_vault_id, current_table_order, pagination.active_filter()
     let mut sorted_passwords_resource = use_resource(move || {
@@ -361,10 +368,9 @@ pub fn Dashboard() -> Element {
                     }
                     // Vault selector Combobox
                     {
-                        let vaults = vaults_resource.read().as_ref().cloned().unwrap_or_default();
-                        let is_empty = vaults.is_empty();
                         let vault_key = active_vault_id().unwrap_or(-1);
                         let selected = active_vault_id();
+                        let is_empty = vaults_empty();
                         rsx! {
                             Combobox::<i64> {
                                 key: "{vault_key}",
@@ -372,7 +378,7 @@ pub fn Dashboard() -> Element {
                                 placeholder: if is_empty { "Create a vault first".to_string() } else { "Select Vault".to_string() },
                                 size: ComboboxSize::Medium,
                                 selected_value: selected,
-                                disabled: Signal::new(is_empty),
+                                disabled: vaults_empty,
                                 on_change: move |v| {
                                     active_vault_id.set(v);
                                 },
@@ -538,7 +544,8 @@ pub fn Dashboard() -> Element {
                             stats_res.restart();
                         }
                         Err(e) => {
-                            show_toast_error(format!("Failed: {}", e), toast);
+                            let action_word = if action == VaultAction::Move { "move" } else { "clone" };
+                            show_toast_error(format!("Failed to {} passwords: {}", action_word, e), toast);
                         }
                     }
                 });
