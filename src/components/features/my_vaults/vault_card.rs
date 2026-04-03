@@ -10,6 +10,7 @@ pub fn VaultCard(
     vault: Vault,
     password_count: u64,
     #[props(default)] is_selected: bool,
+    on_select: EventHandler<Vault>,
     on_edit: EventHandler<Vault>,
     on_delete: EventHandler<Vault>,
 ) -> Element {
@@ -22,9 +23,10 @@ pub fn VaultCard(
     rsx! {
         div {
             class: format!(
-                "card card-side bg-base-100 shadow-sm pwd-vault-card{}",
+                "card card-side bg-base-100 shadow-sm pwd-vault-card cursor-pointer{}",
                 if is_selected { " pwd-vault-selected" } else { "" }
             ),
+            onclick: move |_| on_select.call(vault.clone()),
             div { class: "card-body p-4",
                 h3 { class: "card-title text-base", "{vault.name}" }
                 p { class: "text-sm text-base-content/60",

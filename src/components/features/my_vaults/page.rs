@@ -16,7 +16,6 @@ use crate::components::{
     VaultEditDialog, show_toast_error, use_toast,
 };
 use dioxus::prelude::*;
-use pwd_dioxus::{Combobox, ComboboxSize};
 use pwd_types::Vault;
 use rfd::FileDialog;
 use sqlx::SqlitePool;
@@ -49,30 +48,9 @@ pub fn MyVaults() -> Element {
     let active_vault_state = use_context::<ActiveVaultState>();
     let mut active_vault_id = active_vault_state.0;
 
-    // Vault combobox options
-    let vault_options = use_memo(move || {
-        let vaults = vaults_resource.read().as_ref().cloned().unwrap_or_default();
-        let opts: Vec<(&'static str, Option<i64>)> = vaults
-            .iter()
-            .map(|v| {
-                let name = Box::leak(v.name.clone().into_boxed_str()) as &'static str;
-                (name, Some(v.id.unwrap_or(0)))
-            })
-            .collect();
-        opts
-    });
-
     // Derive computed state for toolbar
-    let is_empty = use_memo(move || vaults_resource.read().as_ref().is_none_or(|v| v.is_empty()));
     let selected: Option<i64> = active_vault_id.read().as_ref().copied();
     let has_selection = selected.is_some();
-    let vault_key = selected.unwrap_or(-1);
-
-    // Refresh password counts when active vault changes (for dashboard sync)
-    use_effect(move || {
-        let _ = *active_vault_id.read();
-        vaults_resource.restart();
-    });
 
     // Password count per vault
     let mut password_counts = use_signal(std::collections::HashMap::<i64, u64>::new);
@@ -150,6 +128,10 @@ pub fn MyVaults() -> Element {
     let mut on_edit_click = move |vault: Vault| {
         edit_vault.set(Some(vault));
         edit_dialog_open.set(true);
+    };
+
+    let mut on_select_vault = move |vault: Vault| {
+        active_vault_id.set(vault.id);
     };
 
     let mut on_delete_click = move |vault: Vault| {
@@ -520,22 +502,6 @@ pub fn MyVaults() -> Element {
             // Import/Export/Delete All bar
             div { class: "flex flex-wrap items-center gap-2 mb-6",
 
-                // Vault selector Combobox
-                Combobox::<i64> {
-                    key: "{vault_key}",
-                    options: vault_options(),
-                    placeholder: if is_empty() { "Create a vault first".to_string() } else { "Select Vault".to_string() },
-                    size: ComboboxSize::Medium,
-                    selected_value: selected,
-                    disabled: is_empty,
-                    on_change: move |v: Option<i64>| {
-                        active_vault_id.set(v);
-                    },
-                }
-
-                // Spacer
-                div { class: "divider divider-horizontal mx-1" }
-
                 // Import dropdown
                 div { class: "dropdown",
                     div {
@@ -639,6 +605,9 @@ pub fn MyVaults() -> Element {
                                     vault: vault_clone,
                                     password_count: count,
                                     is_selected,
+                                    on_select: move |v: Vault| {
+                                        on_select_vault(v);
+                                    },
                                     on_edit: move |v: Vault| {
                                         on_edit_click(v);
                                     },

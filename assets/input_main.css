@@ -2262,6 +2262,6 @@ button[class*="btn-"] {
 }
 
 .pwd-vault-selected {
-    border: 2px solid oklch(var(--p));
-    box-shadow: 0 0 12px oklch(var(--p) / 0.15);
+    box-shadow: 0 0 8px 2px oklch(0.65 0.2 250 / 0.3),
+                0 0 16px 4px oklch(0.65 0.2 250 / 0.15);
 }
