@@ -63,7 +63,7 @@ pub fn MyVaults() -> Element {
     });
 
     // Derive computed state for toolbar
-    let is_empty = vaults_resource.read().as_ref().map_or(true, |v| v.is_empty());
+    let is_empty = use_memo(move || vaults_resource.read().as_ref().map_or(true, |v| v.is_empty()));
     let selected: Option<i64> = active_vault_id.read().as_ref().copied();
     let has_selection = selected.is_some();
     let vault_key = selected.unwrap_or(-1);
@@ -524,10 +524,10 @@ pub fn MyVaults() -> Element {
                 Combobox::<i64> {
                     key: "{vault_key}",
                     options: vault_options(),
-                    placeholder: if is_empty { "Create a vault first".to_string() } else { "Select Vault".to_string() },
+                    placeholder: if is_empty() { "Create a vault first".to_string() } else { "Select Vault".to_string() },
                     size: ComboboxSize::Medium,
                     selected_value: selected,
-                    disabled: Signal::new(is_empty),
+                    disabled: is_empty,
                     on_change: move |v: Option<i64>| {
                         active_vault_id.set(v);
                     },
