@@ -16,6 +16,8 @@ Rust - Dioxus
 </p>
 ---
 
+[![Latest release](https://shields.io)](https://github.com/LucioPg/PWDManager)
+
 ## Why PWDManager
 
 Most password managers rely on cloud infrastructure or SaaS subscriptions. Even when they advertise end-to-end
