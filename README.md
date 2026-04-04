@@ -1,3 +1,4 @@
+<p>Download for windows:</p>
 ![GitHub Release](https://img.shields.io/github/v/release/LucioPg/PWDManager)
 
 <p align="center">
