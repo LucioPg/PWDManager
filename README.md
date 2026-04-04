@@ -1,3 +1,5 @@
+![GitHub Release](https://img.shields.io/github/v/release/LucioPg/PWDManager)
+
 <p align="center">
   <img src="assets/logo.png" alt="PWDManager" width="400">
 </p>
@@ -15,8 +17,6 @@ Rust - Dioxus
 <a href="https://github.com/LucioPg/PWDManager" alt="Repository link">PWDManager</a>
 </p>
 ---
-
-[![Latest release](https://shields.io)](https://github.com/LucioPg/PWDManager)
 
 ## Why PWDManager
 
