@@ -149,7 +149,7 @@ pub fn DicewareSettings() -> Element {
                         options: options.clone(),
                         placeholder: "Select language".to_string(),
                         on_change: move |v| current_language.set(v),
-                        selected_value: *current_language.read(),
+                        selected_value: current_language,
                     }
                 }
 

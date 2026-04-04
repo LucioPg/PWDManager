@@ -252,7 +252,7 @@ pub fn GeneralSettings() -> Element {
                     placeholder: "Select timer".to_string(),
                     on_change: move |v| auto_logout_settings.set(v),
                     disabled: auto_logout_toggle,
-                    selected_value: *auto_logout_settings.read(),
+                    selected_value: auto_logout_settings,
                 }
             }
             div { class: "flex flex-row justify-end gap-2 mt-2",

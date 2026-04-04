@@ -357,7 +357,6 @@ pub fn Dashboard() -> Element {
                     // Vault selector Combobox
                     {
                         let vault_key = active_vault_id().unwrap_or(-1);
-                        let selected = active_vault_id();
                         let is_empty = vaults_empty();
                         rsx! {
                             Combobox::<i64> {
@@ -365,7 +364,7 @@ pub fn Dashboard() -> Element {
                                 options: vault_options(),
                                 placeholder: if is_empty { "Create a vault first".to_string() } else { "Select Vault".to_string() },
                                 size: ComboboxSize::Medium,
-                                selected_value: selected,
+                                selected_value: active_vault_id,
                                 disabled: vaults_empty,
                                 on_change: move |v| {
                                     active_vault_id.set(v);
