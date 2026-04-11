@@ -4,8 +4,8 @@
 
 use super::base_modal::ModalVariant;
 use crate::auth::AuthState;
-use crate::backend::vault_utils::{create_vault, fetch_vaults_by_user};
-use crate::components::{ActionButton, ButtonSize, ButtonType, ButtonVariant, show_toast_error, use_toast};
+use crate::backend::vault_utils::create_vault;
+use crate::components::{ActionButton, ButtonSize, ButtonType, ButtonVariant, VaultListState, show_toast_error, use_toast};
 use dioxus::prelude::*;
 use pwd_dioxus::Combobox;
 use pwd_types::StoredRawPassword;
@@ -51,20 +51,8 @@ pub fn VaultActionDialog(
         }
     });
 
-    // Fetch vault list
-    let pool_for_resource = pool.clone();
-    let vaults_resource = use_resource(move || {
-        let pool = pool_for_resource.clone();
-        let user_id = user_id;
-        async move {
-            if user_id == -1 {
-                return Vec::new();
-            }
-            fetch_vaults_by_user(&pool, user_id)
-                .await
-                .unwrap_or_default()
-        }
-    });
+    // Shared vault list from context (provided by AuthWrapper)
+    let vaults_resource = use_context::<VaultListState>().0;
 
     // Build combobox options
     // Move: filter out current vault. Clone: include all vaults.
