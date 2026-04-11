@@ -2,13 +2,13 @@
 // Licensed under the Prosperity Public License 3.0.0
 // Commercial use requires a license. See LICENSE.md for details.
 
+use crate::Route;
 use crate::backend::db_backend::delete_vault_passwords;
 use crate::backend::export_types::ExportFormat;
 use crate::backend::import::validate_import_path;
 use crate::backend::vault_utils::fetch_password_count_by_vault;
-use crate::components::globals::{ActiveVaultState, VaultListState};
-use crate::Route;
 use crate::components::globals::spinner::{Spinner, SpinnerSize};
+use crate::components::globals::{ActiveVaultState, VaultListState};
 use crate::components::globals::{
     ExportProgressDialog, ExportWarningDialog, ImportProgressDialog, ImportWarningDialog,
 };
@@ -34,7 +34,7 @@ pub fn MyVaults() -> Element {
     let mut vaults_resource = use_context::<VaultListState>().0;
 
     // Active vault state for import/export/delete scope
-    let active_vault_state = use_context::<ActiveVaultState>();
+    let mut active_vault_state = use_context::<ActiveVaultState>();
     let mut active_vault_id = active_vault_state.0;
 
     // Derive computed state for toolbar
@@ -120,12 +120,21 @@ pub fn MyVaults() -> Element {
     };
 
     let mut on_select_vault = move |vault: Vault| {
-        active_vault_id.set(vault.id);
+        active_vault_state.0.set(vault.id);
+        // active_vault_id.set(vault.id);
     };
 
     let nav = use_navigator();
     let mut on_open_vault = move |vault: Vault| {
-        active_vault_id.set(vault.id);
+        println!("Open vault: {:?}", vault.id);
+        if let Some(id) = vault.id {
+            if let Ok(mut guard) =
+                crate::components::globals::PENDING_ACTIVE_VAULT.lock()
+            {
+                *guard = Some(id);
+            }
+        }
+        active_vault_state.0.set(vault.id);
         nav.push(Route::Dashboard);
     };
 
