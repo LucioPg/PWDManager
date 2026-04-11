@@ -41,6 +41,10 @@ pub fn MyVaults() -> Element {
     let selected: Option<i64> = active_vault_id.read().as_ref().copied();
     let has_selection = selected.is_some();
 
+    let vaults = vaults_resource.read().as_ref().cloned().unwrap_or_default();
+    let has_vaults = !vaults.is_empty();
+    let toolbar_enabled = has_vaults && has_selection;
+
     // Password count per vault
     let mut password_counts = use_signal(std::collections::HashMap::<i64, u64>::new);
 
@@ -482,7 +486,6 @@ pub fn MyVaults() -> Element {
 
     // --- Render ---
 
-    let vaults = vaults_resource.read().as_ref().cloned().unwrap_or_default();
     let counts = password_counts.read();
 
     rsx! {
@@ -509,7 +512,7 @@ pub fn MyVaults() -> Element {
                     div {
                         tabindex: "0",
                         role: "button",
-                        class: if has_selection { "btn btn-sm" } else { "btn btn-sm btn-disabled" },
+                        class: if toolbar_enabled { "btn btn-sm" } else { "btn btn-sm btn-disabled" },
                         "Import"
                     }
                     ul {
@@ -532,7 +535,7 @@ pub fn MyVaults() -> Element {
                     div {
                         tabindex: "0",
                         role: "button",
-                        class: if has_selection { "btn btn-sm" } else { "btn btn-sm btn-disabled" },
+                        class: if toolbar_enabled { "btn btn-sm" } else { "btn btn-sm btn-disabled" },
                         "Export"
                     }
                     ul {
@@ -553,8 +556,8 @@ pub fn MyVaults() -> Element {
                 // Delete All (scoped to active vault)
                 button {
                     r#type: "button",
-                    class: if has_selection { "btn btn-sm btn-ghost text-error hover:bg-error hover:text-error-content ml-auto" } else { "btn btn-sm btn-disabled ml-auto" },
-                    disabled: !has_selection,
+                    class: if toolbar_enabled { "btn btn-sm btn-ghost text-error hover:bg-error hover:text-error-content ml-auto" } else { "btn btn-sm btn-disabled ml-auto" },
+                    disabled: !toolbar_enabled,
                     onclick: on_warning_open,
                     "Delete All Passwords"
                 }
