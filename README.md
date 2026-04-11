@@ -1,3 +1,6 @@
+<p>Download for windows:</p>
+![GitHub Release](https://img.shields.io/github/v/release/LucioPg/PWDManager)
+
 <p align="center">
   <img src="assets/logo.png" alt="PWDManager" width="400">
 </p>
@@ -8,7 +11,12 @@
   <strong>A lightweight, local-first password manager for Windows.</strong><br>
   No cloud. No subscriptions. No telemetry. Your passwords stay on your machine.
 </p>
-
+<p align="center">
+Rust - Dioxus
+</p>
+<p align="center">
+<a href="https://github.com/LucioPg/PWDManager" alt="Repository link">PWDManager</a>
+</p>
 ---
 
 ## Why PWDManager

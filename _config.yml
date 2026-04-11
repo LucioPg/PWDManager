@@ -1,0 +1,7 @@
+title: PWDManager
+description: A lightweight, local-first password manager for Windows, written in rust, powered by dioxus. No cloud. No subscriptions. No telemetry. Your passwords stay on your machine.
+show_downloads: false
+google_site_verification: google6bfda6adb63f0f7c.html
+remote_theme: pages-themes/cayman@v0.2.0
+plugins:
+  - jekyll-remote-theme
