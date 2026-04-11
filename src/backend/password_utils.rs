@@ -436,6 +436,7 @@ pub async fn get_stored_raw_passwords(
 /// # Returns
 /// * `Ok(Vec<StoredRawPassword>)` - Tutte le password decifrate
 /// * `Err(DBError)` - Errore database o decriptazione
+#[allow(dead_code)]
 pub async fn get_all_stored_raw_passwords_with_filter(
     pool: &SqlitePool,
     user_id: i64,
