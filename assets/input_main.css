@@ -713,6 +713,13 @@ ul.menu[style*="position: fixed"] {
     overflow-y: auto;
 }
 
+/* In dark theme, dropdown menus and lists need a lighter background
+   to distinguish them from the page background (base-100 ≈ base-200 in dark). */
+[data-theme="dark"] .dropdown-content,
+[data-theme="dark"] ul.menu[style*="position: fixed"] {
+    background-color: oklch(0.25 0.01 260);
+}
+
 /* Vault card */
 @utility pwd-vault-card {
     @apply hover:shadow-md transition-shadow duration-200;
