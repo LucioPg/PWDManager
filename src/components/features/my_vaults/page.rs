@@ -35,7 +35,7 @@ pub fn MyVaults() -> Element {
 
     // Active vault state for import/export/delete scope
     let mut active_vault_state = use_context::<ActiveVaultState>();
-    let mut active_vault_id = active_vault_state.0;
+    let active_vault_id = active_vault_state.0;
 
     // Derive computed state for toolbar
     let selected: Option<i64> = active_vault_id.read().as_ref().copied();
@@ -127,12 +127,10 @@ pub fn MyVaults() -> Element {
     let nav = use_navigator();
     let mut on_open_vault = move |vault: Vault| {
         println!("Open vault: {:?}", vault.id);
-        if let Some(id) = vault.id {
-            if let Ok(mut guard) =
-                crate::components::globals::PENDING_ACTIVE_VAULT.lock()
-            {
-                *guard = Some(id);
-            }
+        if let Some(id) = vault.id
+            && let Ok(mut guard) = crate::components::globals::PENDING_ACTIVE_VAULT.lock()
+        {
+            *guard = Some(id);
         }
         active_vault_state.0.set(vault.id);
         nav.push(Route::Dashboard);
