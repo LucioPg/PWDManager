@@ -82,7 +82,7 @@ pub fn Dashboard() -> Element {
 
     // Vault state
     let mut active_vault_state = use_context::<ActiveVaultState>();
-    let mut active_vault_id = active_vault_state.0;
+    let active_vault_id = active_vault_state.0;
     println!("initial active vault id {:#?}", active_vault_id(),);
     // Vault list resource (shared via VaultListState from AuthWrapper)
     #[allow(unused_mut)]
