@@ -9,15 +9,14 @@ use crate::backend::db_backend::{
 use crate::backend::password_utils::{
     clone_passwords_to_vault, get_all_stored_raw_passwords_for_vault_with_filter,
 };
-use crate::components::globals::{ActiveVaultState, VaultListState};
 use crate::components::globals::StatsAside;
 use crate::components::globals::pagination::{PaginationControls, PaginationState};
 use crate::components::globals::spinner::{Spinner, SpinnerSize};
 use crate::components::globals::types::TableOrder;
+use crate::components::globals::{ActiveVaultState, VaultListState};
 use crate::components::{
-    BulkActionBar, StoredPasswordDeletionDialog,
-    StoredPasswordShowDialog, StoredPasswordUpsertDialog, StoredRawPasswordsTable,
-    VaultAction, VaultActionDialog,
+    BulkActionBar, StoredPasswordDeletionDialog, StoredPasswordShowDialog,
+    StoredPasswordUpsertDialog, StoredRawPasswordsTable, VaultAction, VaultActionDialog,
     show_toast_error, use_toast,
 };
 use custom_errors::DBError;
@@ -82,9 +81,9 @@ pub fn Dashboard() -> Element {
     let user_id = user_id_option.unwrap_or(-1);
 
     // Vault state
-    let active_vault_state = use_context::<ActiveVaultState>();
+    let mut active_vault_state = use_context::<ActiveVaultState>();
     let mut active_vault_id = active_vault_state.0;
-
+    println!("initial active vault id {:#?}", active_vault_id(),);
     // Vault list resource (shared via VaultListState from AuthWrapper)
     #[allow(unused_mut)]
     let mut vaults_resource = use_context::<VaultListState>().0;
@@ -276,6 +275,7 @@ pub fn Dashboard() -> Element {
 
     // Restart resources when active vault changes
     use_effect(move || {
+        println!("Active vault changed: {:?}", *active_vault_id.read());
         let _ = *active_vault_id.read();
         pagination.go_to_page(0);
         selected_ids.set(HashSet::new());
@@ -368,7 +368,8 @@ pub fn Dashboard() -> Element {
                                 selected_value: selected,
                                 disabled: vaults_empty,
                                 on_change: move |v| {
-                                    active_vault_id.set(v);
+                                    println!("Selected vault: {:?}", v);
+                                    active_vault_state.0.set(v);
                                 },
                             }
                         }
@@ -532,8 +533,15 @@ pub fn Dashboard() -> Element {
                             stats_res.restart();
                         }
                         Err(e) => {
-                            let action_word = if action == VaultAction::Move { "move" } else { "clone" };
-                            show_toast_error(format!("Failed to {} passwords: {}", action_word, e), toast);
+                            let action_word = if action == VaultAction::Move {
+                                "move"
+                            } else {
+                                "clone"
+                            };
+                            show_toast_error(
+                                format!("Failed to {} passwords: {}", action_word, e),
+                                toast,
+                            );
                         }
                     }
                 });

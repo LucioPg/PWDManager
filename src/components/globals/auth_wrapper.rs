@@ -12,7 +12,11 @@ use crate::backend::vault_utils::fetch_vaults_by_user;
 use dioxus::desktop::use_wry_event_handler;
 use dioxus::prelude::*;
 use sqlx::SqlitePool;
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
+
+/// Bridge for carrying the active vault ID across AuthWrapper re-mounts (e.g., navigation).
+pub static PENDING_ACTIVE_VAULT: Mutex<Option<i64>> = Mutex::new(None);
 
 /// Stato condiviso del vault attivo, accessibile via `use_context`.
 #[derive(Clone, Copy, Default)]
@@ -34,7 +38,12 @@ pub fn AuthWrapper() -> Element {
     #[allow(unused_mut)]
     let mut auto_logout_settings = use_context::<Signal<Option<AutoLogoutSettings>>>();
     // Stato del vault attivo
-    let mut active_vault = use_context_provider(|| ActiveVaultState(Signal::new(None)));
+    let pending_vault = PENDING_ACTIVE_VAULT
+        .lock()
+        .map(|mut g| g.take())
+        .unwrap_or(None);
+    let mut active_vault =
+        use_context_provider(move || ActiveVaultState(Signal::new(pending_vault)));
     // Flag per fetch unico dei settings
     #[allow(unused_mut)]
     let mut theme_fetched = use_signal(|| false);
