@@ -3,11 +3,15 @@
 // Commercial use requires a license. See LICENSE.md for details.
 
 use super::base_modal::ModalVariant;
-use crate::backend::vault_utils::create_vault;
 use crate::auth::AuthState;
+use crate::backend::vault_utils::create_vault;
 use crate::components::globals::auth_wrapper::ActiveVaultState;
-use crate::components::{ActionButton, ButtonSize, ButtonType, ButtonVariant, show_toast_error, use_toast};
+use crate::components::{
+    ActionButton, ButtonSize, ButtonType, ButtonVariant, show_toast_error, use_toast,
+};
 use dioxus::prelude::*;
+use pwd_dioxus::InputType;
+use pwd_dioxus::form::FormField;
 use sqlx::SqlitePool;
 
 #[component]
@@ -95,25 +99,33 @@ pub fn VaultCreateDialog(
 
             // Name field
             div { class: "form-control w-full",
-                label { class: "label", span { class: "label-text", "Name *" } }
-                input {
-                    class: "input input-bordered w-full",
-                    r#type: "text",
+                label { class: "label",
+                    span { class: "label-text", "Name *" }
+                }
+                FormField {
+                    class: "w-full",
+                    label: String::new(),
+                    input_type: InputType::Text,
+                    value: name,
                     placeholder: "Vault name",
-                    value: "{name}",
-                    oninput: move |e| name.set(e.value()),
+                    on_change: move |e| name.set(e),
+                
                 }
             }
 
             // Description field
             div { class: "form-control w-full mt-4",
-                label { class: "label", span { class: "label-text", "Description" } }
-                input {
-                    class: "input input-bordered w-full",
-                    r#type: "text",
+                label { class: "label",
+                    span { class: "label-text", "Description" }
+                }
+                FormField {
+                    class: "w-full",
+                    label: String::new(),
+                    input_type: InputType::Text,
+                    value: description,
                     placeholder: "Optional description",
-                    value: "{description().unwrap_or_default()}",
-                    oninput: move |e| description.set(Some(e.value())),
+                    on_change: move |e| description.set(e),
+                
                 }
             }
 
