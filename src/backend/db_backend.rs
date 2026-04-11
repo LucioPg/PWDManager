@@ -5,7 +5,7 @@
 #![allow(dead_code)]
 #[cfg(feature = "desktop")]
 use crate::backend::db_key;
-use crate::backend::init_queries::QUERIES;
+use crate::backend::init_queries::{QUERIES, run_migrations};
 use crate::backend::settings_types::{DicewareGenerationSettings, UserSettings};
 use crate::backend::utils::verify_password;
 use custom_errors::{AuthError, DBError};
@@ -122,6 +122,9 @@ async fn run_init_queries(pool: &SqlitePool) -> Result<(), DBError> {
             .await
             .map_err(|e| DBError::new_general_error(format!("Failed to create table: {}", e)))?;
     }
+
+    run_migrations(pool).await?;
+
     Ok(())
 }
 
@@ -218,7 +221,10 @@ pub async fn init_db() -> Result<InitResult, DBError> {
             let connect_options = build_sqlcipher_options(&db_path, &key)?;
 
             match SqlitePool::connect_with(connect_options).await {
-                Ok(pool) => Ok(InitResult::Ready(pool)),
+                Ok(pool) => {
+                    run_migrations(&pool).await?;
+                    Ok(InitResult::Ready(pool))
+                }
                 Err(e) => {
                     tracing::warn!("DB open failed with keyring key: {}", e);
                     Err(DBError::new_key_missing_with_db())

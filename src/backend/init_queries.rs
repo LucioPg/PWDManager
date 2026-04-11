@@ -14,6 +14,21 @@
 //! - **passwords**: Tabella password criptate con AES-256-GCM, con foreign key verso users e vaults
 //! - **user_settings**: Tabella settings generali utente (relazione 1:1 con users)
 //! - **passwords_generation_settings**: Tabella settings per generazione password
+//!
+//! # Migrazioni Schema
+//!
+//! Il modulo fornisce anche [`run_migrations`] per gestire l'evoluzione dello
+//! schema nel tempo. Viene chiamato ad ogni avvio dopo [`run_init_queries`].
+//!
+//! ## Logica di rilevamento
+//!
+//! Usa `PRAGMA table_info(tabella)` per verificare se le colonne vault esistono.
+//! Se mancano, esegue l'ALTER TABLE, crea un vault "Default" per ogni utente esistente,
+//! e migra le password assegnandole al vault default.
+
+use custom_errors::DBError;
+use sqlx::{Row, SqlitePool, query};
+use tracing;
 
 /// Query SQL di inizializzazione del database.
 ///
@@ -126,3 +141,140 @@ pub static QUERIES: &[&str] = &[
                 UNIQUE (settings_id)
     )",
 ];
+
+/// Checks if a column exists in a table.
+async fn column_exists(pool: &SqlitePool, table: &str, column: &str) -> Result<bool, DBError> {
+    let sql = format!("PRAGMA table_info('{}')", table);
+    let rows = query(&sql)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| DBError::new_general_error(format!("Failed to check schema: {}", e)))?;
+
+    Ok(rows.iter().any(|row| {
+        row.try_get::<&str, _>("name")
+            .map(|name| name == column)
+            .unwrap_or(false)
+    }))
+}
+
+/// Runs database migrations for schema evolution.
+///
+/// Called after `run_init_queries` on every startup.
+/// Checks if vault-related columns exist and adds them if missing,
+/// creating a default vault for each existing user and migrating
+/// existing passwords to that vault.
+///
+/// This function is idempotent: running it multiple times has no effect
+/// if the schema is already up to date.
+pub async fn run_migrations(pool: &SqlitePool) -> Result<(), DBError> {
+    // Check if passwords table has vault_id column
+    let vault_id_exists = column_exists(pool, "passwords", "vault_id").await?;
+
+    if !vault_id_exists {
+        tracing::info!("Migration: adding vault_id column to passwords table");
+
+        // Step 1: Add vault_id column with default 0
+        // We use DEFAULT 0 instead of NOT NULL because SQLite ALTER TABLE
+        // doesn't support NOT NULL without a default on existing tables.
+        // The value 0 is a placeholder; we'll update all rows to valid vault IDs.
+        query("ALTER TABLE passwords ADD COLUMN vault_id INTEGER NOT NULL DEFAULT 0")
+            .execute(pool)
+            .await
+            .map_err(|e| {
+                DBError::new_general_error(format!(
+                    "Failed to add vault_id column: {}",
+                    e
+                ))
+            })?;
+
+        // Step 2: Ensure vaults table exists (redundant with QUERIES, but safe)
+        query("CREATE TABLE IF NOT EXISTS vaults (
+                    id INTEGER PRIMARY KEY,
+                    user_id INTEGER NOT NULL,
+                    name TEXT NOT NULL,
+                    description TEXT,
+                    created_at TEXT DEFAULT (datetime('now')),
+                    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    UNIQUE(user_id, name)
+                )")
+        .execute(pool)
+        .await
+        .map_err(|e| DBError::new_general_error(format!("Failed to create vaults table: {}", e)))?;
+
+        // Step 3: Create a default vault for each user
+        let user_ids: Vec<i64> = query("SELECT id FROM users")
+            .fetch_all(pool)
+            .await
+            .map_err(|e| DBError::new_general_error(format!("Failed to fetch users: {}", e)))?
+            .iter()
+            .map(|row| row.get::<i64, _>("id"))
+            .collect();
+
+        for user_id in &user_ids {
+            query("INSERT OR IGNORE INTO vaults (user_id, name) VALUES (?, 'Default')")
+                .bind(*user_id)
+                .execute(pool)
+                .await
+                .map_err(|e| {
+                    DBError::new_general_error(format!(
+                        "Failed to create default vault for user {}: {}",
+                        user_id, e
+                    ))
+                })?;
+        }
+
+        // Step 4: Migrate all passwords to their user's default vault
+        query("UPDATE passwords SET vault_id = (
+                    SELECT v.id FROM vaults v
+                    WHERE v.user_id = passwords.user_id
+                    AND v.name = 'Default'
+                )")
+        .execute(pool)
+        .await
+        .map_err(|e| {
+            DBError::new_general_error(format!("Failed to migrate passwords to vaults: {}", e))
+        })?;
+
+        tracing::info!(
+            "Migration: migrated {} passwords across {} users to default vaults",
+            user_ids.len(),
+            user_ids.len()
+        );
+    }
+
+    // Check if user_settings table has active_vault_id column
+    let active_vault_exists = column_exists(pool, "user_settings", "active_vault_id").await?;
+
+    if !active_vault_exists {
+        tracing::info!("Migration: adding active_vault_id column to user_settings table");
+
+        query("ALTER TABLE user_settings ADD COLUMN active_vault_id INTEGER REFERENCES vaults(id)")
+            .execute(pool)
+            .await
+            .map_err(|e| {
+                DBError::new_general_error(format!(
+                    "Failed to add active_vault_id column: {}",
+                    e
+                ))
+            })?;
+
+        // Set active_vault_id to each user's default vault
+        query("UPDATE user_settings SET active_vault_id = (
+                    SELECT v.id FROM vaults v
+                    WHERE v.user_id = user_settings.user_id
+                    AND v.name = 'Default'
+                )")
+        .execute(pool)
+        .await
+        .map_err(|e| {
+            DBError::new_general_error(format!(
+                "Failed to set active_vault_id: {}",
+                e
+            ))
+        })?;
+
+        tracing::info!("Migration: set active_vault_id for all users");
+    }
+
+    Ok(())
+}
