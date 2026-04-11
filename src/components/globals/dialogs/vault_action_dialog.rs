@@ -5,9 +5,13 @@
 use super::base_modal::ModalVariant;
 use crate::auth::AuthState;
 use crate::backend::vault_utils::create_vault;
-use crate::components::{ActionButton, ButtonSize, ButtonType, ButtonVariant, VaultListState, show_toast_error, use_toast};
+use crate::components::{
+    ActionButton, ButtonSize, ButtonType, ButtonVariant, VaultListState, show_toast_error,
+    use_toast,
+};
 use dioxus::prelude::*;
-use pwd_dioxus::Combobox;
+use pwd_dioxus::form::FormField;
+use pwd_dioxus::{Combobox, InputType};
 use pwd_types::StoredRawPassword;
 use sqlx::SqlitePool;
 
@@ -26,8 +30,7 @@ pub fn VaultActionDialog(
     selected_passwords: Vec<StoredRawPassword>,
     current_vault_id: i64,
     on_confirm: EventHandler<i64>,
-    #[props(default)]
-    on_cancel: EventHandler<()>,
+    #[props(default)] on_cancel: EventHandler<()>,
 ) -> Element {
     let pool = use_context::<SqlitePool>();
     let user_state = use_context::<AuthState>();
@@ -209,21 +212,23 @@ pub fn VaultActionDialog(
                     div {
                         div { class: "flex gap-2 items-center mb-2",
                             div { class: "flex-1",
-                                input {
-                                    class: "input input-bordered input-sm w-full",
-                                    r#type: "text",
+                                FormField {
+                                    class: "w-full",
+                                    input_type: InputType::Text,
                                     placeholder: "New vault name...",
-                                    value: "{new_vault_name}",
-                                    oninput: move |e| new_vault_name.set(e.value()),
+                                    value: new_vault_name,
+                                    on_change: move |v| new_vault_name.set(v),
+                                    label: String::new(),
                                 }
                             }
                         }
-                        input {
-                            class: "input input-bordered input-sm w-full",
-                            r#type: "text",
+                        FormField {
+                            class: "w-full",
+                            input_type: InputType::Text,
                             placeholder: "Description (optional)",
-                            value: "{new_vault_desc().unwrap_or_default()}",
-                            oninput: move |e| new_vault_desc.set(Some(e.value())),
+                            value: new_vault_desc,
+                            on_change: move |v| new_vault_desc.set(v),
+                            label: String::new(),
                         }
                     }
                 }
