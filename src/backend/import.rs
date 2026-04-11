@@ -505,4 +505,163 @@ mod tests {
         assert_eq!(unique.len(), 1);
         assert_eq!(dupes, 1);
     }
+
+    // ==================== PIPELINE INTEGRATION TESTS ====================
+
+    #[tokio::test]
+    async fn test_import_pipeline_json_with_db() {
+        use crate::backend::test_helpers::{create_test_user, create_test_vault, setup_test_db};
+        use tempfile::NamedTempFile;
+        use std::io::Write;
+
+        let pool = setup_test_db().await;
+        let (user_id, _) = create_test_user(&pool, "import_pipe_json", "Pass123!", None).await;
+        let (vault_id, _) = create_test_vault(&pool, user_id).await;
+
+        let json = r#"[
+            {"url":"site1.com","password":"pass1","name":"Site1","username":"user1"},
+            {"url":"site2.com","password":"pass2","name":"Site2","username":"user2"}
+        ]"#;
+
+        let mut file = NamedTempFile::with_suffix(".json").unwrap();
+        write!(file, "{}", json).unwrap();
+
+        let result = import_passwords_pipeline_with_progress(
+            &pool,
+            user_id,
+            vault_id,
+            file.path(),
+            ExportFormat::Json,
+            None,
+        )
+        .await;
+
+        assert!(result.is_ok(), "Import pipeline should succeed: {:?}", result);
+        let import_result = result.unwrap();
+        assert_eq!(import_result.imported_count, 2);
+        assert_eq!(import_result.total_in_file, 2);
+        assert_eq!(import_result.skipped_duplicates, 0);
+
+        // Verify passwords are in the DB
+        let passwords =
+            crate::backend::db_backend::fetch_all_stored_passwords_for_vault(&pool, vault_id)
+                .await
+                .expect("Should fetch passwords");
+        assert_eq!(passwords.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_import_pipeline_skips_db_duplicates() {
+        use crate::backend::password_utils::create_stored_data_pipeline_bulk;
+        use crate::backend::test_helpers::{create_test_user, create_test_vault, setup_test_db};
+        use secrecy::SecretString;
+        use tempfile::NamedTempFile;
+        use std::io::Write;
+
+        let pool = setup_test_db().await;
+        let (user_id, _) = create_test_user(&pool, "import_pipe_dedup", "Pass123!", None).await;
+        let (vault_id, _) = create_test_vault(&pool, user_id).await;
+
+        // Pre-insert one password in the DB
+        let existing = pwd_types::StoredRawPassword {
+            uuid: uuid::Uuid::new_v4(),
+            id: None,
+            user_id,
+            vault_id,
+            name: "Site1".to_string(),
+            username: SecretString::new("user1".into()),
+            url: SecretString::new("site1.com".into()),
+            password: SecretString::new("pass1".into()),
+            notes: None,
+            score: None,
+            created_at: None,
+        };
+        create_stored_data_pipeline_bulk(&pool, user_id, vec![existing])
+            .await
+            .expect("Should insert existing password");
+
+        // Try to import the same password
+        let json = r#"[
+            {"url":"site1.com","password":"pass1","name":"Site1","username":"user1"},
+            {"url":"site2.com","password":"pass2","name":"Site2","username":"user2"}
+        ]"#;
+
+        let mut file = NamedTempFile::with_suffix(".json").unwrap();
+        write!(file, "{}", json).unwrap();
+
+        let result = import_passwords_pipeline_with_progress(
+            &pool,
+            user_id,
+            vault_id,
+            file.path(),
+            ExportFormat::Json,
+            None,
+        )
+        .await;
+
+        assert!(result.is_ok(), "Import pipeline should succeed: {:?}", result);
+        let import_result = result.unwrap();
+        assert_eq!(import_result.imported_count, 1, "Should import only the new password");
+        assert_eq!(import_result.skipped_duplicates, 1, "Should skip the DB duplicate");
+        assert_eq!(import_result.total_in_file, 2);
+    }
+
+    #[tokio::test]
+    async fn test_import_pipeline_csv_format() {
+        use crate::backend::test_helpers::{create_test_user, create_test_vault, setup_test_db};
+        use tempfile::NamedTempFile;
+        use std::io::Write;
+
+        let pool = setup_test_db().await;
+        let (user_id, _) = create_test_user(&pool, "import_pipe_csv", "Pass123!", None).await;
+        let (vault_id, _) = create_test_vault(&pool, user_id).await;
+
+        let csv = "url,password,notes,score,created_at\nsite1.com,pass1,note1,80,2024-01-01";
+
+        let mut file = NamedTempFile::with_suffix(".csv").unwrap();
+        write!(file, "{}", csv).unwrap();
+
+        let result = import_passwords_pipeline_with_progress(
+            &pool,
+            user_id,
+            vault_id,
+            file.path(),
+            ExportFormat::Csv,
+            None,
+        )
+        .await;
+
+        assert!(result.is_ok(), "CSV import should succeed: {:?}", result);
+        let import_result = result.unwrap();
+        assert_eq!(import_result.imported_count, 1);
+    }
+
+    #[tokio::test]
+    async fn test_import_pipeline_empty_file() {
+        use crate::backend::test_helpers::{create_test_user, create_test_vault, setup_test_db};
+        use tempfile::NamedTempFile;
+        use std::io::Write;
+
+        let pool = setup_test_db().await;
+        let (user_id, _) = create_test_user(&pool, "import_pipe_empty", "Pass123!", None).await;
+        let (vault_id, _) = create_test_vault(&pool, user_id).await;
+
+        let mut file = NamedTempFile::with_suffix(".json").unwrap();
+        write!(file, "[]").unwrap();
+
+        let result = import_passwords_pipeline_with_progress(
+            &pool,
+            user_id,
+            vault_id,
+            file.path(),
+            ExportFormat::Json,
+            None,
+        )
+        .await;
+
+        assert!(result.is_ok());
+        let import_result = result.unwrap();
+        assert_eq!(import_result.imported_count, 0);
+        assert_eq!(import_result.total_in_file, 0);
+    }
 }

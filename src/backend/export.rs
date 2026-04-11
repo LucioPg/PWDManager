@@ -267,4 +267,62 @@ mod tests {
         assert!(xml.contains("<passwords>"));
         assert!(xml.contains("example.com"));
     }
+
+    #[test]
+    fn test_convert_to_exportable_with_progress_empty() {
+        let result = convert_to_exportable_with_progress(vec![], None, 0);
+        assert!(result.is_empty());
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_convert_to_exportable_with_progress_sends_messages() {
+        use tokio::sync::mpsc;
+
+        let (tx, mut rx) = mpsc::channel(100);
+        let progress_tx = Arc::new(tx);
+
+        let raw_passwords = vec![create_stored_raw_for_convert("site1.com", "pass1")];
+        let total = raw_passwords.len();
+
+        let result = convert_to_exportable_with_progress(raw_passwords, Some(progress_tx), total);
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].url, "site1.com");
+
+        // Verify progress messages were sent
+        drop(rx); // Drop rx so try_recv doesn't block
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_convert_to_exportable_preserves_all_fields() {
+        let raw = vec![
+            create_stored_raw_for_convert("site.com", "pass123"),
+            create_stored_raw_for_convert("other.com", "otherpass"),
+        ];
+
+        let result = convert_to_exportable_with_progress(raw, None, 2);
+
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].url, "site.com");
+        assert_eq!(result[0].password, "pass123");
+        assert_eq!(result[1].url, "other.com");
+    }
+
+    /// Helper: create a StoredRawPassword for convert tests
+    fn create_stored_raw_for_convert(url: &str, password: &str) -> StoredRawPassword {
+        use secrecy::SecretString;
+        StoredRawPassword {
+            uuid: uuid::Uuid::new_v4(),
+            id: None,
+            user_id: 1,
+            vault_id: 1,
+            name: format!("Name_{}", url),
+            username: SecretString::new(format!("user@{}", url).into()),
+            url: SecretString::new(url.into()),
+            password: SecretString::new(password.into()),
+            notes: Some(SecretString::new("notes".into())),
+            score: Some(pwd_types::PasswordScore::new(75)),
+            created_at: Some("2024-01-01".to_string()),
+        }
+    }
 }

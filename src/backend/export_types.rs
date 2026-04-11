@@ -103,3 +103,132 @@ pub struct XmlExportRoot {
     #[serde(rename = "password")]
     pub passwords: Vec<ExportablePassword>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use secrecy::SecretString;
+
+    fn make_stored_raw(url: &str, password: &str, score: Option<u8>) -> pwd_types::StoredRawPassword {
+        pwd_types::StoredRawPassword {
+            uuid: uuid::Uuid::new_v4(),
+            id: None,
+            user_id: 42,
+            vault_id: 1,
+            name: format!("Name_{}", url),
+            username: SecretString::new(format!("user@{}", url).into()),
+            url: SecretString::new(url.into()),
+            password: SecretString::new(password.into()),
+            notes: Some(SecretString::new("test notes".into())),
+            score: score.map(pwd_types::PasswordScore::new),
+            created_at: Some("2024-06-15".to_string()),
+        }
+    }
+
+    #[test]
+    fn test_export_format_extension() {
+        assert_eq!(ExportFormat::Json.extension(), "json");
+        assert_eq!(ExportFormat::Csv.extension(), "csv");
+        assert_eq!(ExportFormat::Xml.extension(), "xml");
+    }
+
+    #[test]
+    fn test_export_format_default() {
+        assert_eq!(ExportFormat::default(), ExportFormat::Json);
+    }
+
+    #[test]
+    fn test_from_stored_raw_exposes_secrets() {
+        let stored = make_stored_raw("site.com", "secret123", Some(85));
+        let exportable = ExportablePassword::from_stored_raw(&stored);
+
+        assert_eq!(exportable.url, "site.com");
+        assert_eq!(exportable.password, "secret123");
+        assert_eq!(exportable.username, "user@site.com");
+        assert_eq!(exportable.notes, Some("test notes".to_string()));
+        assert_eq!(exportable.score, Some(85));
+        assert_eq!(exportable.created_at, Some("2024-06-15".to_string()));
+        assert_eq!(exportable.name, "Name_site.com");
+    }
+
+    #[test]
+    fn test_from_stored_raw_none_optional_fields() {
+        let mut stored = make_stored_raw("site.com", "pass", None);
+        stored.notes = None;
+        stored.score = None;
+        stored.created_at = None;
+
+        let exportable = ExportablePassword::from_stored_raw(&stored);
+
+        assert_eq!(exportable.notes, None);
+        assert_eq!(exportable.score, None);
+        assert_eq!(exportable.created_at, None);
+    }
+
+    #[test]
+    fn test_to_stored_raw_roundtrip() {
+        let stored = make_stored_raw("site.com", "secret123", Some(85));
+        let exportable = ExportablePassword::from_stored_raw(&stored);
+        let back = exportable.to_stored_raw(99, 7);
+
+        assert_eq!(back.user_id, 99);
+        assert_eq!(back.vault_id, 7);
+        assert_eq!(back.url.expose_secret(), "site.com");
+        assert_eq!(back.password.expose_secret(), "secret123");
+        assert_eq!(back.username.expose_secret(), "user@site.com");
+        assert!(back.id.is_none());
+        assert!(back.uuid != stored.uuid); // New UUID generated
+    }
+
+    #[test]
+    fn test_to_stored_raw_preserves_optional_fields() {
+        let mut stored = make_stored_raw("site.com", "pass", None);
+        stored.notes = None;
+        stored.created_at = None;
+
+        let exportable = ExportablePassword::from_stored_raw(&stored);
+        let back = exportable.to_stored_raw(1, 1);
+
+        assert!(back.notes.is_none());
+        assert!(back.created_at.is_none());
+        assert!(back.score.is_none());
+    }
+
+    #[test]
+    fn test_serialize_deserialize_json_roundtrip() {
+        let exportable = ExportablePassword {
+            name: "Test".to_string(),
+            username: "user".to_string(),
+            url: "site.com".to_string(),
+            password: "pass".to_string(),
+            notes: Some("notes".to_string()),
+            score: Some(90),
+            created_at: Some("2024-01-01".to_string()),
+        };
+
+        let json = serde_json::to_string(&exportable).unwrap();
+        let back: ExportablePassword = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(back.url, exportable.url);
+        assert_eq!(back.password, exportable.password);
+        assert_eq!(back.notes, exportable.notes);
+    }
+
+    #[test]
+    fn test_serialize_json_skips_none_fields() {
+        let exportable = ExportablePassword {
+            name: String::new(),
+            username: String::new(),
+            url: "site.com".to_string(),
+            password: "pass".to_string(),
+            notes: None,
+            score: None,
+            created_at: None,
+        };
+
+        let json = serde_json::to_string(&exportable).unwrap();
+        assert!(!json.contains("notes"));
+        assert!(!json.contains("score"));
+        assert!(!json.contains("created_at"));
+    }
+}
