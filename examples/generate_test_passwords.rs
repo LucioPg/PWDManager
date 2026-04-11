@@ -36,6 +36,7 @@ use pwd_manager::backend::evaluate_password_strength;
 use pwd_manager::backend::password_utils::{
     create_stored_data_pipeline_bulk, generate_suggested_password,
 };
+use pwd_manager::backend::vault_utils::{create_vault, fetch_vaults_by_user};
 
 /// Configurazione del generatore di password
 const TOTAL_PASSWORDS: usize = 10_000;
@@ -83,7 +84,7 @@ async fn verify_test_user(pool: &SqlitePool, user_id: i64) -> Result<(), DBError
 }
 
 /// Genera un singolo StoredRawPassword con preset casuale.
-fn generate_single_password(user_id: i64, index: usize, settings_id: i64) -> StoredRawPassword {
+fn generate_single_password(user_id: i64, vault_id: i64, index: usize, settings_id: i64) -> StoredRawPassword {
     // Seleziona preset in base all'indice (distribuzione uniforme)
     let preset = &PRESETS[index % PRESETS.len()];
     let config = preset.to_config(settings_id);
@@ -103,6 +104,7 @@ fn generate_single_password(user_id: i64, index: usize, settings_id: i64) -> Sto
         uuid: Uuid::new_v4(),
         id: None,
         user_id,
+        vault_id,
         name: format!("Service {}", index + 1),
         username: SecretString::new(format!("user{}@example.com", index + 1).into()),
         url: SecretString::new(location.into()),
@@ -119,6 +121,7 @@ fn generate_single_password(user_id: i64, index: usize, settings_id: i64) -> Sto
 async fn generate_and_save_passwords(
     pool: &SqlitePool,
     user_id: i64,
+    vault_id: i64,
     settings_id: i64,
 ) -> Result<(), DBError> {
     println!("\n=== Generazione password ===");
@@ -146,7 +149,7 @@ async fn generate_and_save_passwords(
 
         // Genera password per questo batch
         let stored_raw_passwords: Vec<StoredRawPassword> = (batch_start..batch_end)
-            .map(|i| generate_single_password(user_id, i, settings_id))
+            .map(|i| generate_single_password(user_id, vault_id, i, settings_id))
             .collect();
 
         println!(
@@ -220,8 +223,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     println!("Settings ID: {}", settings_id);
 
+    // Crea o recupera il vault "Test"
+    println!("\nConfigurazione vault di test...");
+    let existing_vaults = fetch_vaults_by_user(&pool, TEST_USER_ID).await?;
+    let vault_id = match existing_vaults.iter().find(|v| v.name == "Test") {
+        Some(vault) => {
+            println!("Vault 'Test' esistente trovato (ID: {})", vault.id.unwrap_or(0));
+            vault.id.unwrap_or(1)
+        }
+        None => {
+            println!("Creazione vault 'Test'...");
+            let vault = create_vault(&pool, TEST_USER_ID, "Test".to_string(), Some("Vault di test per password generate".to_string())).await?;
+            let id = vault.id.unwrap_or(1);
+            println!("Vault creato (ID: {})", id);
+            id
+        }
+    };
+    println!("Vault ID: {}", vault_id);
+
     // Genera e salva le password
-    generate_and_save_passwords(&pool, TEST_USER_ID, settings_id).await?;
+    generate_and_save_passwords(&pool, TEST_USER_ID, vault_id, settings_id).await?;
 
     // Chiudi la connessione
     println!("\nChiusura connessione database...");
