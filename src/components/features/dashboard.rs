@@ -518,6 +518,7 @@ pub fn Dashboard() -> Element {
                 let mut dialog_open = vault_action_dialog_open;
                 let mut sorted_resource = sorted_passwords_resource;
                 let mut stats_res = stats_data;
+                let mut vaults_res = vaults_resource;
                 let action = current_vault_action();
                 spawn(async move {
                     let result = if action == VaultAction::Move {
@@ -531,6 +532,7 @@ pub fn Dashboard() -> Element {
                             dialog_open.set(false);
                             sorted_resource.restart();
                             stats_res.restart();
+                            vaults_res.restart();
                         }
                         Err(e) => {
                             let action_word = if action == VaultAction::Move {
