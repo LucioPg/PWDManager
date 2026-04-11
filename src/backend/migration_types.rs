@@ -50,3 +50,44 @@ impl ProgressMessage {
 
 /// Type alias per il sender del progresso.
 pub type ProgressSender = Sender<ProgressMessage>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_progress_message_percentage_full() {
+        let msg = ProgressMessage::new(MigrationStage::Encrypting, 75, 100);
+        assert_eq!(msg.percentage(), 75);
+        assert_eq!(msg.stage, MigrationStage::Encrypting);
+    }
+
+    #[test]
+    fn test_progress_message_percentage_zero_total() {
+        let msg = ProgressMessage::new(MigrationStage::Idle, 0, 0);
+        assert_eq!(msg.percentage(), 0);
+    }
+
+    #[test]
+    fn test_progress_message_percentage_rounds_down() {
+        let msg = ProgressMessage::new(MigrationStage::Completed, 1, 3);
+        assert_eq!(msg.percentage(), 33); // 1*100/3 = 33.33... → 33
+    }
+
+    #[test]
+    fn test_progress_message_percentage_over_100_clamp() {
+        let msg = ProgressMessage::new(MigrationStage::Completed, 150, 100);
+        assert_eq!(msg.percentage(), 150); // No clamping — caller responsibility
+    }
+
+    #[test]
+    fn test_migration_stage_default() {
+        assert_eq!(MigrationStage::default(), MigrationStage::Idle);
+    }
+
+    #[test]
+    fn test_migration_stage_equality() {
+        assert_eq!(MigrationStage::Failed, MigrationStage::Failed);
+        assert_ne!(MigrationStage::Idle, MigrationStage::Completed);
+    }
+}
