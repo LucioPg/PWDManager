@@ -206,3 +206,128 @@ pub struct DicewareGenerationSettings {
     pub numbers: i32,
     pub language: DicewareLanguage,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // --- AutoLogoutSettings ---
+
+    #[test]
+    fn test_auto_logout_settings_from_string_ten_minutes() {
+        assert_eq!(
+            AutoLogoutSettings::from("TenMinutes".to_string()),
+            AutoLogoutSettings::TenMinutes
+        );
+        assert_eq!(
+            AutoLogoutSettings::from("tenminutes".to_string()),
+            AutoLogoutSettings::TenMinutes
+        );
+        assert_eq!(
+            AutoLogoutSettings::from("TENMINUTES".to_string()),
+            AutoLogoutSettings::TenMinutes
+        );
+        assert_eq!(
+            AutoLogoutSettings::from("unknown".to_string()),
+            AutoLogoutSettings::TenMinutes
+        );
+        assert_eq!(
+            AutoLogoutSettings::from("".to_string()),
+            AutoLogoutSettings::TenMinutes
+        );
+    }
+
+    #[test]
+    fn test_auto_logout_settings_from_string_one_hour() {
+        assert_eq!(
+            AutoLogoutSettings::from("OneHour".to_string()),
+            AutoLogoutSettings::OneHour
+        );
+        assert_eq!(
+            AutoLogoutSettings::from("onehour".to_string()),
+            AutoLogoutSettings::OneHour
+        );
+    }
+
+    #[test]
+    fn test_auto_logout_settings_from_string_five_hours() {
+        assert_eq!(
+            AutoLogoutSettings::from("FiveHours".to_string()),
+            AutoLogoutSettings::FiveHours
+        );
+        assert_eq!(
+            AutoLogoutSettings::from("fivehours".to_string()),
+            AutoLogoutSettings::FiveHours
+        );
+    }
+
+    #[test]
+    fn test_auto_logout_settings_durations() {
+        assert_eq!(
+            AutoLogoutSettings::TenMinutes.duration(),
+            Duration::from_secs(600)
+        );
+        assert_eq!(
+            AutoLogoutSettings::OneHour.duration(),
+            Duration::from_secs(3600)
+        );
+        assert_eq!(
+            AutoLogoutSettings::FiveHours.duration(),
+            Duration::from_secs(18000)
+        );
+    }
+
+    // --- Theme ---
+
+    #[test]
+    fn test_theme_from_string_light() {
+        assert_eq!(Theme::from("Light".to_string()), Theme::Light);
+        assert_eq!(Theme::from("light".to_string()), Theme::Light);
+        assert_eq!(Theme::from("unknown".to_string()), Theme::Light);
+        assert_eq!(Theme::from("".to_string()), Theme::Light);
+    }
+
+    #[test]
+    fn test_theme_from_string_dark() {
+        assert_eq!(Theme::from("Dark".to_string()), Theme::Dark);
+        assert_eq!(Theme::from("dark".to_string()), Theme::Dark);
+    }
+
+    #[test]
+    fn test_theme_defaults() {
+        assert_eq!(Theme::default(), Theme::Light);
+        assert_eq!(AutoLogoutSettings::default(), AutoLogoutSettings::TenMinutes);
+    }
+
+    // --- DicewareLanguage ---
+
+    #[test]
+    fn test_diceware_language_roundtrip() {
+        for lang in [DicewareLanguage::EN, DicewareLanguage::FR, DicewareLanguage::IT] {
+            let embedded: diceware::EmbeddedList = lang.into();
+            let back: DicewareLanguage = embedded.into();
+            assert_eq!(lang, back);
+        }
+    }
+
+    #[test]
+    fn test_diceware_language_default() {
+        assert_eq!(DicewareLanguage::default(), DicewareLanguage::EN);
+    }
+
+    // --- AutoUpdate ---
+
+    #[test]
+    fn test_auto_update_from_bool() {
+        assert!(AutoUpdate::from(true).0);
+        assert!(!AutoUpdate::from(false).0);
+    }
+
+    #[test]
+    fn test_auto_update_deref() {
+        let au = AutoUpdate(true);
+        assert!(*au);
+        let au = AutoUpdate(false);
+        assert!(!*au);
+    }
+}

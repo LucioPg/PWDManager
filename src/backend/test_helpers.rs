@@ -10,6 +10,7 @@
 
 use crate::backend::db_backend::save_or_update_user;
 use crate::backend::init_queries::QUERIES;
+use crate::backend::vault_utils::create_vault;
 use secrecy::SecretString;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool};
 use sqlx::query;
@@ -148,6 +149,24 @@ pub async fn create_test_user(
         .await
         .expect("Failed to fetch created test user");
     (user_id, unique_username)
+}
+
+/// Helper: Crea un vault di test con nome univoco e restituisce il suo ID
+///
+/// # Returns
+/// Tupla (vault_id, vault_name) dove vault_name è quello univoco generato
+pub async fn create_test_vault(pool: &SqlitePool, user_id: i64) -> (i64, String) {
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let vault_name = format!("TestVault_{}", timestamp);
+
+    let vault = create_vault(pool, user_id, vault_name.clone(), None)
+        .await
+        .expect("Failed to create test vault");
+
+    (vault.id.expect("Created vault should have an ID"), vault_name)
 }
 
 #[cfg(test)]

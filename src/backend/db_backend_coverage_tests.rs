@@ -14,7 +14,7 @@ use crate::backend::db_backend::{
     upsert_stored_passwords_batch,
 };
 use crate::backend::password_utils::create_stored_data_pipeline_bulk;
-use crate::backend::test_helpers::{create_test_user, setup_test_db};
+use crate::backend::test_helpers::{create_test_user, create_test_vault, setup_test_db};
 use custom_errors::AuthError;
 use pwd_types::{PasswordPreset, PasswordStrength, StoredRawPassword};
 use secrecy::SecretString;
@@ -28,6 +28,7 @@ async fn insert_test_passwords(
     entries: Vec<(&str, &str)>, // (url, raw_password) pairs
 ) {
     let _ = pwd_strength::init_blacklist();
+    let (vault_id, _) = create_test_vault(pool, user_id).await;
     let raw_passwords: Vec<StoredRawPassword> = entries
         .into_iter()
         .map(|(url, pwd)| {
@@ -37,6 +38,7 @@ async fn insert_test_passwords(
                 uuid: Uuid::new_v4(),
                 id: None,
                 user_id,
+                vault_id,
                 name: String::new(),
                 username: SecretString::new(String::new().into()),
                 url: SecretString::new(url.into()),
