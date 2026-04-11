@@ -49,6 +49,9 @@ mod import_tests;
 #[cfg(test)]
 mod db_backend_coverage_tests;
 
+#[cfg(test)]
+mod vault_utils_tests;
+
 // Re-export pwd-strength for backward compatibility
 pub use pwd_strength::{
     evaluate_password_strength, evaluate_password_strength_tx, init_blacklist_from_path,

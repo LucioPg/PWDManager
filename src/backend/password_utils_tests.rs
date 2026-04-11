@@ -12,7 +12,7 @@ use crate::backend::password_utils::{
     create_stored_data_pipeline_bulk, decrypt_bulk_stored_data, generate_suggested_password,
     get_stored_raw_passwords, stored_passwords_migration_pipeline_with_progress,
 };
-use crate::backend::test_helpers::setup_test_db;
+use crate::backend::test_helpers::{create_test_vault, setup_test_db};
 use pwd_types::{
     ExcludedSymbolSet, PasswordGeneratorConfig, PasswordPreset, PasswordStrength, StoredRawPassword,
 };
@@ -91,6 +91,7 @@ async fn test_encrypt_decrypt_password() {
     // Crea un utente di test
     let master_password = "MasterPass123!";
     let user_id = create_test_user(&pool, "testuser", master_password).await;
+    let (vault_id, _) = create_test_vault(&pool, user_id).await;
 
     // Test 1: Cifra una password
     let raw_password = SecretString::new("MySecurePassword456".into());
@@ -100,6 +101,7 @@ async fn test_encrypt_decrypt_password() {
         uuid: Uuid::new_v4(),
         id: None,
         user_id,
+        vault_id,
         name: String::new(),
         username: SecretString::new(String::new().into()),
         url: SecretString::new(url.to_string().into()),
@@ -356,13 +358,13 @@ async fn test_decrypt_invalid_nonce() {
     let pool = setup_test_db().await;
 
     let user_id = create_test_user(&pool, "testuser2", "MasterPass123!").await;
-
-    // Crea una password valida
+    let (vault_id, _) = create_test_vault(&pool, user_id).await;
     let raw_password = SecretString::new("TestPassword".into());
     let stored_raw_password = StoredRawPassword {
         uuid: Uuid::new_v4(),
         id: None,
         user_id,
+        vault_id,
         name: String::new(),
         username: SecretString::new(String::new().into()),
         url: SecretString::new("https://test.com".to_string().into()),
@@ -401,11 +403,13 @@ async fn test_decrypt_with_wrong_key() {
 
     // Crea un utente e cripta una password con la sua chiave
     let user_id = create_test_user(&pool, "wrongkey_test", "CorrectPassword123!").await;
+    let (vault_id, _) = create_test_vault(&pool, user_id).await;
 
     let stored_raw_password = StoredRawPassword {
         uuid: Uuid::new_v4(),
         id: None,
         user_id,
+        vault_id,
         name: String::new(),
         username: secrecy::SecretString::new(String::new().into()),
         url: secrecy::SecretString::new("https://example.com".to_string().into()),
@@ -436,8 +440,7 @@ async fn test_multiple_passwords_for_same_user() {
     let pool = setup_test_db().await;
 
     let user_id = create_test_user(&pool, "testuser3", "MasterPass456!").await;
-
-    // Crea più password per lo stesso utente
+    let (vault_id, _) = create_test_vault(&pool, user_id).await;
     let passwords = vec![
         ("https://site1.com", "Password1"),
         ("https://site2.com", "Password2"),
@@ -449,6 +452,7 @@ async fn test_multiple_passwords_for_same_user() {
             uuid: Uuid::new_v4(),
             id: None,
             user_id,
+            vault_id,
             name: String::new(),
             username: SecretString::new(String::new().into()),
             url: SecretString::new(url.to_string().into()),
@@ -487,8 +491,7 @@ async fn test_multiple_passwords_for_same_user_with_predefined_strength() {
     let pool = setup_test_db().await;
 
     let user_id = create_test_user(&pool, "t", "t").await;
-
-    // Crea più password per lo stesso utente
+    let (vault_id, _) = create_test_vault(&pool, user_id).await;
     let passwords = vec![
         (
             "https://site1.com-weak",
@@ -515,6 +518,7 @@ async fn test_multiple_passwords_for_same_user_with_predefined_strength() {
             uuid: Uuid::new_v4(),
             id: None,
             user_id,
+            vault_id,
             name: String::new(),
             username: SecretString::new(String::new().into()),
             url: SecretString::new(url.to_string().into()),
@@ -556,12 +560,14 @@ async fn test_encrypted_password_is_different_from_original() {
     let pool = setup_test_db().await;
 
     let user_id = create_test_user(&pool, "testuser4", "MasterPass789!").await;
+    let (vault_id, _) = create_test_vault(&pool, user_id).await;
 
     let raw_password = "MyPassword123";
     let stored_raw_password = StoredRawPassword {
         uuid: Uuid::new_v4(),
         id: None,
         user_id,
+        vault_id,
         name: String::new(),
         username: SecretString::new(String::new().into()),
         url: SecretString::new("https://encrypted.com".to_string().into()),
@@ -601,6 +607,7 @@ async fn test_encrypted_password_is_different_from_original() {
 async fn test_url_and_notes_are_encrypted() {
     let pool = setup_test_db().await;
     let user_id = create_test_user(&pool, "testuser_enc", "MasterPass123!").await;
+    let (vault_id, _) = create_test_vault(&pool, user_id).await;
 
     let raw_password = SecretString::new("MySecurePassword456".into());
     let url = "https://secret-url.com".to_string();
@@ -609,6 +616,7 @@ async fn test_url_and_notes_are_encrypted() {
         uuid: Uuid::new_v4(),
         id: None,
         user_id,
+        vault_id,
         name: String::new(),
         username: SecretString::new(String::new().into()),
         url: SecretString::new(url.clone().into()),
@@ -652,6 +660,7 @@ async fn test_url_and_notes_are_encrypted() {
 async fn test_decrypt_url_and_notes_roundtrip() {
     let pool = setup_test_db().await;
     let user_id = create_test_user(&pool, "testuser_rt", "MasterPass123!").await;
+    let (vault_id, _) = create_test_vault(&pool, user_id).await;
 
     let raw_password = SecretString::new("MyPassword".into());
     let url = "MySecretService".to_string();
@@ -660,6 +669,7 @@ async fn test_decrypt_url_and_notes_roundtrip() {
         uuid: Uuid::new_v4(),
         id: None,
         user_id,
+        vault_id,
         name: String::new(),
         username: SecretString::new(String::new().into()),
         url: SecretString::new(url.clone().into()),
@@ -713,8 +723,7 @@ async fn test_password_migration_single_password() {
 
     // 1. Crea utente con vecchia password
     let user_id = create_test_user(&pool, "migration_single", old_password).await;
-
-    // 2. Crea StoredPassword da migrare (criptata con vecchia master)
+    let (vault_id, _) = create_test_vault(&pool, user_id).await;
     let raw_password = SecretString::new("MySecurePassword789".into());
     let url = "https://example.com".to_string();
     let notes = Some(SecretString::new("Test notes".into()));
@@ -722,6 +731,7 @@ async fn test_password_migration_single_password() {
         uuid: Uuid::new_v4(),
         id: None,
         user_id,
+        vault_id,
         name: String::new(),
         username: SecretString::new(String::new().into()),
         url: SecretString::new(url.clone().into()),
@@ -787,8 +797,7 @@ async fn test_password_migration_multiple_passwords() {
 
     // 1. Crea utente
     let user_id = create_test_user(&pool, "migration_multi", old_password).await;
-
-    // 2. Crea multiple StoredPassword
+    let (vault_id, _) = create_test_vault(&pool, user_id).await;
     let passwords_data = vec![
         ("https://site1.com", "Password1", Some("Note 1")),
         ("https://site2.com", "Password2", None),
@@ -801,6 +810,7 @@ async fn test_password_migration_multiple_passwords() {
             uuid: Uuid::new_v4(),
             id: None,
             user_id,
+            vault_id,
             name: String::new(),
             username: SecretString::new(String::new().into()),
             url: SecretString::new(url.to_string().into()),
