@@ -83,7 +83,6 @@ pub fn Dashboard() -> Element {
     // Vault state
     let mut active_vault_state = use_context::<ActiveVaultState>();
     let active_vault_id = active_vault_state.0;
-    println!("initial active vault id {:#?}", active_vault_id(),);
     // Vault list resource (shared via VaultListState from AuthWrapper)
     #[allow(unused_mut)]
     let mut vaults_resource = use_context::<VaultListState>().0;
@@ -280,7 +279,7 @@ pub fn Dashboard() -> Element {
     // → effect re-runs → reset pagina a 0.
     use_effect(move || {
         let _ = *active_vault_id.read(); // Dipendenza reattiva sul vault
-        pagination.current_page.set(0);  // Set diretto, NON legge current_page
+        pagination.current_page.set(0); // Set diretto, NON legge current_page
         selected_ids.set(HashSet::new());
         sorted_passwords_resource.restart();
         stats_data.restart();
@@ -371,7 +370,6 @@ pub fn Dashboard() -> Element {
                                 selected_value: selected,
                                 disabled: vaults_empty,
                                 on_change: move |v| {
-                                    println!("Selected vault: {:?}", v);
                                     active_vault_state.0.set(v);
                                 },
                             }

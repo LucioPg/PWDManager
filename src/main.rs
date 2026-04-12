@@ -112,7 +112,7 @@ fn App() -> Element {
                 icon_loggedout.clone()
             };
             if let Err(e) = tray.set_icon(Some(icon)) {
-                eprintln!("Failed to update tray icon: {e}");
+                tracing::debug!("Failed to update tray icon: {e}");
             }
         });
     });
@@ -172,13 +172,13 @@ fn App() -> Element {
         let db_resource_clone = db_resource_clone_drop;
         match &*db_resource_clone.read() {
             Some(Ok(InitResult::Ready(pool))) | Some(Ok(InitResult::FirstSetup { pool, .. })) => {
-                println!("Cleanup: chiudo connessioni DB prima dell'uscita");
+                debug!("Cleanup: DB connections closed before exiting");
                 let pool_clone = pool.clone();
                 spawn(async move {
                     let _ = pool_clone.close().await;
                 });
             }
-            _ => println!("Cleanup: pool non presente"),
+            _ => debug!("Cleanup: pool is missing"),
         }
     });
 
@@ -479,7 +479,7 @@ fn main() {
 
     if args.contains(&"--setup".to_string()) {
         if cfg!(debug_assertions) {
-            eprintln!("Error: --setup is not available in debug builds");
+            debug!("Error: --setup is not available in debug builds");
             std::process::exit(1);
         }
 
@@ -489,12 +489,11 @@ fn main() {
             .expect("Failed to create tokio runtime");
 
         match rt.block_on(crate::backend::setup::run_setup()) {
-            Ok(passphrase) => {
-                println!("{}", passphrase.expose_secret());
+            Ok(_) => {
                 std::process::exit(0);
             }
             Err(e) => {
-                eprintln!("Setup failed: {}", e);
+                debug!("Setup failed: {}", e);
                 std::process::exit(1);
             }
         }
@@ -504,7 +503,7 @@ fn main() {
 
     // Nota: il logging viene inizializzato automaticamente nel launcher
     const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
-    println!("PWDManager v{}", APP_VERSION);
+    info!("PWDManager v{}", APP_VERSION);
     launch_desktop!(App, APP_VERSION, start_visible);
 }
 

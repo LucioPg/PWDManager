@@ -120,7 +120,6 @@ pub fn StoredRawPasswordRow(props: StoredRawPasswordRowProps) -> Element {
                     onclick: move |_| {
                         deletion_password_dialog_state.is_open.set(true);
                         deletion_password_dialog_state.password_id.set(Some(password_id));
-                        println!("[modal] Deleting password with id: {}", password_id);
                         props.on_delete.call(password_id)
                     },
                     DeleteIcon { size: "12".to_string() }
