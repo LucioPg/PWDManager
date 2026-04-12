@@ -32,7 +32,7 @@ pub struct UserSettings {
     pub active_vault_id: Option<i64>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, sqlx::Type, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, sqlx::Type)]
 #[sqlx(transparent)]
 pub struct AutoUpdate(pub bool);
 
@@ -52,6 +52,12 @@ impl From<bool> for AutoUpdate {
 impl From<AutoUpdate> for bool {
     fn from(value: AutoUpdate) -> Self {
         value.0
+    }
+}
+
+impl Default for AutoUpdate {
+    fn default() -> Self {
+        AutoUpdate(true)
     }
 }
 
@@ -296,14 +302,21 @@ mod tests {
     #[test]
     fn test_theme_defaults() {
         assert_eq!(Theme::default(), Theme::Light);
-        assert_eq!(AutoLogoutSettings::default(), AutoLogoutSettings::TenMinutes);
+        assert_eq!(
+            AutoLogoutSettings::default(),
+            AutoLogoutSettings::TenMinutes
+        );
     }
 
     // --- DicewareLanguage ---
 
     #[test]
     fn test_diceware_language_roundtrip() {
-        for lang in [DicewareLanguage::EN, DicewareLanguage::FR, DicewareLanguage::IT] {
+        for lang in [
+            DicewareLanguage::EN,
+            DicewareLanguage::FR,
+            DicewareLanguage::IT,
+        ] {
             let embedded: diceware::EmbeddedList = lang.into();
             let back: DicewareLanguage = embedded.into();
             assert_eq!(lang, back);
