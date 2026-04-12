@@ -271,5 +271,23 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<(), DBError> {
         tracing::info!("Migration: set active_vault_id for all users");
     }
 
+    // Check if users table has auto_login_enabled column
+    let auto_login_exists = column_exists(pool, "users", "auto_login_enabled").await?;
+
+    if !auto_login_exists {
+        tracing::info!("Migration: adding auto_login_enabled column to users table");
+
+        query("ALTER TABLE users ADD COLUMN auto_login_enabled INTEGER NOT NULL DEFAULT 0")
+            .execute(pool)
+            .await
+            .map_err(|e| {
+                DBError::new_general_error(format!(
+                    "Failed to add auto_login_enabled column: {}", e
+                ))
+            })?;
+
+        tracing::info!("Migration: added auto_login_enabled column to users table");
+    }
+
     Ok(())
 }
