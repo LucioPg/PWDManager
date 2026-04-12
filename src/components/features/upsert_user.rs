@@ -19,7 +19,7 @@ use pwd_dioxus::InputType;
 use pwd_dioxus::Toggle;
 
 #[cfg(feature = "desktop")]
-use crate::backend::db_backend::set_auto_login_enabled;
+use crate::backend::db_backend::{get_auto_login_user, set_auto_login_enabled};
 #[cfg(feature = "desktop")]
 use crate::backend::hello_auth;
 use pwd_dioxus::form::FormField;
@@ -332,11 +332,29 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                 }
             } else {
                 // UPDATE: usa la funzione esistente
+                let password_to_save_for_keyring = password_to_save.clone();
                 match save_or_update_user(&pool, user_id, u.clone(), password_to_save, a).await {
                     Ok(result) => {
                         println!("User updated successfully: {:?}", result);
                         schedule_toast_success("User Updated successfully!".to_string(), toast);
                         (migration_data.write()).old_password = result.temp_old_password.clone();
+
+                        // Update keyring if user has auto-login enabled and changed password
+                        #[cfg(feature = "desktop")]
+                        if password_to_save_for_keyring.is_some() {
+                            let username_clone = u.clone();
+                            match get_auto_login_user(&pool).await {
+                                Ok(Some(auto_user)) if auto_user == username_clone => {
+                                    if let Some(ref pwd) = password_to_save_for_keyring {
+                                        if let Err(e) = hello_auth::store_master_password(&username_clone, pwd.expose_secret()) {
+                                            tracing::warn!("Impossibile aggiornare master password nel keyring: {}", e);
+                                        }
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+
                         true
                     }
                     Err(e) => {
