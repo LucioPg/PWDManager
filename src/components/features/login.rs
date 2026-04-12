@@ -10,7 +10,6 @@ use pwd_dioxus::form::FormField;
 use pwd_dioxus::{FormSecret, InputType};
 use secrecy::SecretString;
 use sqlx::SqlitePool;
-use std::sync::OnceLock;
 use tracing::{debug, instrument};
 
 #[cfg(feature = "desktop")]
@@ -18,6 +17,11 @@ use crate::backend::db_backend::get_auto_login_user;
 
 #[cfg(feature = "desktop")]
 use crate::backend::hello_auth;
+
+#[cfg(feature = "desktop")]
+use std::sync::OnceLock;
+
+#[cfg(feature = "desktop")]
 #[derive(Debug, Clone, PartialEq)]
 enum HelloLoginState {
     Idle,
@@ -36,11 +40,18 @@ pub fn Login() -> Element {
     let nav = use_navigator();
     let pool = use_context::<SqlitePool>();
     let auth_state = use_context::<AuthState>();
+
+    #[cfg(feature = "desktop")]
     #[allow(unused_mut)]
     let mut hello_state = use_signal(|| HelloLoginState::Idle);
+
+    #[cfg(feature = "desktop")]
     let pool_for_effect = pool.clone();
+    #[cfg(feature = "desktop")]
     let auth_state_for_effect = auth_state.clone();
+    #[cfg(feature = "desktop")]
     let nav_for_effect = nav.clone();
+
     let on_submit = move |_| {
         let pool = pool.clone();
         let u = username.read().clone();
@@ -229,6 +240,6 @@ fn HelloLoginStatus(hello_state: Signal<HelloLoginState>) -> Element {
 
 #[cfg(not(feature = "desktop"))]
 #[component]
-fn HelloLoginStatus(hello_state: Signal<HelloLoginState>) -> Element {
+fn HelloLoginStatus() -> Element {
     Ok(VNode::placeholder())
 }

@@ -59,6 +59,7 @@ mod platform {
     }
 
     /// Check if Windows Hello is available and enrolled.
+    #[allow(unnecessary_unsafe)]
     pub fn is_hello_available() -> bool {
         ensure_com_initialized();
         match unsafe {
@@ -75,6 +76,7 @@ mod platform {
     }
 
     /// Request Windows Hello verification from the user.
+    #[allow(unnecessary_unsafe)]
     pub fn request_verification(message: &str) -> HelloResult {
         ensure_com_initialized();
 
@@ -161,7 +163,7 @@ pub fn store_master_password(username: &str, password: &str) -> Result<(), Strin
         .set_password(&encoded)
         .map_err(|e| format!("Impossibile salvare nel keyring: {}", e))?;
 
-    info!("Master password salvata nel keyring per '{}'", username);
+    debug!("Master password salvata nel keyring per '{}'", username);
     Ok(())
 }
 
@@ -198,7 +200,7 @@ pub fn clear_master_password(username: &str) -> Result<(), String> {
 
     match entry.delete_credential() {
         Ok(()) => {
-            info!("Master password rimossa dal keyring per '{}'", username);
+            debug!("Master password rimossa dal keyring per '{}'", username);
             Ok(())
         }
         Err(e) => {
