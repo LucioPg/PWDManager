@@ -242,6 +242,7 @@ fn AutoLoginToggle() -> Element {
 
     let cancel_password = move |_: ()| {
         show_password_dialog.set(false);
+        password_input.set(FormSecret(SecretString::new("".into())));
     };
 
     rsx! {
@@ -337,7 +338,6 @@ fn AutoLoginPasswordDialog(
                         size: ButtonSize::Normal,
                         on_click: move |_| {
                             on_confirm.call(());
-                            open.set(false);
                         },
                     }
                 }

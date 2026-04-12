@@ -546,7 +546,7 @@ fn AutoLoginToggle(
     auto_login_enabled: Signal<bool>,
     on_toggle: EventHandler<()>,
 ) -> Element {
-    let hello_available = hello_auth::is_hello_available();
+    let hello_available = use_signal(|| hello_auth::is_hello_available());
     if !is_updating {
         rsx! {
             div {
@@ -557,7 +557,7 @@ fn AutoLoginToggle(
                     onchange: move |_| on_toggle(()),
                 }
             }
-            if !hello_available {
+            if !hello_available() {
                 p { class: "text-xs text-warning mt-1",
                     "Windows Hello non è disponibile su questo dispositivo"
                 }
