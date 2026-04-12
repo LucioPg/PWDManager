@@ -111,7 +111,7 @@ pub static QUERIES: &[&str] = &[
                 id INTEGER PRIMARY KEY,
                 user_id INTEGER NOT NULL UNIQUE,
                 theme TEXT NOT NULL DEFAULT 'Light',
-                auto_update BOOLEAN NOT NULL DEFAULT 0,
+                auto_update BOOLEAN NOT NULL DEFAULT 1,
                 auto_logout_settings TEXT DEFAULT 'TenMinutes',
                 active_vault_id INTEGER REFERENCES vaults(id),
                 FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -181,14 +181,12 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<(), DBError> {
             .execute(pool)
             .await
             .map_err(|e| {
-                DBError::new_general_error(format!(
-                    "Failed to add vault_id column: {}",
-                    e
-                ))
+                DBError::new_general_error(format!("Failed to add vault_id column: {}", e))
             })?;
 
         // Step 2: Ensure vaults table exists (redundant with QUERIES, but safe)
-        query("CREATE TABLE IF NOT EXISTS vaults (
+        query(
+            "CREATE TABLE IF NOT EXISTS vaults (
                     id INTEGER PRIMARY KEY,
                     user_id INTEGER NOT NULL,
                     name TEXT NOT NULL,
@@ -196,7 +194,8 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<(), DBError> {
                     created_at TEXT DEFAULT (datetime('now')),
                     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
                     UNIQUE(user_id, name)
-                )")
+                )",
+        )
         .execute(pool)
         .await
         .map_err(|e| DBError::new_general_error(format!("Failed to create vaults table: {}", e)))?;
@@ -224,11 +223,13 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<(), DBError> {
         }
 
         // Step 4: Migrate all passwords to their user's default vault
-        query("UPDATE passwords SET vault_id = (
+        query(
+            "UPDATE passwords SET vault_id = (
                     SELECT v.id FROM vaults v
                     WHERE v.user_id = passwords.user_id
                     AND v.name = 'Default'
-                )")
+                )",
+        )
         .execute(pool)
         .await
         .map_err(|e| {
@@ -252,26 +253,20 @@ pub async fn run_migrations(pool: &SqlitePool) -> Result<(), DBError> {
             .execute(pool)
             .await
             .map_err(|e| {
-                DBError::new_general_error(format!(
-                    "Failed to add active_vault_id column: {}",
-                    e
-                ))
+                DBError::new_general_error(format!("Failed to add active_vault_id column: {}", e))
             })?;
 
         // Set active_vault_id to each user's default vault
-        query("UPDATE user_settings SET active_vault_id = (
+        query(
+            "UPDATE user_settings SET active_vault_id = (
                     SELECT v.id FROM vaults v
                     WHERE v.user_id = user_settings.user_id
                     AND v.name = 'Default'
-                )")
+                )",
+        )
         .execute(pool)
         .await
-        .map_err(|e| {
-            DBError::new_general_error(format!(
-                "Failed to set active_vault_id: {}",
-                e
-            ))
-        })?;
+        .map_err(|e| DBError::new_general_error(format!("Failed to set active_vault_id: {}", e)))?;
 
         tracing::info!("Migration: set active_vault_id for all users");
     }
