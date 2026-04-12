@@ -6,6 +6,11 @@ use crate::auth::AuthState;
 use crate::backend::db_backend::fetch_user_settings;
 #[cfg(target_os = "windows")]
 use crate::backend::auto_start::{self, AutoStartError};
+#[cfg(feature = "desktop")]
+use crate::backend::hello_auth;
+
+#[cfg(feature = "desktop")]
+use crate::backend::db_backend::{get_auto_login_user, set_auto_login_enabled};
 use crate::backend::settings_types::{AutoLogoutSettings, AutoUpdate, Theme, UserSettings};
 use crate::components::{ActionButton, ButtonSize, ButtonType, ButtonVariant};
 use dioxus::prelude::*;
@@ -20,6 +25,18 @@ fn auto_logout_options() -> Vec<(&'static str, Option<AutoLogoutSettings>)> {
         ("1 hour", Some(AutoLogoutSettings::OneHour)),
         ("5 hours", Some(AutoLogoutSettings::FiveHours)),
     ]
+}
+
+#[cfg(feature = "desktop")]
+fn render_auto_login_toggle() -> Element {
+    rsx! {
+        AutoLoginToggle {}
+    }
+}
+
+#[cfg(not(feature = "desktop"))]
+fn render_auto_login_toggle() -> Element {
+    rsx! {}
 }
 
 #[cfg(target_os = "windows")]
@@ -75,6 +92,114 @@ fn AutoStartToggle() -> Element {
             }
             Toggle {
                 checked: auto_start_enabled(),
+                onchange: on_toggle,
+                size: ToggleSize::Large,
+                color: ToggleColor::Success,
+            }
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+#[component]
+fn AutoLoginToggle() -> Element {
+    let auth_state = use_context::<AuthState>();
+    let pool = use_context::<SqlitePool>();
+    let mut auto_login_enabled = use_signal(|| false);
+    let toast = use_toast();
+    let username = auth_state.get_username();
+    let pool_for_load = pool.clone();
+    let username_for_load = username.clone();
+
+    // Load current auto-login state on mount
+    let _load_resource = use_resource(move || {
+        let pool = pool_for_load.clone();
+        let mut auto_login_enabled = auto_login_enabled;
+        let username = username_for_load.clone();
+        async move {
+            match get_auto_login_user(&pool).await {
+                Ok(Some(auto_user)) => {
+                    auto_login_enabled.set(auto_user == username);
+                }
+                Ok(None) => {
+                    auto_login_enabled.set(false);
+                }
+                Err(_) => {
+                    auto_login_enabled.set(false);
+                }
+            }
+        }
+    });
+
+    let on_toggle = move |_| {
+        let pool = pool.clone();
+        let mut auto_login_enabled = auto_login_enabled;
+        let toast = toast;
+        let username = username.clone();
+        spawn(async move {
+            if !auto_login_enabled() {
+                // Enabling: require Hello verification first
+                let hello_result = tokio::task::spawn_blocking(move || {
+                    hello_auth::request_verification("Verifica identità per attivare auto-login")
+                })
+                .await
+                .unwrap_or(hello_auth::HelloResult::Failed("Task spawn fallito".into()));
+
+                match hello_result {
+                    hello_auth::HelloResult::Success => {
+                        // Enable the DB flag. The password will be stored on next login.
+                        match set_auto_login_enabled(&pool, &username, true).await {
+                            Ok(()) => {
+                                auto_login_enabled.set(true);
+                                show_toast_success("Auto-login attivato. Effettua il login per completare la configurazione.".to_string(), toast);
+                            }
+                            Err(e) => {
+                                show_toast_error(format!("Impossibile attivare auto-login: {}", e), toast);
+                            }
+                        }
+                    }
+                    hello_auth::HelloResult::Cancelled => {
+                        show_toast_error("Auto-login annullato".to_string(), toast);
+                    }
+                    hello_auth::HelloResult::NotEnrolled => {
+                        show_toast_error("Windows Hello non è configurato. Configuralo nelle Impostazioni di Windows.".to_string(), toast);
+                    }
+                    hello_auth::HelloResult::Failed(msg) => {
+                        show_toast_error(format!("Autenticazione fallita: {}", msg), toast);
+                    }
+                    hello_auth::HelloResult::NotAvailable => {
+                        show_toast_error("Windows Hello non è disponibile su questo dispositivo".to_string(), toast);
+                    }
+                }
+            } else {
+                // Disabling: clear keyring and disable
+                let username_for_clear = username.clone();
+                let _ = tokio::task::spawn_blocking(move || {
+                    hello_auth::clear_master_password(&username_for_clear)
+                }).await;
+
+                match set_auto_login_enabled(&pool, &username, false).await {
+                    Ok(()) => {
+                        auto_login_enabled.set(false);
+                        show_toast_success("Auto-login disattivato".to_string(), toast);
+                    }
+                    Err(e) => {
+                        show_toast_error(format!("Impossibile disattivare auto-login: {}", e), toast);
+                    }
+                }
+            }
+        });
+    };
+
+    rsx! {
+        div { class: "flex flex-row justify-between mb-2",
+            label { class: "label cursor-pointer",
+                strong {
+                    span { class: "label-text", "Auto-login con Windows Hello" }
+                }
+            }
+            Toggle {
+                checked: auto_login_enabled(),
                 onchange: on_toggle,
                 size: ToggleSize::Large,
                 color: ToggleColor::Success,
@@ -228,6 +353,7 @@ pub fn GeneralSettings() -> Element {
                 }
             }
             AutoStartToggle {}
+            {render_auto_login_toggle()}
             div { class: "flex flex-row justify-between mb-2",
                 label { class: "label cursor-pointer",
                     strong {
