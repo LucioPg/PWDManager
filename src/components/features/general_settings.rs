@@ -10,13 +10,17 @@ use crate::backend::auto_start::{self, AutoStartError};
 use crate::backend::hello_auth;
 
 #[cfg(feature = "desktop")]
-use crate::backend::db_backend::{get_auto_login_user, set_auto_login_enabled};
+use crate::backend::db_backend::{check_user, get_auto_login_user, set_auto_login_enabled};
 use crate::backend::settings_types::{AutoLogoutSettings, AutoUpdate, Theme, UserSettings};
 use crate::components::{ActionButton, ButtonSize, ButtonType, ButtonVariant};
+use crate::components::globals::{BaseModal, ModalVariant};
 use dioxus::prelude::*;
 use pwd_dioxus::combobox::Combobox;
+use pwd_dioxus::form::FormField;
 use pwd_dioxus::{Toggle, ToggleColor, ToggleSize};
+use pwd_dioxus::{FormSecret, InputType};
 use pwd_dioxus::{show_toast_error, show_toast_success, use_toast};
+use secrecy::{ExposeSecret, SecretString};
 use sqlx::SqlitePool;
 
 fn auto_logout_options() -> Vec<(&'static str, Option<AutoLogoutSettings>)> {
@@ -105,9 +109,15 @@ fn AutoStartToggle() -> Element {
 fn AutoLoginToggle() -> Element {
     let auth_state = use_context::<AuthState>();
     let pool = use_context::<SqlitePool>();
+    #[allow(unused_mut)]
     let mut auto_login_enabled = use_signal(|| false);
     let toast = use_toast();
     let username = auth_state.get_username();
+    let mut show_password_dialog = use_signal(|| false);
+    #[allow(unused_mut)]
+    let mut password_input = use_signal(|| FormSecret(SecretString::new("".into())));
+    let hello_available = use_signal(|| hello_auth::is_hello_available());
+
     let pool_for_load = pool.clone();
     let username_for_load = username.clone();
 
@@ -131,15 +141,21 @@ fn AutoLoginToggle() -> Element {
         }
     });
 
+    let username_for_toggle = username.clone();
+    let username_for_confirm = username.clone();
+    let pool_for_toggle = pool.clone();
+    let pool_for_confirm = pool.clone();
+
     let on_toggle = move |_| {
-        let pool = pool.clone();
+        let pool = pool_for_toggle.clone();
         let mut auto_login_enabled = auto_login_enabled;
         let toast = toast;
-        let username = username.clone();
-        spawn(async move {
-            if !auto_login_enabled() {
-                // Enabling: require Hello verification first
-                let hello_result = tokio::task::spawn_blocking(move || {
+        let username = username_for_toggle.clone();
+        let mut show_password_dialog = show_password_dialog;
+
+        if !auto_login_enabled() {
+            spawn(async move {
+                let hello_result = tokio::task::spawn_blocking(|| {
                     hello_auth::request_verification("Verifica identità per attivare auto-login")
                 })
                 .await
@@ -147,16 +163,7 @@ fn AutoLoginToggle() -> Element {
 
                 match hello_result {
                     hello_auth::HelloResult::Success => {
-                        // Enable the DB flag. The password will be stored on next login.
-                        match set_auto_login_enabled(&pool, &username, true).await {
-                            Ok(()) => {
-                                auto_login_enabled.set(true);
-                                show_toast_success("Auto-login attivato. Effettua il login per completare la configurazione.".to_string(), toast);
-                            }
-                            Err(e) => {
-                                show_toast_error(format!("Impossibile attivare auto-login: {}", e), toast);
-                            }
-                        }
+                        show_password_dialog.set(true);
                     }
                     hello_auth::HelloResult::Cancelled => {
                         show_toast_error("Auto-login annullato".to_string(), toast);
@@ -171,8 +178,9 @@ fn AutoLoginToggle() -> Element {
                         show_toast_error("Windows Hello non è disponibile su questo dispositivo".to_string(), toast);
                     }
                 }
-            } else {
-                // Disabling: clear keyring and disable
+            });
+        } else {
+            spawn(async move {
                 let username_for_clear = username.clone();
                 let _ = tokio::task::spawn_blocking(move || {
                     hello_auth::clear_master_password(&username_for_clear)
@@ -187,8 +195,53 @@ fn AutoLoginToggle() -> Element {
                         show_toast_error(format!("Impossibile disattivare auto-login: {}", e), toast);
                     }
                 }
+            });
+        }
+    };
+
+    let confirm_password = move |_: ()| {
+        let pool = pool_for_confirm.clone();
+        let mut auto_login_enabled = auto_login_enabled;
+        let toast = toast;
+        let username = username_for_confirm.clone();
+        let mut show_password_dialog = show_password_dialog;
+        let pwd = password_input.read().clone();
+
+        if pwd.0.expose_secret().trim().is_empty() {
+            show_toast_error("Password richiesta".to_string(), toast);
+            return;
+        }
+
+        spawn(async move {
+            match check_user(&pool, &username, &pwd).await {
+                Ok(()) => {
+                    let plaintext = pwd.0.expose_secret().to_string();
+                    if let Err(e) = hello_auth::store_master_password(&username, &plaintext) {
+                        show_toast_error(format!("Impossibile salvare nel keyring: {}", e), toast);
+                        show_password_dialog.set(false);
+                        return;
+                    }
+                    match set_auto_login_enabled(&pool, &username, true).await {
+                        Ok(()) => {
+                            auto_login_enabled.set(true);
+                            show_password_dialog.set(false);
+                            show_toast_success("Auto-login attivato con successo!".to_string(), toast);
+                        }
+                        Err(e) => {
+                            show_toast_error(format!("Impossibile attivare auto-login: {}", e), toast);
+                            show_password_dialog.set(false);
+                        }
+                    }
+                }
+                Err(_) => {
+                    show_toast_error("Password non corretta".to_string(), toast);
+                }
             }
         });
+    };
+
+    let cancel_password = move |_: ()| {
+        show_password_dialog.set(false);
     };
 
     rsx! {
@@ -203,6 +256,91 @@ fn AutoLoginToggle() -> Element {
                 onchange: on_toggle,
                 size: ToggleSize::Large,
                 color: ToggleColor::Success,
+            }
+        }
+        if !hello_available() {
+            p { class: "text-xs text-warning mb-2 ml-1",
+                "Windows Hello non è disponibile su questo dispositivo"
+            }
+        }
+        AutoLoginPasswordDialog {
+            open: show_password_dialog,
+            password_input,
+            on_confirm: confirm_password,
+            on_cancel: cancel_password,
+        }
+    }
+}
+
+#[cfg(feature = "desktop")]
+#[component]
+fn AutoLoginPasswordDialog(
+    open: Signal<bool>,
+    password_input: Signal<FormSecret>,
+    on_confirm: EventHandler<()>,
+    on_cancel: EventHandler<()>,
+) -> Element {
+    let mut open = open;
+
+    rsx! {
+        BaseModal {
+            open: open,
+            on_close: move |_| {
+                on_cancel.call(());
+                open.set(false);
+            },
+            variant: ModalVariant::Middle,
+            class: "futuristic",
+
+            button {
+                class: "absolute top-2 right-2 btn btn-sm btn-circle btn-ghost",
+                onclick: move |_| {
+                    on_cancel.call(());
+                    open.set(false);
+                },
+                "✕"
+            }
+            h3 { class: "font-bold text-lg mb-2", "Conferma Password" }
+            p { class: "py-4 text-sm",
+                "Inserisci la tua password per completare l'attivazione dell'auto-login."
+            }
+            form {
+                onsubmit: move |e| {
+                    e.prevent_default();
+                    on_confirm.call(());
+                },
+                class: "flex flex-col gap-3",
+                FormField {
+                    label: "Password".to_string(),
+                    input_type: InputType::Password,
+                    placeholder: "Inserisci la tua password".to_string(),
+                    value: password_input,
+                    required: true,
+                    show_visibility_toggle: true,
+                    forbid_spaces: true,
+                }
+                div { class: "modal-action",
+                    ActionButton {
+                        text: "Annulla".to_string(),
+                        variant: ButtonVariant::Secondary,
+                        button_type: ButtonType::Button,
+                        size: ButtonSize::Normal,
+                        on_click: move |_| {
+                            on_cancel.call(());
+                            open.set(false);
+                        },
+                    }
+                    ActionButton {
+                        text: "Conferma".to_string(),
+                        variant: ButtonVariant::Success,
+                        button_type: ButtonType::Button,
+                        size: ButtonSize::Normal,
+                        on_click: move |_| {
+                            on_confirm.call(());
+                            open.set(false);
+                        },
+                    }
+                }
             }
         }
     }

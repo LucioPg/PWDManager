@@ -188,24 +188,33 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     let on_auto_login_toggle = move |_| {
         #[cfg(feature = "desktop")]
         if !auto_login_enabled() {
-            let result = hello_auth::request_verification("Verifica identità per attivare auto-login");
-            match result {
-                hello_auth::HelloResult::Success => {
-                    auto_login_enabled.set(true);
+            let mut auto_login_enabled = auto_login_enabled;
+            let toast = toast;
+            spawn(async move {
+                let result = tokio::task::spawn_blocking(|| {
+                    hello_auth::request_verification("Verifica identità per attivare auto-login")
+                })
+                .await
+                .unwrap_or(hello_auth::HelloResult::Failed("Task spawn fallito".into()));
+
+                match result {
+                    hello_auth::HelloResult::Success => {
+                        auto_login_enabled.set(true);
+                    }
+                    hello_auth::HelloResult::Cancelled => {
+                        show_toast_error("Auto-login annullato".to_string(), toast);
+                    }
+                    hello_auth::HelloResult::NotEnrolled => {
+                        show_toast_error("Windows Hello non è configurato. Configuralo nelle Impostazioni di Windows.".to_string(), toast);
+                    }
+                    hello_auth::HelloResult::Failed(msg) => {
+                        show_toast_error(format!("Autenticazione fallita: {}", msg), toast);
+                    }
+                    hello_auth::HelloResult::NotAvailable => {
+                        show_toast_error("Windows Hello non è disponibile su questo dispositivo".to_string(), toast);
+                    }
                 }
-                hello_auth::HelloResult::Cancelled => {
-                    show_toast_error("Auto-login annullato".to_string(), toast);
-                }
-                hello_auth::HelloResult::NotEnrolled => {
-                    show_toast_error("Windows Hello non è configurato. Configuralo nelle Impostazioni di Windows.".to_string(), toast);
-                }
-                hello_auth::HelloResult::Failed(msg) => {
-                    show_toast_error(format!("Autenticazione fallita: {}", msg), toast);
-                }
-                hello_auth::HelloResult::NotAvailable => {
-                    show_toast_error("Windows Hello non è disponibile su questo dispositivo".to_string(), toast);
-                }
-            }
+            });
         } else {
             #[cfg(feature = "desktop")]
             auto_login_enabled.set(false);
@@ -537,6 +546,7 @@ fn AutoLoginToggle(
     auto_login_enabled: Signal<bool>,
     on_toggle: EventHandler<()>,
 ) -> Element {
+    let hello_available = hello_auth::is_hello_available();
     if !is_updating {
         rsx! {
             div {
@@ -545,6 +555,11 @@ fn AutoLoginToggle(
                 Toggle {
                     checked: auto_login_enabled(),
                     onchange: move |_| on_toggle(()),
+                }
+            }
+            if !hello_available {
+                p { class: "text-xs text-warning mt-1",
+                    "Windows Hello non è disponibile su questo dispositivo"
                 }
             }
         }
