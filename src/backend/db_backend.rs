@@ -101,12 +101,23 @@ pub fn build_sqlcipher_options(
     Ok(connect_options)
 }
 
-/// Returns the database file path (CWD-relative).
+/// Returns the database file path.
+///
+/// - Release builds: uses the executable's directory (CWD is unreliable when
+///   launched at boot via `HKCU\...\Run` — Windows sets CWD to `System32`).
+/// - Debug builds (`dx serve`): uses `current_dir()` which is the project root.
 #[cfg(feature = "desktop")]
 pub fn get_db_path() -> Result<String, DBError> {
-    std::env::current_dir()
-        .unwrap_or_default()
-        .join("database.db")
+    #[cfg(debug_assertions)]
+    let base = std::env::current_dir().unwrap_or_default();
+
+    #[cfg(not(debug_assertions))]
+    let base = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+        .unwrap_or_default();
+
+    base.join("database.db")
         .to_str()
         .ok_or_else(|| DBError::new_general_error("Invalid DB path".into()))
         .map(|s| s.to_string())
