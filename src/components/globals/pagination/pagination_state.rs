@@ -100,6 +100,11 @@ impl PaginationState {
     /// Vai a una pagina specifica.
     ///
     /// Non fa nulla se la pagina è fuori range o uguale alla corrente.
+    ///
+    /// **WARNING:** Non chiamare questo metodo dentro un `use_effect` che non
+    /// dovrebbe dipendere da `current_page`. Internamente legge `current_page`,
+    /// creando una dipendenza reattiva. Per resettare la pagina in un effetto,
+    /// usare `pagination.current_page.set(0)` direttamente.
     pub fn go_to_page(&mut self, page: usize) {
         if page != *self.current_page.read() {
             self.current_page.set(page);

@@ -274,10 +274,13 @@ pub fn Dashboard() -> Element {
     });
 
     // Restart resources when active vault changes
+    // NOTE: Usiamo pagination.current_page.set(0) invece di go_to_page(0)
+    // perché go_to_page() legge current_page (self.current_page.read()), creando
+    // una dipendenza reattiva spuria che causerebbe un feedback loop: cambio pagina
+    // → effect re-runs → reset pagina a 0.
     use_effect(move || {
-        println!("Active vault changed: {:?}", *active_vault_id.read());
-        let _ = *active_vault_id.read();
-        pagination.go_to_page(0);
+        let _ = *active_vault_id.read(); // Dipendenza reattiva sul vault
+        pagination.current_page.set(0);  // Set diretto, NON legge current_page
         selected_ids.set(HashSet::new());
         sorted_passwords_resource.restart();
         stats_data.restart();
