@@ -715,10 +715,10 @@ ul.menu[style*="position: fixed"] {
 }
 
 /* In dark theme, dropdown menus and lists need a lighter background
-   to distinguish them from the page background (base-100 ≈ base-200 in dark). */
+   to distinguish them from the page background (base-100 ≈ #1d232a in dark). */
 [data-theme="dark"] .dropdown-content,
 [data-theme="dark"] ul.menu[style*="position: fixed"] {
-    background-color: oklch(0.25 0.01 260);
+    background-color: oklch(0.32 0.01 260);
 }
 
 /* Vault card */
