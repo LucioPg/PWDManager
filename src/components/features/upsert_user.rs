@@ -4,7 +4,7 @@
 
 use crate::auth::{AuthState, User};
 use crate::backend::avatar_utils::get_user_avatar_with_default;
-use crate::backend::db_backend::{delete_user, register_user_with_settings, save_or_update_user};
+use crate::backend::db_backend::{delete_user, fetch_user_data, register_user_with_settings, save_or_update_user};
 use crate::backend::vault_utils::create_vault;
 use crate::backend::ui_utils::pick_and_process_avatar;
 use crate::components::{
@@ -50,6 +50,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     let mut auth_state_delete_logout_clone = auth_state.clone(); // Per confirm_delete_user
     #[allow(unused_mut)]
     let mut auth_state_normal_submit_clone = auth_state.clone();
+    let mut auth_state_autologin_clone = auth_state.clone(); // Per login diretto dopo registrazione
 
     // --- Stato ---
     #[allow(unused_mut)]
@@ -70,6 +71,8 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     let submit_completed = use_signal(|| false); // Per il caso senza migrazione
     let save_completed_for_migration = use_signal(|| false); // Per sincronizzare modale migrazione
     let mut auto_login_enabled = use_signal(|| false);
+    #[allow(unused_mut)]
+    let mut auto_login_data = use_signal(|| Option::<(String, i64)>::None);
 
     // Inizializzazione dati utente (Semplificata con unwrap_or_default)
     #[allow(unused_mut)]
@@ -181,6 +184,37 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         if submit_completed() {
             auth_state.logout();
             nav.push("/login");
+        }
+    });
+
+    // Gestione login diretto dopo registrazione con auto-login
+    #[cfg(feature = "desktop")]
+    let pool_for_autologin = pool.clone();
+    #[cfg(feature = "desktop")]
+    let nav_for_autologin = nav.clone();
+    #[cfg(feature = "desktop")]
+    let toast_for_autologin = toast;
+
+    #[cfg(feature = "desktop")]
+    use_effect(move || {
+        let mut auth_state = auth_state_autologin_clone.clone();
+        if let Some((username, user_id)) = auto_login_data() {
+            auto_login_data.set(None);
+            let pool = pool_for_autologin.clone();
+            let toast = toast_for_autologin.clone();
+            spawn(async move {
+                match fetch_user_data(&pool, &username).await {
+                    Ok((_id, uname, created_at, avatar)) => {
+                        auth_state.login(user_id, uname, created_at, avatar);
+                        nav_for_autologin.push("/dashboard");
+                    }
+                    Err(e) => {
+                        show_toast_error(format!("Errore: {}", e), toast);
+                        auth_state.logout();
+                        nav_for_autologin.push("/login");
+                    }
+                }
+            });
         }
     });
 
@@ -299,6 +333,8 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         });
         spawn(async move {
             // Branch separato per registrazione vs update
+            #[cfg(feature = "desktop")]
+            let mut auto_login_data = auto_login_data;
             let success = if user_id.is_none() {
                 // REGISTRAZIONE: usa la funzione atomica
                 #[cfg(feature = "desktop")]
@@ -330,6 +366,8 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                                     show_toast_error(format!("Impossibile attivare auto-login: {}", e), toast);
                                 }
                             }
+                            // Direct login — skip login page
+                            auto_login_data.set(Some((u.clone(), saved_user_id)));
                         }
 
                         true
@@ -374,8 +412,16 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
             };
 
             // Se il salvataggio ha successo e c'è un segnale di completamento, impostalo
+            // (skip se auto-login direct login è in corso)
+            #[cfg(feature = "desktop")]
+            let auto_login_active = auto_login_data().is_some();
+            #[cfg(not(feature = "desktop"))]
+            let auto_login_active = false;
+
             if success && let Some(mut signal) = completion_signal {
-                signal.set(true);
+                if !auto_login_active {
+                    signal.set(true);
+                }
             }
         });
     };
