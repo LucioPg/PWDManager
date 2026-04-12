@@ -711,6 +711,7 @@ textarea.pwd-input {
 ul.menu[style*="position: fixed"] {
     max-height: 300px;
     overflow-y: auto;
+    flex-wrap: nowrap;
 }
 
 /* In dark theme, dropdown menus and lists need a lighter background
