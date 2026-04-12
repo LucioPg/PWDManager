@@ -26,6 +26,9 @@ pub mod utils;
 pub mod db_key;
 
 #[cfg(feature = "desktop")]
+pub mod hello_auth;
+
+#[cfg(feature = "desktop")]
 pub mod setup;
 
 #[cfg(test)]
