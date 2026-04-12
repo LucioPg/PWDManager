@@ -32,7 +32,6 @@ pub fn Login() -> Element {
             // La tua funzione check_user ora ha il pool!
             match check_user(&pool, &u, &p).await {
                 Ok(()) => {
-                    println!("Successo!");
                     let result = fetch_user_data(&pool, &u).await;
                     match result {
                         Ok((id, username, created_at, avatar)) => {

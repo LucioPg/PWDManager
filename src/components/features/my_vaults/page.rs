@@ -130,7 +130,6 @@ pub fn MyVaults() -> Element {
 
     let nav = use_navigator();
     let mut on_open_vault = move |vault: Vault| {
-        println!("Open vault: {:?}", vault.id);
         if let Some(id) = vault.id
             && let Ok(mut guard) = crate::components::globals::PENDING_ACTIVE_VAULT.lock()
         {

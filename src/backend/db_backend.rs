@@ -1358,9 +1358,8 @@ pub async fn fetch_passwords_paginated_for_vault(
     let offset = page as i64 * page_size as i64;
 
     let results = match (min_score, max_score) {
-        (None, None) => {
-            sqlx::query_as::<_, StoredPassword>(
-                r#"
+        (None, None) => sqlx::query_as::<_, StoredPassword>(
+            r#"
                 SELECT id, user_id, vault_id, name, username, username_nonce, url, url_nonce,
                        password, password_nonce, notes, notes_nonce, score, created_at
                 FROM passwords
@@ -1368,19 +1367,17 @@ pub async fn fetch_passwords_paginated_for_vault(
                 ORDER BY created_at DESC
                 LIMIT ? OFFSET ?
                 "#,
-            )
-            .bind(vault_id)
-            .bind(page_size as i32)
-            .bind(offset)
-            .fetch_all(pool)
-            .await
-            .map_err(|e| {
-                DBError::new_list_error(format!("Failed to fetch paginated passwords: {}", e))
-            })?
-        }
-        (Some(min), Some(max)) => {
-            sqlx::query_as::<_, StoredPassword>(
-                r#"
+        )
+        .bind(vault_id)
+        .bind(page_size as i32)
+        .bind(offset)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| {
+            DBError::new_list_error(format!("Failed to fetch paginated passwords: {}", e))
+        })?,
+        (Some(min), Some(max)) => sqlx::query_as::<_, StoredPassword>(
+            r#"
                 SELECT id, user_id, vault_id, name, username, username_nonce, url, url_nonce,
                        password, password_nonce, notes, notes_nonce, score, created_at
                 FROM passwords
@@ -1388,18 +1385,17 @@ pub async fn fetch_passwords_paginated_for_vault(
                 ORDER BY created_at DESC
                 LIMIT ? OFFSET ?
                 "#,
-            )
-            .bind(vault_id)
-            .bind(min)
-            .bind(max)
-            .bind(page_size as i32)
-            .bind(offset)
-            .fetch_all(pool)
-            .await
-            .map_err(|e| {
-                DBError::new_list_error(format!("Failed to fetch paginated passwords: {}", e))
-            })?
-        }
+        )
+        .bind(vault_id)
+        .bind(min)
+        .bind(max)
+        .bind(page_size as i32)
+        .bind(offset)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| {
+            DBError::new_list_error(format!("Failed to fetch paginated passwords: {}", e))
+        })?,
         _ => unreachable!("min_score e max_score sono sempre entrambi Some o entrambi None"),
     };
 
@@ -1534,10 +1530,7 @@ pub async fn fetch_password_stats_for_vault(
 
 /// Delete all passwords belonging to a vault.
 #[instrument(skip(pool))]
-pub async fn delete_vault_passwords(
-    pool: &SqlitePool,
-    vault_id: i64,
-) -> Result<(), DBError> {
+pub async fn delete_vault_passwords(pool: &SqlitePool, vault_id: i64) -> Result<(), DBError> {
     debug!("Deleting all passwords in vault_id: {}", vault_id);
     sqlx::query("DELETE FROM passwords WHERE vault_id = ?")
         .bind(vault_id)
@@ -1636,10 +1629,6 @@ mod tests {
             fetch_user_passwords_generation_settings(&pool, user_id)
                 .await
                 .unwrap();
-        println!(
-            "######## user generation settings :{:?}",
-            passwords_generation_settings
-        );
         assert_eq!(
             passwords_generation_settings,
             PasswordPreset::God.to_config(passwords_generation_settings.id.unwrap())
@@ -1651,20 +1640,12 @@ mod tests {
         let pool = setup_test_db().await;
         let mut error: Option<DBError> = None;
         let user_auth = match fetch_user_auth_from_id(&pool, 99).await {
-            Ok(data) => {
-                println!("{:?}", data);
-                Some(data)
-            }
+            Ok(data) => Some(data),
             Err(e) => {
-                println!("User auth not found for user_id: {}", e);
                 error = Some(e);
                 None
             }
         };
-        if let Some(e) = error {
-            println!("{:?}", e);
-        } else {
-            println!("{:?}", user_auth)
-        }
+        if let Some(e) = error {}
     }
 }
