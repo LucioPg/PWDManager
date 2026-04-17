@@ -25,6 +25,10 @@
   <img src="https://img.shields.io/badge/platform-Windows-0078D4?logo=windows11" alt="Platform">
   &nbsp;
   <img src="https://img.shields.io/github/license/LucioPg/PWDManager" alt="License">
+  &nbsp;
+  <a href="https://github.com/LucioPg/PWDManager/actions/workflows/virustotal-scan.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/LucioPg/PWDManager/virustotal-scan.yml?label=VirusTotal" alt="VirusTotal">
+  </a>
 </p>
 
 <p align="center">
@@ -55,7 +59,16 @@ No web-app feel, no Electron overhead -- just a fast, responsive desktop experie
 
 Built on [Dioxus 0.7](https://dioxuslabs.com/) and Rust, PWDManager compiles to a single native binary. The UI runs on
 the system WebView2 instance -- no bundled Chromium, no Electron overhead. The result is a compact, fast application
-that starts in under a second and uses very little memory.
+(~20 MB) that starts in under a second and uses very little memory.
+
+**Note:** The NSIS installer weighs ~180 MB because it bundles the WebView2 bootstrapper. The installed application is
+roughly 10x smaller.
+
+> **Windows SmartScreen and antivirus warnings:** You may see a "Windows protected your PC" prompt or antivirus flags.
+> This is a **false positive** caused by the lack of an EV code signing certificate (costly for independent developers).
+> The entire source code is open for audit on GitHub. Additionally, every release is signed with
+> [minisign](https://jedisct1.github.io/minisign/) -- you can verify the binary's integrity against the embedded
+> public key before running it.
 
 ### Spot weak passwords at a glance
 
