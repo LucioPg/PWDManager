@@ -4,9 +4,9 @@
 
 use crate::auth::{AuthState, User};
 use crate::backend::avatar_utils::get_user_avatar_with_default;
-use crate::backend::db_backend::{delete_user, register_user_with_settings, save_or_update_user};
-use crate::backend::ui_utils::pick_and_process_avatar;
+use crate::backend::db_backend::{delete_user, fetch_user_data, register_user_with_settings, save_or_update_user};
 use crate::backend::vault_utils::create_vault;
+use crate::backend::ui_utils::pick_and_process_avatar;
 use crate::components::{
     ActionButton, AvatarSelector, AvatarSize, ButtonSize, ButtonType, ButtonVariant,
     MigrationProgressDialog, MigrationWarningDialog, PasswordHandler, UserDeletionDialog,
@@ -14,6 +14,14 @@ use crate::components::{
 };
 use dioxus::prelude::*;
 use pwd_dioxus::InputType;
+
+#[cfg(feature = "desktop")]
+use pwd_dioxus::Toggle;
+
+#[cfg(feature = "desktop")]
+use crate::backend::db_backend::{get_auto_login_user, set_auto_login_enabled};
+#[cfg(feature = "desktop")]
+use crate::backend::hello_auth;
 use pwd_dioxus::form::FormField;
 use secrecy::ExposeSecret;
 use sqlx::SqlitePool;
@@ -42,6 +50,7 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     let mut auth_state_delete_logout_clone = auth_state.clone(); // Per confirm_delete_user
     #[allow(unused_mut)]
     let mut auth_state_normal_submit_clone = auth_state.clone();
+    let mut auth_state_autologin_clone = auth_state.clone(); // Per login diretto dopo registrazione
 
     // --- Stato ---
     #[allow(unused_mut)]
@@ -61,6 +70,9 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
     let mut migration_failed = use_signal(|| false);
     let submit_completed = use_signal(|| false); // Per il caso senza migrazione
     let save_completed_for_migration = use_signal(|| false); // Per sincronizzare modale migrazione
+    let mut auto_login_enabled = use_signal(|| false);
+    #[allow(unused_mut)]
+    let mut auto_login_data = use_signal(|| Option::<(String, i64)>::None);
 
     // Inizializzazione dati utente (Semplificata con unwrap_or_default)
     #[allow(unused_mut)]
@@ -175,7 +187,74 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         }
     });
 
+    // Gestione login diretto dopo registrazione con auto-login
+    #[cfg(feature = "desktop")]
+    let pool_for_autologin = pool.clone();
+    #[cfg(feature = "desktop")]
+    let nav_for_autologin = nav.clone();
+    #[cfg(feature = "desktop")]
+    let toast_for_autologin = toast;
+
+    #[cfg(feature = "desktop")]
+    use_effect(move || {
+        let mut auth_state = auth_state_autologin_clone.clone();
+        if let Some((username, user_id)) = auto_login_data() {
+            auto_login_data.set(None);
+            let pool = pool_for_autologin.clone();
+            let toast = toast_for_autologin.clone();
+            spawn(async move {
+                match fetch_user_data(&pool, &username).await {
+                    Ok((_id, uname, created_at, avatar)) => {
+                        auth_state.login(user_id, uname, created_at, avatar);
+                        nav_for_autologin.push("/dashboard");
+                    }
+                    Err(e) => {
+                        show_toast_error(format!("Errore: {}", e), toast);
+                        auth_state.logout();
+                        nav_for_autologin.push("/login");
+                    }
+                }
+            });
+        }
+    });
+
     // --- Handlers ---
+    let on_auto_login_toggle = move |_| {
+        #[cfg(feature = "desktop")]
+        if !auto_login_enabled() {
+            let mut auto_login_enabled = auto_login_enabled;
+            let toast = toast;
+            spawn(async move {
+                let result = tokio::task::spawn_blocking(|| {
+                    hello_auth::request_verification("Verifica identità per attivare auto-login")
+                })
+                .await
+                .unwrap_or(hello_auth::HelloResult::Failed("Task spawn fallito".into()));
+
+                match result {
+                    hello_auth::HelloResult::Success => {
+                        auto_login_enabled.set(true);
+                    }
+                    hello_auth::HelloResult::Cancelled => {
+                        show_toast_error("Auto-login annullato".to_string(), toast);
+                    }
+                    hello_auth::HelloResult::NotEnrolled => {
+                        show_toast_error("Windows Hello non è configurato. Configuralo nelle Impostazioni di Windows.".to_string(), toast);
+                    }
+                    hello_auth::HelloResult::Failed(msg) => {
+                        show_toast_error(format!("Autenticazione fallita: {}", msg), toast);
+                    }
+                    hello_auth::HelloResult::NotAvailable => {
+                        show_toast_error("Windows Hello non è disponibile su questo dispositivo".to_string(), toast);
+                    }
+                }
+            });
+        } else {
+            #[cfg(feature = "desktop")]
+            auto_login_enabled.set(false);
+        }
+    };
+
     let pick_image = move |_| {
         // Controllo doppio: previene click se già caricando o picking
         if is_loading() || is_picking() {
@@ -211,22 +290,20 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         let mut auth_state_logout = auth_state_delete_logout_clone.clone();
         let mut show_modal = show_delete_modal;
 
-        match user {
-            Some(user) => {
-                spawn(async move {
-                    match delete_user(&pool_for_delete, user.id).await {
-                        Ok(()) => {
-                            is_user_deleted.set(true);
-                            auth_state_logout.logout();
-                            show_modal.set(false);
-                        }
-                        Err(e) => {
-                            error.set(Some(e.to_string()));
-                            show_modal.set(false);
-                        }
+        if let Some(user) = user {
+            spawn(async move {
+                match delete_user(&pool_for_delete, user.id).await {
+                    Ok(()) => {
+                        is_user_deleted.set(true);
+                        auth_state_logout.logout();
+                        show_modal.set(false);
                     }
-                });
-            }
+                    Err(e) => {
+                        error.set(Some(e.to_string()));
+                        show_modal.set(false);
+                    }
+                }
+            });
             None => {}
         }
     };
@@ -254,8 +331,13 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
         });
         spawn(async move {
             // Branch separato per registrazione vs update
+            #[cfg(feature = "desktop")]
+            let mut auto_login_data = auto_login_data;
             let success = if user_id.is_none() {
                 // REGISTRAZIONE: usa la funzione atomica
+                #[cfg(feature = "desktop")]
+                let auto_login_pwd = password_to_save.clone();
+
                 match register_user_with_settings(
                     &pool,
                     u.clone(),
@@ -276,6 +358,22 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                                 toast,
                             );
                         }
+
+                        // Store auto-login if enabled
+                        #[cfg(feature = "desktop")]
+                        if auto_login_enabled() {
+                            if let Some(ref pwd) = auto_login_pwd {
+                                if let Err(e) = hello_auth::store_master_password(&u, pwd.expose_secret()) {
+                                    show_toast_error(format!("Impossibile salvare auto-login: {}", e), toast);
+                                }
+                                if let Err(e) = set_auto_login_enabled(&pool, &u, true).await {
+                                    show_toast_error(format!("Impossibile attivare auto-login: {}", e), toast);
+                                }
+                            }
+                            // Direct login — skip login page
+                            auto_login_data.set(Some((u.clone(), saved_user_id)));
+                        }
+
                         true
                     }
                     Err(e) => {
@@ -285,11 +383,29 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                 }
             } else {
                 // UPDATE: usa la funzione esistente
+                let password_to_save_for_keyring = password_to_save.clone();
                 match save_or_update_user(&pool, user_id, u.clone(), password_to_save, a).await {
                     Ok(result) => {
                         info!("User updated successfully: {:?}", result);
                         schedule_toast_success("User Updated successfully!".to_string(), toast);
                         (migration_data.write()).old_password = result.temp_old_password.clone();
+
+                        // Update keyring if user has auto-login enabled and changed password
+                        #[cfg(feature = "desktop")]
+                        if password_to_save_for_keyring.is_some() {
+                            let username_clone = u.clone();
+                            match get_auto_login_user(&pool).await {
+                                Ok(Some(auto_user)) if auto_user == username_clone => {
+                                    if let Some(ref pwd) = password_to_save_for_keyring {
+                                        if let Err(e) = hello_auth::store_master_password(&username_clone, pwd.expose_secret()) {
+                                            tracing::warn!("Impossibile aggiornare master password nel keyring: {}", e);
+                                        }
+                                    }
+                                }
+                                _ => {}
+                            }
+                        }
+
                         true
                     }
                     Err(e) => {
@@ -300,8 +416,16 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
             };
 
             // Se il salvataggio ha successo e c'è un segnale di completamento, impostalo
+            // (skip se auto-login direct login è in corso)
+            #[cfg(feature = "desktop")]
+            let auto_login_active = auto_login_data().is_some();
+            #[cfg(not(feature = "desktop"))]
+            let auto_login_active = false;
+
             if success && let Some(mut signal) = completion_signal {
-                signal.set(true);
+                if !auto_login_active {
+                    signal.set(true);
+                }
             }
         });
     };
@@ -389,6 +513,11 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
                         },
                         password_required,
                     }
+                    AutoLoginToggle {
+                        is_updating,
+                        auto_login_enabled,
+                        on_toggle: on_auto_login_toggle,
+                    }
                     div { class: "{btn_container_class}",
                         ActionButton {
                             text: "{submit_btn_text}",
@@ -458,4 +587,43 @@ impl MigrationData {
             old_password,
         }
     }
+}
+
+#[cfg(feature = "desktop")]
+#[component]
+fn AutoLoginToggle(
+    is_updating: bool,
+    auto_login_enabled: Signal<bool>,
+    on_toggle: EventHandler<()>,
+) -> Element {
+    let hello_available = use_signal(|| hello_auth::is_hello_available());
+    if !is_updating {
+        rsx! {
+            div {
+                class: "flex items-center justify-between gap-4 mt-2",
+                label { class: "text-sm font-medium", "Auto-login con Windows Hello" }
+                Toggle {
+                    checked: auto_login_enabled(),
+                    onchange: move |_| on_toggle(()),
+                }
+            }
+            if !hello_available() {
+                p { class: "text-xs text-warning mt-1",
+                    "Windows Hello non è disponibile su questo dispositivo"
+                }
+            }
+        }
+    } else {
+        Ok(VNode::placeholder())
+    }
+}
+
+#[cfg(not(feature = "desktop"))]
+#[component]
+fn AutoLoginToggle(
+    is_updating: bool,
+    auto_login_enabled: Signal<bool>,
+    on_toggle: EventHandler<()>,
+) -> Element {
+    Ok(VNode::placeholder())
 }
