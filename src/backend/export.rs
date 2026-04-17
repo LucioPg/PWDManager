@@ -224,6 +224,118 @@ fn convert_to_exportable_with_progress(
     })
 }
 
+/// Pipeline per esportare TUTTI i vault di un utente in un unico file.
+///
+/// Itera su tutti i vault dell'utente, raccoglie le password crittografate da ciascuno,
+/// le decrittografa in blocco e aggrega il risultato in un singolo file di output.
+///
+/// # Arguments
+/// * `pool` - Connection pool SQLite
+/// * `user_id` - ID dell'utente
+/// * `output_path` - Path del file di output
+/// * `format` - Formato di export (JSON, CSV, XML)
+/// * `progress_tx` - Canale opzionale per il progress tracking
+pub async fn export_all_user_passwords_pipeline(
+    pool: &SqlitePool,
+    user_id: i64,
+    output_path: &Path,
+    format: ExportFormat,
+    progress_tx: Option<Arc<ProgressSender>>,
+) -> Result<(), String> {
+    tracing::info!("export_all_user_passwords_pipeline: starting for user_id={}", user_id);
+
+    if let Some(tx) = &progress_tx {
+        let _ = tx.send(ProgressMessage::new(MigrationStage::Decrypting, 0, 0)).await;
+    }
+
+    // 1. Fetch all vaults for the user
+    let vaults = crate::backend::vault_utils::fetch_vaults_by_user(pool, user_id)
+        .await
+        .map_err(|e| format!("Failed to fetch vaults: {}", e))?;
+
+    // 2. Collect encrypted passwords from all vaults
+    let mut all_stored_passwords: Vec<pwd_types::StoredPassword> = Vec::new();
+    let total_vaults = vaults.len();
+
+    for (vault_index, vault) in vaults.iter().enumerate() {
+        tracing::info!(
+            "export_all_user_passwords_pipeline: fetching vault '{}' ({}/{})",
+            vault.name, vault_index + 1, total_vaults
+        );
+
+        let vault_id = vault.id
+            .ok_or_else(|| format!("Vault '{}' has no ID", vault.name))?;
+        let stored_passwords = fetch_all_stored_passwords_for_vault(pool, vault_id)
+            .await
+            .map_err(|e| format!("Failed to fetch passwords from vault '{}': {}", vault.name, e))?;
+
+        all_stored_passwords.extend(stored_passwords);
+
+        if let Some(tx) = &progress_tx {
+            let overall_progress = if total_vaults > 0 {
+                ((vault_index + 1) as f64 / total_vaults as f64 * 30.0) as usize
+            } else {
+                30
+            };
+            let _ = tx.send(ProgressMessage::new(MigrationStage::Decrypting, overall_progress, 100)).await;
+        }
+    }
+
+    // 3. Decrypt all passwords in one pass
+    let all_raw_passwords = if all_stored_passwords.is_empty() {
+        if let Some(tx) = &progress_tx {
+            let _ = tx.send(ProgressMessage::new(MigrationStage::Completed, 100, 100)).await;
+        }
+        let content = serialize_passwords(&[], format)?;
+        fs::write(output_path, content)
+            .await
+            .map_err(|e| format!("File write error: {}", e))?;
+        tracing::info!("export_all_user_passwords_pipeline: no passwords found, empty file written");
+        return Ok(());
+    } else {
+        let user_auth = fetch_user_auth_from_id(pool, user_id)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        decrypt_bulk_stored_data(user_auth, all_stored_passwords, None)
+            .await
+            .map_err(|e| format!("Failed to decrypt passwords: {}", e))?
+    };
+
+    if let Some(tx) = &progress_tx {
+        let _ = tx.send(ProgressMessage::new(MigrationStage::Serializing, 70, 100)).await;
+    }
+
+    // 4. Convert to exportable format
+    let total_passwords = all_raw_passwords.len();
+    let exportable: Vec<ExportablePassword> = all_raw_passwords
+        .iter()
+        .map(ExportablePassword::from_stored_raw)
+        .collect();
+
+    if let Some(tx) = &progress_tx {
+        let _ = tx.send(ProgressMessage::new(MigrationStage::Writing, 85, 100)).await;
+    }
+
+    // 5. Serialize and write
+    let content = serialize_passwords(&exportable, format)?;
+
+    fs::write(output_path, content)
+        .await
+        .map_err(|e| format!("File write error: {}", e))?;
+
+    tracing::info!(
+        "export_all_user_passwords_pipeline: completed, {} passwords exported to {:?}",
+        total_passwords, output_path
+    );
+
+    if let Some(tx) = &progress_tx {
+        let _ = tx.send(ProgressMessage::new(MigrationStage::Completed, 100, 100)).await;
+    }
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -324,5 +436,24 @@ mod tests {
             score: Some(pwd_types::PasswordScore::new(75)),
             created_at: Some("2024-01-01".to_string()),
         }
+    }
+
+    #[test]
+    fn test_aggregate_exportable_passwords_from_multiple_vaults() {
+        let pwd1 = create_test_password();
+        let pwd2 = ExportablePassword {
+            name: "Other Service".to_string(),
+            username: "admin@example.com".to_string(),
+            url: "other.com".to_string(),
+            password: "admin123".to_string(),
+            notes: None,
+            score: Some(92),
+            created_at: Some("2025-06-01".to_string()),
+        };
+
+        let passwords = vec![pwd1, pwd2];
+        let json = serialize_to_json(&passwords).unwrap();
+        assert!(json.contains("example.com"));
+        assert!(json.contains("other.com"));
     }
 }

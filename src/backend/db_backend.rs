@@ -830,6 +830,60 @@ pub async fn fetch_user_data(pool: &SqlitePool, username: &str) -> Result<UserDa
     }
 }
 
+/// Returns the username of the user with auto-login enabled, if any.
+/// Only one user should have auto_login_enabled = 1 at a time.
+#[instrument(skip(pool))]
+pub async fn get_auto_login_user(pool: &SqlitePool) -> Result<Option<String>, DBError> {
+    let result = sqlx::query_scalar::<_, String>(
+        "SELECT username FROM users WHERE auto_login_enabled = 1 LIMIT 1",
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| DBError::new_general_error(e.to_string()))?;
+
+    Ok(result)
+}
+
+/// Enable auto-login for the given username and disable it for all other users.
+/// Returns Ok(()) on success.
+#[instrument(skip(pool))]
+pub async fn set_auto_login_enabled(
+    pool: &SqlitePool,
+    username: &str,
+    enabled: bool,
+) -> Result<(), DBError> {
+    if enabled {
+        // Disable all other users first, then enable the target user
+        let mut tx = pool
+            .begin()
+            .await
+            .map_err(|e| DBError::new_transaction_error(e.to_string()))?;
+
+        sqlx::query("UPDATE users SET auto_login_enabled = 0 WHERE auto_login_enabled = 1")
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DBError::new_general_error(e.to_string()))?;
+
+        sqlx::query("UPDATE users SET auto_login_enabled = 1 WHERE username = ?")
+            .bind(username)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| DBError::new_general_error(e.to_string()))?;
+
+        tx.commit()
+            .await
+            .map_err(|e| DBError::new_transaction_error(e.to_string()))?;
+    } else {
+        sqlx::query("UPDATE users SET auto_login_enabled = 0 WHERE username = ?")
+            .bind(username)
+            .execute(pool)
+            .await
+            .map_err(|e| DBError::new_general_error(e.to_string()))?;
+    }
+
+    Ok(())
+}
+
 /// Verifica le credenziali di un utente.
 ///
 /// Recupera la password hash dal database e la confronta con quella fornita

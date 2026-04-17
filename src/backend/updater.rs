@@ -352,6 +352,39 @@ mod tests {
         assert!(manifest.platforms.is_empty());
     }
 
+    #[test]
+    fn deserializes_with_is_breaking_true() {
+        let json = r#"{
+            "version": "0.3.0",
+            "notes": "Breaking change",
+            "pub_date": "2026-04-15T10:00:00Z",
+            "platforms": {
+                "windows-x86_64": {
+                    "signature": "dGVzdA==",
+                    "url": "https://example.com/update.zip"
+                }
+            },
+            "is_breaking": true
+        }"#;
+
+        let manifest: UpdateManifest = serde_json::from_str(json).unwrap();
+        assert!(manifest.is_breaking);
+        assert_eq!(manifest.version, "0.3.0");
+    }
+
+    #[test]
+    fn deserializes_is_breaking_default_false() {
+        let json = r#"{
+            "version": "0.2.9",
+            "notes": "Bug fix",
+            "pub_date": "2026-04-15T10:00:00Z",
+            "platforms": {}
+        }"#;
+
+        let manifest: UpdateManifest = serde_json::from_str(json).unwrap();
+        assert!(!manifest.is_breaking);
+    }
+
     // ================================================================
     // UpdateState
     // ================================================================
