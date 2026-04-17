@@ -12,6 +12,7 @@ use dioxus::prelude::*;
 pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
     let state = update_state.read();
     let update_manifest = use_context::<Signal<Option<UpdateManifest>>>();
+    let mut breaking_dialog_open = use_signal(|| true);
 
     match &*state {
         UpdateState::Idle | UpdateState::UpToDate => rsx! {},
@@ -33,39 +34,35 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
             notes,
             pub_date,
         } => {
-            let is_breaking = update_manifest
-                .read()
-                .as_ref()
-                .is_some_and(|m| m.is_breaking);
+            let manifest_read = update_manifest.read();
+            if let Some(manifest) = manifest_read.as_ref() {
+                if manifest.is_breaking {
+                    let manifest_clone = manifest.clone();
+                    let update_manifest_click = update_manifest;
+                    let mut update_state_avail = update_state;
 
-            if is_breaking {
-                let manifest = update_manifest.read().clone().unwrap();
-                let manifest_clone = manifest.clone();
-                let update_manifest_click = update_manifest;
-                let mut update_state_avail = update_state;
-                let mut breaking_dialog_open = use_signal(|| true);
-
-                return rsx! {
-                    BreakingChangeDialog {
-                        open: breaking_dialog_open,
-                        manifest: manifest_clone,
-                        on_update_now: move |_| {
-                            let manifest = update_manifest_click.read().clone();
-                            if let Some(manifest) = manifest {
-                                let mut update_state = update_state_avail;
-                                spawn(async move {
-                                    if let Err(e) = download_and_install(&manifest, update_state).await {
-                                        update_state.set(UpdateState::Error(e));
-                                    }
-                                });
-                            }
-                        },
-                        on_dismiss: move |_| {
-                            breaking_dialog_open.set(false);
-                            update_state_avail.set(UpdateState::Idle);
-                        },
-                    }
-                };
+                    return rsx! {
+                        BreakingChangeDialog {
+                            open: breaking_dialog_open,
+                            manifest: manifest_clone,
+                            on_update_now: move |_| {
+                                let manifest = update_manifest_click.read().clone();
+                                if let Some(manifest) = manifest {
+                                    let mut update_state = update_state_avail;
+                                    spawn(async move {
+                                        if let Err(e) = download_and_install(&manifest, update_state).await {
+                                            update_state.set(UpdateState::Error(e));
+                                        }
+                                    });
+                                }
+                            },
+                            on_dismiss: move |_| {
+                                breaking_dialog_open.set(false);
+                                update_state_avail.set(UpdateState::Idle);
+                            },
+                        }
+                    };
+                }
             }
 
             let version = version.clone();

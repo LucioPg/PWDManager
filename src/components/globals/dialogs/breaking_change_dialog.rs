@@ -220,7 +220,7 @@ pub fn BreakingChangeDialog(
                 }
                 if !manifest_notes.is_empty() {
                     p { class: "text-xs opacity-50 mt-1",
-                        dangerous_inner_html: "{manifest_notes}"
+                        "{manifest_notes}"
                     }
                 }
             }
