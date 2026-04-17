@@ -1,5 +1,6 @@
-<p>Download for windows:</p>
-![GitHub Release](https://img.shields.io/github/v/release/LucioPg/PWDManager)
+<p align="center">
+  <b>If you find PWDManager useful, consider leaving a ⭐ on GitHub — it helps others discover it.</b>
+</p>
 
 <p align="center">
   <img src="assets/logo.png" alt="PWDManager" width="400">
@@ -8,22 +9,30 @@
 <h1 align="center">PWDManager</h1>
 
 <p align="center">
-  <strong>A lightweight, local-first password manager for Windows.</strong><br>
+  <strong>A fast, local-first password manager for Windows.</strong><br>
   No cloud. No subscriptions. No telemetry. Your passwords stay on your machine.
 </p>
+
 <p align="center">
-Rust - Dioxus
+  <a href="https://github.com/LucioPg/PWDManager/releases/latest">
+    <img src="https://img.shields.io/github/v/release/LucioPg/PWDManager?label=latest%20release" alt="GitHub Release">
+  </a>
+  &nbsp;
+  <a href="https://github.com/LucioPg/PWDManager/releases/latest">
+    <img src="https://img.shields.io/github/downloads/LucioPg/PWDManager/total?label=downloads" alt="Downloads">
+  </a>
 </p>
+
 <p align="center">
-<a href="https://github.com/LucioPg/PWDManager" alt="Repository link">PWDManager</a>
+  Rust · Dioxus · <a href="https://github.com/LucioPg/PWDManager">Repository</a>
 </p>
+
 ---
 
 ## Why PWDManager
 
 Most password managers rely on cloud infrastructure or SaaS subscriptions. Even when they advertise end-to-end
-encryption, their business model still depends on the user trusting a third-party server. Others expose biometric
-authentication as an attack surface -- compromise Windows Hello or a keychain, and the vault is open.
+encryption, their business model still depends on the user trusting a third-party server.
 
 PWDManager takes a fundamentally different approach:
 
@@ -33,13 +42,34 @@ PWDManager takes a fundamentally different approach:
   No separate Data Encryption Key that could be extracted from memory or a keyring.
 - The encryption key is stored in **Windows Credential Manager** (DPAPI, current-user scoped). It never leaves the
   machine.
-- There are **no biometrics, no browser extensions, no daemons, no external dependencies**. One binary, nothing else to
-  install or configure.
 - Your passwords are readable only with the master password, on this machine, by this user. Full stop.
+
+### A UI that doesn't get in your way
+
+PWDManager features a polished native interface with light and dark themes, built on DaisyUI 5 and Tailwind CSS.
+No web-app feel, no Electron overhead -- just a fast, responsive desktop experience that starts in under a second.
 
 Built on [Dioxus 0.7](https://dioxuslabs.com/) and Rust, PWDManager compiles to a single native binary. The UI runs on
 the system WebView2 instance -- no bundled Chromium, no Electron overhead. The result is a compact, fast application
 that starts in under a second and uses very little memory.
+
+### Spot weak passwords at a glance
+
+The dashboard filter panel shows password strength distribution at a glance. Click any level (WEAK, MEDIUM, STRONG,
+EPIC, GOD) to instantly filter and fix weak entries -- especially useful after bulk imports from a browser.
+
+<img src="docs_images/filter_panel_dashboard.png" alt="Dashboard filter panel" width="150">
+
+### Dual password generation, fully configurable
+
+Not all sites accept the same password format. PWDManager offers two generation modes, both fully configurable to
+handle site-specific constraints like restricted symbols, length limits, or character requirements.
+
+**Random passwords** can reach military-grade strength (GOD level, 96+ score) with fine-grained control over every
+character class -- uppercase, lowercase, digits, and symbols can each be tuned independently.
+
+**Diceware passphrases** produce mnemonic-friendly word sequences in English, Italian, or French, with optional numbers
+and special characters. They are ideal for master passwords where memorability matters more than raw entropy.
 
 ## Security Architecture
 
@@ -145,23 +175,32 @@ See [docs/security.md](docs/security.md) for the full technical breakdown.
 
 ### Desktop integration
 
+- **Windows Hello auto-login** -- authenticate instantly via biometrics without typing your master password
 - System tray icon with **visual state** (different icon when authenticated vs logged out)
 - Tray menu actions: Open, Logout, Quit
 - Closing the window hides the application without terminating the process
 - Auto-start on Windows boot via HKCU registry key, with Task Manager disabled-state detection
 - Activity tracking at OS level for auto-logout (Wry/Tao native event handler, not DOM events)
 
+### Automatic updates
+
+- Built-in updater with **minisign signature verification** -- the public key is embedded at compile-time, ensuring only
+  authentic releases are installed
+- **Breaking change protection** -- when an update requires data migration, a dialog prompts the user to export all
+  vaults
+  before proceeding
+- One-click update from the notification UI
+
 ### Security features
 
 - Configurable **auto-logout**: 10 minutes, 1 hour, or 5 hours of inactivity
 - Recovery key generation and regeneration with full database rekey
 - Password change with complete re-encryption pipeline and progress reporting
-- **Automatic updates** with minisign signature verification before installation (public key embedded at compile-time)
 
 ### Interface
 
+- **Polished, responsive UI** built on DaisyUI 5 and Tailwind CSS -- native feel with zero web bloat
 - Light and dark theme
-- UI built on **DaisyUI 5** and **Tailwind CSS**
 - Custom NSIS installer
 
 ## Prerequisites
