@@ -21,6 +21,10 @@
   <a href="https://github.com/LucioPg/PWDManager/releases/latest">
     <img src="https://img.shields.io/github/downloads/LucioPg/PWDManager/total?label=downloads" alt="Downloads">
   </a>
+  &nbsp;
+  <img src="https://img.shields.io/badge/platform-Windows-0078D4?logo=windows11" alt="Platform">
+  &nbsp;
+  <img src="https://img.shields.io/github/license/LucioPg/PWDManager" alt="License">
 </p>
 
 <p align="center">
