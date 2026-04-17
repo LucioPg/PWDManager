@@ -50,7 +50,7 @@ pub fn Login() -> Element {
     #[cfg(feature = "desktop")]
     let auth_state_for_effect = auth_state.clone();
     #[cfg(feature = "desktop")]
-    let nav_for_effect = nav.clone();
+    let nav_for_effect = nav;
 
     let on_submit = move |_| {
         let pool = pool.clone();
@@ -89,7 +89,7 @@ pub fn Login() -> Element {
         let pool = pool_for_effect.clone();
         let mut hello_state = hello_state;
         let mut auth_state = auth_state_for_effect.clone();
-        let nav = nav_for_effect.clone();
+        let nav = nav_for_effect;
         let toast = toast;
 
         spawn(async move {

@@ -116,7 +116,7 @@ fn AutoLoginToggle() -> Element {
     let mut show_password_dialog = use_signal(|| false);
     #[allow(unused_mut)]
     let mut password_input = use_signal(|| FormSecret(SecretString::new("".into())));
-    let hello_available = use_signal(|| hello_auth::is_hello_available());
+    let hello_available = use_signal(hello_auth::is_hello_available);
 
     let pool_for_load = pool.clone();
     let username_for_load = username.clone();
