@@ -318,7 +318,7 @@ pub fn Dashboard() -> Element {
                         input {
                             class: "input input-bordered input-sm pwd-search-input",
                             r#type: "text",
-                            placeholder: "Cerca per nome...",
+                            placeholder: "Search by name...",
                             aria_label: "Search passwords by name",
                             value: "{search_query}",
                             oninput: move |e| {
