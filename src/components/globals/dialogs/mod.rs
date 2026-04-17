@@ -21,6 +21,7 @@ mod vault_action_dialog;
 mod vault_create;
 mod vault_delete;
 mod vault_edit;
+mod breaking_change_dialog;
 pub mod user_deletion;
 
 pub use base_modal::*;
@@ -45,3 +46,4 @@ pub use vault_action_dialog::*;
 pub use vault_create::*;
 pub use vault_delete::*;
 pub use vault_edit::*;
+pub use breaking_change_dialog::*;

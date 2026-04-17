@@ -6,7 +6,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 
 /// Struttura deserializzata da latest.json generato dal bundler Tauri.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct UpdateManifest {
     pub version: String,
     pub notes: String,
@@ -17,7 +17,7 @@ pub struct UpdateManifest {
     pub is_breaking: bool,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct PlatformInfo {
     pub signature: String,
     pub url: String,
