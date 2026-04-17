@@ -239,7 +239,7 @@ pub fn create_desktop_config(app_version: &str, start_visible: bool) -> Config {
     let mut config = Config::new().with_window(
         WindowBuilder::new()
             .with_title(format!("PWDManager v{}", app_version))
-            .with_inner_size(LogicalSize::new(800.0, 600.0))
+            .with_inner_size(LogicalSize::new(960.0, 720.0))
             .with_resizable(true)
             .with_visible(start_visible)
             .with_window_icon(window_icon),
