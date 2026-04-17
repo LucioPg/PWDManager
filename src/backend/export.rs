@@ -283,13 +283,21 @@ pub async fn export_all_user_passwords_pipeline(
 
     // 3. Decrypt all passwords in one pass
     let all_raw_passwords = if all_stored_passwords.is_empty() {
-        Vec::new()
+        if let Some(tx) = &progress_tx {
+            let _ = tx.send(ProgressMessage::new(MigrationStage::Completed, 100, 100)).await;
+        }
+        let content = serialize_passwords(&[], format)?;
+        fs::write(output_path, content)
+            .await
+            .map_err(|e| format!("File write error: {}", e))?;
+        tracing::info!("export_all_user_passwords_pipeline: no passwords found, empty file written");
+        return Ok(());
     } else {
         let user_auth = fetch_user_auth_from_id(pool, user_id)
             .await
             .map_err(|e| e.to_string())?;
 
-        decrypt_bulk_stored_data(user_auth, all_stored_passwords, progress_tx.clone())
+        decrypt_bulk_stored_data(user_auth, all_stored_passwords, None)
             .await
             .map_err(|e| format!("Failed to decrypt passwords: {}", e))?
     };
