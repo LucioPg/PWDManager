@@ -4,6 +4,7 @@
 
 use crate::backend::updater::download_and_install;
 use crate::backend::updater_types::{UpdateManifest, UpdateState};
+use crate::components::globals::BreakingChangeDialog;
 use crate::components::{Spinner, SpinnerSize};
 use dioxus::prelude::*;
 
@@ -32,6 +33,41 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
             notes,
             pub_date,
         } => {
+            let is_breaking = update_manifest
+                .read()
+                .as_ref()
+                .is_some_and(|m| m.is_breaking);
+
+            if is_breaking {
+                let manifest = update_manifest.read().clone().unwrap();
+                let manifest_clone = manifest.clone();
+                let update_manifest_click = update_manifest;
+                let mut update_state_avail = update_state;
+                let mut breaking_dialog_open = use_signal(|| true);
+
+                return rsx! {
+                    BreakingChangeDialog {
+                        open: breaking_dialog_open,
+                        manifest: manifest_clone,
+                        on_update_now: move |_| {
+                            let manifest = update_manifest_click.read().clone();
+                            if let Some(manifest) = manifest {
+                                let mut update_state = update_state_avail;
+                                spawn(async move {
+                                    if let Err(e) = download_and_install(&manifest, update_state).await {
+                                        update_state.set(UpdateState::Error(e));
+                                    }
+                                });
+                            }
+                        },
+                        on_dismiss: move |_| {
+                            breaking_dialog_open.set(false);
+                            update_state_avail.set(UpdateState::Idle);
+                        },
+                    }
+                };
+            }
+
             let version = version.clone();
             let notes = notes.clone();
             let pub_date = pub_date.clone();
