@@ -35,8 +35,8 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
             pub_date,
         } => {
             let manifest_read = update_manifest.read();
-            if let Some(manifest) = manifest_read.as_ref() {
-                if manifest.is_breaking {
+            if let Some(manifest) = manifest_read.as_ref()
+                && manifest.is_breaking {
                     let manifest_clone = manifest.clone();
                     let update_manifest_click = update_manifest;
                     let mut update_state_avail = update_state;
@@ -63,7 +63,6 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
                         }
                     };
                 }
-            }
 
             let version = version.clone();
             let notes = notes.clone();

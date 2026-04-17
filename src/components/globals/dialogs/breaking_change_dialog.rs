@@ -136,10 +136,10 @@ pub fn BreakingChangeDialog(
     on_dismiss: EventHandler<()>,
 ) -> Element {
     let mut open = open;
-    let mut export_completed = use_signal(|| false);
-    let mut export_failed = use_signal(|| false);
-    let mut is_exporting = use_signal(|| false);
-    let mut show_export_progress = use_signal(|| false);
+    let export_completed = use_signal(|| false);
+    let export_failed = use_signal(|| false);
+    let is_exporting = use_signal(|| false);
+    let show_export_progress = use_signal(|| false);
 
     let auth_state = use_context::<AuthState>();
     let user_id = auth_state.get_user_id();
