@@ -12,6 +12,9 @@ pub struct UpdateManifest {
     pub notes: String,
     pub pub_date: String,
     pub platforms: HashMap<String, PlatformInfo>,
+    /// If true, this update is a breaking change that requires data export.
+    #[serde(default)]
+    pub is_breaking: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
