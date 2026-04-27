@@ -7,7 +7,7 @@ mod auth;
 mod backend;
 mod components;
 
-use crate::auth::{User, set_on_auth_change};
+use crate::auth::set_on_auth_change;
 use crate::backend::db_backend::InitResult;
 use crate::backend::init_blacklist_from_path;
 use crate::backend::settings_types::{AutoLogoutSettings, AutoUpdate};
@@ -17,7 +17,7 @@ use crate::components::RecoveryKeySetupDialog;
 use crate::components::{
     AuthWrapper, Dashboard, LandingPage, Login, Logout, MyVaults, NavBar, PageNotFound,
     RouteWrapper, Settings, Spinner, SpinnerSize, Style, ToastContainer, ToastHubState,
-    UpdateNotification, UpsertUser, show_toast_error, show_toast_success,
+    UpdateNotification, WelcomePage, show_toast_error, show_toast_success,
 };
 use crate::components::{DatabaseResetDialog, RecoveryKeyInputDialog};
 use backend::db_backend::init_db;
@@ -526,8 +526,8 @@ enum Route {
     #[end_layout(AuthWrapper)]
     #[route("/login")]
     Login,
-    #[route("/register")]
-    UpsertUser { user_to_edit: Option<User> },
+    #[route("/welcome")]
+    WelcomePage,
     #[route("/:..segments")]
     PageNotFound { segments: Vec<String> },
 }
