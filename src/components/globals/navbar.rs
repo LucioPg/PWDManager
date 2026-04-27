@@ -3,7 +3,7 @@
 // Commercial use requires a license. See LICENSE.md for details.
 
 use crate::Route;
-use crate::components::{ActionButtons, ActionButtonsVariant};
+use crate::components::{ActionButton, ButtonSize, ButtonType, ButtonVariant};
 use dioxus::prelude::*;
 
 #[component]
@@ -44,7 +44,6 @@ pub fn NavBar() -> Element {
         }
     } else {
         let nav_login = nav;
-        let nav_register = nav;
         rsx! {
             nav { id: "nav", class: "navbar",
                 div { class: "nav-logo-container w-full h-full",
@@ -52,19 +51,14 @@ pub fn NavBar() -> Element {
                 }
 
                 div { class: "navbar-nav",
-                    ActionButtons {
-                        primary_text: "Login".to_string(),
-                        secondary_text: "Register".to_string(),
-                        primary_on_click: move |_| {
+                    ActionButton {
+                        text: "Login".to_string(),
+                        variant: ButtonVariant::Primary,
+                        button_type: ButtonType::Button,
+                        size: ButtonSize::Normal,
+                        on_click: move |_| {
                             nav_login.push(Route::Login);
                         },
-                        secondary_on_click: move |_| {
-                            nav_register
-                                .push(Route::UpsertUser {
-                                    user_to_edit: auth_state.get_user(),
-                                });
-                        },
-                        variant: ActionButtonsVariant::Nav,
                     }
                 }
             }
