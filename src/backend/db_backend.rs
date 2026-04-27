@@ -687,6 +687,7 @@ pub async fn register_user_with_settings(
 }
 
 /// Check if any user exists in the database.
+#[tracing::instrument(skip(pool))]
 pub async fn has_any_user(pool: &SqlitePool) -> Result<bool, DBError> {
     let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users")
         .fetch_one(pool)
@@ -699,6 +700,9 @@ pub async fn has_any_user(pool: &SqlitePool) -> Result<bool, DBError> {
 ///
 /// On Windows, reads the `USERNAME` environment variable.
 /// On other platforms, falls back to `USER` env var.
+///
+/// TODO(multi-platform): Replace with `whoami::fallible::username()` crate
+/// for proper cross-platform support (macOS, Linux, etc.).
 pub fn get_system_username() -> Result<String, DBError> {
     std::env::var("USERNAME")
         .or_else(|_| std::env::var("USER"))
