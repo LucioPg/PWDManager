@@ -16,7 +16,7 @@ pub fn LandingPage() -> Element {
     let nav = use_navigator();
 
     // First-launch detection: redirect to /welcome if no users exist.
-    // OnceLock ensures the check runs only once per session.
+    // OnceLock ensures the check runs only once per process lifetime.
     use_effect(move || {
         static INIT: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
         if INIT.get().is_some() {
