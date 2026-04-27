@@ -59,3 +59,6 @@ mod vault_utils_tests;
 pub use pwd_strength::{
     evaluate_password_strength, evaluate_password_strength_tx, init_blacklist_from_path,
 };
+
+// Re-export convenience functions
+pub use db_backend::get_system_username;

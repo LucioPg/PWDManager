@@ -4,7 +4,8 @@
 
 #![allow(dead_code)]
 use crate::backend::db_backend::{
-    fetch_user_data, fetch_user_password, fetch_user_temp_old_password, save_or_update_user,
+    fetch_user_data, fetch_user_password, fetch_user_temp_old_password, has_any_user,
+    save_or_update_user,
 };
 use crate::backend::test_helpers::{create_test_user, setup_test_db};
 use secrecy::SecretString;
@@ -406,5 +407,18 @@ mod tests {
             user.is_ok(),
             "User should exist with special characters in username"
         );
+    }
+
+    #[tokio::test]
+    async fn test_has_any_user_false_when_empty() {
+        let pool = setup_test_db().await;
+        assert!(!has_any_user(&pool).await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn test_has_any_user_true_after_user_exists() {
+        let pool = setup_test_db().await;
+        create_test_user(&pool, "hasuser", "Password123!", None).await;
+        assert!(has_any_user(&pool).await.unwrap());
     }
 }

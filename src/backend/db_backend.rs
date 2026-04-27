@@ -686,6 +686,30 @@ pub async fn register_user_with_settings(
     Ok(user_id)
 }
 
+/// Check if any user exists in the database.
+pub async fn has_any_user(pool: &SqlitePool) -> Result<bool, DBError> {
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users")
+        .fetch_one(pool)
+        .await
+        .map_err(|e| DBError::new_general_error(format!("Failed to count users: {}", e)))?;
+    Ok(count > 0)
+}
+
+/// Get the current OS username.
+///
+/// On Windows, reads the `USERNAME` environment variable.
+/// On other platforms, falls back to `USER` env var.
+pub fn get_system_username() -> Result<String, DBError> {
+    std::env::var("USERNAME")
+        .or_else(|_| std::env::var("USER"))
+        .map_err(|_| {
+            DBError::new_general_error(
+                "Unable to detect system username. Please set USERNAME environment variable."
+                    .into(),
+            )
+        })
+}
+
 /// Cancella un utente dal database.
 ///
 /// La cancellazione elimina l'utente e tutte le password associate grazie
