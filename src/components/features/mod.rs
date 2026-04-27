@@ -18,6 +18,7 @@ mod settings;
 mod storedpassword_settings;
 mod update_notification;
 pub mod upsert_user;
+mod welcome;
 
 pub use bulk_action_bar::*;
 pub use dashboard::*;
@@ -32,3 +33,4 @@ pub use settings::*;
 pub use storedpassword_settings::*;
 pub use update_notification::*;
 pub use upsert_user::*;
+pub use welcome::*;
