@@ -3,7 +3,10 @@
 // Commercial use requires a license. See LICENSE.md for details.
 
 use crate::auth::AuthState;
-use crate::components::{Spinner, SpinnerSize, show_toast_error, use_toast};
+use crate::components::{
+    ActionButton, ButtonSize, ButtonType, ButtonVariant, Spinner, SpinnerSize,
+    show_toast_error, use_toast,
+};
 use dioxus::prelude::*;
 use sqlx::SqlitePool;
 use tracing::{debug, instrument};
@@ -38,7 +41,6 @@ async fn attempt_hello_login(
     nav: dioxus_router::Navigator,
     toast: Signal<crate::components::ToastHubState>,
 ) {
-    // Check if any user has auto-login enabled
     let auto_user = match get_auto_login_user(&pool).await {
         Ok(Some(username)) => username,
         Ok(None) => {
@@ -58,7 +60,6 @@ async fn attempt_hello_login(
     let username_for_prompt = auto_user.clone();
     let username_for_keyring = auto_user.clone();
 
-    // Request Windows Hello verification (blocking call in spawn_blocking)
     let hello_result = tokio::task::spawn_blocking(move || {
         hello_auth::request_verification(&format!("Sign in as {}?", username_for_prompt))
     })
@@ -67,7 +68,6 @@ async fn attempt_hello_login(
 
     match &hello_result {
         hello_auth::HelloResult::Success => {
-            // Load master password from keyring
             match hello_auth::load_master_password(&username_for_keyring) {
                 Ok(master_password) => {
                     let secret = SecretString::new(master_password.into());
@@ -85,16 +85,15 @@ async fn attempt_hello_login(
                                 ));
                             }
                         },
-                        Err(_) => {
-                            // Hello succeeded but password in keyring is outdated
+                        Err(e) => {
+                            tracing::warn!("check_user failed for {}: {:?}", username_for_keyring, e);
                             hello_auth::clear_master_password(&username_for_keyring).ok();
-                            let _ =
-                                crate::backend::db_backend::set_auto_login_enabled(
-                                    &pool,
-                                    &username_for_keyring,
-                                    false,
-                                )
-                                .await;
+                            let _ = crate::backend::db_backend::set_auto_login_enabled(
+                                &pool,
+                                &username_for_keyring,
+                                false,
+                            )
+                            .await;
                             state.set(LoginState::Failed(
                                 "Password in keyring is outdated. Please re-register.".to_string(),
                             ));
@@ -139,13 +138,8 @@ pub fn Login() -> Element {
     let pool = use_context::<SqlitePool>();
     let auth_state = use_context::<AuthState>();
 
-    // Pre-clone non-Copy values for each closure that needs them
     let pool_effect = pool.clone();
     let auth_state_effect = auth_state.clone();
-    let pool_retry1 = pool.clone();
-    let auth_state_retry1 = auth_state.clone();
-    let pool_retry2 = pool.clone();
-    let auth_state_retry2 = auth_state.clone();
 
     // Auto-attempt Windows Hello on mount
     use_effect(move || {
@@ -166,31 +160,30 @@ pub fn Login() -> Element {
         });
     });
 
-    // Retry closure for Ready state
+    // Two retry closures — Dioxus EventHandler doesn't implement Clone
+    let pool_r1 = pool.clone();
+    let auth_r1 = auth_state.clone();
     let on_retry = move |_| {
         let mut state = state;
-        let auth_state = auth_state_retry1.clone();
-        let nav = nav;
-        let toast = toast;
-        let pool = pool_retry1.clone();
-
+        let p = pool_r1.clone();
+        let a = auth_r1.clone();
+        let n = nav.clone();
         spawn(async move {
             state.set(LoginState::Checking);
-            attempt_hello_login(pool, state, auth_state, nav, toast).await;
+            attempt_hello_login(p, state, a, n, toast).await;
         });
     };
 
-    // Retry closure for Failed state
+    let pool_r2 = pool.clone();
+    let auth_r2 = auth_state.clone();
     let on_retry_failed = move |_| {
         let mut state = state;
-        let auth_state = auth_state_retry2.clone();
-        let nav = nav;
-        let toast = toast;
-        let pool = pool_retry2.clone();
-
+        let p = pool_r2.clone();
+        let a = auth_r2.clone();
+        let n = nav.clone();
         spawn(async move {
             state.set(LoginState::Checking);
-            attempt_hello_login(pool, state, auth_state, nav, toast).await;
+            attempt_hello_login(p, state, a, n, toast).await;
         });
     };
 
@@ -217,34 +210,40 @@ pub fn Login() -> Element {
                             p { class: "text-sm text-base-content/70",
                                 "Windows Hello verification was cancelled."
                             }
-                            button {
-                                class: "btn btn-primary",
-                                onclick: on_retry,
-                                "Try Again"
+                            ActionButton {
+                                text: "Try Again",
+                                variant: ButtonVariant::Primary,
+                                button_type: ButtonType::Button,
+                                size: ButtonSize::Normal,
+                                on_click: on_retry,
                             }
                         }
                     },
                     LoginState::Failed(ref msg) => rsx! {
                         div { class: "flex flex-col items-center gap-4",
                             div { class: "alert alert-error text-sm", "{msg}" }
-                            button {
-                                class: "btn btn-primary",
-                                onclick: on_retry_failed,
-                                "Retry"
+                            ActionButton {
+                                text: "Retry",
+                                variant: ButtonVariant::Primary,
+                                button_type: ButtonType::Button,
+                                size: ButtonSize::Normal,
+                                on_click: on_retry_failed,
                             }
                         }
                     },
                     LoginState::NoAutoLogin => rsx! {
                         div { class: "flex flex-col items-center gap-4",
                             div { class: "alert alert-info text-sm",
-                                "No auto-login user configured. Please register first."
+                                "No account configured. Tap below to begin setup."
                             }
-                            button {
-                                class: "btn btn-primary",
-                                onclick: move |_| {
+                            ActionButton {
+                                text: "Go to Setup",
+                                variant: ButtonVariant::Primary,
+                                button_type: ButtonType::Button,
+                                size: ButtonSize::Normal,
+                                on_click: move |_| {
                                     nav.push("/welcome");
                                 },
-                                "Go to Setup"
                             }
                         }
                     },
