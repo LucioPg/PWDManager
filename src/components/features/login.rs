@@ -34,8 +34,8 @@ enum LoginState {
 async fn attempt_hello_login(
     pool: SqlitePool,
     mut state: Signal<LoginState>,
-    auth_state: AuthState,
-    nav: navigator::Navigator,
+    mut auth_state: AuthState,
+    nav: dioxus_router::Navigator,
     toast: Signal<crate::components::ToastHubState>,
 ) {
     // Check if any user has auto-login enabled
@@ -65,7 +65,7 @@ async fn attempt_hello_login(
     .await
     .unwrap_or(hello_auth::HelloResult::Failed("Task spawn failed".into()));
 
-    match hello_result {
+    match &hello_result {
         hello_auth::HelloResult::Success => {
             // Load master password from keyring
             match hello_auth::load_master_password(&username_for_keyring) {
@@ -139,6 +139,14 @@ pub fn Login() -> Element {
     let pool = use_context::<SqlitePool>();
     let auth_state = use_context::<AuthState>();
 
+    // Pre-clone non-Copy values for each closure that needs them
+    let pool_effect = pool.clone();
+    let auth_state_effect = auth_state.clone();
+    let pool_retry1 = pool.clone();
+    let auth_state_retry1 = auth_state.clone();
+    let pool_retry2 = pool.clone();
+    let auth_state_retry2 = auth_state.clone();
+
     // Auto-attempt Windows Hello on mount
     use_effect(move || {
         static INIT: OnceLock<bool> = OnceLock::new();
@@ -147,24 +155,38 @@ pub fn Login() -> Element {
         }
         let _ = INIT.set(true);
 
-        let pool = pool.clone();
-        let state = state;
-        let auth_state = auth_state.clone();
+        let mut state = state;
+        let auth_state = auth_state_effect.clone();
         let nav = nav;
         let toast = toast;
+        let pool = pool_effect.clone();
 
         spawn(async move {
             attempt_hello_login(pool, state, auth_state, nav, toast).await;
         });
     });
 
-    // Retry closure — needs a separate binding since EventHandler doesn't impl Clone
+    // Retry closure for Ready state
     let on_retry = move |_| {
-        let pool = pool.clone();
-        let state = state;
-        let auth_state = auth_state.clone();
+        let mut state = state;
+        let auth_state = auth_state_retry1.clone();
         let nav = nav;
         let toast = toast;
+        let pool = pool_retry1.clone();
+
+        spawn(async move {
+            state.set(LoginState::Checking);
+            attempt_hello_login(pool, state, auth_state, nav, toast).await;
+        });
+    };
+
+    // Retry closure for Failed state
+    let on_retry_failed = move |_| {
+        let mut state = state;
+        let auth_state = auth_state_retry2.clone();
+        let nav = nav;
+        let toast = toast;
+        let pool = pool_retry2.clone();
 
         spawn(async move {
             state.set(LoginState::Checking);
@@ -180,7 +202,7 @@ pub fn Login() -> Element {
                 match state() {
                     LoginState::Checking | LoginState::Attempting => rsx! {
                         div { class: "flex flex-col items-center gap-4",
-                            Spinner { size: SpinnerSize::XXLarge, color_class: "text-primary" }
+                            Spinner { size: SpinnerSize::Large, color_class: "text-primary" }
                             p { class: "text-sm text-base-content/70",
                                 if state() == LoginState::Checking {
                                     "Checking auto-login settings..."
@@ -207,17 +229,7 @@ pub fn Login() -> Element {
                             div { class: "alert alert-error text-sm", "{msg}" }
                             button {
                                 class: "btn btn-primary",
-                                onclick: move |_| {
-                                    let pool = pool.clone();
-                                    let state = state;
-                                    let auth_state = auth_state.clone();
-                                    let nav = nav;
-                                    let toast = toast;
-                                    spawn(async move {
-                                        state.set(LoginState::Checking);
-                                        attempt_hello_login(pool, state, auth_state, nav, toast).await;
-                                    });
-                                },
+                                onclick: on_retry_failed,
                                 "Retry"
                             }
                         }
