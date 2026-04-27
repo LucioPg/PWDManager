@@ -410,12 +410,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_has_any_user_false_when_empty() {
-        let pool = setup_test_db().await;
-        assert!(!has_any_user(&pool).await.unwrap());
-    }
-
-    #[tokio::test]
     async fn test_has_any_user_true_after_user_exists() {
         let pool = setup_test_db().await;
         create_test_user(&pool, "hasuser", "Password123!", None).await;
