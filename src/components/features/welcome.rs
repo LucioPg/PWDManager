@@ -44,6 +44,8 @@ pub fn WelcomePage() -> Element {
     let mut avatar_src =
         use_signal(|| get_user_avatar_with_default(None));
     let mut is_picking = use_signal(|| false);
+    let avatar_loading = use_signal(|| false);
+    let avatar_error = use_signal(|| Option::<String>::None);
 
     // Check if users exist — show spinner during async check
     let pool_for_check = pool.clone();
@@ -81,15 +83,11 @@ pub fn WelcomePage() -> Element {
         if is_picking() {
             return;
         }
-        let mut new_avatar = avatar;
-        let mut is_loading_clone = use_signal(|| false);
-        let mut is_picking_sig = is_picking;
-        let mut error_sig = use_signal(|| Option::<String>::None);
         spawn(pick_and_process_avatar(
-            new_avatar,
-            is_loading_clone,
-            is_picking_sig,
-            error_sig,
+            avatar,
+            avatar_loading,
+            is_picking,
+            avatar_error,
         ));
     };
 
@@ -202,7 +200,7 @@ pub fn WelcomePage() -> Element {
                             size: AvatarSize::XXLarge,
                             shadow: true,
                             show_border: true,
-                            loading: use_signal(|| false),
+                            loading: avatar_loading,
                             is_picking,
                         }
                         form { onsubmit: on_submit, class: "flex flex-col gap-3 w-full",
