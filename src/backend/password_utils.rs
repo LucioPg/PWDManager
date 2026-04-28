@@ -180,10 +180,19 @@ pub fn detect_system_language() -> DicewareLanguage {
 /// Estrae il sale da una password hash Argon2.
 ///
 /// Il sale è necessario per derivare la chiave AES della password utente.
-pub(crate) fn get_salt(hash_password: &DbSecretString) -> Salt<'_> {
+pub(crate) fn get_salt(hash_password: &DbSecretString) -> Result<Salt<'_>, DBError> {
     let hash_password = hash_password.0.expose_secret();
-    let parsed_hash = PasswordHash::new(hash_password).unwrap();
-    parsed_hash.salt.unwrap()
+    let parsed_hash = PasswordHash::new(hash_password).map_err(|e| {
+        DBError::new_password_hash_corruption_error(format!(
+            "Failed to parse password hash: {}",
+            e
+        ))
+    })?;
+    parsed_hash.salt.ok_or_else(|| {
+        DBError::new_password_hash_corruption_error(
+            "Password hash is missing the salt component".to_string(),
+        )
+    })
 }
 
 /// Converte CryptoError in DBError per compatibilità con il codice esistente.
@@ -264,7 +273,7 @@ pub async fn create_stored_data_pipeline_bulk(
 ) -> Result<(), DBError> {
     // 1. Recupero credenziali e setup crittografico
     let user_auth = fetch_user_auth_from_id(pool, user_id).await?;
-    let salt = get_salt(&user_auth.password);
+    let salt = get_salt(&user_auth.password)?;
     let cipher = create_cipher(&salt, &user_auth)?;
     // 2. Creazione StoredPassword
     let stored_passwords =
@@ -399,7 +408,7 @@ pub async fn clone_passwords_to_vault(
 
     // 4. Re-cripta (genera nuovi nonce) e salva
     let user_auth = fetch_user_auth_from_id(pool, user_id).await?;
-    let salt = get_salt(&user_auth.password);
+    let salt = get_salt(&user_auth.password)?;
     let cipher = create_cipher(&salt, &user_auth)?;
     let stored = create_stored_data_records(cipher, user_auth, cloned, None).await?;
     upsert_stored_passwords_batch(pool, stored).await?;
@@ -528,7 +537,7 @@ pub async fn decrypt_bulk_stored_data(
         return Ok(Vec::new());
     }
 
-    let salt = get_salt(&user_auth.password);
+    let salt = get_salt(&user_auth.password)?;
     let cipher = create_cipher(&salt, &user_auth)?;
     let cipher = Arc::new(cipher);
     let total = stored_passwords.len();
@@ -649,7 +658,7 @@ pub async fn stored_passwords_migration_pipeline_with_progress(
 
     // 4. Recupera cipher con NUOVA password (dal DB aggiornato)
     let new_user_auth = fetch_user_auth_from_id(pool, user_id).await?;
-    let salt = get_salt(&new_user_auth.password);
+    let salt = get_salt(&new_user_auth.password)?;
     let cipher = create_cipher(&salt, &new_user_auth)?;
 
     // 5. Encrypt con progress tracking
