@@ -29,100 +29,37 @@ pub fn UpdateNotification(update_state: Signal<UpdateState>) -> Element {
                 }
             }
         },
-        UpdateState::Available {
-            version,
-            notes,
-            pub_date,
-        } => {
+        UpdateState::Available { .. } => {
             let manifest_read = update_manifest.read();
-            if let Some(manifest) = manifest_read.as_ref()
-                && manifest.is_breaking {
-                    let manifest_clone = manifest.clone();
-                    let update_manifest_click = update_manifest;
-                    let mut update_state_avail = update_state;
+            if let Some(manifest) = manifest_read.as_ref() {
+                let manifest_clone = manifest.clone();
+                let update_manifest_click = update_manifest;
+                let mut update_state_avail = update_state;
 
-                    return rsx! {
-                        BreakingChangeDialog {
-                            open: breaking_dialog_open,
-                            manifest: manifest_clone,
-                            on_update_now: move |_| {
-                                let manifest = update_manifest_click.read().clone();
-                                if let Some(manifest) = manifest {
-                                    let mut update_state = update_state_avail;
-                                    spawn(async move {
-                                        if let Err(e) = download_and_install(&manifest, update_state).await {
-                                            update_state.set(UpdateState::Error(e));
-                                        }
-                                    });
-                                }
-                            },
-                            on_dismiss: move |_| {
-                                breaking_dialog_open.set(false);
-                                update_state_avail.set(UpdateState::Idle);
-                            },
-                        }
-                    };
-                }
-
-            let version = version.clone();
-            let notes = notes.clone();
-            let pub_date = pub_date.clone();
-            let mut update_state_avail = update_state;
-            let mut update_state_dismiss = update_state;
-            let update_manifest_click = update_manifest;
-            let changelog = notes.clone();
-            rsx! {
-                div { class: "pwd-update-overlay",
-                    div { class: "pwd-update-card",
-                        // Icona aggiornamento (freccia circolare)
-                        svg {
-                            class: "w-10 h-10 text-primary shrink-0",
-                            view_box: "0 0 24 24",
-                            fill: "none",
-                            stroke: "currentColor",
-                            stroke_width: "2",
-                            path { d: "M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" }
-                            path { d: "M21 3v5h-5" }
-                        }
-                        div { class: "flex-1 min-w-0",
-                            h3 { class: "pwd-update-title", "Update available!" }
-                            p { class: "pwd-update-version", "Version {version}" }
-                            p { class: "pwd-update-version", "{pub_date}" }
-                            if !changelog.is_empty() {
-                                p {
-                                    class: "pwd-update-changelog",
-                                    dangerous_inner_html: "{changelog}",
-                                }
-                            }
-                        }
-                        div { class: "pwd-update-actions",
-                            button {
-                                class: "btn btn-primary btn-sm",
-                                onclick: move |_| {
-                                    let manifest = update_manifest_click.read().clone();
-                                    if let Some(manifest) = manifest {
-                                        let mut update_state = update_state_avail;
-                                        spawn(async move {
-                                            if let Err(e) = download_and_install(&manifest, update_state).await {
-                                                update_state.set(UpdateState::Error(e));
-                                            }
-                                        });
-                                    } else {
-                                        update_state_avail
-                                            .set(UpdateState::Error("Manifest not available".to_string()));
+                return rsx! {
+                    BreakingChangeDialog {
+                        open: breaking_dialog_open,
+                        manifest: manifest_clone,
+                        on_update_now: move |_| {
+                            let manifest = update_manifest_click.read().clone();
+                            if let Some(manifest) = manifest {
+                                let mut update_state = update_state_avail;
+                                spawn(async move {
+                                    if let Err(e) = download_and_install(&manifest, update_state).await {
+                                        update_state.set(UpdateState::Error(e));
                                     }
-                                },
-                                "Update now!"
+                                });
                             }
-                            button {
-                                class: "btn btn-ghost btn-sm",
-                                onclick: move |_| update_state_dismiss.set(UpdateState::Idle),
-                                "Later..."
-                            }
-                        }
+                        },
+                        on_dismiss: move |_| {
+                            breaking_dialog_open.set(false);
+                            update_state_avail.set(UpdateState::Idle);
+                        },
                     }
-                }
+                };
             }
+
+            rsx! {}
         }
         UpdateState::Downloading { progress } => {
             let progress_val = *progress;

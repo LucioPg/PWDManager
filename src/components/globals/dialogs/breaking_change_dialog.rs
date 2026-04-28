@@ -2,10 +2,10 @@
 // Licensed under the Prosperity Public License 3.0.0
 // Commercial use requires a license. See LICENSE.md for details.
 
-//! Dialog shown when a breaking change update is available.
+//! Pre-update dialog shown when an update is available.
 //!
-//! Warns the user that the database may be rebuilt and suggests
-//! exporting passwords before proceeding with the update.
+//! Recommends exporting passwords before proceeding with the update,
+//! shown for every update regardless of breaking changes.
 
 use super::base_modal::ModalVariant;
 use crate::auth::AuthState;
@@ -225,15 +225,14 @@ pub fn BreakingChangeDialog(
                 }
             }
 
-            // Breaking change warning
+            // Pre-update recommendation
             div { class: "bg-warning/10 border border-warning/30 rounded-lg p-4 mb-4",
                 p { class: "font-bold text-warning mb-2",
-                    "This version contains important changes:"
+                    "Before updating, please note:"
                 }
                 ul { class: "list-disc list-inside text-sm space-y-1 opacity-80",
-                    li { "The database may be rebuilt" }
-                    li { "Multi-user support will be removed" }
-                    li { "Passwords will no longer be accessible without export" }
+                    li { "Database structure may change between versions" }
+                    li { "Exporting passwords is recommended as a safety backup" }
                 }
             }
 
