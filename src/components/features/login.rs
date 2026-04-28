@@ -132,7 +132,7 @@ async fn attempt_hello_login(
 #[component]
 #[instrument]
 pub fn Login() -> Element {
-    let mut state = use_signal(|| LoginState::Checking);
+    let state = use_signal(|| LoginState::Checking);
     let toast = use_toast();
     let nav = use_navigator();
     let pool = use_context::<SqlitePool>();
@@ -149,7 +149,7 @@ pub fn Login() -> Element {
         }
         let _ = INIT.set(true);
 
-        let mut state = state;
+        let state = state;
         let auth_state = auth_state_effect.clone();
         let nav = nav;
         let toast = toast;
@@ -167,7 +167,7 @@ pub fn Login() -> Element {
         let mut state = state;
         let p = pool_r1.clone();
         let a = auth_r1.clone();
-        let n = nav.clone();
+        let n = nav;
         spawn(async move {
             state.set(LoginState::Checking);
             attempt_hello_login(p, state, a, n, toast).await;
@@ -180,7 +180,7 @@ pub fn Login() -> Element {
         let mut state = state;
         let p = pool_r2.clone();
         let a = auth_r2.clone();
-        let n = nav.clone();
+        let n = nav;
         spawn(async move {
             state.set(LoginState::Checking);
             attempt_hello_login(p, state, a, n, toast).await;

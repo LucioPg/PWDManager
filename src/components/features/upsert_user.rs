@@ -226,11 +226,10 @@ pub fn UpsertUser(user_to_edit: Option<User>) -> Element {
             };
 
             // Se il salvataggio ha successo e c'è un segnale di completamento, impostalo
-            if success {
-                if let Some(mut signal) = completion_signal {
+            if success
+                && let Some(mut signal) = completion_signal {
                     signal.set(true);
                 }
-            }
         });
     };
 

@@ -40,19 +40,19 @@ pub fn WelcomePage() -> Element {
     let auth_state = use_context::<AuthState>();
 
     let mut state = use_signal(|| WelcomeState::Checking);
-    let mut avatar = use_signal(|| None::<Vec<u8>>);
+    let avatar = use_signal(|| None::<Vec<u8>>);
     let mut avatar_src =
         use_signal(|| get_user_avatar_with_default(None));
-    let mut is_picking = use_signal(|| false);
+    let is_picking = use_signal(|| false);
     let avatar_loading = use_signal(|| false);
     let avatar_error = use_signal(|| Option::<String>::None);
 
     // Check if users exist — show spinner during async check
     let pool_for_check = pool.clone();
-    let nav_for_check = nav.clone();
+    let nav_for_check = nav;
     use_effect(move || {
         let pool = pool_for_check.clone();
-        let nav = nav_for_check.clone();
+        let nav = nav_for_check;
         let mut state = state;
         spawn(async move {
             match has_any_user(&pool).await {
@@ -102,7 +102,7 @@ pub fn WelcomePage() -> Element {
 
         let pool = pool.clone();
         let mut auth_state = auth_state.clone();
-        let nav = nav.clone();
+        let nav = nav;
         let toast = toast;
         let a = avatar.read().clone();
 

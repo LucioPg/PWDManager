@@ -61,4 +61,3 @@ pub use pwd_strength::{
 };
 
 // Re-export convenience functions
-pub use db_backend::get_system_username;

@@ -25,7 +25,7 @@ pub fn LandingPage() -> Element {
         let _ = INIT.set(true);
 
         let pool = pool.clone();
-        let nav = nav.clone();
+        let nav = nav;
         spawn(async move {
             match has_any_user(&pool).await {
                 Ok(false) => {
