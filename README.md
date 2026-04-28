@@ -122,8 +122,7 @@ The entire SQLite database is encrypted at rest. Without the key, the file is in
 ### Layer 2 -- Per-field encryption (AES-256-GCM)
 
 Each credential (username, URL, password, notes) is individually encrypted before storage. The AES-256-GCM cipher key is
-derived from the user's master password via Argon2id. This means each user has their own encryption domain -- two users
-with the same password store different ciphertext for the same credential.
+derived from the user's master password via Argon2id.
 
 Every field uses a cryptographically random 12-byte nonce, generated per-field at encryption time.
 
@@ -203,9 +202,7 @@ See [docs/security.md](docs/security.md) for the full technical breakdown.
 
 - Built-in updater with **minisign signature verification** -- the public key is embedded at compile-time, ensuring only
   authentic releases are installed
-- **Breaking change protection** -- when an update requires data migration, a dialog prompts the user to export all
-  vaults
-  before proceeding
+- **Pre-update export recommendation** -- a dialog prompts the user to export passwords before applying any update
 - One-click update from the notification UI
 
 ### Security features
