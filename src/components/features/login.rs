@@ -20,8 +20,6 @@ use crate::backend::hello_auth;
 #[cfg(feature = "desktop")]
 use secrecy::SecretString;
 
-#[cfg(feature = "desktop")]
-use std::sync::OnceLock;
 
 #[derive(Debug, Clone, PartialEq)]
 enum LoginState {
@@ -88,12 +86,6 @@ async fn attempt_hello_login(
                         Err(e) => {
                             tracing::warn!("check_user failed for {}: {:?}", username_for_keyring, e);
                             hello_auth::clear_master_password(&username_for_keyring).ok();
-                            let _ = crate::backend::db_backend::set_auto_login_enabled(
-                                &pool,
-                                &username_for_keyring,
-                                false,
-                            )
-                            .await;
                             state.set(LoginState::Failed(
                                 "Password in keyring is outdated. Please re-register.".to_string(),
                             ));
@@ -141,22 +133,10 @@ pub fn Login() -> Element {
     let pool_effect = pool.clone();
     let auth_state_effect = auth_state.clone();
 
-    // Auto-attempt Windows Hello on mount
-    use_effect(move || {
-        static INIT: OnceLock<bool> = OnceLock::new();
-        if INIT.get().is_some() {
-            return;
-        }
-        let _ = INIT.set(true);
-
-        let state = state;
-        let auth_state = auth_state_effect.clone();
-        let nav = nav;
-        let toast = toast;
-        let pool = pool_effect.clone();
-
+    // Auto-attempt Windows Hello on mount (runs once per component lifecycle)
+    use_hook(move || {
         spawn(async move {
-            attempt_hello_login(pool, state, auth_state, nav, toast).await;
+            attempt_hello_login(pool_effect, state, auth_state_effect, nav, toast).await;
         });
     });
 

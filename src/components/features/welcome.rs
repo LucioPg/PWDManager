@@ -6,7 +6,6 @@ use crate::auth::AuthState;
 use crate::backend::avatar_utils::get_user_avatar_with_default;
 use crate::backend::db_backend::{
     fetch_user_data, get_system_username, has_any_user, register_user_with_settings,
-    set_auto_login_enabled,
 };
 use crate::backend::password_utils::generate_suggested_password;
 use crate::backend::ui_utils::pick_and_process_avatar;
@@ -166,10 +165,6 @@ pub fn WelcomePage() -> Element {
                     if let Err(e) = hello_auth::store_master_password(&u, password.expose_secret())
                     {
                         tracing::warn!("Failed to store master password in keyring: {}", e);
-                    }
-
-                    if let Err(e) = set_auto_login_enabled(&pool, &u, true).await {
-                        tracing::warn!("Failed to enable auto-login: {}", e);
                     }
 
                     match fetch_user_data(&pool, &u).await {
