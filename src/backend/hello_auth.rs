@@ -39,13 +39,18 @@ fn keyring_entry(username: &str) -> String {
 #[cfg(target_os = "windows")]
 mod platform {
     use super::*;
+    use std::sync::atomic::{AtomicPtr, Ordering};
     use windows::{
         core::HSTRING,
         Security::Credentials::UI::{
             UserConsentVerificationResult, UserConsentVerifier, UserConsentVerifierAvailability,
         },
-        Win32::Foundation::RPC_E_CHANGED_MODE,
+        Win32::Foundation::{BOOL, HWND, LPARAM, RPC_E_CHANGED_MODE},
         Win32::System::Com::{CoInitializeEx, COINIT_APARTMENTTHREADED},
+        Win32::UI::WindowsAndMessaging::{
+            EnumWindows, GetWindowThreadProcessId, IsWindowVisible, SetForegroundWindow, ShowWindow,
+            SW_RESTORE,
+        },
     };
 
     /// Initialize COM for WinRT calls (best-effort, tolerant of re-init).
@@ -54,6 +59,41 @@ mod platform {
             let hr = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
             if hr.is_err() && hr != RPC_E_CHANGED_MODE {
                 warn!("COM initialization returned unexpected error: {:?}", hr);
+            }
+        }
+    }
+
+    /// Bring the first visible window of our process to the foreground.
+    fn bring_app_to_foreground() {
+        let found = AtomicPtr::new(std::ptr::null_mut());
+
+        unsafe {
+            let _ = EnumWindows(
+                Some(enum_windows_callback),
+                LPARAM(&found as *const _ as isize),
+            );
+        }
+
+        let hwnd = HWND(found.load(Ordering::SeqCst));
+        if !hwnd.0.is_null() {
+            unsafe {
+                let _ = ShowWindow(hwnd, SW_RESTORE);
+                let _ = SetForegroundWindow(hwnd);
+            }
+        }
+    }
+
+    unsafe extern "system" fn enum_windows_callback(hwnd: HWND, lparam: LPARAM) -> BOOL {
+        unsafe {
+            let found = &*(lparam.0 as *const AtomicPtr<std::ffi::c_void>);
+            let mut pid: u32 = 0;
+            GetWindowThreadProcessId(hwnd, Some(&mut pid));
+
+            if pid == std::process::id() && IsWindowVisible(hwnd).as_bool() {
+                found.store(hwnd.0, Ordering::SeqCst);
+                BOOL(0)
+            } else {
+                BOOL(1)
             }
         }
     }
@@ -79,6 +119,7 @@ mod platform {
     #[allow(unused_unsafe)]
     pub fn request_verification(message: &str) -> HelloResult {
         ensure_com_initialized();
+        bring_app_to_foreground();
 
         let prompt = HSTRING::from(message);
 

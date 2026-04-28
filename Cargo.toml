@@ -69,6 +69,7 @@ windows = { version = "0.59", features = [
     "Security_Credentials_UI",
     "Win32_System_Com",
     "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
 ] }
 
 [target.'cfg(windows)'.build-dependencies]
