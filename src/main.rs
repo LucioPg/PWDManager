@@ -160,8 +160,11 @@ fn App() -> Element {
     let mut show_recovery_dialog = use_signal(|| false);
     let recovery_error = use_signal(|| None::<String>);
     let show_reset_dialog = use_signal(|| false);
+    #[cfg(debug_assertions)]
     let mut show_setup_dialog = use_signal(|| false);
+    #[cfg(debug_assertions)]
     let mut setup_passphrase = use_signal(|| String::new());
+    #[cfg(debug_assertions)]
     let mut has_shown_setup = use_signal(|| false);
 
     // Cleanup del pool quando il componente viene smontato o l'app si chiude
@@ -235,7 +238,8 @@ fn App() -> Element {
         }
     });
 
-    // Effect: detect FirstSetup and show recovery key dialog
+    // Effect: detect FirstSetup and show dialog (dev only — release uses --setup via NSIS)
+    #[cfg(debug_assertions)]
     use_effect(move || {
         let resource = db_resource.read();
         if let Some(Ok(InitResult::FirstSetup {
@@ -258,7 +262,14 @@ fn App() -> Element {
 
     let content: Element = match &*db_resource.read() {
         Some(Ok(InitResult::Ready(_))) | Some(Ok(InitResult::FirstSetup { .. })) => {
-            render_app_with_setup(show_setup_dialog, setup_passphrase, update_state)
+            #[cfg(debug_assertions)]
+            {
+                render_app_with_setup(show_setup_dialog, setup_passphrase, update_state)
+            }
+            #[cfg(not(debug_assertions))]
+            {
+                render_app(update_state)
+            }
         }
         Some(Err(custom_errors::DBError::DBKeyMissingWithDb)) => render_recovery_ui(
             db_resource,
@@ -300,6 +311,7 @@ fn App() -> Element {
     }
 }
 
+#[cfg(debug_assertions)]
 fn render_app_with_setup(
     show_setup_dialog: Signal<bool>,
     setup_passphrase: Signal<String>,
@@ -315,6 +327,15 @@ fn render_app_with_setup(
             passphrase: setup_passphrase.read().clone(),
             on_confirm: move |_| {},
         }
+    }
+}
+
+#[cfg(not(debug_assertions))]
+fn render_app(update_state: Signal<UpdateState>) -> Element {
+    rsx! {
+        ToastContainer {}
+        UpdateNotification { update_state }
+        Router::<Route> {}
     }
 }
 
@@ -468,11 +489,12 @@ fn main() {
             .expect("Failed to create tokio runtime");
 
         match rt.block_on(crate::backend::setup::run_setup()) {
-            Ok(_) => {
+            Ok(passphrase) => {
+                println!("{}", passphrase.expose_secret());
                 std::process::exit(0);
             }
             Err(e) => {
-                debug!("Setup failed: {}", e);
+                eprintln!("Setup failed: {}", e);
                 std::process::exit(1);
             }
         }
