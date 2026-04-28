@@ -108,6 +108,42 @@ pub fn WelcomePage() -> Element {
 
         state.set(WelcomeState::Loading);
         spawn(async move {
+            // Verify identity via Windows Hello before creating account
+            let username_for_hello = u.clone();
+            let hello_result = tokio::task::spawn_blocking(move || {
+                hello_auth::request_verification(&format!(
+                    "Confirm account creation for {}?",
+                    username_for_hello
+                ))
+            })
+            .await
+            .unwrap_or(hello_auth::HelloResult::Failed("Task spawn failed".into()));
+
+            match hello_result {
+                hello_auth::HelloResult::Success => {}
+                hello_auth::HelloResult::Cancelled => {
+                    state.set(WelcomeState::Ready);
+                    return;
+                }
+                hello_auth::HelloResult::NotEnrolled => {
+                    state.set(WelcomeState::Error(
+                        "Windows Hello is not configured. Set it up in Windows Settings first."
+                            .into(),
+                    ));
+                    return;
+                }
+                hello_auth::HelloResult::NotAvailable => {
+                    state.set(WelcomeState::Error(
+                        "Windows Hello is not available on this device.".into(),
+                    ));
+                    return;
+                }
+                hello_auth::HelloResult::Failed(msg) => {
+                    state.set(WelcomeState::Error(msg));
+                    return;
+                }
+            }
+
             let password = generate_suggested_password(None);
 
             match register_user_with_settings(
@@ -127,7 +163,6 @@ pub fn WelcomePage() -> Element {
                         tracing::warn!("Failed to create default vault");
                     }
 
-                    // Store master password in keyring (desktop only)
                     if let Err(e) = hello_auth::store_master_password(&u, password.expose_secret())
                     {
                         tracing::warn!("Failed to store master password in keyring: {}", e);
