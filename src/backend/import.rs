@@ -365,7 +365,7 @@ pub async fn import_passwords_pipeline_with_progress(
         .await
         .map_err(|e| e.to_string())?;
 
-    let salt = get_salt(&user_auth.password);
+    let salt = get_salt(&user_auth.password).map_err(|e| e.to_string())?;
     let cipher = create_cipher(&salt, &user_auth).map_err(|e| e.to_string())?;
 
     let stored_passwords =

@@ -933,8 +933,8 @@ dependencies = [
 
 [[package]]
 name = "custom_errors"
-version = "0.1.1"
-source = "git+https://github.com/LucioPg/custom_errors#a5265f65fafc4548c0bc00ed86ecde6decbb698f"
+version = "0.1.2"
+source = "git+https://github.com/LucioPg/custom_errors#c3ab0d7f55c4907a029b76fcee0a46b3ce7011ed"
 dependencies = [
  "thiserror 2.0.18",
 ]

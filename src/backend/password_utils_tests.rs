@@ -10,13 +10,15 @@ use crate::backend::db_backend::{
 use crate::backend::evaluate_password_strength;
 use crate::backend::password_utils::{
     create_stored_data_pipeline_bulk, decrypt_bulk_stored_data, generate_suggested_password,
-    get_stored_raw_passwords, stored_passwords_migration_pipeline_with_progress,
+    get_salt, get_stored_raw_passwords, stored_passwords_migration_pipeline_with_progress,
 };
 use crate::backend::test_helpers::{create_test_vault, setup_test_db};
+use custom_errors::DBError;
 use pwd_types::{
-    ExcludedSymbolSet, PasswordGeneratorConfig, PasswordPreset, PasswordStrength, StoredRawPassword,
+    DbSecretString, ExcludedSymbolSet, PasswordGeneratorConfig, PasswordPreset, PasswordStrength,
+    StoredRawPassword, UserAuth,
 };
-use secrecy::{ExposeSecret, SecretString};
+use secrecy::{ExposeSecret, SecretBox, SecretString};
 use sqlx::SqlitePool;
 use std::time::Instant;
 use uuid::Uuid;
@@ -1134,4 +1136,96 @@ async fn test_diceware_registration_default_settings() {
             | crate::backend::settings_types::DicewareLanguage::IT
             | crate::backend::settings_types::DicewareLanguage::FR
     ));
+}
+
+// ============ Test per get_salt() error handling ============
+
+#[test]
+fn test_get_salt_valid_hash_returns_ok() {
+    // Genera un hash Argon2 valido usando encrypt
+    let hash = crate::backend::utils::encrypt(SecretString::new("test_password".into()))
+        .expect("encrypt should succeed");
+    let db_secret = DbSecretString(SecretBox::new(hash.into()));
+
+    let result = get_salt(&db_secret);
+    assert!(result.is_ok(), "get_salt with valid hash should return Ok");
+}
+
+#[test]
+fn test_get_salt_corrupted_hash_returns_err() {
+    let corrupted = DbSecretString(SecretBox::new("not_a_valid_hash".into()));
+    let result = get_salt(&corrupted);
+
+    assert!(result.is_err(), "get_salt with garbage string should return Err");
+    match result.unwrap_err() {
+        DBError::DBPasswordHashCorruptionError(msg) => {
+            assert!(
+                msg.contains("Failed to parse password hash"),
+                "Error message should mention parse failure, got: {msg}"
+            );
+        }
+        other => panic!("Expected DBPasswordHashCorruptionError, got: {other:?}"),
+    }
+}
+
+#[test]
+fn test_get_salt_hash_without_salt_returns_err() {
+    // Argon2 hash with empty salt — PasswordHash::new() rejects it as "salt invalid"
+    let no_salt_hash = "$argon2id$v=19$m=19456,t=2,p=1$";
+    let db_secret = DbSecretString(SecretBox::new(no_salt_hash.into()));
+    let result = get_salt(&db_secret);
+
+    assert!(result.is_err(), "get_salt with hash missing salt should return Err");
+    match result.unwrap_err() {
+        DBError::DBPasswordHashCorruptionError(msg) => {
+            assert!(
+                msg.contains("Failed to parse password hash"),
+                "Error message should mention parse failure, got: {msg}"
+            );
+        }
+        other => panic!("Expected DBPasswordHashCorruptionError, got: {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn test_decrypt_with_corrupted_hash_propagates_error() {
+    let pool = setup_test_db().await;
+    let user_id = create_test_user(&pool, "corrupt_hash", "MasterPass123!").await;
+    let (vault_id, _) = create_test_vault(&pool, user_id).await;
+
+    // Crea e salva una password
+    let stored_raw = StoredRawPassword {
+        uuid: Uuid::new_v4(),
+        id: None,
+        user_id,
+        vault_id,
+        name: String::new(),
+        username: SecretString::new(String::new().into()),
+        url: SecretString::new("https://example.com".into()),
+        password: SecretString::new("secret123".into()),
+        notes: None,
+        score: None,
+        created_at: None,
+    };
+    create_stored_data_pipeline_bulk(&pool, user_id, vec![stored_raw])
+        .await
+        .expect("Should encrypt");
+
+    let stored_passwords = fetch_all_stored_passwords_for_user(&pool, user_id)
+        .await
+        .expect("Should fetch");
+
+    // Crea UserAuth con hash corrotto
+    let corrupted_auth = UserAuth {
+        id: user_id,
+        password: DbSecretString(SecretBox::new("corrupted_hash_value".into())),
+    };
+
+    let result = decrypt_bulk_stored_data(corrupted_auth, stored_passwords, None).await;
+    assert!(result.is_err(), "Decrypt with corrupted hash should fail");
+
+    match result.unwrap_err() {
+        DBError::DBPasswordHashCorruptionError(_) => {}
+        other => panic!("Expected DBPasswordHashCorruptionError, got: {other:?}"),
+    }
 }
