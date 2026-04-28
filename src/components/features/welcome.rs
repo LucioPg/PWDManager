@@ -144,7 +144,7 @@ pub fn WelcomePage() -> Element {
                                 "Account created successfully!".to_string(),
                                 toast,
                             );
-                            nav.push("/dashboard");
+                            nav.push("/my-vaults");
                         }
                         Err(e) => {
                             show_toast_error(format!("Login error: {}", e), toast);

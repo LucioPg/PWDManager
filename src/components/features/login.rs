@@ -76,7 +76,7 @@ async fn attempt_hello_login(
                             Ok((id, uname, created_at, avatar)) => {
                                 debug!("Hello login {id} {uname} {created_at}");
                                 auth_state.login(id, uname, created_at, avatar);
-                                nav.push("/dashboard");
+                                nav.push("/my-vaults");
                             }
                             Err(e) => {
                                 show_toast_error(format!("Login error: {}", e), toast);
