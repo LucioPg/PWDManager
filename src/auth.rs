@@ -4,7 +4,6 @@
 
 use crate::backend::avatar_utils::get_user_avatar_with_default;
 use dioxus::prelude::*;
-use std::cell::RefCell;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct User {
@@ -17,28 +16,6 @@ pub struct User {
 #[derive(Clone)]
 pub struct AuthState {
     pub user: Signal<Option<User>>,
-}
-
-type AuthChangeCallback = Box<dyn Fn(bool)>;
-
-thread_local! {
-    static ON_AUTH_CHANGE: RefCell<Option<AuthChangeCallback>> = RefCell::new(None);
-}
-
-/// Registers a callback that fires on every login/logout.
-/// Must be called once during app initialization.
-pub fn set_on_auth_change(f: impl Fn(bool) + 'static) {
-    ON_AUTH_CHANGE.with(|c| {
-        *c.borrow_mut() = Some(Box::new(f));
-    });
-}
-
-fn notify_auth_change(is_logged: bool) {
-    ON_AUTH_CHANGE.with(|c| {
-        if let Some(cb) = c.borrow().as_ref() {
-            cb(is_logged);
-        }
-    });
 }
 
 impl AuthState {
@@ -62,11 +39,9 @@ impl AuthState {
             created_at,
             avatar,
         }));
-        notify_auth_change(true);
     }
     pub fn logout(&mut self) {
         self.user.set(None);
-        notify_auth_change(false);
     }
     pub fn is_logged_in(&self) -> bool {
         self.user.read().is_some()
@@ -259,24 +234,5 @@ mod tests {
         };
         let cloned = user.clone();
         assert_eq!(user, cloned);
-    }
-
-    #[test]
-    fn test_login_and_logout_trigger_auth_change_callback() {
-        with_runtime(|| {
-            let mut auth = AuthState::new();
-            let calls = std::rc::Rc::new(RefCell::new(Vec::new()));
-
-            set_on_auth_change({
-                let calls = calls.clone();
-                move |is_logged: bool| calls.borrow_mut().push(is_logged)
-            });
-
-            auth.login(1, "alice".into(), "2024-01-01".into(), None);
-            assert_eq!(*calls.borrow(), vec![true]);
-
-            auth.logout();
-            assert_eq!(*calls.borrow(), vec![true, false]);
-        });
     }
 }

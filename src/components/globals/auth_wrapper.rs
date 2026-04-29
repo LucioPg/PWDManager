@@ -88,7 +88,7 @@ pub fn AuthWrapper() -> Element {
 
     // Timer periodico per auto-logout
     let mut auto_logout_started = use_signal(|| false);
-    let mut auto_logout_pending = use_signal(|| false);
+    let auth_for_timer = auth_state.clone();
     use_effect(move || {
         if auto_logout_started() {
             return;
@@ -101,11 +101,17 @@ pub fn AuthWrapper() -> Element {
 
         let last = last_activity;
         let logout_settings = auto_logout_settings;
-        let mut pending = auto_logout_pending;
+        let mut auth = auth_for_timer.clone();
+        let mut theme = app_theme;
+        let nav = nav;
 
         spawn(async move {
             loop {
                 tokio::time::sleep(Duration::from_secs(5)).await;
+
+                if !auth.is_logged_in() {
+                    return;
+                }
 
                 let settings = *logout_settings.read();
                 let Some(timeout) = settings.map(|s| s.duration()) else {
@@ -113,23 +119,13 @@ pub fn AuthWrapper() -> Element {
                 };
 
                 if last.read().elapsed() >= timeout {
-                    pending.set(true);
+                    auth.logout();
+                    theme.set(Theme::Light);
+                    nav.push(Route::LandingPage);
                     return;
                 }
             }
         });
-    });
-
-    // Esegue il logout sul main thread quando il flag viene impostato
-    let mut auth_for_effect = auth_state.clone();
-    use_effect(move || {
-        if !auto_logout_pending() {
-            return;
-        }
-        auto_logout_pending.set(false);
-        auth_for_effect.logout();
-        app_theme.set(Theme::Light);
-        nav.push(Route::LandingPage);
     });
 
     if !auth_state.is_logged_in() {

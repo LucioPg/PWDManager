@@ -7,7 +7,6 @@ mod auth;
 mod backend;
 mod components;
 
-use crate::auth::set_on_auth_change;
 use crate::backend::db_backend::InitResult;
 use crate::backend::init_blacklist_from_path;
 use crate::backend::settings_types::{AutoLogoutSettings, AutoUpdate};
@@ -31,7 +30,19 @@ use secrecy::ExposeSecret;
 use dioxus::desktop::trayicon::init_tray_icon;
 use dioxus::desktop::use_muda_event_handler;
 use dioxus::desktop::{use_wry_event_handler, window};
+use std::cell::RefCell;
 use tray_icon::menu::{Menu, MenuItem, PredefinedMenuItem};
+
+/// Shared tray state accessible from main thread hooks and effects.
+struct TrayState {
+    tray: tray_icon::TrayIcon,
+    icon_loggedin: tray_icon::Icon,
+    icon_loggedout: tray_icon::Icon,
+}
+
+thread_local! {
+    static TRAY_STATE: RefCell<Option<TrayState>> = const { RefCell::new(None) };
+}
 
 // const LOGO_BYTES: &[u8] = include_bytes!("../assets/logo.png");
 //
@@ -72,27 +83,17 @@ fn App() -> Element {
     use_hook(|| {
         let tray_menu = Menu::new();
 
-        // Voce "Apri" — riapre la finestra (alternativa al click sinistro sulla tray icon)
         tray_menu
             .append(&MenuItem::with_id("open", "Apri", true, None))
             .unwrap();
-
-        // Voce "Logout"
         tray_menu
             .append(&MenuItem::with_id("logout", "Logout", true, None))
             .unwrap();
-
-        // Separatore
         tray_menu.append(&PredefinedMenuItem::separator()).unwrap();
-
-        // Voce "Quit" — chiude l'applicazione
-        // Su Linux, PredefinedMenuItem::quit non viene renderizzato dalla tray.
-        // MenuItem custom + handler esplicito funziona cross-platform.
         tray_menu
             .append(&MenuItem::with_id("quit", "Quit", true, None))
             .unwrap();
 
-        // Carica entrambe le icone della tray a compile-time
         let load_icon = |bytes: &[u8]| {
             let img = image::load_from_memory(bytes).expect("failed to load tray icon");
             let rgba = img.to_rgba8();
@@ -104,16 +105,29 @@ fn App() -> Element {
 
         let tray = init_tray_icon(tray_menu, Some(icon_loggedout.clone()));
 
-        // Registra callback imperativa per aggiornare l'icona al cambio auth.
-        // Viene chiamata direttamente da AuthState::login() / logout().
-        set_on_auth_change(move |is_logged| {
-            let icon = if is_logged {
-                icon_loggedin.clone()
-            } else {
-                icon_loggedout.clone()
-            };
-            if let Err(e) = tray.set_icon(Some(icon)) {
-                tracing::debug!("Failed to update tray icon: {e}");
+        TRAY_STATE.with(|t| {
+            *t.borrow_mut() = Some(TrayState {
+                tray,
+                icon_loggedin,
+                icon_loggedout,
+            });
+        });
+    });
+
+    // Reactive tray icon update — runs on main thread, reacts to auth state changes.
+    let auth_for_icon = auth_state_tray.clone();
+    use_effect(move || {
+        let is_logged = auth_for_icon.is_logged_in();
+        TRAY_STATE.with(|t| {
+            if let Some(state) = t.borrow().as_ref() {
+                let icon = if is_logged {
+                    state.icon_loggedin.clone()
+                } else {
+                    state.icon_loggedout.clone()
+                };
+                if let Err(e) = state.tray.set_icon(Some(icon)) {
+                    tracing::debug!("Failed to update tray icon: {e}");
+                }
             }
         });
     });
