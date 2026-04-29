@@ -15,6 +15,7 @@ dependencies = [
  "diceware",
  "dioxus",
  "dioxus-primitives",
+ "dirs 5.0.1",
  "embed-resource",
  "futures",
  "gui-launcher",

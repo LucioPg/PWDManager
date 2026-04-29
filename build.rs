@@ -62,6 +62,7 @@ fn find_pwd_dioxus_path() -> Option<std::path::PathBuf> {
     None
 }
 
+#[cfg(windows)]
 fn windows_executable_icon() {
     let result = embed_resource::compile("build/icon.rc", embed_resource::NONE);
     result.manifest_optional().unwrap();

@@ -83,6 +83,12 @@ fn AutoStartToggle() -> Element {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
+#[component]
+fn AutoStartToggle() -> Element {
+    rsx! {}
+}
+
 #[component]
 pub fn GeneralSettings() -> Element {
     let auth_state = use_context::<AuthState>();
@@ -227,7 +233,9 @@ pub fn GeneralSettings() -> Element {
                     color: ToggleColor::Success,
                 }
             }
-            AutoStartToggle {}
+            if cfg!(target_os = "windows") {
+                AutoStartToggle {}
+            }
             div { class: "flex flex-row justify-between mb-2",
                 label { class: "label cursor-pointer",
                     strong {

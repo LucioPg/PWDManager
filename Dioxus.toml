@@ -27,6 +27,9 @@ silent = true
 template = "installer/custom-installer.nsi"
 installer_hooks = "installer/nsis-hooks.nsh"
 
+[bundle.linux]
+deb_dependencies = ["libwebkit2gtk-4.1-0", "libgtk-3-0", "libsecret-1-0"]
+
 [web.app]
 
 # HTML title tag content

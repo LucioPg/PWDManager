@@ -4,7 +4,7 @@
 //! and master password storage via OS keyring.
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 
 use crate::backend::db_key::keyring_service_name;
 
@@ -39,6 +39,7 @@ fn keyring_entry(username: &str) -> String {
 #[cfg(target_os = "windows")]
 mod platform {
     use super::*;
+    use tracing::error;
     use std::sync::atomic::{AtomicPtr, Ordering};
     use windows::{
         core::HSTRING,
@@ -162,16 +163,106 @@ mod platform {
     }
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "linux")]
+mod platform {
+    use super::*;
+    use tracing::debug;
+
+    /// Check if fingerprint authentication is available via fprintd.
+    pub fn is_hello_available() -> bool {
+        let username = match std::env::var("USER") {
+            Ok(u) if !u.is_empty() => u,
+            _ => return false,
+        };
+
+        match std::process::Command::new("fprintd-list")
+            .arg(&username)
+            .output()
+        {
+            Ok(output) => {
+                if !output.status.success() {
+                    return false;
+                }
+                let combined = format!(
+                    "{}{}",
+                    String::from_utf8_lossy(&output.stdout),
+                    String::from_utf8_lossy(&output.stderr)
+                );
+                if combined.contains("NoSuchDevice") || combined.contains("No devices") {
+                    return false;
+                }
+                combined.contains("Right") || combined.contains("Left") || combined.contains("Thumb")
+            }
+            Err(e) => {
+                debug!("fprintd-list not available: {}", e);
+                false
+            }
+        }
+    }
+
+    /// Request fingerprint verification via fprintd.
+    ///
+    /// Blocks until the user touches the sensor or times out.
+    /// Must be called from a background thread (same as Windows).
+    pub fn request_verification(_message: &str) -> HelloResult {
+        let username = match std::env::var("USER") {
+            Ok(u) if !u.is_empty() => u,
+            _ => return HelloResult::NotAvailable,
+        };
+
+        match std::process::Command::new("fprintd-verify")
+            .arg(&username)
+            .output()
+        {
+            Ok(output) => {
+                if output.status.success() {
+                    info!("Fingerprint verification succeeded");
+                    HelloResult::Success
+                } else {
+                    let combined = format!(
+                        "{}{}",
+                        String::from_utf8_lossy(&output.stdout),
+                        String::from_utf8_lossy(&output.stderr)
+                    );
+
+                    if combined.contains("NoSuchDevice")
+                        || combined.contains("No devices")
+                        || combined.contains("Impossible to verify")
+                    {
+                        debug!("No fingerprint device available");
+                        HelloResult::NotAvailable
+                    } else if combined.contains("no fingers") || combined.contains("No fingers") {
+                        warn!("No fingers enrolled for {}", username);
+                        HelloResult::NotEnrolled
+                    } else if combined.contains("timed out") || combined.contains("Timeout") {
+                        info!("Fingerprint verification timed out (cancelled)");
+                        HelloResult::Cancelled
+                    } else {
+                        debug!("Fingerprint verification failed: {}", combined.trim());
+                        HelloResult::Failed("Impronta non riconosciuta".to_string())
+                    }
+                }
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                debug!("fprintd-verify not found");
+                HelloResult::NotAvailable
+            }
+            Err(e) => {
+                warn!("fprintd-verify error: {}", e);
+                HelloResult::Failed(format!("Errore verifica: {}", e))
+            }
+        }
+    }
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "linux")))]
 mod platform {
     use super::*;
 
-    /// Hello is never available on non-Windows platforms.
     pub fn is_hello_available() -> bool {
         false
     }
 
-    /// Hello is not available on non-Windows platforms.
     pub fn request_verification(_message: &str) -> HelloResult {
         HelloResult::NotAvailable
     }

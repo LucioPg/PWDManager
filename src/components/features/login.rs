@@ -58,6 +58,12 @@ async fn attempt_hello_login(
     let username_for_prompt = auto_user.clone();
     let username_for_keyring = auto_user.clone();
 
+    if !hello_auth::is_hello_available() {
+        tracing::debug!("Biometric auth not available, skipping Hello login");
+        state.set(LoginState::NoAutoLogin);
+        return;
+    }
+
     let hello_result = tokio::task::spawn_blocking(move || {
         hello_auth::request_verification(&format!("Sign in as {}?", username_for_prompt))
     })

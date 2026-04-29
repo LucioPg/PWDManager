@@ -50,9 +50,8 @@ sys-locale = "0.2"
 
 
 # DB Encryption
-keyring = { version = "3", features = ["windows-native"] }
+keyring = "3"
 rand = "0.9"
-winreg = "0.55"
 
 # Updater
 reqwest = { version = "0.12", features = ["json", "stream"] }
@@ -71,9 +70,14 @@ windows = { version = "0.59", features = [
     "Win32_Foundation",
     "Win32_UI_WindowsAndMessaging",
 ] }
+keyring = { version = "3", features = ["windows-native"] }
+winreg = "0.55"
 
 [target.'cfg(windows)'.build-dependencies]
 embed-resource = "3.0"
+
+[target.'cfg(not(windows))'.dependencies]
+dirs = "5"
 
 [workspace]
 members = ["gui_launcher", "."]
