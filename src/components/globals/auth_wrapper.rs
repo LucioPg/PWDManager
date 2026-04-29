@@ -62,10 +62,21 @@ pub fn AuthWrapper() -> Element {
     // --- Activity Tracking per Auto-Logout ---
     let mut last_activity = use_signal(Instant::now);
 
-    // Intercetta ogni evento finestra (mouse, tastiera, focus) a livello nativo tao
+    // Track solo input utente reale (click, tastiera, mouse, touch, focus).
+    // Non traccia eventi di rendering (RedrawRequested, Resized, ecc.)
+    // che su Linux/WebKitGTK vengono generati continuamente.
     use_wry_event_handler(move |event, _| {
-        if let dioxus::desktop::tao::event::Event::WindowEvent { .. } = event {
-            last_activity.set(Instant::now());
+        if let dioxus::desktop::tao::event::Event::WindowEvent { event, .. } = event {
+            match event {
+                dioxus::desktop::tao::event::WindowEvent::MouseInput { .. }
+                | dioxus::desktop::tao::event::WindowEvent::CursorMoved { .. }
+                | dioxus::desktop::tao::event::WindowEvent::KeyboardInput { .. }
+                | dioxus::desktop::tao::event::WindowEvent::Touch { .. }
+                | dioxus::desktop::tao::event::WindowEvent::Focused { .. } => {
+                    last_activity.set(Instant::now());
+                }
+                _ => {}
+            }
         }
     });
 
