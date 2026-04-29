@@ -180,15 +180,23 @@ mod platform {
             .output()
         {
             Ok(output) => {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                let combined = format!("{stdout}{stderr}");
+                debug!(
+                    "fprintd-list exit={}, stdout='{}', stderr='{}'",
+                    output.status.code().unwrap_or(-1),
+                    stdout.trim(),
+                    stderr.trim()
+                );
+
                 if !output.status.success() {
                     return false;
                 }
-                let combined = format!(
-                    "{}{}",
-                    String::from_utf8_lossy(&output.stdout),
-                    String::from_utf8_lossy(&output.stderr)
-                );
-                if combined.contains("NoSuchDevice") || combined.contains("No devices") {
+                if combined.contains("NoSuchDevice")
+                    || combined.contains("No devices")
+                    || combined.contains("NoDevices")
+                {
                     return false;
                 }
                 combined.contains("Right") || combined.contains("Left") || combined.contains("Thumb")
