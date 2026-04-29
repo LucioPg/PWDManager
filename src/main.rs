@@ -85,11 +85,12 @@ fn App() -> Element {
         // Separatore
         tray_menu.append(&PredefinedMenuItem::separator()).unwrap();
 
-        // Voce "Esci" — chiude l'applicazione
-        // NOTA: PredefinedMenuItem::quit su Windows chiama PostQuitMessage(0) che
-        // termina il processo bruscamente, saltando il cleanup di Dioxus (use_drop).
-        // SQLite gestisce correttamente gli shutdown imprevisti, quindi questo e accettabile.
-        tray_menu.append(&PredefinedMenuItem::quit(None)).unwrap();
+        // Voce "Quit" — chiude l'applicazione
+        // Su Linux, PredefinedMenuItem::quit non viene renderizzato dalla tray.
+        // MenuItem custom + handler esplicito funziona cross-platform.
+        tray_menu
+            .append(&MenuItem::with_id("quit", "Quit", true, None))
+            .unwrap();
 
         // Carica entrambe le icone della tray a compile-time
         let load_icon = |bytes: &[u8]| {
@@ -131,6 +132,8 @@ fn App() -> Element {
             auth_for_tray.logout();
             window().set_visible(true);
             window().set_focus();
+        } else if event.id() == "quit" {
+            std::process::exit(0);
         }
     });
 
