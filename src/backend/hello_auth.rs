@@ -316,18 +316,23 @@ mod platform {
             return HelloResult::Cancelled;
         }
 
-        let password = String::from_utf8_lossy(&zenity.stdout).trim().to_string();
-        if password.is_empty() {
+        // Trim trailing newlines/carriage returns from zenity output
+        let raw = &zenity.stdout;
+        let end = raw
+            .iter()
+            .rposition(|&b| b != b'\n' && b != b'\r' && b != b'\0')
+            .map_or(0, |i| i + 1);
+
+        if end == 0 {
             return HelloResult::Cancelled;
         }
 
-        verify_password_pam(&username, &password)
+        verify_password_pam(&username, &raw[..end])
     }
 
-    fn verify_password_pam(username: &str, password: &str) -> HelloResult {
+    fn verify_password_pam(username: &str, password: &[u8]) -> HelloResult {
         let mut child = match Command::new("/sbin/unix_chkpwd")
             .arg(username)
-            .arg("nullok")
             .stdin(Stdio::piped())
             .spawn()
         {
@@ -336,15 +341,28 @@ mod platform {
         };
 
         if let Some(mut stdin) = child.stdin.take() {
-            let _ = writeln!(stdin, "{}", password);
+            let _ = stdin.write_all(password);
+            let _ = stdin.write_all(b"\n");
         }
 
         match child.wait() {
-            Ok(status) if status.success() => {
-                info!("System password verification succeeded for '{}'", username);
-                HelloResult::Success
+            Ok(status) => {
+                if status.success() {
+                    info!("System password verification succeeded for '{}'", username);
+                    HelloResult::Success
+                } else {
+                    debug!(
+                        "unix_chkpwd failed for '{}' (exit={:?})",
+                        username,
+                        status.code()
+                    );
+                    HelloResult::Failed("Password non corretta".to_string())
+                }
             }
-            _ => HelloResult::Failed("Password non corretta".to_string()),
+            Err(e) => {
+                debug!("unix_chkpwd wait error: {}", e);
+                HelloResult::Failed("Password non corretta".to_string())
+            }
         }
     }
 }
