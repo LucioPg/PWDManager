@@ -166,19 +166,41 @@ mod platform {
 #[cfg(target_os = "linux")]
 mod platform {
     use super::*;
+    use std::io::Write;
+    use std::process::{Command, Stdio};
     use tracing::debug;
 
-    /// Check if fingerprint authentication is available via fprintd.
+    /// Check if any authentication method is available (fingerprint OR system password).
     pub fn is_hello_available() -> bool {
+        is_fingerprint_available() || is_system_password_available()
+    }
+
+    /// Request user verification — tries fingerprint first, falls back to system password.
+    pub fn request_verification(message: &str) -> HelloResult {
+        if is_fingerprint_available() {
+            let username = match std::env::var("USER") {
+                Ok(u) if !u.is_empty() => u,
+                _ => return HelloResult::NotAvailable,
+            };
+            return verify_fingerprint(&username);
+        }
+
+        if is_system_password_available() {
+            return verify_with_system_password(message);
+        }
+
+        HelloResult::NotAvailable
+    }
+
+    // ── Fingerprint (fprintd) ──
+
+    fn is_fingerprint_available() -> bool {
         let username = match std::env::var("USER") {
             Ok(u) if !u.is_empty() => u,
             _ => return false,
         };
 
-        match std::process::Command::new("fprintd-list")
-            .arg(&username)
-            .output()
-        {
+        match Command::new("fprintd-list").arg(&username).output() {
             Ok(output) => {
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 let stderr = String::from_utf8_lossy(&output.stderr);
@@ -208,47 +230,34 @@ mod platform {
         }
     }
 
-    /// Request fingerprint verification via fprintd.
-    ///
-    /// Blocks until the user touches the sensor or times out.
-    /// Must be called from a background thread (same as Windows).
-    pub fn request_verification(_message: &str) -> HelloResult {
-        let username = match std::env::var("USER") {
-            Ok(u) if !u.is_empty() => u,
-            _ => return HelloResult::NotAvailable,
-        };
-
-        match std::process::Command::new("fprintd-verify")
-            .arg(&username)
-            .output()
-        {
+    fn verify_fingerprint(username: &str) -> HelloResult {
+        match Command::new("fprintd-verify").arg(username).output() {
+            Ok(output) if output.status.success() => {
+                info!("Fingerprint verification succeeded");
+                HelloResult::Success
+            }
             Ok(output) => {
-                if output.status.success() {
-                    info!("Fingerprint verification succeeded");
-                    HelloResult::Success
-                } else {
-                    let combined = format!(
-                        "{}{}",
-                        String::from_utf8_lossy(&output.stdout),
-                        String::from_utf8_lossy(&output.stderr)
-                    );
+                let combined = format!(
+                    "{}{}",
+                    String::from_utf8_lossy(&output.stdout),
+                    String::from_utf8_lossy(&output.stderr)
+                );
 
-                    if combined.contains("NoSuchDevice")
-                        || combined.contains("No devices")
-                        || combined.contains("Impossible to verify")
-                    {
-                        debug!("No fingerprint device available");
-                        HelloResult::NotAvailable
-                    } else if combined.contains("no fingers") || combined.contains("No fingers") {
-                        warn!("No fingers enrolled for {}", username);
-                        HelloResult::NotEnrolled
-                    } else if combined.contains("timed out") || combined.contains("Timeout") {
-                        info!("Fingerprint verification timed out (cancelled)");
-                        HelloResult::Cancelled
-                    } else {
-                        debug!("Fingerprint verification failed: {}", combined.trim());
-                        HelloResult::Failed("Impronta non riconosciuta".to_string())
-                    }
+                if combined.contains("NoSuchDevice")
+                    || combined.contains("No devices")
+                    || combined.contains("Impossible to verify")
+                {
+                    debug!("No fingerprint device available");
+                    HelloResult::NotAvailable
+                } else if combined.contains("no fingers") || combined.contains("No fingers") {
+                    warn!("No fingers enrolled for {}", username);
+                    HelloResult::NotEnrolled
+                } else if combined.contains("timed out") || combined.contains("Timeout") {
+                    info!("Fingerprint verification timed out (cancelled)");
+                    HelloResult::Cancelled
+                } else {
+                    debug!("Fingerprint verification failed: {}", combined.trim());
+                    HelloResult::Failed("Impronta non riconosciuta".to_string())
                 }
             }
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
@@ -259,6 +268,83 @@ mod platform {
                 warn!("fprintd-verify error: {}", e);
                 HelloResult::Failed(format!("Errore verifica: {}", e))
             }
+        }
+    }
+
+    // ── System password (zenity + PAM) ──
+
+    fn is_system_password_available() -> bool {
+        std::path::Path::new("/sbin/unix_chkpwd").exists()
+            && Command::new("which")
+                .arg("zenity")
+                .output()
+                .map(|o| o.status.success())
+                .unwrap_or(false)
+    }
+
+    /// Show native GTK password dialog via zenity and verify against PAM.
+    fn verify_with_system_password(message: &str) -> HelloResult {
+        let username = match std::env::var("USER") {
+            Ok(u) if !u.is_empty() => u,
+            _ => return HelloResult::NotAvailable,
+        };
+
+        let dialog_text = if message.is_empty() {
+            "Authenticate to unlock PWDManager".to_string()
+        } else {
+            message.to_string()
+        };
+
+        let zenity = match Command::new("zenity")
+            .args([
+                "--password",
+                &format!("--title=PWDManager"),
+                &format!("--text={}", dialog_text),
+            ])
+            .output()
+        {
+            Ok(o) => o,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                return HelloResult::NotAvailable;
+            }
+            Err(e) => {
+                return HelloResult::Failed(format!("Errore dialogo: {}", e));
+            }
+        };
+
+        if !zenity.status.success() {
+            return HelloResult::Cancelled;
+        }
+
+        let password = String::from_utf8_lossy(&zenity.stdout).trim().to_string();
+        if password.is_empty() {
+            return HelloResult::Cancelled;
+        }
+
+        verify_password_pam(&username, &password)
+    }
+
+    fn verify_password_pam(username: &str, password: &str) -> HelloResult {
+        let mut child = match Command::new("/sbin/unix_chkpwd")
+            .arg(username)
+            .arg("nullok")
+            .stdin(Stdio::piped())
+            .spawn()
+        {
+            Ok(c) => c,
+            Err(_) => return HelloResult::NotAvailable,
+        };
+
+        if let Some(mut stdin) = child.stdin.take() {
+            let _ = writeln!(stdin, "{}", password);
+        }
+
+        match child.wait() {
+            Ok(status) if status.success() => {
+                info!("System password verification succeeded for '{}'", username);
+                HelloResult::Success
+            }
+            _ => HelloResult::Failed("Password non corretta".to_string()),
         }
     }
 }

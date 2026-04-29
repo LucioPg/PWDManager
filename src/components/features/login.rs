@@ -20,6 +20,15 @@ use crate::backend::hello_auth;
 #[cfg(feature = "desktop")]
 use secrecy::SecretString;
 
+#[cfg(feature = "desktop")]
+fn auth_method_name() -> &'static str {
+    if cfg!(target_os = "windows") {
+        "Windows Hello"
+    } else {
+        "Biometric Authentication"
+    }
+}
+
 
 #[derive(Debug, Clone, PartialEq)]
 enum LoginState {
@@ -109,18 +118,11 @@ async fn attempt_hello_login(
         hello_auth::HelloResult::Cancelled => {
             state.set(LoginState::Ready);
         }
-        hello_auth::HelloResult::NotEnrolled => {
-            state.set(LoginState::Failed(
-                "Windows Hello is not configured on this device.".to_string(),
-            ));
-        }
-        hello_auth::HelloResult::NotAvailable => {
-            state.set(LoginState::Failed(
-                "Windows Hello is not available on this device.".to_string(),
-            ));
+        hello_auth::HelloResult::NotEnrolled | hello_auth::HelloResult::NotAvailable => {
+            state.set(LoginState::NoAutoLogin);
         }
         hello_auth::HelloResult::Failed(msg) => {
-            state.set(LoginState::Failed(format!("Windows Hello failed: {}", msg)));
+            state.set(LoginState::Failed(format!("{} failed: {}", auth_method_name(), msg)));
             tracing::debug!("Hello login result: {:?}", hello_result);
         }
     }
@@ -138,8 +140,9 @@ pub fn Login() -> Element {
 
     let pool_effect = pool.clone();
     let auth_state_effect = auth_state.clone();
+    let auth_name = auth_method_name();
 
-    // Auto-attempt Windows Hello on mount (runs once per component lifecycle)
+    // Auto-attempt biometric/system auth on mount (runs once per component lifecycle)
     use_hook(move || {
         spawn(async move {
             attempt_hello_login(pool_effect, state, auth_state_effect, nav, toast).await;
@@ -177,7 +180,7 @@ pub fn Login() -> Element {
         div { class: "page-centered",
             div { class: "auth-form futuristic animate-scale-in",
                 h1 { class: "text-h2 text-center", "Welcome Back" }
-                p { class: "text-body mb-4 text-center", "Sign in with Windows Hello" }
+                p { class: "text-body mb-4 text-center", "Sign in with {auth_name}" }
                 match state() {
                     LoginState::Checking | LoginState::Attempting => rsx! {
                         div { class: "flex flex-col items-center gap-4",
@@ -194,7 +197,7 @@ pub fn Login() -> Element {
                     LoginState::Ready => rsx! {
                         div { class: "flex flex-col items-center gap-4",
                             p { class: "text-sm text-base-content/70",
-                                "Windows Hello verification was cancelled."
+                                "{auth_name} verification was cancelled."
                             }
                             ActionButton {
                                 text: "Try Again",
