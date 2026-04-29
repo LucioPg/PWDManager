@@ -26,7 +26,7 @@ diceware = { git = "https://github.com/LucioPg/diceware.git" }
 
 # Dipendenze esterne
 tracing = "0.1.44"
-dioxus = { version = "0.7.4", features = ["desktop", "router"] }
+dioxus = { version = "0.7.6", features = ["desktop", "router"] }
 tray-icon = "0.21"
 sqlx = { version = "0.8.6", default-features = false, features = ["runtime-tokio", "sqlite", "macros"] }
 tokio = { version = "1.49.0", features = ["full", "tracing"] }
