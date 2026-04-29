@@ -79,6 +79,7 @@ embed-resource = "3.0"
 [target.'cfg(not(windows))'.dependencies]
 dirs = "5"
 keyring = { version = "3", features = ["linux-native-sync-persistent"] }
+pam = "0.8"
 
 [workspace]
 members = ["gui_launcher", "."]

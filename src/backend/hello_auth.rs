@@ -166,8 +166,7 @@ mod platform {
 #[cfg(target_os = "linux")]
 mod platform {
     use super::*;
-    use std::io::Write;
-    use std::process::{Command, Stdio};
+    use std::process::Command;
     use tracing::debug;
 
     /// Check if any authentication method is available (fingerprint OR system password).
@@ -271,18 +270,17 @@ mod platform {
         }
     }
 
-    // ── System password (zenity + PAM) ──
+    // ── System password (zenity dialog + PAM direct) ──
 
     fn is_system_password_available() -> bool {
-        std::path::Path::new("/sbin/unix_chkpwd").exists()
-            && Command::new("which")
-                .arg("zenity")
-                .output()
-                .map(|o| o.status.success())
-                .unwrap_or(false)
+        Command::new("which")
+            .arg("zenity")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
     }
 
-    /// Show native GTK password dialog via zenity and verify against PAM.
+    /// Show native GTK password dialog via zenity and verify via PAM.
     fn verify_with_system_password(message: &str) -> HelloResult {
         let username = match std::env::var("USER") {
             Ok(u) if !u.is_empty() => u,
@@ -327,40 +325,34 @@ mod platform {
             return HelloResult::Cancelled;
         }
 
-        verify_password_pam(&username, &raw[..end])
-    }
-
-    fn verify_password_pam(username: &str, password: &[u8]) -> HelloResult {
-        let mut child = match Command::new("/sbin/unix_chkpwd")
-            .arg(username)
-            .stdin(Stdio::piped())
-            .spawn()
-        {
-            Ok(c) => c,
-            Err(_) => return HelloResult::NotAvailable,
+        let password = match std::str::from_utf8(&raw[..end]) {
+            Ok(s) => s,
+            Err(_) => return HelloResult::Failed("Password non valida".to_string()),
         };
 
-        if let Some(mut stdin) = child.stdin.take() {
-            let _ = stdin.write_all(password);
-            let _ = stdin.write_all(b"\n");
-        }
+        verify_password_pam(&username, password)
+    }
 
-        match child.wait() {
-            Ok(status) => {
-                if status.success() {
-                    info!("System password verification succeeded for '{}'", username);
-                    HelloResult::Success
-                } else {
-                    debug!(
-                        "unix_chkpwd failed for '{}' (exit={:?})",
-                        username,
-                        status.code()
-                    );
-                    HelloResult::Failed("Password non corretta".to_string())
-                }
+    fn verify_password_pam(username: &str, password: &str) -> HelloResult {
+        use pam::Client;
+
+        let mut client = match Client::with_password("login") {
+            Ok(c) => c,
+            Err(e) => {
+                debug!("Failed to init PAM client: {}", e);
+                return HelloResult::NotAvailable;
+            }
+        };
+
+        client.conversation_mut().set_credentials(username, password);
+
+        match client.authenticate() {
+            Ok(()) => {
+                info!("PAM authentication succeeded for '{}'", username);
+                HelloResult::Success
             }
             Err(e) => {
-                debug!("unix_chkpwd wait error: {}", e);
+                debug!("PAM authentication failed for '{}': {}", username, e);
                 HelloResult::Failed("Password non corretta".to_string())
             }
         }
