@@ -45,7 +45,7 @@
 
 
 ---
-
+[![Buy Me a Beer](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-beer&logoColor=black)](https://buymeacoffee.com/LucioPg)
 ## Why PWDManager
 
 Most password managers rely on cloud infrastructure or SaaS subscriptions. Even when they advertise end-to-end
@@ -292,6 +292,9 @@ This project is licensed under the **Prosperity Public License 3.0.0**.
 
 To request a quote or activate a license: **ldcproductions@proton.me** (subject: "Commercial License Request -
 PWDManager")
+
+
+[![Buy Me a Beer](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-beer&logoColor=black)](https://buymeacoffee.com/LucioPg)
 
 ---
 
