@@ -29,6 +29,7 @@
   <a href="https://github.com/LucioPg/PWDManager/actions/workflows/virustotal-scan.yml">
     <img src="https://img.shields.io/github/actions/workflow/status/LucioPg/PWDManager/virustotal-scan.yml?label=VirusTotal" alt="VirusTotal">
   </a>
+  [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/LucioPg)
 </p>
 
 <p align="center">
@@ -38,7 +39,7 @@
 <p align="center">
   [![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/LucioPg)
 </p>
-
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/LucioPg)
 ---
 
 ## Why PWDManager
