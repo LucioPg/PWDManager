@@ -36,12 +36,6 @@
   Rust · Dioxus · <a href="https://github.com/LucioPg/PWDManager">Repository</a>
 </p>
 
-<p align="center">
-    <a href="https://buymeacoffee.com/LucioPg">
-    <img src="[https://img.shields.io/github/actions/workflow/status/LucioPg/PWDManager/virustotal-scan.yml?label=VirusTotal](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black))" alt="Buymeacoffee">
-  </a>
-</p>
-
 
 
 ---
